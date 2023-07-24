@@ -1284,7 +1284,7 @@
         },
         {
             "author_association": "MEMBER",
-            "body": "# Status\r\n\r\n- Nvim 0.4+ provides `vim.loop.new_fs_event()` and it (so far) works well on macOS/Linux.\r\n  - TODO: does it work on Windows?\r\n  - [Documented](https://github.com/neovim/neovim/pull/11277) at `:help file-change-detect`.\r\n- [TODO: notes for potential edge cases](https://github.com/neovim/neovim/issues/1380#issuecomment-326512623) to consider\r\n- [question (resolved)](https://github.com/neovim/neovim/issues/1380#issuecomment-64139405):\r\n  > If I edit the file with nano I just get one notification as expected, with vim I get, besides the edit notification, three(!) rename notifications.\r\n  - To address/workaround that [ZyX suggested](https://github.com/neovim/neovim/issues/1380#issuecomment-64184368):\r\n    > Is not it solved by just creating a new event after notification about rename or remove and removing the old one?\r\n    - That seems to work, and is mentioned at `:help file-change-detect` (essentially `watcher:stop()` followed by `watcher:start()`)\r\n- [open question](https://github.com/neovim/neovim/issues/1380#issuecomment-64139405): \r\n  > On virtual filesystems, like virtualbox shared folders, uv_fs_event_start() doesn't work properly. There's an option to circumvent this and use stat informations instead of the OS notification system, but it's currently not implemented in libuv.\r\n- File notifications may be useful for LSP: https://github.com/neovim/neovim/issues/5522#issuecomment-269580090\r\n\r\nTODO\r\n\r\n- We should use `vim.loop.new_fs_event()` implicitly for 'autoread'. See also https://github.com/neovim/neovim/pull/5599\r\n  - That would address https://github.com/neovim/neovim/issues/7959\r\n\r\n\r\n## File watching is tricky and expensive\r\n\r\n#23291 , #23500 are reminders that the edge-cases (recursive directory watching) of inotify and friends need to be wrapped in a higher layer. We probably should use (\"vend or depend\") a proven tool to deal with file-watcher edge cases.\r\n\r\n### Third-party tools\r\n\r\n- sunjon ([and lewis6991](https://github.com/neovim/neovim/issues/23291#issuecomment-1632855972)) mentioned https://github.com/emcrisostomo/fswatch which also works on Windows.\r\n- [entr](https://github.com/eradman/entr) (no Windows support)\r\n- https://facebook.github.io/watchman/\r\n- https://github.com/watchexec/watchexec\r\n\r\nFrom the \"entr\" readme:\r\n\r\n>  it aims to be simple enough to create a new category of ad hoc automation. ...  a tool that is tuned for one task. \r\n>\r\n> inotifywait is lightweight, but it only works on Linux, and does not provide a direct means of saying “run this command if any of these files change”. In practice scripting with inotify-tools is difficult because there are a number of significant conditions to contend with:\r\n> 1. Many applications attempt to make the file save operation atomic by writing a new file and then removing the original. entr deals with this by closing the old file descriptor and reopening it using the same pathname. Since there is a small delay while the new file is renamed, we must wait for the new file to appear before running the supplied command and attempting to watch the new file.\r\n> 2. File change events that occur while the utility is running need to be processed so as to ensure that files that have been replaced are monitored, but these events should not trigger an execution when the child process ends. entr allows you to safely edit files while tests are running without a repeated invocation of the utility.\r\n> 3. Typically version control software will often update a series of files in rapid succession. Ideally the build is launched when then entire operation is complete. To cope with this behavior entr repeatedly probes for subsequent events, and only executes the utility when the kernel returns with no results after a short timeout.\r\n> 4. The events reported when saving files on an NFS mount are different than those of a local file system. On Linux an inotify may report IN_MOVE_SELF|IN_DELETE_SELF instead of IN_MODIFY|IN_CLOSE_WRITE and on BSD kqueue may report NOTE_RENAME|NOTE_DELETE instead of NOTE_WRITE|NOTE_EXTEND.\r\n> 5. A race condition exists when executing a script that is also under watch since a script cannot be executed while another process has it open for write. Rather than allowing the enigmatic error “Text file busy”, entr retries the execution.\r\n> 6. On Linux editors that use the Gnome's GIO may write to a file and then subsequently delete it. To deal with this entr consolidates events over 50ms before responding.\r\n> 7. In some cases an editor will rename a file without removing it. This occurs the first time a file is saved in Vim if the backup option is set. To deal with this events must be explicitly unregistered to prevent the kernel from tracking changes to backup files.",
+            "body": "# Status\r\n\r\n- Nvim 0.4+ provides `vim.loop.new_fs_event()` and it (so far) works well on macOS/Linux.\r\n  - TODO: does it work on Windows?\r\n  - [Documented](https://neovim.io/doc/user/lua.html#watch-file) at `:help watch-file`.\r\n- [question (resolved)](https://github.com/neovim/neovim/issues/1380#issuecomment-64139405):\r\n  > If I edit the file with nano I just get one notification as expected, with vim I get, besides the edit notification, three(!) rename notifications.\r\n  - To address/workaround that [ZyX suggested](https://github.com/neovim/neovim/issues/1380#issuecomment-64184368):\r\n    > Is not it solved by just creating a new event after notification about rename or remove and removing the old one?\r\n    - That seems to work, and is mentioned at `:help watch-file` (essentially `watcher:stop()` followed by `watcher:start()`)\r\n- [open question](https://github.com/neovim/neovim/issues/1380#issuecomment-64139405): \r\n  > On virtual filesystems, like virtualbox shared folders, uv_fs_event_start() doesn't work properly. There's an option to circumvent this and use stat informations instead of the OS notification system, but it's currently not implemented in libuv.\r\n- File notifications may be useful for LSP: https://github.com/neovim/neovim/issues/5522#issuecomment-269580090\r\n\r\n# TODO\r\n\r\n- Use `vim.loop.new_fs_event()` implicitly for 'autoread'. See also https://github.com/neovim/neovim/pull/5599\r\n  - That would address https://github.com/neovim/neovim/issues/7959\r\n\r\n\r\n## File watching is tricky and expensive\r\n\r\n#23291 , #23500 are reminders that the edge-cases (recursive directory watching) of inotify and friends need to be wrapped in a higher layer. We probably should use (\"vend or depend\") a proven tool to deal with file-watcher edge cases.\r\n\r\n## Third-party tools\r\n\r\n- sunjon ([and lewis6991](https://github.com/neovim/neovim/issues/23291#issuecomment-1632855972)) mentioned https://github.com/emcrisostomo/fswatch which also works on Windows.\r\n- [entr](https://github.com/eradman/entr) (no Windows support)\r\n- https://facebook.github.io/watchman/\r\n- https://github.com/watchexec/watchexec\r\n\r\n## Edge cases (from the \"entr\" readme)\r\n\r\n>  it aims to be simple enough to create a new category of ad hoc automation. ...  a tool that is tuned for one task. \r\n>\r\n> inotifywait is lightweight, but it only works on Linux, and does not provide a direct means of saying “run this command if any of these files change”. In practice scripting with inotify-tools is difficult because there are a number of significant conditions to contend with:\r\n> 1. Many applications attempt to make the file save operation atomic by writing a new file and then removing the original. entr deals with this by closing the old file descriptor and reopening it using the same pathname. Since there is a small delay while the new file is renamed, we must wait for the new file to appear before running the supplied command and attempting to watch the new file.\r\n> 2. File change events that occur while the utility is running need to be processed so as to ensure that files that have been replaced are monitored, but these events should not trigger an execution when the child process ends. entr allows you to safely edit files while tests are running without a repeated invocation of the utility.\r\n> 3. Typically version control software will often update a series of files in rapid succession. Ideally the build is launched when then entire operation is complete. To cope with this behavior entr repeatedly probes for subsequent events, and only executes the utility when the kernel returns with no results after a short timeout.\r\n> 4. The events reported when saving files on an NFS mount are different than those of a local file system. On Linux an inotify may report IN_MOVE_SELF|IN_DELETE_SELF instead of IN_MODIFY|IN_CLOSE_WRITE and on BSD kqueue may report NOTE_RENAME|NOTE_DELETE instead of NOTE_WRITE|NOTE_EXTEND.\r\n> 5. A race condition exists when executing a script that is also under watch since a script cannot be executed while another process has it open for write. Rather than allowing the enigmatic error “Text file busy”, entr retries the execution.\r\n> 6. On Linux editors that use the Gnome's GIO may write to a file and then subsequently delete it. To deal with this entr consolidates events over 50ms before responding.\r\n> 7. In some cases an editor will rename a file without removing it. This occurs the first time a file is saved in Vim if the backup option is set. To deal with this events must be explicitly unregistered to prevent the kernel from tracking changes to backup files.",
             "created_at": "2019-10-27T06:54:46Z",
             "html_url": "https://github.com/neovim/neovim/issues/1380#issuecomment-546667155",
             "id": 546667155,
@@ -1303,7 +1303,7 @@
                 "total_count": 7,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/546667155/reactions"
             },
-            "updated_at": "2023-07-16T00:10:33Z",
+            "updated_at": "2023-07-19T13:27:07Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/546667155",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -1568,7 +1568,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 562,
+        "closed_issues": 564,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -1597,17 +1597,17 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 411,
+        "open_issues": 412,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2023-07-17T20:06:10Z",
+        "updated_at": "2023-07-22T08:52:15Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "MDU6SXNzdWU0NzU4MDQ5NQ==",
     "number": 1380,
     "performed_via_github_app": null,
     "reactions": {
-        "+1": 26,
+        "+1": 28,
         "-1": 0,
         "confused": 0,
         "eyes": 1,
@@ -1615,7 +1615,7 @@
         "hooray": 0,
         "laugh": 0,
         "rocket": 0,
-        "total_count": 27,
+        "total_count": 29,
         "url": "https://api.github.com/repos/neovim/neovim/issues/1380/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
@@ -1623,7 +1623,7 @@
     "state_reason": null,
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/1380/timeline",
     "title": "better file-change detection ('autoread')",
-    "updated_at": "2023-07-16T00:10:33Z",
+    "updated_at": "2023-07-19T13:27:07Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/1380",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/189413?v=4",

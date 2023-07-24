@@ -4,7 +4,7 @@
     "assignees": [],
     "author_association": "NONE",
     "body": "### Problem\r\n\r\nI'm trying to replace some of the completion sources I use with [null-ls](https://github.com/jose-elias-alvarez/null-ls.nvim) due to its impending archiving. Specifically, I'm trying to write a number of completion sources that responded to `textDocument/completion` with completion items.\r\n\r\nI've written a basic LSP server method that gets passed as the `cmd` key to `vim.lsp.start_client()`. But when I trigger omnicompletion (`<C-x><C-o>`), I get the following error in Neovim:\r\n\r\n~~~\r\nE5108: Error executing lua Vim:E565: Not allowed to change text or change window\r\nstack traceback:\r\n        [C]: in function 'complete'\r\n        ...w/.local/nvim-linux64/share/nvim/runtime/lua/vim/lsp.lua:2318: in functio\r\nn 'handler'\r\n        ...w/.local/nvim-linux64/share/nvim/runtime/lua/vim/lsp.lua:1499: in functio\r\nn 'done'\r\n        /home/andrew/minimal.lua:10: in function </home/andrew/minimal.lua:9>\r\n        /home/andrew/minimal.lua:20: in function 'request'\r\n        ...w/.local/nvim-linux64/share/nvim/runtime/lua/vim/lsp.lua:1491: in functio\r\nn 'request'\r\n        ...w/.local/nvim-linux64/share/nvim/runtime/lua/vim/lsp.lua:2116: in functio\r\nn 'buf_request'\r\n        ...w/.local/nvim-linux64/share/nvim/runtime/lua/vim/lsp.lua:2290: in functio\r\nn <...w/.local/nvim-linux64/share/nvim/runtime/lua/vim/lsp.lua:2263>\r\nE5108: Error executing lua Vim:E565: Not allowed to change text or change window\r\nstack traceback:\r\n        [C]: in function 'complete'\r\n        ...w/.local/nvim-linux64/share/nvim/runtime/lua/vim/lsp.lua:2318: in functio\r\nn 'handler'\r\n        ...w/.local/nvim-linux64/share/nvim/runtime/lua/vim/lsp.lua:1499: in functio\r\nn 'done'\r\n        /home/andrew/minimal.lua:10: in function </home/andrew/minimal.lua:9>\r\n        /home/andrew/minimal.lua:20: in function 'request'\r\n        ...w/.local/nvim-linux64/share/nvim/runtime/lua/vim/lsp.lua:1491: in functio\r\nn 'request'\r\n        ...w/.local/nvim-linux64/share/nvim/runtime/lua/vim/lsp.lua:2116: in functio\r\nn 'buf_request'\r\n        ...w/.local/nvim-linux64/share/nvim/runtime/lua/vim/lsp.lua:2290: in functio\r\nn <...w/.local/nvim-linux64/share/nvim/runtime/lua/vim/lsp.lua:2263>\r\nPress ENTER or type command to continue\r\n~~~\r\n\r\nThe error happens twice each time. I think this is because `vim.lsp.omnifunc()` never gets to the line `return -2`, so completion continues.\r\n\r\nThe error is happen at the line `vim.fn.complete(startbyte + 1, items)` in [lsp.lua](https://github.com/neovim/neovim/blob/f660b794808ac809ee8cafe82ddd824840bc8e2c/runtime/lua/vim/lsp.lua#L2336).\r\n\r\nAs can be seen from the minimal-init.lua below, this happens regardless of the content returned by the handler for `textDocument/completion`.\r\n\r\nI'm likely missing something here, but I can't figure it out nor can I figure out why E565 is being triggered.\r\n\r\n\r\n### Steps to reproduce using \"nvim -u minimal_init.lua\"\r\n\r\nOpen any file with the following `minimal_init.lua` (`nvim -u minimal_init.lua`) and type `<C-x><C-o>` to trigger omnicompletion.\r\n\r\n~~~lua\r\nlocal handlers = {\r\n  initialize = function(_, _, done)\r\n    done(nil, {\r\n      capabilities = {\r\n        completionProvider = true,\r\n      },\r\n    })\r\n  end,\r\n  [\"textDocument/completion\"] = function(_, _, done)\r\n    done(nil, {\r\n      { label = \"hello\" },\r\n    })\r\n  end,\r\n}\r\nlocal server = function(dispatchers)\r\n  local closing = false\r\n  return {\r\n    request = function(method, params, done)\r\n      if type(handlers[method]) == \"function\" then\r\n        handlers[method](method, params, done)\r\n      else\r\n        done()\r\n      end\r\n    end,\r\n    notify = function(...) end,\r\n    is_closing = function()\r\n      return closing\r\n    end,\r\n    terminate = function()\r\n      if not closing then\r\n        closing = true\r\n        dispatchers.on_exit(0, 0)\r\n      end\r\n    end,\r\n  }\r\nend\r\nvim.api.nvim_create_autocmd({ \"FileType\" }, {\r\n  callback = function()\r\n    local bufnr = vim.api.nvim_get_current_buf()\r\n\r\n    local id = vim.lsp.start_client({\r\n      cmd = server,\r\n      flags = { debounce_text_changes = 250 },\r\n      on_attach = function()\r\n        vim.bo.omnifunc = \"v:lua.vim.lsp.omnifunc\"\r\n      end,\r\n    })\r\n\r\n    if not id then\r\n      return\r\n    end\r\n\r\n    local did_attach = vim.lsp.buf_is_attached(bufnr, id) or vim.lsp.buf_attach_client(bufnr, id)\r\n    if not did_attach then\r\n      vim.print(\"Did not attach to buffer \" .. bufnr)\r\n    end\r\n  end,\r\n})\r\n-- # vim:ts=2:sw=2:sts=2:expandtab\r\n~~~\r\n\r\n### Expected behavior\r\n\r\n_No response_\r\n\r\n### Neovim version (nvim -v)\r\n\r\nNVIM v0.10.0-dev-661+gef94fb69c\r\n\r\n### Language server name/version\r\n\r\nN/A\r\n\r\n### Operating system/version\r\n\r\nLinux\r\n\r\n### Log file\r\n\r\n_No response_",
-    "closed_at": null,
+    "closed_at": "2023-07-19T05:10:13Z",
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -225,9 +225,53 @@
                 "type": "User",
                 "url": "https://api.github.com/users/mfussenegger"
             }
+        },
+        {
+            "author_association": "NONE",
+            "body": "#24381 does fix the problem. Thanks!\r\n\r\nAnd, thanks for the reminder about `vim.lsp.start()`.\r\n\r\nEDIT: Fwiw, wrapping `request()` in the server config in `vim.schedule_wrap` also solves the problem.",
+            "created_at": "2023-07-18T19:24:03Z",
+            "html_url": "https://github.com/neovim/neovim/issues/24369#issuecomment-1640867177",
+            "id": 1640867177,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/24369",
+            "node_id": "IC_kwDOAPphoM5hzaVp",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1640867177/reactions"
+            },
+            "updated_at": "2023-07-18T19:25:49Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1640867177",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/2666761?v=4",
+                "events_url": "https://api.github.com/users/oncomouse/events{/privacy}",
+                "followers_url": "https://api.github.com/users/oncomouse/followers",
+                "following_url": "https://api.github.com/users/oncomouse/following{/other_user}",
+                "gists_url": "https://api.github.com/users/oncomouse/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/oncomouse",
+                "id": 2666761,
+                "login": "oncomouse",
+                "node_id": "MDQ6VXNlcjI2NjY3NjE=",
+                "organizations_url": "https://api.github.com/users/oncomouse/orgs",
+                "received_events_url": "https://api.github.com/users/oncomouse/received_events",
+                "repos_url": "https://api.github.com/users/oncomouse/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/oncomouse/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/oncomouse/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/oncomouse"
+            }
         }
     ],
-    "comments": 5,
+    "comments": 6,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/24369/comments",
     "created_at": "2023-07-16T14:18:52Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/24369/events",
@@ -275,7 +319,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 56,
+        "closed_issues": 63,
         "created_at": "2023-02-02T14:11:43Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1363104?v=4",
@@ -307,7 +351,7 @@
         "open_issues": 146,
         "state": "open",
         "title": "0.10",
-        "updated_at": "2023-07-16T22:09:09Z",
+        "updated_at": "2023-07-23T23:05:24Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/36"
     },
     "node_id": "I_kwDOAPphoM5rroTl",
@@ -326,11 +370,11 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/24369/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": "reopened",
+    "state": "closed",
+    "state_reason": "completed",
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/24369/timeline",
     "title": "LSP: E565 with vim.lsp.omnifunc and custom server",
-    "updated_at": "2023-07-17T17:36:50Z",
+    "updated_at": "2023-07-19T05:10:13Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/24369",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/2666761?v=4",
