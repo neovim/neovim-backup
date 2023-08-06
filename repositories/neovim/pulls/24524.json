@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 4789,
-            "forks_count": 4789,
+            "forks": 4791,
+            "forks_count": 4791,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1652,
-            "open_issues_count": 1652,
+            "open_issues": 1655,
+            "open_issues_count": 1655,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -118,11 +118,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2023-08-05T01:34:12Z",
+            "pushed_at": "2023-08-05T22:51:51Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 246884,
+            "size": 246794,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 68006,
+            "stargazers_count": 68036,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -140,11 +140,11 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2023-08-04T23:49:51Z",
+            "updated_at": "2023-08-06T01:11:54Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 68006,
-            "watchers_count": 68006,
+            "watchers": 68036,
+            "watchers_count": 68036,
             "web_commit_signoff_required": false
         },
         "sha": "cc87dda31a5b5637ade7ddcfe5199f2df5fd47df",
@@ -787,6 +787,74 @@
                 "type": "User",
                 "url": "https://api.github.com/users/justinmk"
             }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/24524#discussion_r1285003358"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/24524"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1285003358"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\r\n      api_set_error(err, kErrorTypeValidation, \"Invalid key: '%.*s' is only allowed from Lua\",\r\n```",
+            "commit_id": "c3a5a7134ab5af1e7fece71d10ff6b3baedf6475",
+            "created_at": "2023-08-05T08:49:15Z",
+            "diff_hunk": "@@ -915,17 +916,84 @@ HlMessage parse_hl_msg(Array chunks, Error *err)\n   return (HlMessage)KV_INITIAL_VALUE;\n }\n \n-bool api_dict_to_keydict(void *rv, field_hash hashy, Dictionary dict, Error *err)\n+// see also nlua_pop_keydict for the lua specific implementation\n+bool api_dict_to_keydict(void *retval, FieldHashfn hashy, Dictionary dict, Error *err)\n {\n   for (size_t i = 0; i < dict.size; i++) {\n     String k = dict.items[i].key;\n-    Object *field = hashy(rv, k.data, k.size);\n+    KeySetLink *field = hashy(k.data, k.size);\n     if (!field) {\n       api_set_error(err, kErrorTypeValidation, \"Invalid key: '%.*s'\", (int)k.size, k.data);\n       return false;\n     }\n \n-    *field = dict.items[i].value;\n+    if (field->opt_index >= 0) {\n+      OptKeySet *ks = (OptKeySet *)retval;\n+      ks->is_set_ |= (1ULL << field->opt_index);\n+    }\n+\n+    char *mem = ((char *)retval + field->ptr_off);\n+    Object *value = &dict.items[i].value;\n+    if (field->type == kObjectTypeNil) {\n+      *(Object *)mem = *value;\n+    } else if (field->type == kObjectTypeInteger) {\n+      VALIDATE_T(field->str, kObjectTypeInteger, value->type, {\n+        return false;\n+      });\n+      *(Integer *)mem = value->data.integer;\n+    } else if (field->type == kObjectTypeFloat) {\n+      Float *val = (Float *)mem;\n+      if (value->type == kObjectTypeInteger) {\n+        *val = (Float)value->data.integer;\n+      } else {\n+        VALIDATE_T(field->str, kObjectTypeFloat, value->type, {\n+          return false;\n+        });\n+        *val = value->data.floating;\n+      }\n+    } else if (field->type == kObjectTypeBoolean) {\n+      // caller should check HAS_KEY to override the nil behavior, or GET_BOOL_OR_TRUE\n+      // to directly use true when nil\n+      *(Boolean *)mem = api_object_to_bool(*value, field->str, false, err);\n+      if (ERROR_SET(err)) {\n+        return false;\n+      }\n+    } else if (field->type == kObjectTypeString) {\n+      VALIDATE_T(field->str, kObjectTypeString, value->type, {\n+        return false;\n+      });\n+      *(String *)mem = value->data.string;\n+    } else if (field->type == kObjectTypeArray) {\n+      VALIDATE_T(field->str, kObjectTypeArray, value->type, {\n+        return false;\n+      });\n+      *(Array *)mem = value->data.array;\n+    } else if (field->type == kObjectTypeDictionary) {\n+      Dictionary *val = (Dictionary *)mem;\n+      // allow empty array as empty dict for lua (directly or via lua-client RPC)\n+      if (value->type == kObjectTypeArray && value->data.array.size == 0) {\n+        *val = (Dictionary)ARRAY_DICT_INIT;\n+      } else if (value->type == kObjectTypeDictionary) {\n+        *val = value->data.dictionary;\n+      } else {\n+        api_err_exp(err, field->str, api_typename(field->type), api_typename(value->type));\n+        return false;\n+      }\n+    } else if (field->type == kObjectTypeBuffer || field->type == kObjectTypeWindow\n+               || field->type == kObjectTypeTabpage) {\n+      if (value->type == kObjectTypeInteger || value->type == field->type) {\n+        *(handle_T *)mem = (handle_T)value->data.integer;\n+      } else {\n+        api_err_exp(err, field->str, api_typename(field->type), api_typename(value->type));\n+        return false;\n+      }\n+    } else if (field->type == kObjectTypeLuaRef) {\n+      api_set_error(err, kErrorTypeValidation, \"Invalid key: '%.*s' is only allowed from lua\",",
+            "html_url": "https://github.com/neovim/neovim/pull/24524#discussion_r1285003358",
+            "id": 1285003358,
+            "line": 991,
+            "node_id": "PRRC_kwDOAPphoM5Ml5he",
+            "original_commit_id": "c3a5a7134ab5af1e7fece71d10ff6b3baedf6475",
+            "original_line": 991,
+            "original_position": 87,
+            "original_start_line": null,
+            "path": "src/nvim/api/private/helpers.c",
+            "position": 87,
+            "pull_request_review_id": 1563828410,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/24524",
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1285003358/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-08-05T08:50:15Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1285003358",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+                "followers_url": "https://api.github.com/users/zeertzjq/followers",
+                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/zeertzjq",
+                "id": 35768171,
+                "login": "zeertzjq",
+                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+                "repos_url": "https://api.github.com/users/zeertzjq/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/zeertzjq"
+            }
         }
     ],
     "comment_regular_data": [
@@ -1127,7 +1195,7 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "674464e55240cf0911a5279402b142f6c2d9c190",
+    "merge_commit_sha": "1f6162ff5c89ef242e0276a0cbb45a756d84d47d",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM5W53Nb",
@@ -1140,7 +1208,7 @@
     "state": "open",
     "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/c3a5a7134ab5af1e7fece71d10ff6b3baedf6475",
     "title": "refactor(api): use typed keysets",
-    "updated_at": "2023-08-04T10:55:29Z",
+    "updated_at": "2023-08-05T08:50:15Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/24524",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1363104?v=4",
