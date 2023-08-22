@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 4820,
-            "forks_count": 4820,
+            "forks": 4824,
+            "forks_count": 4824,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1676,
-            "open_issues_count": 1676,
+            "open_issues": 1675,
+            "open_issues_count": 1675,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -118,11 +118,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2023-08-21T01:13:44Z",
+            "pushed_at": "2023-08-21T18:55:51Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 249917,
+            "size": 251038,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 68622,
+            "stargazers_count": 68698,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -140,11 +140,11 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2023-08-21T00:16:18Z",
+            "updated_at": "2023-08-22T01:46:01Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 68622,
-            "watchers_count": 68622,
+            "watchers": 68698,
+            "watchers_count": 68698,
             "web_commit_signoff_required": false
         },
         "sha": "fc0ee871de2f56dbb80879c912203a6372c54e1c",
@@ -1337,6 +1337,557 @@
                 "type": "User",
                 "url": "https://api.github.com/users/MariaSolOs"
             }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/24703#discussion_r1300160706"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/24703"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1300160706"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "That certainly works, and I can't think of any downsides off the top of my head.\r\n\r\n(Closure -- variant 2 of course; no need to do it in vimscript -- needs to be in global scope, which makes it a bit trickier.)\r\n\r\n",
+            "commit_id": "1e6da4ad1e6112cb964267e69132fecce098ae35",
+            "created_at": "2023-08-21T14:04:25Z",
+            "diff_hunk": "@@ -436,11 +457,150 @@ function M.inspect_tree(opts)\n     buffer = buf,\n     once = true,\n     callback = function()\n-      if api.nvim_win_is_valid(w) then\n-        api.nvim_win_close(w, true)\n+      close_win(w)\n+    end,\n+  })\n+end\n+\n+-- TODO(MariaSolOs): Add helper functions for common code\n+-- between the query editor and the tree inspector.\n+--- @class EditQueryOpts\n+--- @field bufnr integer? Buffer to draw the editor into. If omitted, a new\n+---                       buffer is created.\n+--- @field winid integer? Window id to display the editor buffer in. If omitted,\n+---                       a new window is created with {command}.\n+--- @field command string? Vimscript command to create the window. Default\n+---                        value is \"60vnew\" or \"new\" if the inspector is open.\n+---                        Only used when {winid} is nil.\n+\n+--- @private\n+--- @param opts EditQueryOpts?\n+M.edit_query = function(opts)\n+  vim.validate({\n+    opts = { opts, 't', true },\n+  })\n+\n+  opts = opts or {}\n+\n+  local buf = api.nvim_get_current_buf()\n+\n+  -- Close any existing editor window\n+  if vim.b[buf].dev_edit then\n+    close_win(vim.b[buf].dev_edit)\n+  end\n+\n+  local w = opts.winid\n+  if not w then\n+    local cmd = opts.command or '60vnew'\n+    -- If the inspector is open, place the editor above it.\n+    local base_buf = vim.b[buf].dev_base ---@type integer?\n+    local inspect_buf = base_buf and vim.b[base_buf].dev_inspect\n+    if base_buf and api.nvim_win_is_valid(inspect_buf) then\n+      vim.api.nvim_set_current_win(inspect_buf)\n+      buf = base_buf\n+      cmd = 'new'\n+    end\n+    vim.cmd(cmd)\n+    w = api.nvim_get_current_win()\n+  end\n+\n+  local b = opts.bufnr\n+  if b then\n+    api.nvim_win_set_buf(w, b)\n+  else\n+    b = api.nvim_win_get_buf(w)\n+  end\n+\n+  vim.b[buf].dev_edit = w\n+  vim.bo[b].omnifunc = 'v:lua.vim.treesitter.query.omnifunc'",
+            "html_url": "https://github.com/neovim/neovim/pull/24703#discussion_r1300160706",
+            "id": 1300160706,
+            "in_reply_to_id": 1299286797,
+            "line": 514,
+            "node_id": "PRRC_kwDOAPphoM5NfuDC",
+            "original_commit_id": "4d6de9ae7d79136c14b4c9f2a05f3ae46a12b847",
+            "original_line": 515,
+            "original_position": 153,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/treesitter/dev.lua",
+            "position": 152,
+            "pull_request_review_id": 1587073369,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/24703",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1300160706/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-08-21T14:04:26Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1300160706",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/2361214?v=4",
+                "events_url": "https://api.github.com/users/clason/events{/privacy}",
+                "followers_url": "https://api.github.com/users/clason/followers",
+                "following_url": "https://api.github.com/users/clason/following{/other_user}",
+                "gists_url": "https://api.github.com/users/clason/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/clason",
+                "id": 2361214,
+                "login": "clason",
+                "node_id": "MDQ6VXNlcjIzNjEyMTQ=",
+                "organizations_url": "https://api.github.com/users/clason/orgs",
+                "received_events_url": "https://api.github.com/users/clason/received_events",
+                "repos_url": "https://api.github.com/users/clason/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/clason"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/24703#discussion_r1300226016"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/24703"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1300226016"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Bikeshed: should this be `vim.treesitter.query.edit()` instead? We already have the `.query` namespace.\r\n\r\ncc @clason @lewis6991 @justinmk ",
+            "commit_id": "1e6da4ad1e6112cb964267e69132fecce098ae35",
+            "created_at": "2023-08-21T14:53:18Z",
+            "diff_hunk": "@@ -544,6 +544,22 @@ library.\n ==============================================================================\n Lua module: vim.treesitter                               *lua-treesitter-core*\n \n+edit_query({opts})                               *vim.treesitter.edit_query()*",
+            "html_url": "https://github.com/neovim/neovim/pull/24703#discussion_r1300226016",
+            "id": 1300226016,
+            "line": 547,
+            "node_id": "PRRC_kwDOAPphoM5Nf9_g",
+            "original_commit_id": "1e6da4ad1e6112cb964267e69132fecce098ae35",
+            "original_line": 547,
+            "original_position": 4,
+            "original_start_line": null,
+            "path": "runtime/doc/treesitter.txt",
+            "position": 4,
+            "pull_request_review_id": 1587181609,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/24703",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1300226016/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-08-21T14:53:30Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1300226016",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/8965202?v=4",
+                "events_url": "https://api.github.com/users/gpanders/events{/privacy}",
+                "followers_url": "https://api.github.com/users/gpanders/followers",
+                "following_url": "https://api.github.com/users/gpanders/following{/other_user}",
+                "gists_url": "https://api.github.com/users/gpanders/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/gpanders",
+                "id": 8965202,
+                "login": "gpanders",
+                "node_id": "MDQ6VXNlcjg5NjUyMDI=",
+                "organizations_url": "https://api.github.com/users/gpanders/orgs",
+                "received_events_url": "https://api.github.com/users/gpanders/received_events",
+                "repos_url": "https://api.github.com/users/gpanders/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/gpanders/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/gpanders/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/gpanders"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/24703#discussion_r1300240663"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/24703"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1300240663"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Hmm, I was starting to say \"no strong feelings either way\", but I worry that this gives the wrong impression (editing the _current_ query). \r\n\r\nMaybe `preview` (`vim.treesitter.query.preview()` and `:PreviewQuery`)?\r\n ",
+            "commit_id": "1e6da4ad1e6112cb964267e69132fecce098ae35",
+            "created_at": "2023-08-21T15:04:30Z",
+            "diff_hunk": "@@ -544,6 +544,22 @@ library.\n ==============================================================================\n Lua module: vim.treesitter                               *lua-treesitter-core*\n \n+edit_query({opts})                               *vim.treesitter.edit_query()*",
+            "html_url": "https://github.com/neovim/neovim/pull/24703#discussion_r1300240663",
+            "id": 1300240663,
+            "in_reply_to_id": 1300226016,
+            "line": 547,
+            "node_id": "PRRC_kwDOAPphoM5NgBkX",
+            "original_commit_id": "1e6da4ad1e6112cb964267e69132fecce098ae35",
+            "original_line": 547,
+            "original_position": 4,
+            "original_start_line": null,
+            "path": "runtime/doc/treesitter.txt",
+            "position": 4,
+            "pull_request_review_id": 1587208059,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/24703",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1300240663/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-08-21T15:04:30Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1300240663",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/2361214?v=4",
+                "events_url": "https://api.github.com/users/clason/events{/privacy}",
+                "followers_url": "https://api.github.com/users/clason/followers",
+                "following_url": "https://api.github.com/users/clason/following{/other_user}",
+                "gists_url": "https://api.github.com/users/clason/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/clason",
+                "id": 2361214,
+                "login": "clason",
+                "node_id": "MDQ6VXNlcjIzNjEyMTQ=",
+                "organizations_url": "https://api.github.com/users/clason/orgs",
+                "received_events_url": "https://api.github.com/users/clason/received_events",
+                "repos_url": "https://api.github.com/users/clason/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/clason"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/24703#discussion_r1300253157"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/24703"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1300253157"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "@clason Yeah so the global closure felt weird, and I was also a bit afraid of the impact of adding an extra parameter to a function meant to only have 2 (`findstart` and `base`). I can use that approach though if you prefer.",
+            "commit_id": "1e6da4ad1e6112cb964267e69132fecce098ae35",
+            "created_at": "2023-08-21T15:10:22Z",
+            "diff_hunk": "@@ -436,11 +457,150 @@ function M.inspect_tree(opts)\n     buffer = buf,\n     once = true,\n     callback = function()\n-      if api.nvim_win_is_valid(w) then\n-        api.nvim_win_close(w, true)\n+      close_win(w)\n+    end,\n+  })\n+end\n+\n+-- TODO(MariaSolOs): Add helper functions for common code\n+-- between the query editor and the tree inspector.\n+--- @class EditQueryOpts\n+--- @field bufnr integer? Buffer to draw the editor into. If omitted, a new\n+---                       buffer is created.\n+--- @field winid integer? Window id to display the editor buffer in. If omitted,\n+---                       a new window is created with {command}.\n+--- @field command string? Vimscript command to create the window. Default\n+---                        value is \"60vnew\" or \"new\" if the inspector is open.\n+---                        Only used when {winid} is nil.\n+\n+--- @private\n+--- @param opts EditQueryOpts?\n+M.edit_query = function(opts)\n+  vim.validate({\n+    opts = { opts, 't', true },\n+  })\n+\n+  opts = opts or {}\n+\n+  local buf = api.nvim_get_current_buf()\n+\n+  -- Close any existing editor window\n+  if vim.b[buf].dev_edit then\n+    close_win(vim.b[buf].dev_edit)\n+  end\n+\n+  local w = opts.winid\n+  if not w then\n+    local cmd = opts.command or '60vnew'\n+    -- If the inspector is open, place the editor above it.\n+    local base_buf = vim.b[buf].dev_base ---@type integer?\n+    local inspect_buf = base_buf and vim.b[base_buf].dev_inspect\n+    if base_buf and api.nvim_win_is_valid(inspect_buf) then\n+      vim.api.nvim_set_current_win(inspect_buf)\n+      buf = base_buf\n+      cmd = 'new'\n+    end\n+    vim.cmd(cmd)\n+    w = api.nvim_get_current_win()\n+  end\n+\n+  local b = opts.bufnr\n+  if b then\n+    api.nvim_win_set_buf(w, b)\n+  else\n+    b = api.nvim_win_get_buf(w)\n+  end\n+\n+  vim.b[buf].dev_edit = w\n+  vim.bo[b].omnifunc = 'v:lua.vim.treesitter.query.omnifunc'",
+            "html_url": "https://github.com/neovim/neovim/pull/24703#discussion_r1300253157",
+            "id": 1300253157,
+            "in_reply_to_id": 1299286797,
+            "line": 514,
+            "node_id": "PRRC_kwDOAPphoM5NgEnl",
+            "original_commit_id": "4d6de9ae7d79136c14b4c9f2a05f3ae46a12b847",
+            "original_line": 515,
+            "original_position": 153,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/treesitter/dev.lua",
+            "position": 152,
+            "pull_request_review_id": 1587231186,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/24703",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1300253157/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-08-21T15:10:22Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1300253157",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/62502207?v=4",
+                "events_url": "https://api.github.com/users/MariaSolOs/events{/privacy}",
+                "followers_url": "https://api.github.com/users/MariaSolOs/followers",
+                "following_url": "https://api.github.com/users/MariaSolOs/following{/other_user}",
+                "gists_url": "https://api.github.com/users/MariaSolOs/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/MariaSolOs",
+                "id": 62502207,
+                "login": "MariaSolOs",
+                "node_id": "MDQ6VXNlcjYyNTAyMjA3",
+                "organizations_url": "https://api.github.com/users/MariaSolOs/orgs",
+                "received_events_url": "https://api.github.com/users/MariaSolOs/received_events",
+                "repos_url": "https://api.github.com/users/MariaSolOs/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/MariaSolOs/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/MariaSolOs/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/MariaSolOs"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/24703#discussion_r1300264496"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/24703"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1300264496"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "No, it's fine, your trick is good for now (at least). We can still revisit if it turns out there are problems with it -- and if not, it clearly works fine ;)",
+            "commit_id": "1e6da4ad1e6112cb964267e69132fecce098ae35",
+            "created_at": "2023-08-21T15:15:21Z",
+            "diff_hunk": "@@ -436,11 +457,150 @@ function M.inspect_tree(opts)\n     buffer = buf,\n     once = true,\n     callback = function()\n-      if api.nvim_win_is_valid(w) then\n-        api.nvim_win_close(w, true)\n+      close_win(w)\n+    end,\n+  })\n+end\n+\n+-- TODO(MariaSolOs): Add helper functions for common code\n+-- between the query editor and the tree inspector.\n+--- @class EditQueryOpts\n+--- @field bufnr integer? Buffer to draw the editor into. If omitted, a new\n+---                       buffer is created.\n+--- @field winid integer? Window id to display the editor buffer in. If omitted,\n+---                       a new window is created with {command}.\n+--- @field command string? Vimscript command to create the window. Default\n+---                        value is \"60vnew\" or \"new\" if the inspector is open.\n+---                        Only used when {winid} is nil.\n+\n+--- @private\n+--- @param opts EditQueryOpts?\n+M.edit_query = function(opts)\n+  vim.validate({\n+    opts = { opts, 't', true },\n+  })\n+\n+  opts = opts or {}\n+\n+  local buf = api.nvim_get_current_buf()\n+\n+  -- Close any existing editor window\n+  if vim.b[buf].dev_edit then\n+    close_win(vim.b[buf].dev_edit)\n+  end\n+\n+  local w = opts.winid\n+  if not w then\n+    local cmd = opts.command or '60vnew'\n+    -- If the inspector is open, place the editor above it.\n+    local base_buf = vim.b[buf].dev_base ---@type integer?\n+    local inspect_buf = base_buf and vim.b[base_buf].dev_inspect\n+    if base_buf and api.nvim_win_is_valid(inspect_buf) then\n+      vim.api.nvim_set_current_win(inspect_buf)\n+      buf = base_buf\n+      cmd = 'new'\n+    end\n+    vim.cmd(cmd)\n+    w = api.nvim_get_current_win()\n+  end\n+\n+  local b = opts.bufnr\n+  if b then\n+    api.nvim_win_set_buf(w, b)\n+  else\n+    b = api.nvim_win_get_buf(w)\n+  end\n+\n+  vim.b[buf].dev_edit = w\n+  vim.bo[b].omnifunc = 'v:lua.vim.treesitter.query.omnifunc'",
+            "html_url": "https://github.com/neovim/neovim/pull/24703#discussion_r1300264496",
+            "id": 1300264496,
+            "in_reply_to_id": 1299286797,
+            "line": 514,
+            "node_id": "PRRC_kwDOAPphoM5NgHYw",
+            "original_commit_id": "4d6de9ae7d79136c14b4c9f2a05f3ae46a12b847",
+            "original_line": 515,
+            "original_position": 153,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/treesitter/dev.lua",
+            "position": 152,
+            "pull_request_review_id": 1587252879,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/24703",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 1,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1300264496/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-08-21T15:15:21Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1300264496",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/2361214?v=4",
+                "events_url": "https://api.github.com/users/clason/events{/privacy}",
+                "followers_url": "https://api.github.com/users/clason/followers",
+                "following_url": "https://api.github.com/users/clason/following{/other_user}",
+                "gists_url": "https://api.github.com/users/clason/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/clason",
+                "id": 2361214,
+                "login": "clason",
+                "node_id": "MDQ6VXNlcjIzNjEyMTQ=",
+                "organizations_url": "https://api.github.com/users/clason/orgs",
+                "received_events_url": "https://api.github.com/users/clason/received_events",
+                "repos_url": "https://api.github.com/users/clason/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/clason"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/24703#discussion_r1300269162"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/24703"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1300269162"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "I would find it a bit odd to have the editor and inspector in different namespaces, but if there are plans to expand the editor beyond the playground then maybe it makes sense…",
+            "commit_id": "1e6da4ad1e6112cb964267e69132fecce098ae35",
+            "created_at": "2023-08-21T15:17:31Z",
+            "diff_hunk": "@@ -544,6 +544,22 @@ library.\n ==============================================================================\n Lua module: vim.treesitter                               *lua-treesitter-core*\n \n+edit_query({opts})                               *vim.treesitter.edit_query()*",
+            "html_url": "https://github.com/neovim/neovim/pull/24703#discussion_r1300269162",
+            "id": 1300269162,
+            "in_reply_to_id": 1300226016,
+            "line": 547,
+            "node_id": "PRRC_kwDOAPphoM5NgIhq",
+            "original_commit_id": "1e6da4ad1e6112cb964267e69132fecce098ae35",
+            "original_line": 547,
+            "original_position": 4,
+            "original_start_line": null,
+            "path": "runtime/doc/treesitter.txt",
+            "position": 4,
+            "pull_request_review_id": 1587261833,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/24703",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1300269162/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-08-21T15:17:31Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1300269162",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/62502207?v=4",
+                "events_url": "https://api.github.com/users/MariaSolOs/events{/privacy}",
+                "followers_url": "https://api.github.com/users/MariaSolOs/followers",
+                "following_url": "https://api.github.com/users/MariaSolOs/following{/other_user}",
+                "gists_url": "https://api.github.com/users/MariaSolOs/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/MariaSolOs",
+                "id": 62502207,
+                "login": "MariaSolOs",
+                "node_id": "MDQ6VXNlcjYyNTAyMjA3",
+                "organizations_url": "https://api.github.com/users/MariaSolOs/orgs",
+                "received_events_url": "https://api.github.com/users/MariaSolOs/received_events",
+                "repos_url": "https://api.github.com/users/MariaSolOs/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/MariaSolOs/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/MariaSolOs/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/MariaSolOs"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/24703#discussion_r1300277451"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/24703"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1300277451"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "To be honest, I would have preferred to have everything under the same namespace -- be it `dev`, `playground`, `console`, whatever. (No need to have top-level exposed Lua functions if the main entry point is supposed to be the Ex commands.) But I'm in the minority here with my penchant for categorization. \r\n\r\nMy main point here is just that I don't think `vim.treesitter.query.edit()` is a good choice, as it has nothing to do with the \"real\" queries that are handled by the rest of the module.",
+            "commit_id": "1e6da4ad1e6112cb964267e69132fecce098ae35",
+            "created_at": "2023-08-21T15:22:24Z",
+            "diff_hunk": "@@ -544,6 +544,22 @@ library.\n ==============================================================================\n Lua module: vim.treesitter                               *lua-treesitter-core*\n \n+edit_query({opts})                               *vim.treesitter.edit_query()*",
+            "html_url": "https://github.com/neovim/neovim/pull/24703#discussion_r1300277451",
+            "id": 1300277451,
+            "in_reply_to_id": 1300226016,
+            "line": 547,
+            "node_id": "PRRC_kwDOAPphoM5NgKjL",
+            "original_commit_id": "1e6da4ad1e6112cb964267e69132fecce098ae35",
+            "original_line": 547,
+            "original_position": 4,
+            "original_start_line": null,
+            "path": "runtime/doc/treesitter.txt",
+            "position": 4,
+            "pull_request_review_id": 1587271141,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/24703",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1300277451/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-08-21T15:22:25Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1300277451",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/2361214?v=4",
+                "events_url": "https://api.github.com/users/clason/events{/privacy}",
+                "followers_url": "https://api.github.com/users/clason/followers",
+                "following_url": "https://api.github.com/users/clason/following{/other_user}",
+                "gists_url": "https://api.github.com/users/clason/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/clason",
+                "id": 2361214,
+                "login": "clason",
+                "node_id": "MDQ6VXNlcjIzNjEyMTQ=",
+                "organizations_url": "https://api.github.com/users/clason/orgs",
+                "received_events_url": "https://api.github.com/users/clason/received_events",
+                "repos_url": "https://api.github.com/users/clason/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/clason"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/24703#discussion_r1300503365"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/24703"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1300503365"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "Sounds good :)",
+            "commit_id": "1e6da4ad1e6112cb964267e69132fecce098ae35",
+            "created_at": "2023-08-21T18:29:29Z",
+            "diff_hunk": "@@ -436,11 +457,150 @@ function M.inspect_tree(opts)\n     buffer = buf,\n     once = true,\n     callback = function()\n-      if api.nvim_win_is_valid(w) then\n-        api.nvim_win_close(w, true)\n+      close_win(w)\n+    end,\n+  })\n+end\n+\n+-- TODO(MariaSolOs): Add helper functions for common code\n+-- between the query editor and the tree inspector.\n+--- @class EditQueryOpts\n+--- @field bufnr integer? Buffer to draw the editor into. If omitted, a new\n+---                       buffer is created.\n+--- @field winid integer? Window id to display the editor buffer in. If omitted,\n+---                       a new window is created with {command}.\n+--- @field command string? Vimscript command to create the window. Default\n+---                        value is \"60vnew\" or \"new\" if the inspector is open.\n+---                        Only used when {winid} is nil.\n+\n+--- @private\n+--- @param opts EditQueryOpts?\n+M.edit_query = function(opts)\n+  vim.validate({\n+    opts = { opts, 't', true },\n+  })\n+\n+  opts = opts or {}\n+\n+  local buf = api.nvim_get_current_buf()\n+\n+  -- Close any existing editor window\n+  if vim.b[buf].dev_edit then\n+    close_win(vim.b[buf].dev_edit)\n+  end\n+\n+  local w = opts.winid\n+  if not w then\n+    local cmd = opts.command or '60vnew'\n+    -- If the inspector is open, place the editor above it.\n+    local base_buf = vim.b[buf].dev_base ---@type integer?\n+    local inspect_buf = base_buf and vim.b[base_buf].dev_inspect\n+    if base_buf and api.nvim_win_is_valid(inspect_buf) then\n+      vim.api.nvim_set_current_win(inspect_buf)\n+      buf = base_buf\n+      cmd = 'new'\n+    end\n+    vim.cmd(cmd)\n+    w = api.nvim_get_current_win()\n+  end\n+\n+  local b = opts.bufnr\n+  if b then\n+    api.nvim_win_set_buf(w, b)\n+  else\n+    b = api.nvim_win_get_buf(w)\n+  end\n+\n+  vim.b[buf].dev_edit = w\n+  vim.bo[b].omnifunc = 'v:lua.vim.treesitter.query.omnifunc'",
+            "html_url": "https://github.com/neovim/neovim/pull/24703#discussion_r1300503365",
+            "id": 1300503365,
+            "in_reply_to_id": 1299286797,
+            "line": 514,
+            "node_id": "PRRC_kwDOAPphoM5NhBtF",
+            "original_commit_id": "4d6de9ae7d79136c14b4c9f2a05f3ae46a12b847",
+            "original_line": 515,
+            "original_position": 153,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/treesitter/dev.lua",
+            "position": 152,
+            "pull_request_review_id": 1587637893,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/24703",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1300503365/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-08-21T18:29:29Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1300503365",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/62502207?v=4",
+                "events_url": "https://api.github.com/users/MariaSolOs/events{/privacy}",
+                "followers_url": "https://api.github.com/users/MariaSolOs/followers",
+                "following_url": "https://api.github.com/users/MariaSolOs/following{/other_user}",
+                "gists_url": "https://api.github.com/users/MariaSolOs/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/MariaSolOs",
+                "id": 62502207,
+                "login": "MariaSolOs",
+                "node_id": "MDQ6VXNlcjYyNTAyMjA3",
+                "organizations_url": "https://api.github.com/users/MariaSolOs/orgs",
+                "received_events_url": "https://api.github.com/users/MariaSolOs/received_events",
+                "repos_url": "https://api.github.com/users/MariaSolOs/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/MariaSolOs/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/MariaSolOs/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/MariaSolOs"
+            }
         }
     ],
     "comment_regular_data": [
@@ -2196,7 +2747,7 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "a7acd16edec828702dfe4ed014e2f56a0dc1bf7b",
+    "merge_commit_sha": "0997aff34d200a9012d5da9eb556b8fef2264c44",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM5X0vWM",
@@ -2250,7 +2801,7 @@
     "state": "open",
     "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/1e6da4ad1e6112cb964267e69132fecce098ae35",
     "title": "feat(treesitter): add a query editor",
-    "updated_at": "2023-08-20T19:34:31Z",
+    "updated_at": "2023-08-21T18:29:30Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/24703",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/62502207?v=4",
