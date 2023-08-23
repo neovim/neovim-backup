@@ -1020,7 +1020,7 @@
         },
         {
             "author_association": "MEMBER",
-            "body": "I've worked on a crude implementation of `_watchfunc` that uses [fswatch](https://github.com/emcrisostomo/fswatch). Seems to work pretty well from what I can tell:\r\n\r\n```lua\r\nlocal events = {\r\n  Created = 1,\r\n  Updated = 2,\r\n  Removed = 3,\r\n  -- Renamed\r\n  OwnerModified = 2,\r\n  AttributeModified = 2,\r\n  MovedFrom = 1,\r\n  MovedTo = 3\r\n  -- IsFile\r\n  -- IsDir\r\n  -- IsSymLink\r\n  -- Link\r\n  -- Overflow\r\n}\r\n\r\n--- @param data string\r\n--- @param opts table\r\n--- @param callback fun(path: string, event: integer)\r\nlocal function fswatch_output_handler(data, opts, callback)\r\n  local d = vim.split(data, '%s+')\r\n  local cpath = d[1]\r\n\r\n  if opts.include_pattern and opts.include_pattern:match(cpath) == nil then\r\n    return\r\n  end\r\n\r\n  if opts.exclude_pattern and opts.exclude_pattern:match(cpath) ~= nil then\r\n    return\r\n  end\r\n\r\n  for i = 2, #d do\r\n    if d[i] == 'IsDir' or d[i] == 'IsSymLink' then\r\n      return\r\n    end\r\n  end\r\n\r\n  for i = 2, #d do\r\n    local e = events[d[i]]\r\n    if e then\r\n      callback(cpath, e)\r\n    end\r\n  end\r\nend\r\n\r\nlocal function fswatch(path, opts, callback)\r\n  local obj = vim.system({\r\n    'fswatch',\r\n    '--recursive',\r\n    '--event-flags',\r\n    '--exclude', '/.git/',\r\n    path\r\n  }, {\r\n    stdout = function(_, data)\r\n      fswatch_output_handler(data, opts, callback)\r\n    end\r\n  })\r\n\r\n  return function()\r\n    obj:kill(2)\r\n  end\r\nend\r\n\r\nrequire('vim.lsp._watchfiles')._watchfunc = fswatch\r\n```\r\n\r\nI'll use it a while and maybe raise a PR to use it as an optional backend.",
+            "body": "I've worked on a crude implementation of `_watchfunc` that uses [fswatch](https://github.com/emcrisostomo/fswatch). Seems to work pretty well from what I can tell:\r\n\r\n```lua\r\nlocal FSWATCH_EVENTS = {\r\n  Created = 1,\r\n  Updated = 2,\r\n  Removed = 3,\r\n  -- Renamed\r\n  OwnerModified = 2,\r\n  AttributeModified = 2,\r\n  MovedFrom = 1,\r\n  MovedTo = 3\r\n  -- IsFile\r\n  -- IsDir\r\n  -- IsSymLink\r\n  -- Link\r\n  -- Overflow\r\n}\r\n\r\n--- @param data string\r\n--- @param opts table\r\n--- @param callback fun(path: string, event: integer)\r\nlocal function fswatch_output_handler(data, opts, callback)\r\n  local d = vim.split(data, '%s+')\r\n  local cpath = d[1]\r\n\r\n  for i = 2, #d do\r\n    if d[i] == 'IsDir' or d[i] == 'IsSymLink' or d[i] == 'PlatformSpecific' then\r\n      return\r\n    end\r\n  end\r\n\r\n  if opts.include_pattern and opts.include_pattern:match(cpath) == nil then\r\n    return\r\n  end\r\n\r\n  if opts.exclude_pattern and opts.exclude_pattern:match(cpath) ~= nil then\r\n    return\r\n  end\r\n\r\n  for i = 2, #d do\r\n    local e = FSWATCH_EVENTS[d[i]]\r\n    if e then\r\n      callback(cpath, e)\r\n    end\r\n  end\r\nend\r\n\r\nlocal function fswatch(path, opts, callback)\r\n  local obj = vim.system({\r\n    'fswatch',\r\n    '--recursive',\r\n    '--event-flags',\r\n    '--exclude', '/.git/',\r\n    path\r\n  }, {\r\n    stdout = function(_, data)\r\n      for line in vim.gsplit(data, '\\n', { plain = true, trimempty = true }) do\r\n        fswatch_output_handler(line, opts, callback)\r\n      end\r\n    end\r\n  })\r\n\r\n  return function()\r\n    obj:kill(2)\r\n  end\r\nend\r\n\r\nif vim.fn.executable('fswatch') == 1 then\r\n  require('vim.lsp._watchfiles')._watchfunc = fswatch\r\nend\r\n```\r\n\r\nI'll use it a while and maybe raise a PR to use it as an optional backend.",
             "created_at": "2023-08-21T21:45:53Z",
             "html_url": "https://github.com/neovim/neovim/issues/23291#issuecomment-1687088266",
             "id": 1687088266,
@@ -1035,11 +1035,11 @@
                 "heart": 0,
                 "hooray": 0,
                 "laugh": 0,
-                "rocket": 1,
-                "total_count": 1,
+                "rocket": 3,
+                "total_count": 3,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1687088266/reactions"
             },
-            "updated_at": "2023-08-21T21:45:53Z",
+            "updated_at": "2023-08-22T09:22:26Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1687088266",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",
@@ -1121,7 +1121,7 @@
     "state_reason": "reopened",
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/23291/timeline",
     "title": "LSP: high cpu usage with huge number of files with `workspace/didChangeWatchedFiles` enabled",
-    "updated_at": "2023-08-21T21:45:53Z",
+    "updated_at": "2023-08-22T09:22:26Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/23291",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1666345?v=4",
