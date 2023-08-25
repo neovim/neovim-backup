@@ -4,7 +4,7 @@
     "assignees": [],
     "author_association": "NONE",
     "body": "### Problem\n\nSince ef94fb6, ephemeral inline virt-text stopped being rendered. As far as I could understand, that's because `w_buffer->b_virt_text_inline` (count of inline virt text extmarks in a buffer) doesn't get incremented if the `opts` passed to `nvim_buf_set_extmark()` contain `ephemeral = true` and `virt_text_pos = 'inline'`. However, it does get incremented if the extmark is not ephemeral, because in this case `extmark_set()` is invoked, which is the only place that increments said counter.\r\n\r\nhttps://github.com/neovim/neovim/blob/b263c73b083e43761386d46d62524ea104d7abbd/src/nvim/api/extmark.c#L823-L837\r\n\r\nWhen `ephemeral = true` and `virt_text_pos = inline`:\r\n- `nvim_buf_set_extmark()` -> `decor_add_ephemeral()` -> `decor_add()` -> doesn't increment the counter -> virt-text doesn't get rendered\r\n\r\nWhen `ephemeral = false` and `virt_text_pos = inline`:\r\n- `nvim_buf_set_extmark()` -> `extmark_set()` -> increments the counter -> virt-text gets rendered\r\n\r\nI'd be more than happy to try to fix it in a PR, but I am not sure where the counter should be incremented.\n\n### Steps to reproduce\n\nnvim --clean\r\n:e file.txt\r\n:lua local ns = vim.api.nvim_create_namespace('something'); vim.api.nvim_set_decoration_provider(ns, { on_line = function() vim.api.nvim_buf_set_extmark(0, ns, 0, 0, { virt_text = { { 'thing', 'Comment' } }, virt_text_pos = 'inline', hl_mode = 'combine', ephemeral = true }) end });\n\n### Expected behavior\n\nEphemeral inline virt-text should be rendered correctly. In the example above, the word `thing` should be rendered at row 0 col 0 on each line draw.\n\n### Neovim version (nvim -v)\n\n0.10.0 commit b263c73\n\n### Vim (not Nvim) behaves the same?\n\nn/a\n\n### Operating system/version\n\nArch Linux 6.4.11-arch1-1 BTW\n\n### Terminal name/version\n\nkitty 0.29.2\n\n### $TERM environment variable\n\nxterm-kitty\n\n### Installation\n\nAUR (neovim-git)",
-    "closed_at": null,
+    "closed_at": "2023-08-24T22:17:32Z",
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -137,9 +137,97 @@
                 "type": "User",
                 "url": "https://api.github.com/users/zeertzjq"
             }
+        },
+        {
+            "author_association": "NONE",
+            "body": "Sooo... What's the plan? Are they getting fixed or removed? No pressure. Just asking because I'm trying to find a workaround to get the same effect.\r\n\r\nAlso, here are the workarounds I've come up with so far (any help would be appreciated):\r\n- Add an empty non-ephemeral inline extmark to the buffer to increment the counter so that other ephemeral inline virt-text extmarks get rendered\r\n\r\nOr\r\n\r\n- Use non-ephemeral extmarks combined with the `virtualedit` option to set the cursor position manually, to mimic the behavior of ephemeral inline extmarks.",
+            "created_at": "2023-08-24T21:40:46Z",
+            "html_url": "https://github.com/neovim/neovim/issues/24797#issuecomment-1692449763",
+            "id": 1692449763,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/24797",
+            "node_id": "IC_kwDOAPphoM5k4Lvj",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1692449763/reactions"
+            },
+            "updated_at": "2023-08-24T21:45:22Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1692449763",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/54680730?v=4",
+                "events_url": "https://api.github.com/users/PlankCipher/events{/privacy}",
+                "followers_url": "https://api.github.com/users/PlankCipher/followers",
+                "following_url": "https://api.github.com/users/PlankCipher/following{/other_user}",
+                "gists_url": "https://api.github.com/users/PlankCipher/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/PlankCipher",
+                "id": 54680730,
+                "login": "PlankCipher",
+                "node_id": "MDQ6VXNlcjU0NjgwNzMw",
+                "organizations_url": "https://api.github.com/users/PlankCipher/orgs",
+                "received_events_url": "https://api.github.com/users/PlankCipher/received_events",
+                "repos_url": "https://api.github.com/users/PlankCipher/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/PlankCipher/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/PlankCipher/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/PlankCipher"
+            }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "At no point of time has ephemeral inline text (yet) been available as an intentional feature. If it was temporarily available it was a bug that was fixed.\r\n",
+            "created_at": "2023-08-24T21:45:17Z",
+            "html_url": "https://github.com/neovim/neovim/issues/24797#issuecomment-1692454206",
+            "id": 1692454206,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/24797",
+            "node_id": "IC_kwDOAPphoM5k4M0-",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1692454206/reactions"
+            },
+            "updated_at": "2023-08-24T21:45:17Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1692454206",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1363104?v=4",
+                "events_url": "https://api.github.com/users/bfredl/events{/privacy}",
+                "followers_url": "https://api.github.com/users/bfredl/followers",
+                "following_url": "https://api.github.com/users/bfredl/following{/other_user}",
+                "gists_url": "https://api.github.com/users/bfredl/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/bfredl",
+                "id": 1363104,
+                "login": "bfredl",
+                "node_id": "MDQ6VXNlcjEzNjMxMDQ=",
+                "organizations_url": "https://api.github.com/users/bfredl/orgs",
+                "received_events_url": "https://api.github.com/users/bfredl/received_events",
+                "repos_url": "https://api.github.com/users/bfredl/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/bfredl/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/bfredl/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/bfredl"
+            }
         }
     ],
-    "comments": 3,
+    "comments": 5,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/24797/comments",
     "created_at": "2023-08-20T00:58:37Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/24797/events",
@@ -147,13 +235,13 @@
     "id": 1857914162,
     "labels": [
         {
-            "color": "f9d0c4",
-            "default": true,
-            "description": "issues reporting wrong behavior",
-            "id": 77997474,
-            "name": "bug",
-            "node_id": "MDU6TGFiZWw3Nzk5NzQ3NA==",
-            "url": "https://api.github.com/repos/neovim/neovim/labels/bug"
+            "color": "e6e6e6",
+            "default": false,
+            "description": "current behavior is by design, and change is not desired",
+            "id": 77997479,
+            "name": "closed:wontfix",
+            "node_id": "MDU6TGFiZWw3Nzk5NzQ3OQ==",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/closed:wontfix"
         },
         {
             "color": "c5def5",
@@ -169,7 +257,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 109,
+        "closed_issues": 117,
         "created_at": "2023-02-02T14:11:43Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1363104?v=4",
@@ -198,10 +286,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/36/labels",
         "node_id": "MI_kwDOAPphoM4AiUsW",
         "number": 36,
-        "open_issues": 143,
+        "open_issues": 141,
         "state": "open",
         "title": "0.10",
-        "updated_at": "2023-08-20T01:04:16Z",
+        "updated_at": "2023-08-24T22:17:32Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/36"
     },
     "node_id": "I_kwDOAPphoM5uvYUy",
@@ -220,11 +308,11 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/24797/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "not_planned",
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/24797/timeline",
     "title": "Ephemeral inline virt-text isn't getting rendered",
-    "updated_at": "2023-08-20T01:10:06Z",
+    "updated_at": "2023-08-24T22:17:40Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/24797",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/54680730?v=4",
