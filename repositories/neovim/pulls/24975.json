@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/24975"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/5731204430b425f469d918e01706f4df31a4c7d3"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/4ef6393412d7f1538b2167121c74a56a0c14af84"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 4844,
-            "forks_count": 4844,
+            "forks": 4848,
+            "forks_count": 4848,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1673,
-            "open_issues_count": 1673,
+            "open_issues": 1676,
+            "open_issues_count": 1676,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -118,11 +118,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2023-09-02T01:26:37Z",
+            "pushed_at": "2023-09-03T01:53:16Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 242040,
+            "size": 242246,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 69037,
+            "stargazers_count": 69057,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -140,14 +140,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2023-09-02T01:28:22Z",
+            "updated_at": "2023-09-02T23:40:15Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 69037,
-            "watchers_count": 69037,
+            "watchers": 69057,
+            "watchers_count": 69057,
             "web_commit_signoff_required": false
         },
-        "sha": "597355deae2ebddcb8b930da9a8b45a65d05d09b",
+        "sha": "bc43575c521ab822efc8c25439dbad59aa119188",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -171,7 +171,282 @@
     },
     "body": "* Match the prefix of the list of the path components.\r\n* Directly rename the existing buffers without deleting them, so that states like undo, window layout, etc are preserved.\r\n* Don't write if not writable.\r\n* buffer:// was removed in 236c20795eb9f11e21e0719b735ea741711acc08.\r\n* Remove redundant custom bufwinid function.\r\n* Fix tests.",
     "closed_at": null,
-    "comment_data": [],
+    "comment_data": [
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/24975#discussion_r1313687598"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/24975"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1313687598"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "does there can't use `vim.fn.escape` ?",
+            "commit_id": "4ef6393412d7f1538b2167121c74a56a0c14af84",
+            "created_at": "2023-09-02T02:08:02Z",
+            "diff_hunk": "@@ -771,72 +771,97 @@ function M.text_document_completion_list_to_complete_items(result, prefix)\n   return matches\n end\n \n---- Like vim.fn.bufwinid except it works across tabpages.\n-local function bufwinid(bufnr)\n-  for _, win in ipairs(api.nvim_list_wins()) do\n-    if api.nvim_win_get_buf(win) == bufnr then\n-      return win\n+local function path_components(path)\n+  return vim.split(vim.fs.normalize(path, { expand_env = false }), '/', { plain = true })\n+end\n+\n+local function path_under_prefix(path, prefix)\n+  for i, c in ipairs(prefix) do\n+    if c ~= path[i] then\n+      return false\n     end\n   end\n+  return true\n end\n \n---- Get list of buffers for a directory\n-local function get_dir_bufs(path)\n-  path = path:gsub('([^%w])', '%%%1')\n+--- Get list of buffers whose filename matches given path prefix\n+---@return integer[]\n+local function get_bufs_with_prefix(prefix)\n+  prefix = path_components(prefix)\n   local buffers = {}\n   for _, v in ipairs(vim.api.nvim_list_bufs()) do\n-    local bufname = vim.api.nvim_buf_get_name(v):gsub('buffer://', '')\n-    if bufname:find(path) then\n+    local path = path_components(vim.api.nvim_buf_get_name(v))\n+    if path_under_prefix(path, prefix) then\n       table.insert(buffers, v)\n     end\n   end\n   return buffers\n end\n \n+local function escape_gsub_pat(s)\n+  local result, _ = s:gsub('(%p)', '%%%1')\n+  return result\n+end\n+\n+local function escape_gsub_repl(s)",
+            "html_url": "https://github.com/neovim/neovim/pull/24975#discussion_r1313687598",
+            "id": 1313687598,
+            "line": 801,
+            "node_id": "PRRC_kwDOAPphoM5OTUgu",
+            "original_commit_id": "5731204430b425f469d918e01706f4df31a4c7d3",
+            "original_line": 801,
+            "original_position": 46,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/lsp/util.lua",
+            "position": 41,
+            "pull_request_review_id": 1607832998,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/24975",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1313687598/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-09-02T02:08:16Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1313687598",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",
+                "events_url": "https://api.github.com/users/glepnir/events{/privacy}",
+                "followers_url": "https://api.github.com/users/glepnir/followers",
+                "following_url": "https://api.github.com/users/glepnir/following{/other_user}",
+                "gists_url": "https://api.github.com/users/glepnir/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/glepnir",
+                "id": 41671631,
+                "login": "glepnir",
+                "node_id": "MDQ6VXNlcjQxNjcxNjMx",
+                "organizations_url": "https://api.github.com/users/glepnir/orgs",
+                "received_events_url": "https://api.github.com/users/glepnir/received_events",
+                "repos_url": "https://api.github.com/users/glepnir/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/glepnir/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/glepnir/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/glepnir"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/24975#discussion_r1313712698"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/24975"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1313712698"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "lua-pattern and gsub {repl} are escaped with `%`, but escape() uses `\\`",
+            "commit_id": "4ef6393412d7f1538b2167121c74a56a0c14af84",
+            "created_at": "2023-09-02T04:08:07Z",
+            "diff_hunk": "@@ -771,72 +771,97 @@ function M.text_document_completion_list_to_complete_items(result, prefix)\n   return matches\n end\n \n---- Like vim.fn.bufwinid except it works across tabpages.\n-local function bufwinid(bufnr)\n-  for _, win in ipairs(api.nvim_list_wins()) do\n-    if api.nvim_win_get_buf(win) == bufnr then\n-      return win\n+local function path_components(path)\n+  return vim.split(vim.fs.normalize(path, { expand_env = false }), '/', { plain = true })\n+end\n+\n+local function path_under_prefix(path, prefix)\n+  for i, c in ipairs(prefix) do\n+    if c ~= path[i] then\n+      return false\n     end\n   end\n+  return true\n end\n \n---- Get list of buffers for a directory\n-local function get_dir_bufs(path)\n-  path = path:gsub('([^%w])', '%%%1')\n+--- Get list of buffers whose filename matches given path prefix\n+---@return integer[]\n+local function get_bufs_with_prefix(prefix)\n+  prefix = path_components(prefix)\n   local buffers = {}\n   for _, v in ipairs(vim.api.nvim_list_bufs()) do\n-    local bufname = vim.api.nvim_buf_get_name(v):gsub('buffer://', '')\n-    if bufname:find(path) then\n+    local path = path_components(vim.api.nvim_buf_get_name(v))\n+    if path_under_prefix(path, prefix) then\n       table.insert(buffers, v)\n     end\n   end\n   return buffers\n end\n \n+local function escape_gsub_pat(s)\n+  local result, _ = s:gsub('(%p)', '%%%1')\n+  return result\n+end\n+\n+local function escape_gsub_repl(s)",
+            "html_url": "https://github.com/neovim/neovim/pull/24975#discussion_r1313712698",
+            "id": 1313712698,
+            "in_reply_to_id": 1313687598,
+            "line": 801,
+            "node_id": "PRRC_kwDOAPphoM5OTao6",
+            "original_commit_id": "5731204430b425f469d918e01706f4df31a4c7d3",
+            "original_line": 801,
+            "original_position": 46,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/lsp/util.lua",
+            "position": 41,
+            "pull_request_review_id": 1607876826,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/24975",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1313712698/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-09-02T04:08:07Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1313712698",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/19489738?v=4",
+                "events_url": "https://api.github.com/users/tomtomjhj/events{/privacy}",
+                "followers_url": "https://api.github.com/users/tomtomjhj/followers",
+                "following_url": "https://api.github.com/users/tomtomjhj/following{/other_user}",
+                "gists_url": "https://api.github.com/users/tomtomjhj/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/tomtomjhj",
+                "id": 19489738,
+                "login": "tomtomjhj",
+                "node_id": "MDQ6VXNlcjE5NDg5NzM4",
+                "organizations_url": "https://api.github.com/users/tomtomjhj/orgs",
+                "received_events_url": "https://api.github.com/users/tomtomjhj/received_events",
+                "repos_url": "https://api.github.com/users/tomtomjhj/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/tomtomjhj/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/tomtomjhj/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/tomtomjhj"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/24975#discussion_r1313713261"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/24975"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1313713261"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "`vim.pesc()`",
+            "commit_id": "4ef6393412d7f1538b2167121c74a56a0c14af84",
+            "created_at": "2023-09-02T04:13:24Z",
+            "diff_hunk": "@@ -771,72 +771,97 @@ function M.text_document_completion_list_to_complete_items(result, prefix)\n   return matches\n end\n \n---- Like vim.fn.bufwinid except it works across tabpages.\n-local function bufwinid(bufnr)\n-  for _, win in ipairs(api.nvim_list_wins()) do\n-    if api.nvim_win_get_buf(win) == bufnr then\n-      return win\n+local function path_components(path)\n+  return vim.split(vim.fs.normalize(path, { expand_env = false }), '/', { plain = true })\n+end\n+\n+local function path_under_prefix(path, prefix)\n+  for i, c in ipairs(prefix) do\n+    if c ~= path[i] then\n+      return false\n     end\n   end\n+  return true\n end\n \n---- Get list of buffers for a directory\n-local function get_dir_bufs(path)\n-  path = path:gsub('([^%w])', '%%%1')\n+--- Get list of buffers whose filename matches given path prefix\n+---@return integer[]\n+local function get_bufs_with_prefix(prefix)\n+  prefix = path_components(prefix)\n   local buffers = {}\n   for _, v in ipairs(vim.api.nvim_list_bufs()) do\n-    local bufname = vim.api.nvim_buf_get_name(v):gsub('buffer://', '')\n-    if bufname:find(path) then\n+    local path = path_components(vim.api.nvim_buf_get_name(v))\n+    if path_under_prefix(path, prefix) then\n       table.insert(buffers, v)\n     end\n   end\n   return buffers\n end\n \n+local function escape_gsub_pat(s)",
+            "html_url": "https://github.com/neovim/neovim/pull/24975#discussion_r1313713261",
+            "id": 1313713261,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5OTaxt",
+            "original_commit_id": "5731204430b425f469d918e01706f4df31a4c7d3",
+            "original_line": 801,
+            "original_position": 41,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/lsp/util.lua",
+            "position": null,
+            "pull_request_review_id": 1607878993,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/24975",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1313713261/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-09-02T04:13:24Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1313713261",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+                "followers_url": "https://api.github.com/users/zeertzjq/followers",
+                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/zeertzjq",
+                "id": 35768171,
+                "login": "zeertzjq",
+                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+                "repos_url": "https://api.github.com/users/zeertzjq/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/zeertzjq"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/24975#discussion_r1313714074"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/24975"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1313714074"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "forget `vim.pesc` then.",
+            "commit_id": "4ef6393412d7f1538b2167121c74a56a0c14af84",
+            "created_at": "2023-09-02T04:22:32Z",
+            "diff_hunk": "@@ -771,72 +771,97 @@ function M.text_document_completion_list_to_complete_items(result, prefix)\n   return matches\n end\n \n---- Like vim.fn.bufwinid except it works across tabpages.\n-local function bufwinid(bufnr)\n-  for _, win in ipairs(api.nvim_list_wins()) do\n-    if api.nvim_win_get_buf(win) == bufnr then\n-      return win\n+local function path_components(path)\n+  return vim.split(vim.fs.normalize(path, { expand_env = false }), '/', { plain = true })\n+end\n+\n+local function path_under_prefix(path, prefix)\n+  for i, c in ipairs(prefix) do\n+    if c ~= path[i] then\n+      return false\n     end\n   end\n+  return true\n end\n \n---- Get list of buffers for a directory\n-local function get_dir_bufs(path)\n-  path = path:gsub('([^%w])', '%%%1')\n+--- Get list of buffers whose filename matches given path prefix\n+---@return integer[]\n+local function get_bufs_with_prefix(prefix)\n+  prefix = path_components(prefix)\n   local buffers = {}\n   for _, v in ipairs(vim.api.nvim_list_bufs()) do\n-    local bufname = vim.api.nvim_buf_get_name(v):gsub('buffer://', '')\n-    if bufname:find(path) then\n+    local path = path_components(vim.api.nvim_buf_get_name(v))\n+    if path_under_prefix(path, prefix) then\n       table.insert(buffers, v)\n     end\n   end\n   return buffers\n end\n \n+local function escape_gsub_pat(s)\n+  local result, _ = s:gsub('(%p)', '%%%1')\n+  return result\n+end\n+\n+local function escape_gsub_repl(s)",
+            "html_url": "https://github.com/neovim/neovim/pull/24975#discussion_r1313714074",
+            "id": 1313714074,
+            "in_reply_to_id": 1313687598,
+            "line": 801,
+            "node_id": "PRRC_kwDOAPphoM5OTa-a",
+            "original_commit_id": "5731204430b425f469d918e01706f4df31a4c7d3",
+            "original_line": 801,
+            "original_position": 46,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/lsp/util.lua",
+            "position": 41,
+            "pull_request_review_id": 1607879707,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/24975",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1313714074/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-09-02T04:22:32Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1313714074",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",
+                "events_url": "https://api.github.com/users/glepnir/events{/privacy}",
+                "followers_url": "https://api.github.com/users/glepnir/followers",
+                "following_url": "https://api.github.com/users/glepnir/following{/other_user}",
+                "gists_url": "https://api.github.com/users/glepnir/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/glepnir",
+                "id": 41671631,
+                "login": "glepnir",
+                "node_id": "MDQ6VXNlcjQxNjcxNjMx",
+                "organizations_url": "https://api.github.com/users/glepnir/orgs",
+                "received_events_url": "https://api.github.com/users/glepnir/received_events",
+                "repos_url": "https://api.github.com/users/glepnir/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/glepnir/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/glepnir/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/glepnir"
+            }
+        }
+    ],
     "comment_regular_data": [],
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/24975/comments",
     "commits_url": "https://api.github.com/repos/neovim/neovim/pulls/24975/commits",
@@ -266,9 +541,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/tomtomjhj/neovim/pulls{/number}",
-            "pushed_at": "2023-09-01T19:32:50Z",
+            "pushed_at": "2023-09-02T04:30:46Z",
             "releases_url": "https://api.github.com/repos/tomtomjhj/neovim/releases{/id}",
-            "size": 236964,
+            "size": 237008,
             "ssh_url": "git@github.com:tomtomjhj/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/tomtomjhj/neovim/stargazers",
@@ -287,7 +562,7 @@
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "5731204430b425f469d918e01706f4df31a4c7d3",
+        "sha": "4ef6393412d7f1538b2167121c74a56a0c14af84",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/19489738?v=4",
             "events_url": "https://api.github.com/users/tomtomjhj/events{/privacy}",
@@ -324,7 +599,7 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "8f5417c3e2e16dc8578880dabd83f0b4db243b69",
+    "merge_commit_sha": "c8a40ab1d213e84df4a213f797478724f4d20629",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM5ZXiZj",
@@ -370,35 +645,15 @@
             "subscriptions_url": "https://api.github.com/users/folke/subscriptions",
             "type": "User",
             "url": "https://api.github.com/users/folke"
-        },
-        {
-            "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",
-            "events_url": "https://api.github.com/users/glepnir/events{/privacy}",
-            "followers_url": "https://api.github.com/users/glepnir/followers",
-            "following_url": "https://api.github.com/users/glepnir/following{/other_user}",
-            "gists_url": "https://api.github.com/users/glepnir/gists{/gist_id}",
-            "gravatar_id": "",
-            "html_url": "https://github.com/glepnir",
-            "id": 41671631,
-            "login": "glepnir",
-            "node_id": "MDQ6VXNlcjQxNjcxNjMx",
-            "organizations_url": "https://api.github.com/users/glepnir/orgs",
-            "received_events_url": "https://api.github.com/users/glepnir/received_events",
-            "repos_url": "https://api.github.com/users/glepnir/repos",
-            "site_admin": false,
-            "starred_url": "https://api.github.com/users/glepnir/starred{/owner}{/repo}",
-            "subscriptions_url": "https://api.github.com/users/glepnir/subscriptions",
-            "type": "User",
-            "url": "https://api.github.com/users/glepnir"
         }
     ],
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/24975/comments",
     "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/5731204430b425f469d918e01706f4df31a4c7d3",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/4ef6393412d7f1538b2167121c74a56a0c14af84",
     "title": "fix(lsp): robust rename()",
-    "updated_at": "2023-09-01T19:34:37Z",
+    "updated_at": "2023-09-02T04:30:52Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/24975",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/19489738?v=4",
