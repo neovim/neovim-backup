@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/24901"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/2eab68d6822d18813d87c65e411e225aa2811f77"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/cf30f34e51bd5e5b454f737f394057a72c2f1de4"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 4851,
-            "forks_count": 4851,
+            "forks": 4852,
+            "forks_count": 4852,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1676,
-            "open_issues_count": 1676,
+            "open_issues": 1678,
+            "open_issues_count": 1678,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -118,11 +118,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2023-09-04T00:49:51Z",
+            "pushed_at": "2023-09-04T22:41:05Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 247714,
+            "size": 247669,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 69077,
+            "stargazers_count": 69102,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -140,11 +140,11 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2023-09-04T00:14:39Z",
+            "updated_at": "2023-09-05T01:11:03Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 69077,
-            "watchers_count": 69077,
+            "watchers": 69102,
+            "watchers_count": 69102,
             "web_commit_signoff_required": false
         },
         "sha": "af899971b90426853313ab6b1f3b78a3dac8262a",
@@ -186,7 +186,7 @@
             },
             "author_association": "MEMBER",
             "body": "I think this makes sense. in extmark terms, the insert mode cursor has different \"gravity\" than normal (and non-current win) cursor. \r\n\r\nhowever instead of code duplication I suggest write some thing like `int insert_adjust = (win == curwin && (State & MODE_INSERT)) ? 1 : 0` and then use that adjustment in a non-duplicated if statement.",
-            "commit_id": "2eab68d6822d18813d87c65e411e225aa2811f77",
+            "commit_id": "cf30f34e51bd5e5b454f737f394057a72c2f1de4",
             "created_at": "2023-08-27T11:51:50Z",
             "diff_hunk": "@@ -722,8 +722,16 @@ void nvim_buf_set_text(uint64_t channel_id, Buffer buffer, Integer start_row, In\n   FOR_ALL_TAB_WINDOWS(tp, win) {\n     if (win->w_buffer == buf) {\n       // adjust cursor like an extmark ( i e it was inside last_part_len)\n-      if (win->w_cursor.lnum == end_row && win->w_cursor.col > end_col) {\n-        win->w_cursor.col -= col_extent - (colnr_T)last_item.size;\n+      if (win->w_cursor.lnum == end_row) {\n+        if (win == curwin && (State & MODE_INSERT)) {",
             "html_url": "https://github.com/neovim/neovim/pull/24901#discussion_r1306651470",
@@ -725,6 +725,50 @@
                 "type": "User",
                 "url": "https://api.github.com/users/faergeek"
             }
+        },
+        {
+            "author_association": "NONE",
+            "body": "I implemented adjustments for cases when cursor is inside of a replaced region. One practical example when this helps is with TypeScript LSP. There's a code action allowing to extract some expression into a variable or function. So it allows for something like this. Suppose you have the following code:\r\n\r\n```typescript\r\ncallSomething({\r\n  someObj: { // cursor is now somewhere inside those curly braces\r\n    foo: 'bar',\r\n    baz: 'quux',\r\n  }\r\n})\r\n```\r\n\r\nNow you can do `va{`, visually selecting everything in curly braces after `someObj: ` and then call that code action, which results in something like this:\r\n\r\n```typescript\r\nconst newLocal = {\r\n  foo: 'bar',\r\n  baz: 'quux',\r\n};\r\ncallSomething({\r\n  someObj: newLocal\r\n})\r\n```\r\n\r\nAnd before these changes cursor could end up at the last line or even somewhere below the last line of this example, because it will be simply shifted down after those edits, but now it will stay inside changed range, somewhere on `newLocal` after `someObj: `.",
+            "created_at": "2023-09-04T08:58:15Z",
+            "html_url": "https://github.com/neovim/neovim/pull/24901#issuecomment-1704879666",
+            "id": 1704879666,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/24901",
+            "node_id": "IC_kwDOAPphoM5lnmYy",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1704879666/reactions"
+            },
+            "updated_at": "2023-09-04T08:58:15Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1704879666",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/3524621?v=4",
+                "events_url": "https://api.github.com/users/faergeek/events{/privacy}",
+                "followers_url": "https://api.github.com/users/faergeek/followers",
+                "following_url": "https://api.github.com/users/faergeek/following{/other_user}",
+                "gists_url": "https://api.github.com/users/faergeek/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/faergeek",
+                "id": 3524621,
+                "login": "faergeek",
+                "node_id": "MDQ6VXNlcjM1MjQ2MjE=",
+                "organizations_url": "https://api.github.com/users/faergeek/orgs",
+                "received_events_url": "https://api.github.com/users/faergeek/received_events",
+                "repos_url": "https://api.github.com/users/faergeek/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/faergeek/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/faergeek/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/faergeek"
+            }
         }
     ],
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/24901/comments",
@@ -820,9 +864,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/faergeek/neovim/pulls{/number}",
-            "pushed_at": "2023-09-03T15:11:39Z",
+            "pushed_at": "2023-09-04T08:47:08Z",
             "releases_url": "https://api.github.com/repos/faergeek/neovim/releases{/id}",
-            "size": 246211,
+            "size": 246009,
             "ssh_url": "git@github.com:faergeek/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/faergeek/neovim/stargazers",
@@ -841,7 +885,7 @@
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "2eab68d6822d18813d87c65e411e225aa2811f77",
+        "sha": "cf30f34e51bd5e5b454f737f394057a72c2f1de4",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/3524621?v=4",
             "events_url": "https://api.github.com/users/faergeek/events{/privacy}",
@@ -878,7 +922,7 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "0da3bca4dc20a8778d7cd92ca3a70a5fda32dee6",
+    "merge_commit_sha": "f191fe47fa84bbc9c9c1180b31b957bb8db994c8",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM5Y3eZh",
@@ -930,9 +974,9 @@
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/24901/comments",
     "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/2eab68d6822d18813d87c65e411e225aa2811f77",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/cf30f34e51bd5e5b454f737f394057a72c2f1de4",
     "title": "fix(api): more intuitive cursor updates in nvim_buf_set_text",
-    "updated_at": "2023-09-03T15:25:18Z",
+    "updated_at": "2023-09-04T08:58:15Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/24901",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/3524621?v=4",
