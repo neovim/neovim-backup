@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/24985"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/e2a2ab29b5466af0f93eaba145b57a8ba0714081"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/5970157e1d22fd5e05ae5d3bd949f807fb7a744c"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 4854,
-            "forks_count": 4854,
+            "forks": 4856,
+            "forks_count": 4856,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1676,
-            "open_issues_count": 1676,
+            "open_issues": 1681,
+            "open_issues_count": 1681,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -118,11 +118,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2023-09-05T22:59:28Z",
+            "pushed_at": "2023-09-09T01:47:39Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 247905,
+            "size": 240789,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 69137,
+            "stargazers_count": 69216,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -140,14 +140,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2023-09-06T01:51:28Z",
+            "updated_at": "2023-09-09T01:41:31Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 69137,
-            "watchers_count": 69137,
+            "watchers": 69216,
+            "watchers_count": 69216,
             "web_commit_signoff_required": false
         },
-        "sha": "069fad6e2df25e6b079879670cf6c68ae7ddb012",
+        "sha": "6a8b48e24cbe070846dd1d234553b3fdeb19460e",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -170,7 +170,7 @@
         }
     },
     "body": "This involves two major design changes of the map.c implementations:\r\n\r\n## 1. Change of macro style and code organization\r\n\r\nThe old khash.h and map.c implementation used huge #define blocks with a lot of backslash line continuations. Such code is completely inscrutable to tooling such as clangd.\r\n\r\nThis instead uses the \"implementation file\" .c.h pattern. Such a file is meant to be included multiple times, with different macros set prior to inclusion as parameters. we already use this pattern e.g. for eval/typval_encode.c.h to implement different typval encoders reusing a similar structure.\r\n\r\nWe can structure this code into two parts. one that only depends on key type and is enough to implement sets, and one which depends on both key and value to implement maps (as a wrapper around sets, with an added value[] array)\r\n\r\n## 2. Separate the main hash buckets from the key / value arrays\r\n\r\nChange the hack buckets to only contain an index into separate key / value arrays\r\nThis is a common pattern in modern, state of the art hashmap implementations. Even though this leads to one more allocated array, it is this often is a net reduction of memory consumption. Consider key+value consuming at least 12 bytes per pair. On average, we will have twice as many buckets per item.\r\nThus old implementation:\r\n\r\n    2*12 = 24 bytes per item\r\n\r\nNew implementation\r\n\r\n    1*12 + 2*4 = 20 bytes per item\r\n\r\nAnd the difference gets bigger with larger items.\r\nOne might think we have pulled a fast one here, as wouldn't the average size of the new key/value arrays be 1.5 slots per items due to amortized grows? But remember, these arrays are fully dense, and thus the accessed memory, measured in _cache lines_, the unit which actually matters, will be the fully used memory but just rounded up to the nearest cache line boundary.\r\n\r\nThis has some other interesting properties, such as an insert-only set/map will be fully ordered by insert only. Preserving this ordering in face of deletions is more tricky tho. As we currently don't use ordered maps, the \"delete\" operation maintains compactness of the item arrays in the simplest way by breaking the ordering. It would be possible to implement an order-preserving delete although at some cost, like allowing the items array to become non-dense until the next rehash.\r\n\r\n## and another thing\r\n\r\nFinally, in face of these two major changes, all code used in khash.h has been integrated into map.c and friends. Given the heavy refactors it makes no sense any more to \"layer\" the code into a vendored and a wrapper part. Rather, the layered cake follows the specialization depth: code shared for all maps, code specialized to a key type (and its equivalence relation), and finally code specialized to value+key type.",
-    "closed_at": null,
+    "closed_at": "2023-09-08T11:26:38Z",
     "comment_data": [],
     "comment_regular_data": [],
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/24985/comments",
@@ -266,9 +266,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/bfredl/neovim/pulls{/number}",
-            "pushed_at": "2023-09-05T12:54:37Z",
+            "pushed_at": "2023-09-08T12:04:24Z",
             "releases_url": "https://api.github.com/repos/bfredl/neovim/releases{/id}",
-            "size": 249192,
+            "size": 242215,
             "ssh_url": "git@github.com:bfredl/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/bfredl/neovim/stargazers",
@@ -287,7 +287,7 @@
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "e2a2ab29b5466af0f93eaba145b57a8ba0714081",
+        "sha": "5970157e1d22fd5e05ae5d3bd949f807fb7a744c",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1363104?v=4",
             "events_url": "https://api.github.com/users/bfredl/events{/privacy}",
@@ -324,8 +324,8 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "bf36ac64c74d61ff91f4dc415dd269667e3a329b",
-    "merged_at": null,
+    "merge_commit_sha": "cc3df63c3ba954962fc1b9ce0503a5379ef0c7d0",
+    "merged_at": "2023-09-08T11:26:38Z",
     "milestone": null,
     "node_id": "PR_kwDOAPphoM5ZZxd7",
     "number": 24985,
@@ -334,10 +334,10 @@
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/24985/comments",
-    "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/e2a2ab29b5466af0f93eaba145b57a8ba0714081",
+    "state": "closed",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/5970157e1d22fd5e05ae5d3bd949f807fb7a744c",
     "title": "refactor(map): enhanced implementation, Clean Code™, etc etc",
-    "updated_at": "2023-09-05T10:33:32Z",
+    "updated_at": "2023-09-08T11:26:38Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/24985",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1363104?v=4",

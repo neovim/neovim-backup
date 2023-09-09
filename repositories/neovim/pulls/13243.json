@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/13243"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/59f893d3f2d7dd42e3d304976106bcecfc6471a5"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/1398b63d1dda67f4487ee1d30e44beadbb7386b1"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 4854,
-            "forks_count": 4854,
+            "forks": 4856,
+            "forks_count": 4856,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1676,
-            "open_issues_count": 1676,
+            "open_issues": 1681,
+            "open_issues_count": 1681,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -118,11 +118,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2023-09-05T22:59:28Z",
+            "pushed_at": "2023-09-09T01:47:39Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 247905,
+            "size": 240789,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 69137,
+            "stargazers_count": 69216,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -140,14 +140,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2023-09-06T01:51:28Z",
+            "updated_at": "2023-09-09T01:41:31Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 69137,
-            "watchers_count": 69137,
+            "watchers": 69216,
+            "watchers_count": 69216,
             "web_commit_signoff_required": false
         },
-        "sha": "c3e176f6e24e2b97603b59bb89b125d540e1274d",
+        "sha": "cc3df63c3ba954962fc1b9ce0503a5379ef0c7d0",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -186,7 +186,7 @@
             },
             "author_association": "MEMBER",
             "body": "the name suggests to me that it would ensure `len` in total, not additional `len` space",
-            "commit_id": "59f893d3f2d7dd42e3d304976106bcecfc6471a5",
+            "commit_id": "1398b63d1dda67f4487ee1d30e44beadbb7386b1",
             "created_at": "2023-05-04T10:06:45Z",
             "diff_hunk": "@@ -207,6 +207,16 @@ static inline void *_memcpy_free(void *const restrict dest, void *const restrict\n   /* 2^x initial array size. */ \\\n   kvi_resize(v, (v).capacity << 1)\n \n+/// fit at least \"len\" more items\n+#define kvi_ensure_space(v, len) \\",
             "html_url": "https://github.com/neovim/neovim/pull/13243#discussion_r1184814584",
@@ -254,7 +254,7 @@
             },
             "author_association": "MEMBER",
             "body": "```suggestion\r\n    // TODO(bfredl): the inconsistency with not checking decor_virt_pos()\r\n```",
-            "commit_id": "59f893d3f2d7dd42e3d304976106bcecfc6471a5",
+            "commit_id": "1398b63d1dda67f4487ee1d30e44beadbb7386b1",
             "created_at": "2023-08-28T15:47:23Z",
             "diff_hunk": "@@ -211,50 +211,23 @@ bool decor_redraw_start(win_T *wp, int top_row, DecorState *state)\n {\n   buf_T *buf = wp->w_buffer;\n   state->top_row = top_row;\n-  marktree_itr_get(buf->b_marktree, top_row, 0, state->itr);\n-  if (!state->itr->node) {\n+  if (!marktree_itr_get_intersect(buf->b_marktree, top_row, 0, state->itr)) {\n     return false;\n   }\n-  marktree_itr_rewind(buf->b_marktree, state->itr);\n-  while (true) {\n-    mtkey_t mark = marktree_itr_current(state->itr);\n-    if (mark.pos.row < 0) {  // || mark.row > end_row\n-      break;\n-    }\n-    if ((mark.pos.row < top_row && mt_end(mark))\n-        || marktree_decor_level(mark) < kDecorLevelVisible) {\n-      goto next_mark;\n-    }\n-\n-    Decoration decor = get_decor(mark);\n+  mtpair_t pair;\n \n-    mtpos_t altpos = marktree_get_altpos(buf->b_marktree, mark, NULL);\n-\n-    // Exclude start marks if the end mark position is above the top row\n-    // Exclude end marks if we have already added the start mark\n-    if ((mt_start(mark) && altpos.row < top_row && !decor_virt_pos(&decor))\n-        || (mt_end(mark) && altpos.row >= top_row)) {\n-      goto next_mark;\n+  while (marktree_itr_step_intersect(buf->b_marktree, state->itr, &pair)) {\n+    if (marktree_decor_level(pair.start) < kDecorLevelVisible) {\n+      continue;\n     }\n \n-    if (mt_end(mark)) {\n-      decor_add(state, altpos.row, altpos.col, mark.pos.row, mark.pos.col,\n-                &decor, false, mark.ns, mark.id);\n-    } else {\n-      if (altpos.row == -1) {\n-        altpos.row = mark.pos.row;\n-        altpos.col = mark.pos.col;\n-      }\n-      decor_add(state, mark.pos.row, mark.pos.col, altpos.row, altpos.col,\n-                &decor, false, mark.ns, mark.id);\n-    }\n+    Decoration decor = get_decor(pair.start);\n \n-next_mark:\n-    if (marktree_itr_node_done(state->itr)) {\n-      marktree_itr_next(buf->b_marktree, state->itr);\n-      break;\n-    }\n-    marktree_itr_next(buf->b_marktree, state->itr);\n+    // TODO(bfredl): the inconsistency with not checkining decor_virt_pos()",
             "html_url": "https://github.com/neovim/neovim/pull/13243#discussion_r1307599793",
@@ -322,7 +322,7 @@
             },
             "author_association": "MEMBER",
             "body": "I don't remember this code very well, but do we need both loops? Or at least what is the role of each loop? The old loop just does a scan for a specific row and skips \"end\" marks.\r\n\r\nI guess the first loops covers \"range marks\" and the second loop handle \"point marks\"?",
-            "commit_id": "59f893d3f2d7dd42e3d304976106bcecfc6471a5",
+            "commit_id": "1398b63d1dda67f4487ee1d30e44beadbb7386b1",
             "created_at": "2023-08-28T15:56:57Z",
             "diff_hunk": "@@ -412,6 +384,26 @@ void decor_redraw_signs(buf_T *buf, int row, int *num_signs, SignTextAttrs sattr\n   MarkTreeIter itr[1] = { 0 };\n   marktree_itr_get(buf->b_marktree, row, 0, itr);\n \n+  // TODO(bfredl): integrate with main decor loop.\n+  if (!marktree_itr_get_intersect(buf->b_marktree, row, 0, itr)) {\n+    return;\n+  }\n+\n+  mtpair_t pair;\n+  while (marktree_itr_step_intersect(buf->b_marktree, itr, &pair)) {\n+    if (marktree_decor_level(pair.start) < kDecorLevelVisible) {\n+      continue;\n+    }\n+\n+    Decoration *decor = pair.start.decor_full;\n+\n+    if (!decor || !decor_has_sign(decor)) {\n+      continue;\n+    }\n+\n+    decor_to_sign(decor, num_signs, sattrs, num_id, line_id, cul_id);\n+  }\n+\n   while (true) {",
             "html_url": "https://github.com/neovim/neovim/pull/13243#discussion_r1307610104",
@@ -390,7 +390,7 @@
             },
             "author_association": "MEMBER",
             "body": "\r\n> I guess the first loops covers \"range marks\" and the second loop handle \"point marks\"?\r\n\r\nBasically yes. more specifically the first loop handles all range marks which overlaps the start position `(row, 0)`. the second loop handles ranges which start later in the line, as well as point marks.\r\n\r\nAdded a comment at `marktree_itr_get_overlap` as the \"double loop\" pattern is relevant to many call places",
-            "commit_id": "59f893d3f2d7dd42e3d304976106bcecfc6471a5",
+            "commit_id": "1398b63d1dda67f4487ee1d30e44beadbb7386b1",
             "created_at": "2023-09-05T11:09:06Z",
             "diff_hunk": "@@ -412,6 +384,26 @@ void decor_redraw_signs(buf_T *buf, int row, int *num_signs, SignTextAttrs sattr\n   MarkTreeIter itr[1] = { 0 };\n   marktree_itr_get(buf->b_marktree, row, 0, itr);\n \n+  // TODO(bfredl): integrate with main decor loop.\n+  if (!marktree_itr_get_intersect(buf->b_marktree, row, 0, itr)) {\n+    return;\n+  }\n+\n+  mtpair_t pair;\n+  while (marktree_itr_step_intersect(buf->b_marktree, itr, &pair)) {\n+    if (marktree_decor_level(pair.start) < kDecorLevelVisible) {\n+      continue;\n+    }\n+\n+    Decoration *decor = pair.start.decor_full;\n+\n+    if (!decor || !decor_has_sign(decor)) {\n+      continue;\n+    }\n+\n+    decor_to_sign(decor, num_signs, sattrs, num_id, line_id, cul_id);\n+  }\n+\n   while (true) {",
             "html_url": "https://github.com/neovim/neovim/pull/13243#discussion_r1315742358",
@@ -443,6 +443,142 @@
                 "subscriptions_url": "https://api.github.com/users/bfredl/subscriptions",
                 "type": "User",
                 "url": "https://api.github.com/users/bfredl"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/13243#discussion_r1320419824"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/13243"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1320419824"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\r\n  In addition, |nvim_buf_get_extmarks()| has gained an \"overlap\" option to\r\n```",
+            "commit_id": "1398b63d1dda67f4487ee1d30e44beadbb7386b1",
+            "created_at": "2023-09-08T23:21:54Z",
+            "diff_hunk": "@@ -219,6 +219,14 @@ The following changes to existing APIs or features add new behavior.\n   \"virtual_text\" table, which gives users more control over how diagnostic\n   virtual text is displayed.\n \n+• Extmarks now fully supports multi-line ranges, and a single extmark can be\n+  used to highlight a range of arbitrary length. The |nvim_buf_set_extmark()|\n+  API function already allowed you to define such ranges, but highlight regions\n+  was not rendered consistently for a range that covers more than one line break.\n+  This has now been fixed. Signs defined as part of a multi-line extmark also\n+  applies to every line in the range, not just the first.\n+  In addition, |nvim_buf_get_extmarks()| has gained a \"overlap\" option to",
+            "html_url": "https://github.com/neovim/neovim/pull/13243#discussion_r1320419824",
+            "id": 1320419824,
+            "line": 228,
+            "node_id": "PRRC_kwDOAPphoM5OtAHw",
+            "original_commit_id": "1398b63d1dda67f4487ee1d30e44beadbb7386b1",
+            "original_line": 228,
+            "original_position": 10,
+            "original_start_line": null,
+            "path": "runtime/doc/news.txt",
+            "position": 10,
+            "pull_request_review_id": 1618509956,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/13243",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1320419824/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-09-08T23:22:59Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1320419824",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+                "followers_url": "https://api.github.com/users/zeertzjq/followers",
+                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/zeertzjq",
+                "id": 35768171,
+                "login": "zeertzjq",
+                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+                "repos_url": "https://api.github.com/users/zeertzjq/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/zeertzjq"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/13243#discussion_r1320419876"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/13243"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1320419876"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\r\n\r\n==============================================================================\r\n```",
+            "commit_id": "1398b63d1dda67f4487ee1d30e44beadbb7386b1",
+            "created_at": "2023-09-08T23:22:02Z",
+            "diff_hunk": "@@ -219,6 +219,14 @@ The following changes to existing APIs or features add new behavior.\n   \"virtual_text\" table, which gives users more control over how diagnostic\n   virtual text is displayed.\n \n+• Extmarks now fully supports multi-line ranges, and a single extmark can be\n+  used to highlight a range of arbitrary length. The |nvim_buf_set_extmark()|\n+  API function already allowed you to define such ranges, but highlight regions\n+  was not rendered consistently for a range that covers more than one line break.\n+  This has now been fixed. Signs defined as part of a multi-line extmark also\n+  applies to every line in the range, not just the first.\n+  In addition, |nvim_buf_get_extmarks()| has gained a \"overlap\" option to\n+  return such ranges even if they started before the specified position.\n ==============================================================================",
+            "html_url": "https://github.com/neovim/neovim/pull/13243#discussion_r1320419876",
+            "id": 1320419876,
+            "line": 230,
+            "node_id": "PRRC_kwDOAPphoM5OtAIk",
+            "original_commit_id": "1398b63d1dda67f4487ee1d30e44beadbb7386b1",
+            "original_line": 230,
+            "original_position": 12,
+            "original_start_line": null,
+            "path": "runtime/doc/news.txt",
+            "position": 12,
+            "pull_request_review_id": 1618509956,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/13243",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1320419876/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-09-08T23:22:59Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1320419876",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+                "followers_url": "https://api.github.com/users/zeertzjq/followers",
+                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/zeertzjq",
+                "id": 35768171,
+                "login": "zeertzjq",
+                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+                "repos_url": "https://api.github.com/users/zeertzjq/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/zeertzjq"
             }
         }
     ],
@@ -717,9 +853,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/bfredl/neovim/pulls{/number}",
-            "pushed_at": "2023-09-05T12:54:37Z",
+            "pushed_at": "2023-09-08T12:04:24Z",
             "releases_url": "https://api.github.com/repos/bfredl/neovim/releases{/id}",
-            "size": 249192,
+            "size": 242215,
             "ssh_url": "git@github.com:bfredl/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/bfredl/neovim/stargazers",
@@ -738,7 +874,7 @@
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "59f893d3f2d7dd42e3d304976106bcecfc6471a5",
+        "sha": "1398b63d1dda67f4487ee1d30e44beadbb7386b1",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1363104?v=4",
             "events_url": "https://api.github.com/users/bfredl/events{/privacy}",
@@ -775,7 +911,7 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "7d54c28fc923cf825614852579590cbe21f7b520",
+    "merge_commit_sha": "65021f67c36d272d1157a39e6309d4017f77093e",
     "merged_at": null,
     "milestone": {
         "closed_at": null,
@@ -808,10 +944,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/36/labels",
         "node_id": "MI_kwDOAPphoM4AiUsW",
         "number": 36,
-        "open_issues": 140,
+        "open_issues": 142,
         "state": "open",
         "title": "0.10",
-        "updated_at": "2023-09-05T12:03:27Z",
+        "updated_at": "2023-09-08T23:23:56Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/36"
     },
     "node_id": "MDExOlB1bGxSZXF1ZXN0NTE3MTQ4OTUw",
@@ -822,9 +958,9 @@
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/13243/comments",
     "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/59f893d3f2d7dd42e3d304976106bcecfc6471a5",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/1398b63d1dda67f4487ee1d30e44beadbb7386b1",
     "title": "feat(extmark): support highlighting and querying multiline ranges",
-    "updated_at": "2023-09-05T12:54:41Z",
+    "updated_at": "2023-09-08T23:22:59Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/13243",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1363104?v=4",
