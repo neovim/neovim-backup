@@ -799,7 +799,7 @@
             }
         },
         {
-            "author_association": "CONTRIBUTOR",
+            "author_association": "MEMBER",
             "body": "Hmmm I seem to be encountering the same issue in a large Rust project. I don't seem to have this issue with TSServer, which makes sense because it implements its own file watcher.\r\n\r\nIs the best workaround still overriding `_watchfunc`?",
             "created_at": "2023-08-21T17:01:37Z",
             "html_url": "https://github.com/neovim/neovim/issues/23291#issuecomment-1686707324",
@@ -887,7 +887,7 @@
             }
         },
         {
-            "author_association": "CONTRIBUTOR",
+            "author_association": "MEMBER",
             "body": "> ```\r\n> workspace = {\r\n>         didChangeWatchedFiles = {\r\n>           dynamicRegistration = false\r\n>         }\r\n>       }\r\n> ```\r\n> \r\n> Is the best workaround\r\n\r\nAnd just to be sure: This should be added to the client's capabilities in my LSP configuration right (together where I set `on_attach` etc)?",
             "created_at": "2023-08-21T17:07:19Z",
             "html_url": "https://github.com/neovim/neovim/issues/23291#issuecomment-1686715353",
@@ -975,7 +975,7 @@
             }
         },
         {
-            "author_association": "CONTRIBUTOR",
+            "author_association": "MEMBER",
             "body": "@lewis6991 thanks a lot! <3",
             "created_at": "2023-08-21T17:25:00Z",
             "html_url": "https://github.com/neovim/neovim/issues/23291#issuecomment-1686738520",
@@ -1063,7 +1063,7 @@
             }
         },
         {
-            "author_association": "CONTRIBUTOR",
+            "author_association": "MEMBER",
             "body": "@lewis6991 I'm curious to hear how your experiment with `fswatch` is going :)",
             "created_at": "2023-09-02T01:29:44Z",
             "html_url": "https://github.com/neovim/neovim/issues/23291#issuecomment-1703630497",
@@ -1281,9 +1281,53 @@
                 "type": "User",
                 "url": "https://api.github.com/users/lewis6991"
             }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "Likewise, here's a [`watchman`](https://facebook.github.io/watchman/) implementation that seems to be working well for me the past few days:\r\n```lua\r\nlocal watch_type = require(\"vim._watch\").FileChangeType\r\n\r\nlocal function handler(res, callback)\r\n  if not res.files or res.is_fresh_instance then\r\n    return\r\n  end\r\n\r\n  for _, file in ipairs(res.files) do\r\n    local path = res.root .. \"/\" .. file.name\r\n    local change = watch_type.Changed\r\n    if file.new then\r\n      change = watch_type.Created\r\n    end\r\n    if not file.exists then\r\n      change = watch_type.Deleted\r\n    end\r\n    callback(path, change)\r\n  end\r\nend\r\n\r\nfunction watchman(path, opts, callback)\r\n  vim.system({ \"watchman\", \"watch\", path }):wait()\r\n\r\n  local buf = {}\r\n  local sub = vim.system({\r\n    \"watchman\",\r\n    \"-j\",\r\n    \"--server-encoding=json\",\r\n    \"-p\",\r\n  }, {\r\n    stdin = vim.json.encode({\r\n      \"subscribe\",\r\n      path,\r\n      \"nvim:\" .. path,\r\n      {\r\n        expression = { \"anyof\", { \"type\", \"f\" }, { \"type\", \"d\" } },\r\n        fields = { \"name\", \"exists\", \"new\" },\r\n      },\r\n    }),\r\n    stdout = function(_, data)\r\n      if not data then\r\n        return\r\n      end\r\n      for line in vim.gsplit(data, \"\\n\", { plain = true, trimempty = true }) do\r\n        table.insert(buf, line)\r\n        if line == \"}\" then\r\n          local res = vim.json.decode(table.concat(buf))\r\n          handler(res, callback)\r\n          buf = {}\r\n        end\r\n      end\r\n    end,\r\n    text = true,\r\n  })\r\n\r\n  return function()\r\n    sub:kill(\"sigint\")\r\n  end\r\nend\r\n\r\nif vim.fn.executable(\"watchman\") == 1 then\r\n  require(\"vim.lsp._watchfiles\")._watchfunc = watchman\r\nend\r\n```",
+            "created_at": "2023-09-09T05:35:42Z",
+            "html_url": "https://github.com/neovim/neovim/issues/23291#issuecomment-1712422887",
+            "id": 1712422887,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/23291",
+            "node_id": "IC_kwDOAPphoM5mEX_n",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1712422887/reactions"
+            },
+            "updated_at": "2023-09-09T05:35:42Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1712422887",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/16093815?v=4",
+                "events_url": "https://api.github.com/users/nojnhuh/events{/privacy}",
+                "followers_url": "https://api.github.com/users/nojnhuh/followers",
+                "following_url": "https://api.github.com/users/nojnhuh/following{/other_user}",
+                "gists_url": "https://api.github.com/users/nojnhuh/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/nojnhuh",
+                "id": 16093815,
+                "login": "nojnhuh",
+                "node_id": "MDQ6VXNlcjE2MDkzODE1",
+                "organizations_url": "https://api.github.com/users/nojnhuh/orgs",
+                "received_events_url": "https://api.github.com/users/nojnhuh/received_events",
+                "repos_url": "https://api.github.com/users/nojnhuh/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/nojnhuh/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/nojnhuh/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/nojnhuh"
+            }
         }
     ],
-    "comments": 29,
+    "comments": 30,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/23291/comments",
     "created_at": "2023-04-23T15:08:34Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/23291/events",
@@ -1341,7 +1385,7 @@
     "state_reason": "reopened",
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/23291/timeline",
     "title": "LSP: high cpu usage with huge number of files with `workspace/didChangeWatchedFiles` enabled",
-    "updated_at": "2023-09-08T10:12:40Z",
+    "updated_at": "2023-09-09T05:35:43Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/23291",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1666345?v=4",
