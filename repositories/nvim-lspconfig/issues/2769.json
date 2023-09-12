@@ -4,7 +4,7 @@
     "assignees": [],
     "author_association": "NONE",
     "body": "### Description\n\n`java-language-server` throws exception on opening java file from inside a java project.\r\n\r\nthe server is installed via `mason.nvim` plugin.\n\n### Neovim version\n\nTried with two nvim versions:\r\n\r\nNVIM v0.10.0-dev-585+g2e055e49a\r\nBuild type: RelWithDebInfo\r\nLuaJIT 2.1.0-beta3\r\n\r\nNVIM v0.9.1\r\nBuild type: Release\r\nLuaJIT 2.1.0-beta3\n\n### Nvim-lspconfig version\n\n_No response_\n\n### Operating system and version\n\nUbuntu 23.04\n\n### Affected language servers\n\njava-language-server\n\n### Steps to reproduce\n\n1. open a random `.java` file from a java project in nvim using the minimal config.\r\n2. wait for the exception in messages.\r\n\r\nI tried with the following projects:\r\n\r\n1. https://github.com/openjdk/jdk\r\n2. https://github.com/pubnub/java\n\n### Actual behavior\n\n### exception 1 : project openjdk/jdk\r\nthere's an exception in the messages:\r\n\r\n```\r\nError executing vim.schedule lua callback: /home/helix/.local/nvim/share/nvim/runtime/lua/vim/lsp.lua:1413: RPC[Error] code_name = InternalError, message = \"java.nio.charset.MalformedInputException: Input length = 1\"\r\nstack traceback:\r\n        [C]: in function 'assert'\r\n        /home/helix/.local/nvim/share/nvim/runtime/lua/vim/lsp.lua:1413: in function ''\r\n        vim/_editor.lua: in function <vim/_editor.lua:0>\r\nPress ENTER or type command to continue\r\n```\r\nhere's the [lsp log for this scenario](https://gist.github.com/GLaDOS-418/70420e34b2b09214a2993f3764a64f08). \r\n\r\n\r\n### exception 2: project pubnub/java\r\n\r\nin this project, I get a different exception:\r\n\r\n```\r\nError executing vim.schedule lua callback: .../.local/nvim/share/nvim/runtime/lua/vim/lsp/_dynamic.lua:42: bad argument #1 to 'ipairs' (table expected, got nil)\r\nstack traceback:\r\n        [C]: in function 'ipairs'\r\n        .../.local/nvim/share/nvim/runtime/lua/vim/lsp/_dynamic.lua:42: in function 'unregister'\r\n        .../.local/nvim/share/nvim/runtime/lua/vim/lsp/_dynamic.lua:29: in function 'register'\r\n        .../.local/nvim/share/nvim/runtime/lua/vim/lsp/handlers.lua:114: in function 'handler'\r\n        /home/helix/.local/nvim/share/nvim/runtime/lua/vim/lsp.lua:1155: in function ''\r\n        vim/_editor.lua: in function <vim/_editor.lua:0>\r\n\r\n```\r\nand then the server starts. Here's the [lsp log for the second scenario](https://gist.github.com/GLaDOS-418/cdabdafaabe93f1addb80502a9fc6e68).\n\n### Expected behavior\n\nthe server provides proper outputs without any exceptions.\n\n### Minimal config\n\n```Lua\nlocal on_windows = vim.loop.os_uname().version:match 'Linux'\r\n\r\nlocal function join_paths(...)\r\n  local path_sep = on_windows and '\\\\' or '/'\r\n  local result = table.concat({ ... }, path_sep)\r\n  return result\r\nend\r\n\r\nvim.cmd [[set runtimepath=$VIMRUNTIME]]\r\n\r\nlocal temp_dir = vim.loop.os_getenv 'TEMP' or '/tmp'\r\n\r\nvim.cmd('set packpath=' .. join_paths(temp_dir, 'nvim', 'site'))\r\n\r\nlocal package_root = join_paths(temp_dir, 'nvim', 'site', 'pack')\r\nlocal lspconfig_path = join_paths(package_root, 'test', 'start', 'nvim-lspconfig')\r\n\r\nif vim.fn.isdirectory(lspconfig_path) ~= 1 then\r\n  vim.fn.system { 'git', 'clone', 'https://github.com/neovim/nvim-lspconfig', lspconfig_path }\r\nend\r\n\r\nvim.lsp.set_log_level 'trace'\r\nrequire('vim.lsp.log').set_format_func(vim.inspect)\r\nlocal nvim_lsp = require 'lspconfig'\r\nlocal on_attach = function(_, bufnr)\r\n  local function buf_set_option(...)\r\n    vim.api.nvim_buf_set_option(bufnr, ...)\r\n  end\r\n\r\n  buf_set_option('omnifunc', 'v:lua.vim.lsp.omnifunc')\r\n\r\n  -- Mappings.\r\n  local opts = { buffer = bufnr, noremap = true, silent = true }\r\n  vim.keymap.set('n', 'gD', vim.lsp.buf.declaration, opts)\r\n  vim.keymap.set('n', 'gd', vim.lsp.buf.definition, opts)\r\n  vim.keymap.set('n', 'K', vim.lsp.buf.hover, opts)\r\n  vim.keymap.set('n', 'gi', vim.lsp.buf.implementation, opts)\r\n  vim.keymap.set('n', '<C-k>', vim.lsp.buf.signature_help, opts)\r\n  vim.keymap.set('n', '<space>wa', vim.lsp.buf.add_workspace_folder, opts)\r\n  vim.keymap.set('n', '<space>wr', vim.lsp.buf.remove_workspace_folder, opts)\r\n  vim.keymap.set('n', '<space>wl', function()\r\n    print(vim.inspect(vim.lsp.buf.list_workspace_folders()))\r\n  end, opts)\r\n  vim.keymap.set('n', '<space>D', vim.lsp.buf.type_definition, opts)\r\n  vim.keymap.set('n', '<space>rn', vim.lsp.buf.rename, opts)\r\n  vim.keymap.set('n', 'gr', vim.lsp.buf.references, opts)\r\n  vim.keymap.set('n', '<space>e', vim.diagnostic.open_float, opts)\r\n  vim.keymap.set('n', '[d', vim.diagnostic.goto_prev, opts)\r\n  vim.keymap.set('n', ']d', vim.diagnostic.goto_next, opts)\r\n  vim.keymap.set('n', '<space>q', vim.diagnostic.setloclist, opts)\r\nend\r\n\r\n-- Add the server that troubles you here\r\nlocal name = 'java_language_server'\r\nlocal cmd = { '/home/helix/.local/share/nvim/mason/packages/java-language-server/dist/lang_server_linux.sh' }\r\nif not name then\r\n  print 'You have not defined a server name, please edit minimal_init.lua'\r\nend\r\nif not nvim_lsp[name].document_config.default_config.cmd and not cmd then\r\n  print [[You have not defined a server default cmd for a server\r\n    that requires it please edit minimal_init.lua]]\r\nend\r\n\r\nnvim_lsp[name].setup {\r\n  cmd = cmd,\r\n  on_attach = on_attach,\r\n}\r\n\r\nprint [[You can find your log at $HOME/.cache/nvim/lsp.log. Please paste in a github issue under a details tag as described in the issue template.]]\n```\n\n\n### LSP log\n\nhttps://gist.github.com/GLaDOS-418/70420e34b2b09214a2993f3764a64f08",
-    "closed_at": null,
+    "closed_at": "2023-09-11T13:06:57Z",
     "comment_data": [
         {
             "author_association": "NONE",
@@ -49,9 +49,53 @@
                 "type": "User",
                 "url": "https://api.github.com/users/YaBoich"
             }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "Thanks for your report. This is not a support channel. \r\n\r\nThe configs in this repo are unsupported and provided only as a starting point. We depend on users (like you) to troubleshoot issues with their specific LSP setups and [send improvements](https://github.com/neovim/nvim-lspconfig/blob/master/CONTRIBUTING.md).\r\n\r\nIf you found a bug in the _core_ Nvim  `vim.lsp` module (not part of this repo), the best way to get it fixed is to [report to Nvim](https://github.com/neovim/neovim) (not nvim-lspconfig) with:\r\n- steps to reproduce it without the particular LSP server and other factors particular to your environment\r\n- (optional, but very helpful): by adding a failing test case to [lsp_spec.lua](https://github.com/neovim/neovim/blob/master/test/functional/plugin/lsp_spec.lua), which has code to setup a fake LSP server to simulate various scenarios",
+            "created_at": "2023-09-11T13:06:57Z",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/issues/2769#issuecomment-1713844329",
+            "id": 1713844329,
+            "issue_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/2769",
+            "node_id": "IC_kwDODTQC185mJzBp",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/comments/1713844329/reactions"
+            },
+            "updated_at": "2023-09-11T13:06:57Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/comments/1713844329",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk"
+            }
         }
     ],
-    "comments": 1,
+    "comments": 2,
     "comments_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/2769/comments",
     "created_at": "2023-08-21T16:56:26Z",
     "events_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/2769/events",
@@ -87,11 +131,11 @@
         "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/2769/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/nvim-lspconfig",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "not_planned",
     "timeline_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/2769/timeline",
     "title": "java-language-server throws exception",
-    "updated_at": "2023-08-23T16:33:24Z",
+    "updated_at": "2023-09-11T13:06:58Z",
     "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/2769",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/7714464?v=4",
