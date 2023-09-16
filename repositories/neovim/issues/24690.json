@@ -71,7 +71,7 @@
                 "total_count": 1,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1676221440/reactions"
             },
-            "updated_at": "2023-08-13T04:28:34Z",
+            "updated_at": "2023-09-15T13:02:06Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1676221440",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/29333147?v=4",
@@ -203,7 +203,7 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1685055335/reactions"
             },
-            "updated_at": "2023-08-19T17:18:55Z",
+            "updated_at": "2023-09-15T13:01:48Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1685055335",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/29333147?v=4",
@@ -247,7 +247,7 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1686091498/reactions"
             },
-            "updated_at": "2023-08-21T10:46:14Z",
+            "updated_at": "2023-09-15T11:30:01Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1686091498",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/1216626?v=4",
@@ -313,9 +313,97 @@
                 "type": "User",
                 "url": "https://api.github.com/users/justinmk"
             }
+        },
+        {
+            "author_association": "NONE",
+            "body": "Distant looks promising (haven't used it personally), but from the design doc the biggest thing it's missing: it requires all plugins to opt in to accessing remote resources. If nvim exposed some way for distant to make this behavior opt-out rather than opt-in, I think it could be a viable approach.\r\n\r\nWhat I mean by this: if I want to use a language server plugin, it has to be distant-aware and know to execute the language server remotely rather than on the local system. By default, it won't and will crash because none of the source files are locatable.\r\n\r\nSo to make this a solution that enables a true seamless remote environment, nvim should provide some hooks that distant could use to make other scripts think they were actually running on the remote system, including for processes, environment, and file system. If nvim exposed these and distant implemented them, the entire existing plugin ecosystem would \"just work\" remotely, I believe.",
+            "created_at": "2023-09-15T05:23:13Z",
+            "html_url": "https://github.com/neovim/neovim/issues/24690#issuecomment-1720694633",
+            "id": 1720694633,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/24690",
+            "node_id": "IC_kwDOAPphoM5mj7dp",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1720694633/reactions"
+            },
+            "updated_at": "2023-09-15T05:24:07Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1720694633",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1216626?v=4",
+                "events_url": "https://api.github.com/users/CGamesPlay/events{/privacy}",
+                "followers_url": "https://api.github.com/users/CGamesPlay/followers",
+                "following_url": "https://api.github.com/users/CGamesPlay/following{/other_user}",
+                "gists_url": "https://api.github.com/users/CGamesPlay/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/CGamesPlay",
+                "id": 1216626,
+                "login": "CGamesPlay",
+                "node_id": "MDQ6VXNlcjEyMTY2MjY=",
+                "organizations_url": "https://api.github.com/users/CGamesPlay/orgs",
+                "received_events_url": "https://api.github.com/users/CGamesPlay/received_events",
+                "repos_url": "https://api.github.com/users/CGamesPlay/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/CGamesPlay/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/CGamesPlay/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/CGamesPlay"
+            }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "> if I want to use a language server plugin, it has to be distant-aware and know to execute the language server remotely rather than on the local system.\r\n\r\n[vscode remote](https://code.visualstudio.com/docs/remote/remote-overview) runs extensions on the remote system in a remote vscode server. It doesn't have a layer that allows _local_ extensions to transparently operate in a remote context. That's a [tarpit](https://www.bu.edu/csmet/2018/08/30/re-reading-tanenbaums-critique-of-rpc-30-years-later/).\r\n\r\n> nvim should provide some hooks that distant could use to make other scripts think they were actually running on the remote system, including for processes, environment, and file system.\r\n\r\nImpossible. And outside the scope of the original request here.\r\n\r\n# Proposal\r\n\r\nI interpret the \"expected behavior\" as:\r\n\r\n> Make insert/visual/normal-mode fast, for the current buffer.\r\n\r\nMost latency-sensitive editing operations do not need to run remotely. The obvious exception is auto-completion. Here's a sketch (can be adjusted/updated) of something that could work:\r\n\r\n1. Let plugins declare themselves as \"workspace\", or \"ui\". VSCode has this [concept](https://code.visualstudio.com/api/advanced-topics/remote-extensions#architecture-and-extension-kinds).\r\n2. Introduce \"remote-sync mode\": unlike the current `--remote-ui` where _everything_ is owned by the remote, this alternate mode does:\r\n    - _2-way sync_ of remote <=> local buffers (how [ActualVim](https://github.com/lunixbochs/ActualVim) and [vscode-neovim](https://github.com/vscode-neovim/vscode-neovim/) work).\r\n        - Syncs buffer contents, does _not_ attempt to resolve \"edit operations\" (CRDT-style).\r\n    - Local Nvim presents the current buffer as a scratch buffer in local Nvim.\r\n    - Local Nvim owns editing of the current (scratch) buffer.\r\n    - Local Nvim enables \"ui\" plugins on the current (scratch) buffer.\r\n    - Everything else (window layout, cmdline-mode, execution of most plugins and scripts, ...) is owned by the remote.\r\n3. Implement this as a _plugin_, just like vscode-neovim.\r\n    - The edges are getting polished away over time, which indicates this is tractable.\r\n    - We have line-of-sight to concrete improvements needed in Nvim ([example](https://github.com/neovim/neovim/issues/19806)).\r\n4. How does LSP completion work in insert-mode?\r\n    - Note: vscode-neovim delegates insert-mode to vscode (the \"remote\"). But for this feature request, local Nvim needs to own insert-mode (to avoid latency).\r\n    - `vim.lsp` provides a special \"ui\" variant of `vim.lsp.omnifunc()` which makes a request to the remote `vim.lsp` and feeds the result into local.\r\n    - Other LSP plugins would need to provide a (thin) \"ui\" variant which calls into remote Nvim as needed.",
+            "created_at": "2023-09-15T13:05:04Z",
+            "html_url": "https://github.com/neovim/neovim/issues/24690#issuecomment-1721251205",
+            "id": 1721251205,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/24690",
+            "node_id": "IC_kwDOAPphoM5mmDWF",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1721251205/reactions"
+            },
+            "updated_at": "2023-09-15T13:54:55Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1721251205",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk"
+            }
         }
     ],
-    "comments": 7,
+    "comments": 9,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/24690/comments",
     "created_at": "2023-08-13T04:20:30Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/24690/events",
@@ -392,10 +480,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/9/labels",
         "node_id": "MDk6TWlsZXN0b25lODgxOTc4",
         "number": 9,
-        "open_issues": 226,
+        "open_issues": 228,
         "state": "open",
         "title": "unplanned",
-        "updated_at": "2023-09-13T17:10:10Z",
+        "updated_at": "2023-09-15T10:59:28Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/9"
     },
     "node_id": "I_kwDOAPphoM5uLFU1",
@@ -418,7 +506,7 @@
     "state_reason": "reopened",
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/24690/timeline",
     "title": "Making editing snappier over remote networks",
-    "updated_at": "2023-09-13T10:21:08Z",
+    "updated_at": "2023-09-15T13:54:55Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/24690",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/29333147?v=4",

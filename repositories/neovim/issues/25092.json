@@ -2,12 +2,12 @@
     "active_lock_reason": null,
     "assignee": null,
     "assignees": [],
-    "author_association": "NONE",
+    "author_association": "CONTRIBUTOR",
     "body": "### Problem\r\n\r\nThe lsp client doesn't send `<TAB>` character correctly in the `textDocument/didChange` event when using `softtabstop = -1`. I ran into this because [vim-sleuth](https://github.com/tpope/vim-sleuth) sets `softtabstop` to `-1` by default.\r\n\r\n**edit:** This also happens if you set `tabstop` and `shiftwidth` to different values.\r\n\r\n### Steps to reproduce using \"nvim -u minimal_init.lua\"\r\n\r\n``` lua\r\nvim.o.shiftwidth = 0\r\nvim.o.softtabstop = -1\r\n\r\nvim.cmd.packadd(\"nvim-lspconfig\")\r\n\r\nvim.lsp.set_log_level(\"debug\")\r\n\r\nrequire('lspconfig').gopls.setup({})\r\n```\r\n\r\nI've created a repo with a minimal `init.lua` and steps to reproduce. https://github.com/icholy/nvim-lsp-bug\r\n\r\n![tty](https://github.com/neovim/neovim/assets/943597/9289ead4-0159-4fab-9c9b-ea1f4fd98f3e)\r\n\r\n**Note**: I've been able to reproduce this with several lsp servers.\r\n\r\n### Expected behavior\r\n\r\nSend a single tab character in `textDocument/didChange`\r\n\r\n``` lua\r\n{\r\n    jsonrpc = \"2.0\",\r\n    method = \"textDocument/didChange\",\r\n    params = {\r\n        contentChanges = {\r\n            {\r\n                range = {[\"end\"] = {character = 0, line = 0}, start = {character = 0, line = 0}},\r\n                rangeLength = 0,\r\n                text = \"\\t\"\r\n            }\r\n        },\r\n        textDocument = {uri = \"file:///home/icholy/src/github.com/icholy/nvim-lsp-bug/main.go\", version = 4}\r\n    }\r\n}\r\n```\r\n\r\n### Neovim version (nvim -v)\r\n\r\nv0.10.0-dev\r\n\r\n### Language server name/version\r\n\r\ngopls v0.13.2\r\n\r\n### Operating system/version\r\n\r\nUbuntu 22.04\r\n\r\n### Log file\r\n\r\nhttps://gist.github.com/icholy/b3216e005787bf39c250ada7a2b6a88a\r\n\r\nRelevant section:\r\n```\r\n{\r\n    jsonrpc = \"2.0\",\r\n    method = \"textDocument/didChange\",\r\n    params = {\r\n        contentChanges = {\r\n            {\r\n                range = {[\"end\"] = {character = 0, line = 0}, start = {character = 0, line = 0}},\r\n                rangeLength = 0,\r\n                text = \" \"\r\n            },\r\n            {\r\n                range = {[\"end\"] = {character = 1, line = 0}, start = {character = 1, line = 0}},\r\n                rangeLength = 0,\r\n                text = \" \"\r\n            },\r\n            {\r\n                range = {[\"end\"] = {character = 2, line = 0}, start = {character = 2, line = 0}},\r\n                rangeLength = 0,\r\n                text = \" \"\r\n            },\r\n            {\r\n                range = {[\"end\"] = {character = 3, line = 0}, start = {character = 3, line = 0}},\r\n                rangeLength = 0,\r\n                text = \" \"\r\n            },\r\n            {\r\n                range = {[\"end\"] = {character = 4, line = 0}, start = {character = 4, line = 0}},\r\n                rangeLength = 0,\r\n                text = \" \"\r\n            },\r\n            {\r\n                range = {[\"end\"] = {character = 5, line = 0}, start = {character = 5, line = 0}},\r\n                rangeLength = 0,\r\n                text = \" \"\r\n            },\r\n            {\r\n                range = {[\"end\"] = {character = 6, line = 0}, start = {character = 6, line = 0}},\r\n                rangeLength = 0,\r\n                text = \" \"\r\n            },\r\n            {\r\n                range = {[\"end\"] = {character = 7, line = 0}, start = {character = 7, line = 0}},\r\n                rangeLength = 0,\r\n                text = \" \"\r\n            }\r\n        },\r\n        textDocument = {uri = \"file:///home/icholy/src/github.com/icholy/nvim-lsp-bug/main.go\", version = 11}\r\n    }\r\n}\r\n```",
-    "closed_at": null,
+    "closed_at": "2023-09-15T10:45:52Z",
     "comment_data": [
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "After some more digging it doesn't appear to be an issue with any of the LSP code. `nvim_buf_attach` seems to be sending incorrect events.\r\n\r\n``` lua\r\nvim.o.shiftwidth = 0\r\nvim.o.softtabstop = -1\r\n\r\nlocal sync = require('vim.lsp.sync')\r\n\r\nvim.api.nvim_create_autocmd(\"BufEnter\", {\r\n  callback = function ()\r\n    local curr_lines\r\n    local prev_lines = vim.api.nvim_buf_get_lines(0, 0, -1, true)\r\n\r\n    vim.api.nvim_buf_attach(0, false, {\r\n      on_lines = function (_, bufnr, changedtick, firstline, lastline, new_lastline)\r\n        local curr_lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, true)\r\n        local incremental_change = sync.compute_diff(\r\n        prev_lines, curr_lines, firstline, lastline, new_lastline, 'utf-8', '\\n')\r\n\r\n        vim.print(\"old:\" .. vim.inspect(prev_lines))\r\n        vim.print(\"new: \" .. vim.inspect(curr_lines))\r\n        vim.print(\"diff:\" .. vim.inspect(incremental_change))\r\n\r\n        prev_lines = curr_lines\r\n      end\r\n    })\r\n  end,\r\n})\r\n\r\n```\r\n\r\nMessage after inserting `<TAB>`:\r\n\r\n```\r\nold:{ \"package main\", \"\", \"func main() {\", '\\tprintln(\"Hello World\")', \"}\" }\r\nnew: { \" package main\", \"\", \"func main() {\", '\\tprintln(\"Hello World\")', \"}\" }\r\ndiff:{\r\n  range = {\r\n    [\"end\"] = {\r\n      character = 0,\r\n      line = 0\r\n    },\r\n    start = {\r\n      character = 0,\r\n      line = 0\r\n    }\r\n  },\r\n  rangeLength = 0,\r\n  text = \" \"\r\n}\r\nold:{ \" package main\", \"\", \"func main() {\", '\\tprintln(\"Hello World\")', \"}\" }\r\nnew: { \"  package main\", \"\", \"func main() {\", '\\tprintln(\"Hello World\")', \"}\" }\r\ndiff:{\r\n  range = {\r\n    [\"end\"] = {\r\n      character = 1,\r\n      line = 0\r\n    },\r\n    start = {\r\n      character = 1,\r\n      line = 0\r\n    }\r\n  },\r\n  rangeLength = 0,\r\n  text = \" \"\r\n}\r\nold:{ \"  package main\", \"\", \"func main() {\", '\\tprintln(\"Hello World\")', \"}\" }\r\nnew: { \"   package main\", \"\", \"func main() {\", '\\tprintln(\"Hello World\")', \"}\" }\r\ndiff:{\r\n  range = {\r\n    [\"end\"] = {\r\n      character = 2,\r\n      line = 0\r\n    },\r\n    start = {\r\n      character = 2,\r\n      line = 0\r\n    }\r\n  },\r\n  rangeLength = 0,\r\n  text = \" \"\r\n}\r\nold:{ \"   package main\", \"\", \"func main() {\", '\\tprintln(\"Hello World\")', \"}\" }\r\nnew: { \"    package main\", \"\", \"func main() {\", '\\tprintln(\"Hello World\")', \"}\" }\r\ndiff:{\r\n  range = {\r\n    [\"end\"] = {\r\n      character = 3,\r\n      line = 0\r\n    },\r\n    start = {\r\n      character = 3,\r\n      line = 0\r\n    }\r\n  },\r\n  rangeLength = 0,\r\n  text = \" \"\r\n}\r\nold:{ \"    package main\", \"\", \"func main() {\", '\\tprintln(\"Hello World\")', \"}\" }\r\nnew: { \"     package main\", \"\", \"func main() {\", '\\tprintln(\"Hello World\")', \"}\" }\r\ndiff:{\r\n  range = {\r\n    [\"end\"] = {\r\n      character = 4,\r\n      line = 0\r\n    },\r\n    start = {\r\n      character = 4,\r\n      line = 0\r\n    }\r\n  },\r\n  rangeLength = 0,\r\n  text = \" \"\r\n}\r\nold:{ \"     package main\", \"\", \"func main() {\", '\\tprintln(\"Hello World\")', \"}\" }\r\nnew: { \"      package main\", \"\", \"func main() {\", '\\tprintln(\"Hello World\")', \"}\" }\r\ndiff:{\r\n  range = {\r\n    [\"end\"] = {\r\n      character = 5,\r\n      line = 0\r\n    },\r\n    start = {\r\n      character = 5,\r\n      line = 0\r\n    }\r\n  },\r\n  rangeLength = 0,\r\n  text = \" \"\r\n}\r\nold:{ \"      package main\", \"\", \"func main() {\", '\\tprintln(\"Hello World\")', \"}\" }\r\nnew: { \"       package main\", \"\", \"func main() {\", '\\tprintln(\"Hello World\")', \"}\" }\r\ndiff:{\r\n  range = {\r\n    [\"end\"] = {\r\n      character = 6,\r\n      line = 0\r\n    },\r\n    start = {\r\n      character = 6,\r\n      line = 0\r\n    }\r\n  },\r\n  rangeLength = 0,\r\n  text = \" \"\r\n}\r\nold:{ \"       package main\", \"\", \"func main() {\", '\\tprintln(\"Hello World\")', \"}\" }\r\nnew: { \"        package main\", \"\", \"func main() {\", '\\tprintln(\"Hello World\")', \"}\" }\r\ndiff:{\r\n  range = {\r\n    [\"end\"] = {\r\n      character = 7,\r\n      line = 0\r\n    },\r\n    start = {\r\n      character = 7,\r\n      line = 0\r\n    }\r\n  },\r\n  rangeLength = 0,\r\n  text = \" \"\r\n}\r\n```",
             "created_at": "2023-09-12T17:17:24Z",
             "html_url": "https://github.com/neovim/neovim/issues/25092#issuecomment-1716130444",
@@ -51,7 +51,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "I think the issue might be here: https://github.com/neovim/neovim/blob/a03e00a3539ea995c69196aeb35d84912ead8c3f/src/nvim/edit.c#L4277\r\n\r\n`get_sts_value() == 0` should be `get_sts_value() <= 0`\r\n\r\n**edit:** that did not fix it.",
             "created_at": "2023-09-12T17:22:36Z",
             "html_url": "https://github.com/neovim/neovim/issues/25092#issuecomment-1716136867",
@@ -139,7 +139,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "@telemachus I think your issue is caused by `vim.lsp.buf.code_action` being async. Doing the `vim.buf.lsp.format({ async = false})` first should fix the clipping issue. But you'll notice the `source.organizeImports` changes won't be persisted to the file. See https://github.com/neovim/neovim/issues/24168",
             "created_at": "2023-09-12T18:00:30Z",
             "html_url": "https://github.com/neovim/neovim/issues/25092#issuecomment-1716186267",
@@ -227,7 +227,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "When the `tabstop` and `shiftwidth` are not equal the tabs are inserted as individual spaces here:\r\n\r\nhttps://github.com/neovim/neovim/blob/a03e00a3539ea995c69196aeb35d84912ead8c3f/src/nvim/edit.c#L4307-L4320\r\n\r\nThen it goes back and rewrites those to tabs if there are enough spaces.\r\n\r\nhttps://github.com/neovim/neovim/blob/a03e00a3539ea995c69196aeb35d84912ead8c3f/src/nvim/edit.c#L4322\r\n\r\nThose initial space inserts call `buf_updates_send_changes`, but the second pass which converts to tabs doesn't call `buf_updates_send_changes`.",
             "created_at": "2023-09-12T20:25:27Z",
             "html_url": "https://github.com/neovim/neovim/issues/25092#issuecomment-1716378192",
@@ -316,11 +316,11 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/25092/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/25092/timeline",
     "title": "LSP: incremental sync breaks when softtabstop < 0",
-    "updated_at": "2023-09-13T13:30:28Z",
+    "updated_at": "2023-09-15T10:45:52Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/25092",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/943597?v=4",
