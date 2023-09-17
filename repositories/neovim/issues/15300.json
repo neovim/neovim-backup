@@ -4,7 +4,7 @@
     "assignees": [],
     "author_association": "CONTRIBUTOR",
     "body": "### Neovim Version\r\n\r\nv0.6.0-dev+111-gf22326ef0\r\n\r\n### Installation\r\n\r\nbuilt from repo\r\n\r\n### Steps to reproduce\r\n\r\nRun\r\n```vim\r\nau BufEnter * echom \"Entering buffer\" expand(\"<afile>\")\r\n```\r\nThen execute this script\r\n```lua\r\nlocal buf = vim.api.nvim_create_buf(false, true)\r\nlocal win = vim.api.nvim_open_win(buf, false, {\r\n  anchor = \"SW\",\r\n    col = 0,\r\n    height = 2,\r\n    relative = \"cursor\",\r\n    row = 0,\r\n    style = \"minimal\",\r\n    width = 53\r\n  })\r\n```\r\n\r\n### Expected behavior\r\n\r\nSince the cursor remains out of the float buffer . In the original buffer where we started at . I'd expect BufEnter to be not triggered at all (Since enter is false). Or it to be triggered twice once for going into the float buffer and one for getting out. In 1st case see no message at all and in 2nd case see 2 messages.\r\n\r\n### Actual behavior\r\n\r\nBut you'll see Entering buffer in messages once indicating BufEnter event was emited once for an unnamed buffer (float buffer).\r\n\r\nFor this anything keeping track of current buffer with `BufEnter` will be out of sync with the editor .\r\n\r\n### Some background\r\nI encountered this while tracking down https://github.com/hoob3rt/lualine.nvim/issues/286\r\n\r\n`vim.lsp.diagnostic.goto_next` calls `vim.lsp.diagnostics.show_line_diagnostics` to show diagnostics . Which creates float with `nvim_open_win` leading to the bug . It's possible to workarround this issue by passing `noautocmd` option to `nvim_open_win`.\r\n\r\n### Possible cause\r\n\r\nI think this is what's happening\r\nhttps://github.com/neovim/neovim/blob/e7bde44d6d2a88e67d68d5a1b9f0d037179dd14e/src/nvim/window#L586 this line changes currently active window to newly created float . this https://github.com/neovim/neovim/blob/e7bde44d6d2a88e67d68d5a1b9f0d037179dd14e/src/nvim/window#L606 restores the original window . These two doesn't trigger any auto commands . In the middle this https://github.com/neovim/neovim/blob/e7bde44d6d2a88e67d68d5a1b9f0d037179dd14e/src/nvim/window#L594 line changes the buffer . This triggers `BufEnter` for float buffer . So when `nvim_open_win` is called with enter = false then we get one BufEnter and one BufLeave for getting out from current buffer and entering new one . But the cursor ends up in older win and buffer . So anything keeping track of Current active buffer with `BufEnter` or `BufLeave` gets out of sync .\r\n\r\n### Possible solution\r\nSo what's a valid solution to this ? makeing switch_win and restore_win trigger auto commands ? ignoring BufEnter from that do_buffer call when enter is false or something else ?",
-    "closed_at": null,
+    "closed_at": "2023-09-16T08:27:47Z",
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -290,11 +290,11 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/15300/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/15300/timeline",
     "title": "BufEnter is triggered when calling nvim_open_win with enter=false ",
-    "updated_at": "2023-08-23T02:31:12Z",
+    "updated_at": "2023-09-16T08:27:47Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/15300",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/13149513?v=4",
