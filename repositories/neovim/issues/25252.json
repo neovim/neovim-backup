@@ -4,7 +4,7 @@
     "assignees": [],
     "author_association": "CONTRIBUTOR",
     "body": "### Problem\r\n\r\nbisected to d7ae9ae3e. Specifically the combination of https://github.com/tree-sitter/tree-sitter/commit/9564e1706de651cea6df9939b8a5dba02e7dbc71 and https://github.com/neovim/neovim/commit/2ca076e45fb3f1c08f6a1a374834df0701b8d778 causes the full issue. The latter by itself already causes a broken parse tree, but the broken tree changes after the tree-sitter update and this triggers the performance issue (probably a trigger not a cause)\r\n\r\nAt a particular part of a test file, if you add and remove a new line repeatedly, the parse tree will end up in a broken state:\r\n\r\nBefore no-op edit:\r\n\r\n<img width=\"1552\" alt=\"Screenshot 2023-09-19 at 7 42 37 PM\" src=\"https://github.com/neovim/neovim/assets/5601392/84092f54-f077-4ff7-82b6-e1dd9e8e22d7\">\r\n\r\n\r\nAfter no-op edit:\r\n\r\n<img width=\"1552\" alt=\"Screenshot 2023-09-19 at 7 42 59 PM\" src=\"https://github.com/neovim/neovim/assets/5601392/6ba46ca1-0226-464c-88a2-f583ead784c9\">\r\n\r\n\r\nAfter no-op edit, if tree-sitter not upgraded (still wrong but not lag):\r\n\r\n<img width=\"1552\" alt=\"Screenshot 2023-09-19 at 7 40 44 PM\" src=\"https://github.com/neovim/neovim/assets/5601392/8575c453-c336-442d-87a2-dad2659a9537\">\r\n\r\nI did some logging and it looks like `self._regions` might be getting wiped out (shows as `nil`)\r\n\r\nNote: the inspector will interfere with the repro by doing a full parse, unless you change to false in the following line:\r\n\r\nhttps://github.com/neovim/neovim/blob/c4f4c7a356013c6f1e10b7bf239d9e3c4c0c336e/runtime/lua/vim/treesitter/dev.lua#L102\r\n\r\n### Steps to reproduce\r\n\r\n`repro.lua` (minimal config):\r\n```lua\r\nvim.api.nvim_create_autocmd(\"FileType\", {\r\n  pattern = { \"*\" },\r\n  callback = function() vim.treesitter.start() end,\r\n})\r\n```\r\n`lspconfig.lua` (the file we are editing): [download (~500 lines)](https://github.com/llllvvuu/dotfiles/blob/9e54b87b4fdb17becef516863ab623756da43ae1/vim/.config/nvim/lua/plugins-tui/lspconfig.lua)\r\n1. `nvim --clean --noplugin -u repro.lua lspconfig.lua`.\r\n2. Adjust winheight to 57 for this demo (`:echo winheight(0)`)\r\n3. `/vue<CR>f}i` should place you in insert mode between the brackets. First line of screen should say \"suggest = {\" and last line should say \"on_initialized = function()\" (it's critical that the vimscript injection is just offscreen after this last line, so that it gets parsed)\r\n4. Press `<CR><Backspace><Backspace>` to insert and remove a new line. This should be quite snappy, although the syntax highlighting should be wrong at this point.\r\n5. Repeat step 4 over and over; it should get laggy after a few times.\r\n\r\n### Expected behavior\r\n\r\nTree does not break.\r\n\r\n### Neovim version (nvim -v)\r\n\r\n0.10 commit 28f54a78782318cb9c356a372b9e52a3a6b1f8dd\r\n\r\n### Vim (not Nvim) behaves the same?\r\n\r\nno\r\n\r\n### Operating system/version\r\n\r\nmacOS 13.4.1\r\n\r\n### Terminal name/version\r\n\r\nkitty 0.28.1\r\n\r\n### $TERM environment variable\r\n\r\nxterm-kitty\r\n\r\n### Installation\r\n\r\nbuild from repo",
-    "closed_at": null,
+    "closed_at": "2023-09-22T11:51:53Z",
     "comment_data": [
         {
             "author_association": "NONE",
@@ -19,12 +19,12 @@
                 "+1": 1,
                 "-1": 0,
                 "confused": 0,
-                "eyes": 0,
+                "eyes": 1,
                 "heart": 0,
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 1,
+                "total_count": 2,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1728070940/reactions"
             },
             "updated_at": "2023-09-20T16:38:01Z",
@@ -96,11 +96,11 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/25252/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/25252/timeline",
     "title": "bug(treesitter): parse tree in a broken state (wrong lang) after making no-op edit, leading to slow editing until full reparse",
-    "updated_at": "2023-09-20T16:38:01Z",
+    "updated_at": "2023-09-22T11:51:53Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/25252",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/5601392?v=4",
