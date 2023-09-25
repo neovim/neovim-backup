@@ -4,7 +4,7 @@
     "assignees": [],
     "author_association": "CONTRIBUTOR",
     "body": "### Describe the bug\n\n`resize -1` leads to abort() if options `cmdheight=0 redrawdebug=invalid` are set.\n\n### Steps to reproduce\n\nnvim --clean\r\nset cmdheight=0 redrawdebug=invalid\r\nresize -1\n\n### Expected behavior\n\nresize works\r\n\r\n### Actual behavior\r\n\r\nnvim is terminated by abort(3).\r\n\r\nabort() is called at line 427 in ui_compositor.c.\r\nhttps://github.com/neovim/neovim/blob/8fbe75b3dda7ab3b9e6df0d5406539bde4c80887/src/nvim/ui_compositor.c#L425-L428\n\n### Neovim version (nvim -v)\n\nNVIM v0.9.0-dev-877+g228684d2f-dirty\n\n### Vim (not Nvim) behaves the same?\n\nno\n\n### Operating system/version\n\nUbuntu-22.04, macOS (Mojave etc.)\n\n### Terminal name/version\n\ngnometerminal, Apple's Termial.app\n\n### $TERM environment variable\n\nxterm-256color\n\n### Installation\n\nbuild from source",
-    "closed_at": null,
+    "closed_at": "2023-09-24T18:15:34Z",
     "comment_data": [
         {
             "author_association": "CONTRIBUTOR",
@@ -51,7 +51,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "The problem is in `update_screen`, it invalidates all `msg_grid` rows that are used for displaying a message, when the screen is scrolled down back https://github.com/neovim/neovim/blob/22d397c233b12a94ba36052d9e626ed61e25d488/src/nvim/drawscreen.c#L458-L468  \r\nBut then, if redraw type is `UPD_NOT_VALID`, `msg_grid` rows from 0 to `p_ch` are used for compositing in https://github.com/neovim/neovim/blob/22d397c233b12a94ba36052d9e626ed61e25d488/src/nvim/drawscreen.c#L535-L538  \r\nSo, any command that shows a scrolled message, and causes a `UPD_NOT_VALID` redraw should trigger the same bug. For example, `:split | echo \"\\n\"` command with `redrawdebug=invalid` set also triggers the bug.  \r\nHere's the fix I came up with:  \r\n```diff\r\ndiff --git a/src/nvim/drawscreen.c b/src/nvim/drawscreen.c\r\nindex 73dd584fb..608b7806d 100644\r\n--- a/src/nvim/drawscreen.c\r\n+++ b/src/nvim/drawscreen.c\r\n@@ -463,7 +463,7 @@ int update_screen(void)\r\n       // non-displayed part of msg_grid is considered invalid.\r\n       for (int i = 0; i < MIN(msg_scrollsize(), msg_grid.rows); i++) {\r\n         grid_clear_line(&msg_grid, msg_grid.line_offset[i],\r\n-                        msg_grid.cols, false);\r\n+                        msg_grid.cols, i < p_ch);\r\n       }\r\n     }\r\n     msg_grid.throttled = false;\r\n\r\n```",
             "created_at": "2023-08-15T11:20:38Z",
             "html_url": "https://github.com/neovim/neovim/issues/22154#issuecomment-1678773839",
@@ -237,11 +237,11 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/22154/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/22154/timeline",
     "title": "abort() by 'resize -1' with 'cmdheight=0 redrawdebug=invalid'",
-    "updated_at": "2023-08-17T07:36:07Z",
+    "updated_at": "2023-09-24T18:15:34Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/22154",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/7692465?v=4",
