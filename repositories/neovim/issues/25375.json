@@ -4,7 +4,7 @@
     "assignees": [],
     "author_association": "NONE",
     "body": "### Problem\r\n\r\nHello neovim team, thanks so much for all your hard work!\r\n\r\nI lost a few hours trying to figure out why my lsp config wasn't being used. Turns out the init callback was throwing an error and neovim did not give any indication. \r\n\r\nI did some digging myself and found the problem. The `on_init` callback is called [here](https://github.com/neovim/neovim/blob/de9348978999aa78f8351b5f55930bb109e742f7/runtime/lua/vim/lsp.lua#L1441). There's a `pcall` and the error is ostensibly passed off to a handler via another `pcall`, but that handler doesn't seem to exist and the return value is dropped.\r\n\r\nUnfortunately, `pcall(nil)` doesn't throw and only returns `false, \"attempt to call a nil value\"`  so both errors are dropped and everyone is none the wiser. 😱 This is a good reminder that discarding the return of `pcall` is a _very bad_ idea. Too risky!\r\n\r\n\r\n### Steps to reproduce using \"nvim -u minimal_init.lua\"\r\n\r\n```lua\r\nlocal pattern = 'lua'\r\nlocal cmd = {'lua-language-server'}\r\n-- Add files/folders here that indicate the root of a project\r\nlocal root_markers = {'.git', '.editorconfig'}\r\n-- Change to table with settings if required\r\nlocal settings = vim.empty_dict()\r\n\r\nvim.api.nvim_create_autocmd('FileType', {\r\n  pattern = pattern,\r\n  callback = function(args)\r\n    local match = vim.fs.find(root_markers, { path = args.file, upward = true })[1]\r\n    local root_dir = match and vim.fn.fnamemodify(match, ':p:h') or nil\r\n    vim.lsp.start({\r\n      name = 'bugged-ls',\r\n      cmd = cmd,\r\n      root_dir = root_dir,\r\n      settings = settings,\r\n      on_init = function ()\r\n        print(\"INIT\")\r\n        error(\"whoops\")\r\n      end,\r\n      on_attach = function ()\r\n        print(\"ATTACH\")\r\n        error(\"my bad\")\r\n      end\r\n    })\r\n  end\r\n})\r\n```\r\n\r\n\r\n### Expected behavior\r\n\r\nneovim should indicate somehow that an error has occurred during the callback. \r\n\r\n### Neovim version (nvim -v)\r\n\r\nNVIM v0.10.0-dev-1203+g0592fd5e-dirty\r\n\r\n### Language server name/version\r\n\r\nlua-language-server 3.7.1\r\n\r\n### Operating system/version\r\n\r\nUbuntu 20\r\n\r\n### Log file\r\n\r\n_No response_",
-    "closed_at": null,
+    "closed_at": "2023-10-11T20:38:59Z",
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -60,7 +60,7 @@
             "node_id": "IC_kwDOAPphoM5ngRWd",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 0,
+                "+1": 1,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -68,7 +68,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 0,
+                "total_count": 1,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1736512925/reactions"
             },
             "updated_at": "2023-09-27T01:09:51Z",
@@ -404,11 +404,11 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/25375/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/25375/timeline",
     "title": "Errors in `on_init` and `on_attach` callbacks are not being reported to the user",
-    "updated_at": "2023-09-28T20:40:38Z",
+    "updated_at": "2023-10-11T20:38:59Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/25375",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/2105352?v=4",
