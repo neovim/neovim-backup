@@ -4,7 +4,7 @@
     "assignees": [],
     "author_association": "NONE",
     "body": "### Neovim version (nvim -v)\n\nNVIM v0.8.0-dev-1117-g7bd4c8e8e\n\n### Vim (not Nvim) behaves the same?\n\nno, not tested\n\n### Operating system/version\n\nDebian Testing (Windows WSL)\n\n### Terminal name/version\n\nWezterm (Windows)\n\n### $TERM environment variable\n\nxterm-256color\n\n### Installation\n\nDEB (Debian)\n\n### How to reproduce the issue\n\nI mostly get this on Ansiblels and here is example on how to replicate with it.\r\n1. Put following configuration to minimal_init_config.lua. I used packer and nvim-lspconfig (originally issues was reported there, see [#2145](https://github.com/neovim/nvim-lspconfig/issues/2145)).\r\n\r\n```lua\r\nlocal on_windows = vim.loop.os_uname().version:match 'Windows'\r\n\r\nlocal function join_paths(...)\r\n  local path_sep = on_windows and '\\\\' or '/'\r\n  local result = table.concat({ ... }, path_sep)\r\n  return result\r\nend\r\n\r\nvim.cmd [[set runtimepath=$VIMRUNTIME]]\r\n\r\nlocal temp_dir = vim.loop.os_getenv 'TEMP' or '/tmp'\r\n\r\nvim.cmd('set packpath=' .. join_paths(temp_dir, 'nvim', 'site'))\r\n\r\nlocal package_root = join_paths(temp_dir, 'nvim', 'site', 'pack')\r\nlocal install_path = join_paths(package_root, 'packer', 'start', 'packer.nvim')\r\nlocal compile_path = join_paths(install_path, 'plugin', 'packer_compiled.lua')\r\n\r\nlocal function load_plugins()\r\n  require('packer').startup {\r\n    {\r\n      'wbthomason/packer.nvim',\r\n      'neovim/nvim-lspconfig',\r\n    },\r\n    config = {\r\n      package_root = package_root,\r\n      compile_path = compile_path,\r\n    },\r\n  }\r\nend\r\n\r\nlocal load_config = function()\r\n  vim.lsp.set_log_level 'trace'\r\n  require('vim.lsp.log').set_format_func(vim.inspect)\r\n  local nvim_lsp = require 'lspconfig'\r\n  local on_attach = function(_, bufnr)\r\n    local function buf_set_option(...)\r\n      vim.api.nvim_buf_set_option(bufnr, ...)\r\n    end\r\n\r\n    buf_set_option('omnifunc', 'v:lua.vim.lsp.omnifunc')\r\n\r\n    -- Mappings.\r\n    local opts = { buffer = bufnr, noremap = true, silent = true }\r\n    vim.keymap.set('n', 'gD', vim.lsp.buf.declaration, opts)\r\n    vim.keymap.set('n', 'gd', vim.lsp.buf.definition, opts)\r\n    vim.keymap.set('n', 'K', vim.lsp.buf.hover, opts)\r\n    vim.keymap.set('n', 'gi', vim.lsp.buf.implementation, opts)\r\n    vim.keymap.set('n', '<C-k>', vim.lsp.buf.signature_help, opts)\r\n    vim.keymap.set('n', '<space>wa', vim.lsp.buf.add_workspace_folder, opts)\r\n    vim.keymap.set('n', '<space>wr', vim.lsp.buf.remove_workspace_folder, opts)\r\n    vim.keymap.set('n', '<space>wl', function()\r\n      print(vim.inspect(vim.lsp.buf.list_workspace_folders()))\r\n    end, opts)\r\n    vim.keymap.set('n', '<space>D', vim.lsp.buf.type_definition, opts)\r\n    vim.keymap.set('n', '<space>rn', vim.lsp.buf.rename, opts)\r\n    vim.keymap.set('n', 'gr', vim.lsp.buf.references, opts)\r\n    vim.keymap.set('n', '<space>e', vim.diagnostic.open_float, opts)\r\n    vim.keymap.set('n', '[d', vim.diagnostic.goto_prev, opts)\r\n    vim.keymap.set('n', ']d', vim.diagnostic.goto_next, opts)\r\n    vim.keymap.set('n', '<space>q', vim.diagnostic.setloclist, opts)\r\n  end\r\n\r\n  -- Add the server that troubles you here\r\n  local name = 'ansiblels'\r\n  local cmd = { 'pyenv' } -- needed for elixirls, omnisharp, sumneko_lua\r\n  if not name then\r\n    print 'You have not defined a server name, please edit minimal_init.lua'\r\n  end\r\n  if not nvim_lsp[name].document_config.default_config.cmd and not cmd then\r\n    print [[You have not defined a server default cmd for a server\r\n      that requires it please edit minimal_init.lua]]\r\n  end\r\n\r\n  nvim_lsp[name].setup {\r\n    filetypes = { 'yaml' },\r\n    --cmd = cmd,\r\n    on_attach = on_attach,\r\n    settings = {\r\n      ansible = {\r\n        python = {\r\n          interpreterPath = 'pyenv'\r\n        },\r\n        ansibleLint = {\r\n          path = 'exec',\r\n          arguments = 'ansible-lint'\r\n        }\r\n      },\r\n    }\r\n  }\r\n\r\n  print [[You can find your log at $HOME/.cache/nvim/lsp.log. Please paste in a github issue under a details tag as described in the issue template.]]\r\nend\r\n\r\nif vim.fn.isdirectory(install_path) == 0 then\r\n  vim.fn.system { 'git', 'clone', 'https://github.com/wbthomason/packer.nvim', install_path }\r\n  load_plugins()\r\n  require('packer').sync()\r\n  local packer_group = vim.api.nvim_create_augroup('Packer', { clear = true })\r\n  vim.api.nvim_create_autocmd(\r\n    'User',\r\n    { pattern = 'PackerComplete', callback = load_config, group = packer_group, once = true }\r\n  )\r\nelse\r\n  load_plugins()\r\n  require('packer').sync()\r\n  load_config()\r\nend\r\n```\r\n\r\n2. nvim -u minimal_init_config.lua test.yaml\r\n3. Put following lines\r\n```yaml\r\n- hosts: test\r\n   tasks:\r\n     - name: Test case\r\n       shell: hostname\r\n```\r\n5. Save file. Ansiblels should complain about missing document start `---`\r\n\n\n### Expected behavior\n\nAnsiblels should report end_col = -1 as ansible-lint only reports line number without row number.\r\n\r\nWorkaround is to modify `range` function from highlight.lua with following:\r\n```\r\nif cols[2] == -1 or cols[2] > 999999 then\r\n  end_row = linenr + 1\r\n  cols[2] = 0\r\nend    \r\n```\n\n### Actual behavior\n\nHere is my [LSP log](https://gist.github.com/run2cmd/e99797f5af253830f2c3a9515ce5a769). Error I get:\r\n\r\n```\r\nError executing vim.schedule lua callback: /usr/share/nvim/runtime/lua/vim/highlight.lua:65: end_col value outside rangestack traceback:\r\n[C]: in function 'nvim_buf_set_extmark'\r\n/usr/share/nvim/runtime/lua/vim/highlight.lua:65: in function 'range'\r\n/usr/share/nvim/runtime/lua/vim/diagnostic.lua:959: in function 'show'\r\n/usr/share/nvim/runtime/lua/vim/diagnostic.lua:1190: in function 'show'\r\n/usr/share/nvim/runtime/lua/vim/diagnostic.lua:724: in function 'set'\r\n/usr/share/nvim/runtime/lua/vim/lsp/diagnostic.lua:206: in function 'handler'\r\n/usr/share/nvim/runtime/lua/vim/lsp.lua:1056: in function ''\r\nvim/_editor.lua: in function <vim/_editor.lua:0>\r\n```\r\n\r\nThis is due to `col[2]` reporting very high number like: `9.007199254741e+15`",
-    "closed_at": null,
+    "closed_at": "2023-10-14T01:46:48Z",
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -93,9 +93,53 @@
                 "type": "User",
                 "url": "https://api.github.com/users/cod1r"
             }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "This has been closed since a request for information has not been answered for 30 days. It can be reopened when the requested information is provided.",
+            "created_at": "2023-10-14T01:46:48Z",
+            "html_url": "https://github.com/neovim/neovim/issues/20365#issuecomment-1762469153",
+            "id": 1762469153,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/20365",
+            "node_id": "IC_kwDOAPphoM5pDSUh",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1762469153/reactions"
+            },
+            "updated_at": "2023-10-14T01:46:48Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1762469153",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/in/15368?v=4",
+                "events_url": "https://api.github.com/users/github-actions%5Bbot%5D/events{/privacy}",
+                "followers_url": "https://api.github.com/users/github-actions%5Bbot%5D/followers",
+                "following_url": "https://api.github.com/users/github-actions%5Bbot%5D/following{/other_user}",
+                "gists_url": "https://api.github.com/users/github-actions%5Bbot%5D/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/apps/github-actions",
+                "id": 41898282,
+                "login": "github-actions[bot]",
+                "node_id": "MDM6Qm90NDE4OTgyODI=",
+                "organizations_url": "https://api.github.com/users/github-actions%5Bbot%5D/orgs",
+                "received_events_url": "https://api.github.com/users/github-actions%5Bbot%5D/received_events",
+                "repos_url": "https://api.github.com/users/github-actions%5Bbot%5D/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/github-actions%5Bbot%5D/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/github-actions%5Bbot%5D/subscriptions",
+                "type": "Bot",
+                "url": "https://api.github.com/users/github-actions%5Bbot%5D"
+            }
         }
     ],
-    "comments": 2,
+    "comments": 3,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/20365/comments",
     "created_at": "2022-09-27T07:27:50Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/20365/events",
@@ -149,11 +193,11 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/20365/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/20365/timeline",
     "title": "nvim_buf_set_extmark reports end_col out of range with some LSP servers",
-    "updated_at": "2023-10-03T09:52:58Z",
+    "updated_at": "2023-10-14T01:46:48Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/20365",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/9575150?v=4",
