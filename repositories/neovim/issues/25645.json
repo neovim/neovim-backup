@@ -4,9 +4,54 @@
     "assignees": [],
     "author_association": "CONTRIBUTOR",
     "body": "### Problem\n\nWhen there is a vertical split and text in the left window is wrapped, setting extmark with too big `virt_text_win_col` (essentially over the right split) results into not correct cells drawn.\n\n### Steps to reproduce\n\n1. Create a config file with the following content:\r\n```lua\r\nlocal ns_id = vim.api.nvim_create_namespace('Test')\r\n\r\nvim.cmd('wincmd v | enew')\r\nlocal win_width = vim.api.nvim_win_get_width(0)\r\nvim.api.nvim_buf_set_lines(0, 0, -1, false, { string.rep('a', 2 * win_width) })\r\n\r\n_G.set_extmark = function()\r\n  local extmark_opts = { virt_text_win_col = win_width + 10, virt_text = { { ' ', 'Comment' } } }\r\n  vim.api.nvim_buf_set_extmark(0, ns_id, 0, 0, extmark_opts)\r\nend\r\n```\r\n2. Open `nvim` with this config.\r\n3. Execute `:lua _G.set_extmark()`. This results into not correct cells drawn at the top left of the right window.\n\n### Expected behavior\n\nNo unexpected cells drawn.\r\n\r\nI've bisected this to a58bb215 (@bfredl).\n\n### Neovim version (nvim -v)\n\nNVIM v0.10.0-dev-bf70a33\n\n### Vim (not Nvim) behaves the same?\n\nNo (doesn't have this functionality)\n\n### Operating system/version\n\nEndeavourOS Linux x86_64 (6.5.6-arch1-1)\n\n### Terminal name/version\n\nst-0.9\n\n### $TERM environment variable\n\nst-256color\n\n### Installation\n\nappimage",
-    "closed_at": null,
-    "comment_data": [],
-    "comments": 0,
+    "closed_at": "2023-10-15T11:36:20Z",
+    "comment_data": [
+        {
+            "author_association": "MEMBER",
+            "body": "Crash with `redrawdebug=invalid`:\r\n```\r\n=================================================================\r\n==42026==ERROR: AddressSanitizer: ABRT on unknown address 0x03e80000a42a (pc 0x7fe62ba6083c bp 0x7fe62b9d10c0 sp 0x7ffd65f45250 T0)\r\n    #0 0x7fe62ba6083c  (/usr/lib/libc.so.6+0x8e83c) (BuildId: 8bfe03f6bf9b6a6e2591babd0bbc266837d8f658)\r\n    #1 0x7fe62ba10667 in gsignal (/usr/lib/libc.so.6+0x3e667) (BuildId: 8bfe03f6bf9b6a6e2591babd0bbc266837d8f658)\r\n    #2 0x7fe62b9f84b7 in abort (/usr/lib/libc.so.6+0x264b7) (BuildId: 8bfe03f6bf9b6a6e2591babd0bbc266837d8f658)\r\n    #3 0x7fe62b9f83db  (/usr/lib/libc.so.6+0x263db) (BuildId: 8bfe03f6bf9b6a6e2591babd0bbc266837d8f658)\r\n    #4 0x7fe62ba08d25 in __assert_fail (/usr/lib/libc.so.6+0x36d25) (BuildId: 8bfe03f6bf9b6a6e2591babd0bbc266837d8f658)\r\n    #5 0x559bc47fd565 in schar_get_first_byte **/src/nvim/grid.c:176:3\r\n    #6 0x559bc47e8742 in schar_in_arabic_block **/src/nvim/grid.c:192:21\r\n    #7 0x559bc47e75a7 in line_do_arabic_shape **/src/nvim/grid.c:217:9\r\n    #8 0x559bc47edffb in grid_put_linebuf **/src/nvim/grid.c:666:5\r\n    #9 0x559bc42693df in win_put_linebuf **/src/nvim/drawline.c:3290:3\r\n    #10 0x559bc424df39 in win_line **/src/nvim/drawline.c:3189:7\r\n    #11 0x559bc42974d3 in win_update **/src/nvim/drawscreen.c:2280:15\r\n    #12 0x559bc42799b1 in update_screen **/src/nvim/drawscreen.c:648:7\r\n    #13 0x559bc4cb2202 in normal_redraw **/src/nvim/normal.c:1355:5\r\n    #14 0x559bc4cafc48 in normal_check **/src/nvim/normal.c:1451:5\r\n    #15 0x559bc52691bd in state_enter **/src/nvim/state.c:38:35\r\n    #16 0x559bc4c3a028 in normal_enter **/src/nvim/normal.c:516:3\r\n    #17 0x559bc3d56357 in main **/src/nvim/main.c:643:3\r\n    #18 0x7fe62b9f9ccf  (/usr/lib/libc.so.6+0x27ccf) (BuildId: 8bfe03f6bf9b6a6e2591babd0bbc266837d8f658)\r\n    #19 0x7fe62b9f9d89 in __libc_start_main (/usr/lib/libc.so.6+0x27d89) (BuildId: 8bfe03f6bf9b6a6e2591babd0bbc266837d8f658)\r\n    #20 0x559bc3c1bda4 in _start (**/build/bin/nvim+0xbc9da4) (BuildId: fabbfae7c703d61b042b7bde93bcd76b3bc52df9)\r\n\r\nAddressSanitizer can not provide additional info.\r\nSUMMARY: AddressSanitizer: ABRT (/usr/lib/libc.so.6+0x8e83c) (BuildId: 8bfe03f6bf9b6a6e2591babd0bbc266837d8f658) \r\n==42026==ABORTING\r\n```",
+            "created_at": "2023-10-15T10:20:33Z",
+            "html_url": "https://github.com/neovim/neovim/issues/25645#issuecomment-1763345238",
+            "id": 1763345238,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/25645",
+            "node_id": "IC_kwDOAPphoM5pGoNW",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1763345238/reactions"
+            },
+            "updated_at": "2023-10-15T10:20:33Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1763345238",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+                "followers_url": "https://api.github.com/users/zeertzjq/followers",
+                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/zeertzjq",
+                "id": 35768171,
+                "login": "zeertzjq",
+                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+                "repos_url": "https://api.github.com/users/zeertzjq/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/zeertzjq"
+            }
+        }
+    ],
+    "comments": 1,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/25645/comments",
     "created_at": "2023-10-14T15:12:54Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/25645/events",
@@ -14,13 +59,22 @@
     "id": 1943328389,
     "labels": [
         {
-            "color": "f9d0c4",
-            "default": true,
-            "description": "issues reporting wrong behavior",
-            "id": 77997474,
-            "name": "bug",
-            "node_id": "MDU6TGFiZWw3Nzk5NzQ3NA==",
-            "url": "https://api.github.com/repos/neovim/neovim/labels/bug"
+            "color": "0E8A16",
+            "default": false,
+            "description": "issue contains a stacktrace/ASAN log",
+            "id": 435854079,
+            "name": "has:backtrace",
+            "node_id": "MDU6TGFiZWw0MzU4NTQwNzk=",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/has:backtrace"
+        },
+        {
+            "color": "F9D0C4",
+            "default": false,
+            "description": "issue reporting a crash or segfault",
+            "id": 435854234,
+            "name": "bug-crash",
+            "node_id": "MDU6TGFiZWw0MzU4NTQyMzQ=",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/bug-crash"
         },
         {
             "color": "c5def5",
@@ -30,6 +84,15 @@
             "name": "display",
             "node_id": "MDU6TGFiZWw3MTgwODQwNTA=",
             "url": "https://api.github.com/repos/neovim/neovim/labels/display"
+        },
+        {
+            "color": "0E8A16",
+            "default": false,
+            "description": "issue has been tracked to a specific commit",
+            "id": 1481421490,
+            "name": "has:bisected",
+            "node_id": "MDU6TGFiZWwxNDgxNDIxNDkw",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/has:bisected"
         },
         {
             "color": "c5def5",
@@ -45,7 +108,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 167,
+        "closed_issues": 169,
         "created_at": "2023-02-02T14:11:43Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1363104?v=4",
@@ -74,10 +137,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/36/labels",
         "node_id": "MI_kwDOAPphoM4AiUsW",
         "number": 36,
-        "open_issues": 131,
+        "open_issues": 129,
         "state": "open",
         "title": "0.10",
-        "updated_at": "2023-10-14T22:24:08Z",
+        "updated_at": "2023-10-16T01:48:15Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/36"
     },
     "node_id": "I_kwDOAPphoM5z1NaF",
@@ -96,11 +159,11 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/25645/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/25645/timeline",
     "title": "Setting extmark with too big `virt_text_win_col` results into not proper screen draw",
-    "updated_at": "2023-10-14T22:24:08Z",
+    "updated_at": "2023-10-15T11:36:21Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/25645",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/24854248?v=4",
