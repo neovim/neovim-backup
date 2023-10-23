@@ -4,7 +4,7 @@
     "assignees": [],
     "author_association": "NONE",
     "body": "I just updated my system Python to 3.12 and I have two issues:\r\n\r\n- `pynvim` cannot be installed outside of a venv\r\n- Inside a venv I can install it but I get an error when I run `UpdateRemotePlugins`\r\n\r\n------\r\n\r\n[PEP 688](https://peps.python.org/pep-0668/) introduces the concept of externally managed environments. The idea is to prevent users from messing up their system by installing packages which might conflict with system packages, even when using the `--user` option. The only way to use pip is either as pipx (which is not applicable for pynvim) or in a venv.\r\n\r\nHere is the error message I get:\r\n\r\n```\r\n$ pip install --user pynvim\r\nerror: externally-managed-environment\r\n\r\n× This environment is externally managed\r\n╰─>\r\n    This system-wide Python installation is managed by the Void Linux package\r\n    manager, XBPS. Installation of Python packages from other sources is not\r\n    normally allowed.\r\n\r\n    To install a Python package not offered by Void Linux, consider using a virtual\r\n    environment, e.g.:\r\n\r\n    python3 -m venv /path/to/venv\r\n    /path/to/venv/pip install <package>\r\n\r\n    Appending the flag --system-site-packages to the first command will give the\r\n    virtual environment access to any Python package installed via XBPS.\r\n\r\n    Invoking python, pip, and executables installed by pip in /path/to/venv/bin\r\n    should automatically use the virtual environment. Alternatively, source its\r\n    activation script to add the environment to the command search path for a shell:\r\n\r\n    . /path/to/venv/activate\r\n\r\n    After activation, running\r\n\r\n    deactivate\r\n\r\n    will remove the environment from the search path without destroying it.\r\n\r\n    The XBPS package python3-pipx provides pipx, a convenient tool to automatically\r\n    manage virtual environments for individual Python applications.\r\n\r\nnote: If you believe this is a mistake, please contact your Python installation or OS distribution provider. You can override this, at the risk of breaking your Python installation or OS, by passing --break-system-packages.\r\nhint: See PEP 668 for the detailed specification.\r\n```\r\n\r\n-----\r\n\r\nNext I tried creating a venv and running `pip install pynvim` in it. This worked fine, but when I executed `:UpdateRemotePlugins` I got the following error:\r\n\r\n```\r\nfunction remote#host#UpdateRemotePlugins[6]..<SNR>92_RegistrationCommands[15]..remote#host#Require[10]..provider#pythonx#Require[1\r\n2]..provider#Poll, line 7\r\nVim(if):Error invoking 'poll' on channel 3:^@Invalid channel: 3\r\nTraceback (most recent call last):\r\n  File \"<string>\", line 1, in <module>\r\n  File \"/home/hiphish/Desktop/derp/.venv/lib/python3.12/site-packages/neovim/__init__.py\", line 5, in <module>\r\n    import pynvim\r\n  File \"/home/hiphish/Desktop/derp/.venv/lib/python3.12/site-packages/pynvim/__init__.py\", line 9, in <module>\r\n    from pynvim.api import Nvim, NvimError\r\n  File \"/home/hiphish/Desktop/derp/.venv/lib/python3.12/site-packages/pynvim/api/__init__.py\", line 7, in <module>\r\n    from pynvim.api.buffer import Buffer\r\n  File \"/home/hiphish/Desktop/derp/.venv/lib/python3.12/site-packages/pynvim/api/buffer.py\", line 2, in <module>\r\n    from pynvim.api.common import Remote\r\n  File \"/home/hiphish/Desktop/derp/.venv/lib/python3.12/site-packages/pynvim/api/common.py\", line 6, in <module>\r\n    from pynvim.compat import unicode_errors_default\r\n  File \"/home/hiphish/Desktop/derp/.venv/lib/python3.12/site-packages/pynvim/compat.py\", line 5, in <module>\r\n    from imp import find_module as original_find_module\r\nModuleNotFoundError: No module named 'imp'\r\nfunction remote#host#UpdateRemotePlugins[6]..<SNR>92_RegistrationCommands[15]..remote#host#Require[10]..provider#pythonx#Require[12]..provider#Poll, line 17\r\nFailed to load python3 host. You can try to see what happened by starting nvim with $NVIM_PYTHON_LOG_FILE set and opening the generated log file. Also, the host stderr is available in messages.\r\nVim(if):Error invoking 'Poll' on channel 4:^@Invalid channel: 4\r\nfunction remote#host#UpdateRemotePlugins[6]..SNR>92_RegistrationCommands[15]..remote#host#Require[10]..lisp#RequireLispHost, line 26\r\nremote/host: generated rplugin manifest: /home/hiphish/.local/share/nvim/rplugin.vim\r\n```\r\n\r\n---\r\n\r\nThe first problem is unfortunate because it means any Python-based plugin is now broken unless I am working on a Python project. Remote plugins have fallen somewhat out of favor since we have Lua, but they still have value if I really want to use a Python library. The second problem however breaks Python remote plugins entirely.",
-    "closed_at": null,
+    "closed_at": "2023-10-22T08:02:23Z",
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -137,9 +137,53 @@
                 "type": "User",
                 "url": "https://api.github.com/users/wookayin"
             }
+        },
+        {
+            "author_association": "NONE",
+            "body": "I can override the installation issue by passing the `--break-system-packages` flag to pip. So the full command is\r\n\r\n```sh\r\npip install --break-system-packages --user 'pynvim @ git+https://github.com/neovim/pynvim'\r\n```\r\n\r\nThe name `--break-system-packages` sounds scary but it won't break the system as long as `--user` is used to install packages to the user's home directory instead of globally. It might break the user's personal configuration, but that can be solved by throwing away the Python files:\r\n\r\n```sh\r\n# Remove files manually, may leave residue files in ~/.local/bin\r\nrm -rf ~/.local/include/python3.* ~/.local/lib/python3.*\r\n```\r\n\r\nThis is good enough for me.",
+            "created_at": "2023-10-22T08:02:24Z",
+            "html_url": "https://github.com/neovim/pynvim/issues/539#issuecomment-1774025434",
+            "id": 1774025434,
+            "issue_url": "https://api.github.com/repos/neovim/pynvim/issues/539",
+            "node_id": "IC_kwDOASpKTs5pvXra",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/pynvim/issues/comments/1774025434/reactions"
+            },
+            "updated_at": "2023-10-22T08:02:24Z",
+            "url": "https://api.github.com/repos/neovim/pynvim/issues/comments/1774025434",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/4954650?v=4",
+                "events_url": "https://api.github.com/users/HiPhish/events{/privacy}",
+                "followers_url": "https://api.github.com/users/HiPhish/followers",
+                "following_url": "https://api.github.com/users/HiPhish/following{/other_user}",
+                "gists_url": "https://api.github.com/users/HiPhish/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/HiPhish",
+                "id": 4954650,
+                "login": "HiPhish",
+                "node_id": "MDQ6VXNlcjQ5NTQ2NTA=",
+                "organizations_url": "https://api.github.com/users/HiPhish/orgs",
+                "received_events_url": "https://api.github.com/users/HiPhish/received_events",
+                "repos_url": "https://api.github.com/users/HiPhish/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/HiPhish/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/HiPhish/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/HiPhish"
+            }
         }
     ],
-    "comments": 3,
+    "comments": 4,
     "comments_url": "https://api.github.com/repos/neovim/pynvim/issues/539/comments",
     "created_at": "2023-10-10T16:37:07Z",
     "events_url": "https://api.github.com/repos/neovim/pynvim/issues/539/events",
@@ -175,11 +219,11 @@
         "url": "https://api.github.com/repos/neovim/pynvim/issues/539/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/pynvim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "timeline_url": "https://api.github.com/repos/neovim/pynvim/issues/539/timeline",
     "title": "No longer works in Python 3.12",
-    "updated_at": "2023-10-13T04:05:46Z",
+    "updated_at": "2023-10-22T08:02:24Z",
     "url": "https://api.github.com/repos/neovim/pynvim/issues/539",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/4954650?v=4",

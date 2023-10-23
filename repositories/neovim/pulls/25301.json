@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 4932,
-            "forks_count": 4932,
+            "forks": 4935,
+            "forks_count": 4935,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1664,
-            "open_issues_count": 1664,
+            "open_issues": 1667,
+            "open_issues_count": 1667,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -118,11 +118,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2023-10-22T00:41:21Z",
+            "pushed_at": "2023-10-23T01:26:10Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 250603,
+            "size": 250595,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 70301,
+            "stargazers_count": 70327,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -140,11 +140,11 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2023-10-22T01:52:34Z",
+            "updated_at": "2023-10-23T00:53:37Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 70301,
-            "watchers_count": 70301,
+            "watchers": 70327,
+            "watchers_count": 70327,
             "web_commit_signoff_required": false
         },
         "sha": "ad2fad9a3b07d84e24c189b6a5773e979e8c0afd",
@@ -6351,6 +6351,74 @@
                 "type": "User",
                 "url": "https://api.github.com/users/lewis6991"
             }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/25301#discussion_r1367859678"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/25301"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1367859678"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "it's better add a pcall in there otherwise when delete a snippet will through an error `index out of bounds`",
+            "commit_id": "d2c6d7a1ad14840078b65bba8c18d0626f136d62",
+            "created_at": "2023-10-22T08:13:50Z",
+            "diff_hunk": "@@ -0,0 +1,535 @@\n+local G = require('vim.lsp._snippet_grammar')\n+local snippet_group = vim.api.nvim_create_augroup('vim/snippet', {})\n+local snippet_ns = vim.api.nvim_create_namespace('vim/snippet')\n+\n+--- Returns the 0-based cursor position.\n+---\n+--- @return integer, integer\n+local function cursor_pos()\n+  local cursor = vim.api.nvim_win_get_cursor(0)\n+  return cursor[1] - 1, cursor[2]\n+end\n+\n+--- Resolves variables (like `$name` or `${name:default}`) as follows:\n+--- - When a variable is unknown (i.e.: its name is not recognized in any of the cases below), return `nil`.\n+--- - When a variable isn't set, return its default (if any) or an empty string.\n+---\n+--- Note that in some cases, the default is ignored since it's not clear how to distinguish an empty\n+--- value from an unset value (e.g.: `TM_CURRENT_LINE`).\n+---\n+--- @param var string\n+--- @param default string\n+--- @return string?\n+local function resolve_variable(var, default)\n+  --- @param str string\n+  --- @return string\n+  local function expand_or_default(str)\n+    local expansion = vim.fn.expand(str) --[[@as string]]\n+    return expansion == '' and default or expansion\n+  end\n+\n+  if var == 'TM_SELECTED_TEXT' then\n+    -- Snippets are expanded in insert mode only, so there's no selection.\n+    return default\n+  elseif var == 'TM_CURRENT_LINE' then\n+    return vim.api.nvim_get_current_line()\n+  elseif var == 'TM_CURRENT_WORD' then\n+    return expand_or_default('<cword>')\n+  elseif var == 'TM_LINE_INDEX' then\n+    return tostring(vim.fn.line('.') - 1)\n+  elseif var == 'TM_LINE_NUMBER' then\n+    return tostring(vim.fn.line('.'))\n+  elseif var == 'TM_FILENAME' then\n+    return expand_or_default('%:t')\n+  elseif var == 'TM_FILENAME_BASE' then\n+    -- Not using '%:t:r' since we want to remove all extensions.\n+    local filename_base = expand_or_default('%:t'):gsub('%.[^%.]*$', '')\n+    return filename_base\n+  elseif var == 'TM_DIRECTORY' then\n+    return expand_or_default('%:p:h:t')\n+  elseif var == 'TM_FILEPATH' then\n+    return expand_or_default('%:p')\n+  end\n+\n+  -- Unknown variable.\n+  return nil\n+end\n+\n+--- Transforms the given text into an array of lines (so no line contains `\\n`).\n+---\n+--- @param text string|string[]\n+--- @return string[]\n+local function text_to_lines(text)\n+  text = type(text) == 'string' and { text } or text\n+  --- @cast text string[]\n+  return vim.split(table.concat(text), '\\n', { plain = true })\n+end\n+\n+--- Computes the 0-based position of a tabstop located at the end of `snippet` and spanning\n+--- `placeholder` (if given).\n+---\n+--- @param snippet string[]\n+--- @param placeholder string?\n+--- @return Range4\n+local function compute_tabstop_range(snippet, placeholder)\n+  local cursor_row, cursor_col = cursor_pos()\n+  local snippet_text = text_to_lines(snippet)\n+  local placeholder_text = text_to_lines(placeholder or '')\n+  local start_row = cursor_row + #snippet_text - 1\n+  local start_col = #(snippet_text[#snippet_text] or '')\n+\n+  -- Add the cursor's column offset to the first line.\n+  if start_row == cursor_row then\n+    start_col = start_col + cursor_col\n+  end\n+\n+  local end_row = start_row + #placeholder_text - 1\n+  local end_col = (start_row == end_row and start_col or 0)\n+    + #(placeholder_text[#placeholder_text] or '')\n+\n+  return { start_row, start_col, end_row, end_col }\n+end\n+\n+--- @class vim.snippet.Tabstop\n+--- @field extmark_id integer\n+--- @field index integer\n+--- @field bufnr integer\n+local Tabstop = {}\n+\n+--- Creates a new tabstop.\n+---\n+--- @package\n+--- @param index integer\n+--- @param bufnr integer\n+--- @param range Range4\n+--- @return vim.snippet.Tabstop\n+function Tabstop.new(index, bufnr, range)\n+  local extmark_id = vim.api.nvim_buf_set_extmark(bufnr, snippet_ns, range[1], range[2], {\n+    right_gravity = false,\n+    end_right_gravity = true,\n+    end_line = range[3],\n+    end_col = range[4],\n+    hl_group = 'SnippetTabstop',\n+  })\n+\n+  local self = setmetatable(\n+    { index = index, bufnr = bufnr, extmark_id = extmark_id },\n+    { __index = Tabstop }\n+  )\n+\n+  return self\n+end\n+\n+--- Returns the tabstop's range.\n+---\n+--- @package\n+--- @return Range4\n+function Tabstop:get_range()\n+  local mark =\n+    vim.api.nvim_buf_get_extmark_by_id(self.bufnr, snippet_ns, self.extmark_id, { details = true })\n+\n+  --- @diagnostic disable-next-line: undefined-field\n+  return { mark[1], mark[2], mark[3].end_row, mark[3].end_col }\n+end\n+\n+--- Returns the text spanned by the tabstop.\n+---\n+--- @package\n+--- @return string\n+function Tabstop:get_text()\n+  local range = self:get_range()\n+  return table.concat(\n+    vim.api.nvim_buf_get_text(self.bufnr, range[1], range[2], range[3], range[4], {}),",
+            "html_url": "https://github.com/neovim/neovim/pull/25301#discussion_r1367859678",
+            "id": 1367859678,
+            "line": 142,
+            "node_id": "PRRC_kwDOAPphoM5Rh-He",
+            "original_commit_id": "d2c6d7a1ad14840078b65bba8c18d0626f136d62",
+            "original_line": 142,
+            "original_position": 142,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/snippet.lua",
+            "position": 142,
+            "pull_request_review_id": 1691391013,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/25301",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1367859678/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-10-22T08:13:55Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1367859678",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",
+                "events_url": "https://api.github.com/users/glepnir/events{/privacy}",
+                "followers_url": "https://api.github.com/users/glepnir/followers",
+                "following_url": "https://api.github.com/users/glepnir/following{/other_user}",
+                "gists_url": "https://api.github.com/users/glepnir/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/glepnir",
+                "id": 41671631,
+                "login": "glepnir",
+                "node_id": "MDQ6VXNlcjQxNjcxNjMx",
+                "organizations_url": "https://api.github.com/users/glepnir/orgs",
+                "received_events_url": "https://api.github.com/users/glepnir/received_events",
+                "repos_url": "https://api.github.com/users/glepnir/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/glepnir/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/glepnir/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/glepnir"
+            }
         }
     ],
     "comment_regular_data": [
@@ -7156,7 +7224,7 @@
             "node_id": "IC_kwDOAPphoM5pc-FD",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 11,
+                "+1": 12,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -7164,7 +7232,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 11,
+                "total_count": 12,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1769201987/reactions"
             },
             "updated_at": "2023-10-18T19:39:07Z",
@@ -7460,9 +7528,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/MariaSolOs/neovim/pulls{/number}",
-            "pushed_at": "2023-10-22T00:43:15Z",
+            "pushed_at": "2023-10-22T17:11:42Z",
             "releases_url": "https://api.github.com/repos/MariaSolOs/neovim/releases{/id}",
-            "size": 244992,
+            "size": 244984,
             "ssh_url": "git@github.com:MariaSolOs/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/MariaSolOs/neovim/stargazers",
@@ -7531,7 +7599,7 @@
     "state": "closed",
     "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/d2c6d7a1ad14840078b65bba8c18d0626f136d62",
     "title": "feat(lsp): snippet API",
-    "updated_at": "2023-10-21T06:51:43Z",
+    "updated_at": "2023-10-22T08:13:55Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/25301",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/62502207?v=4",
