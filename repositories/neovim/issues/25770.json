@@ -4,7 +4,7 @@
     "assignees": [],
     "author_association": "NONE",
     "body": "### Problem\n\nSince `libluv-1.44` neovim build fails with\r\n\r\n```bash\r\n➜  build-1.45 git:(v0.9.4) ✗ make\r\n[  0%] Built target update_version_stamp\r\n[ 92%] Built target nvim\r\n[ 92%] Built target nvim_runtime_deps\r\n[ 92%] Generating nvim.pot\r\ndyld[9773]: Library not loaded: libluv.1.dylib\r\n  Referenced from: <3DE9CF70-55FA-330B-8A0B-BD1AC36221DE> /Users/ialberto/workspace/repos/neovim.git/build-1.45/bin/nvim\r\n  Reason: tried: 'libluv.1.dylib' (no such file), '/System/Volumes/Preboot/Cryptexes/OSlibluv.1.dylib' (no such file), 'libluv.1.dylib' (no such file), '/usr/local/lib/libluv.1.dylib' (no such file), '/usr/lib/libluv.1.dylib' (no such file, not in dyld cache), '/Users/ialberto/workspace/repos/neovim.git/build-1.45/src/nvim/po/libluv.1.dylib' (no such file), '/System/Volumes/Preboot/Cryptexes/OS/Users/ialberto/workspace/repos/neovim.git/build-1.45/src/nvim/po/libluv.1.dylib' (no such file), '/Users/ialberto/workspace/repos/neovim.git/build-1.45/src/nvim/po/libluv.1.dylib' (no such file), '/usr/local/lib/libluv.1.dylib' (no such file), '/usr/lib/libluv.1.dylib' (no such file, not in dyld cache)\r\n/bin/sh: line 1:  9773 Abort trap: 6           ../../../bin/nvim -u NONE -i NONE -n --headless --cmd \"set cpo+=+\" -S /Users/ialberto/workspace/repos/neovim.git/src/nvim/po/tojavascript.vim /Users/ialberto/workspace/repos/neovim.git/build-1.45/src/nvim/po/nvim.pot /Users/ialberto/workspace/repos/neovim.git/runtime/optwin.vim\r\nmake[2]: *** [src/nvim/po/nvim.pot] Error 134\r\nmake[1]: *** [src/nvim/po/CMakeFiles/translations.dir/all] Error 2\r\nmake: *** [all] Error 2\r\n```\r\n\r\nPreviously, all `neovim` builds were implicitly going for the static version of `libluv`, due to\r\n\r\nhttps://github.com/neovim/neovim/blob/1094d0c0dbd0f37ccc0f1d18c73c6066e5690664/cmake/FindLuv.cmake#L2\r\n\r\nIndeed, up to `libluv@1.43` (included) the library names were\r\n\r\n```bash\r\nlib\r\n├── libluv.1.43.0.dylib\r\n├── libluv.1.dylib -> libluv.1.43.0.dylib\r\n├── libluv.dylib -> libluv.1.dylib\r\n├── libluv_a.a\r\n├── lua\r\n│   └── 5.1\r\n│       └── luv.so\r\n└── pkgconfig\r\n    └── libluv.pc\r\n\r\n4 directories, 6 files\r\n```\r\n\r\nSo the first entry `luv_a` was matching with `libluv_a.a`, the static library, and it was getting used.\r\n\r\nFrom `libluv-1.44` on, the library names have been changed (see https://github.com/luvit/luv/commit/9d602ab12654d3adb53f34457390f534eb85f5d6) so the situation now is\r\n\r\n```bash\r\nlib\r\n├── libluv.1.44.2.dylib\r\n├── libluv.1.dylib -> libluv.1.44.2.dylib\r\n├── libluv.a\r\n├── libluv.dylib -> libluv.1.dylib\r\n├── lua\r\n│   └── 5.1\r\n│       └── luv.so\r\n└── pkgconfig\r\n    └── libluv.pc\r\n\r\n4 directories, 6 files\r\n```\r\n\r\nSo static libraries does not have anymore any name based priority, and the shared library is picked first.\r\n\r\nThis does not represent a problem on linux, where it still works correctly, but on macOS the RPATH management seems not working correctly.\r\n\r\nIt is probably due to the custom basic `FindLuv.cmake` CMake module, which should be probably improved in order to deal also with the more requiring RPATH management on macOS (not an expert, but probably it requires @rpath/libluv.dylib` or something like that as library name). Not sure, but if the detection is improved and cmake targets are used, it would be probably easier to let CMake do the right thing also on macOS.\n\n### Steps to reproduce\n\nJust try building on macOS any neovim version (tested with 0.9.0 and 0.9.4) using as dependency `libluv-1.44` (tested with 1.44.2-0, 1.44.2-1, 1.45.0-0) will fail as soon as build starts using the `nvim` executable because it does not find `libluv` dynamic library.\n\n### Expected behavior\n\nIt should build 😁\n\n### Neovim version (nvim -v)\n\ncommit d772f697a281ce9c58bf933997b87c7f27428a60 (HEAD, tag: v0.9.4, tag: stable)\n\n### Vim (not Nvim) behaves the same?\n\nnot applicable\n\n### Operating system/version\n\nmacOS 13.6\n\n### Terminal name/version\n\nnot applicable\n\n### $TERM environment variable\n\nnot applicable\n\n### Installation\n\nfrom source (using spack for convenience)",
-    "closed_at": null,
+    "closed_at": "2023-10-26T07:36:20Z",
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -49,9 +49,97 @@
                 "type": "User",
                 "url": "https://api.github.com/users/dundargoc"
             }
+        },
+        {
+            "author_association": "NONE",
+            "body": "I'm back! Thanks to @haampie (\"the spack guy\"), who immediately spotted the problem, now it works.\r\n\r\nThe problem is as described above, i.e. on macOS if `neovim` ends up using dynamic library for `libluv` it does not work (since long ago), but the problem is imputable to `libluv` requiring an old CMake minimum version (ending up not using new policies, in particular ([CMP0042](https://cmake.org/cmake/help/latest/policy/CMP0042.html).\r\n\r\nI would say that this does not require a fix on `neovim` side, since it should be `libluv` installing correctly the dynamic library with the `@rpath` tag in it. Actually `libluv` in the next version (1.46) is going to require a newer minimum CMake version, which will enable implicitly the CMP0042, solving the problem also on macOS.\r\n\r\nI don't know if you'd like to specify this constraint about `libluv` somehow in neovim. Up to you.\r\n\r\nAnyway, for what concerns the original reason for opening the issue, I would consider it solved. Hence I will close it and I will link to this issue for future reference (mainly in the spack package).",
+            "created_at": "2023-10-26T07:36:20Z",
+            "html_url": "https://github.com/neovim/neovim/issues/25770#issuecomment-1780572469",
+            "id": 1780572469,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/25770",
+            "node_id": "IC_kwDOAPphoM5qIWE1",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1780572469/reactions"
+            },
+            "updated_at": "2023-10-26T07:36:20Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1780572469",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/9337627?v=4",
+                "events_url": "https://api.github.com/users/albestro/events{/privacy}",
+                "followers_url": "https://api.github.com/users/albestro/followers",
+                "following_url": "https://api.github.com/users/albestro/following{/other_user}",
+                "gists_url": "https://api.github.com/users/albestro/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/albestro",
+                "id": 9337627,
+                "login": "albestro",
+                "node_id": "MDQ6VXNlcjkzMzc2Mjc=",
+                "organizations_url": "https://api.github.com/users/albestro/orgs",
+                "received_events_url": "https://api.github.com/users/albestro/received_events",
+                "repos_url": "https://api.github.com/users/albestro/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/albestro/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/albestro/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/albestro"
+            }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "Thanks for the follow-up. I don't think we need to do something from our side, cmake has deprecated versions 3.4- and our dependencies should be bumping their versions in their upcoming releases.",
+            "created_at": "2023-10-26T09:32:09Z",
+            "html_url": "https://github.com/neovim/neovim/issues/25770#issuecomment-1780753778",
+            "id": 1780753778,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/25770",
+            "node_id": "IC_kwDOAPphoM5qJCVy",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1780753778/reactions"
+            },
+            "updated_at": "2023-10-26T09:32:09Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1780753778",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/33953936?v=4",
+                "events_url": "https://api.github.com/users/dundargoc/events{/privacy}",
+                "followers_url": "https://api.github.com/users/dundargoc/followers",
+                "following_url": "https://api.github.com/users/dundargoc/following{/other_user}",
+                "gists_url": "https://api.github.com/users/dundargoc/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/dundargoc",
+                "id": 33953936,
+                "login": "dundargoc",
+                "node_id": "MDQ6VXNlcjMzOTUzOTM2",
+                "organizations_url": "https://api.github.com/users/dundargoc/orgs",
+                "received_events_url": "https://api.github.com/users/dundargoc/received_events",
+                "repos_url": "https://api.github.com/users/dundargoc/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/dundargoc/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/dundargoc/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/dundargoc"
+            }
         }
     ],
-    "comments": 1,
+    "comments": 3,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/25770/comments",
     "created_at": "2023-10-24T16:17:40Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/25770/events",
@@ -66,15 +154,6 @@
             "name": "bug",
             "node_id": "MDU6TGFiZWw3Nzk5NzQ3NA==",
             "url": "https://api.github.com/repos/neovim/neovim/labels/bug"
-        },
-        {
-            "color": "FBCA04",
-            "default": false,
-            "description": "waiting for reply from the author",
-            "id": 248229439,
-            "name": "needs:response",
-            "node_id": "MDU6TGFiZWwyNDgyMjk0Mzk=",
-            "url": "https://api.github.com/repos/neovim/neovim/labels/needs:response"
         }
     ],
     "labels_url": "https://api.github.com/repos/neovim/neovim/issues/25770/labels{/name}",
@@ -96,11 +175,11 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/25770/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/25770/timeline",
     "title": "Problem with RPATH on macOS \"Library not loaded: libluv.1.dylib\".",
-    "updated_at": "2023-10-24T18:30:49Z",
+    "updated_at": "2023-10-26T09:32:10Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/25770",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/9337627?v=4",
