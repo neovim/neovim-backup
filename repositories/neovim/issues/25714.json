@@ -5,8 +5,53 @@
     "author_association": "MEMBER",
     "body": "### Problem\r\n\r\nThe language server protocol specifies that completion items can contain:\r\n\r\n- snippets\r\n- `additionalTextEdits` (e.g used to add import statements when selecting a completion candidate)\r\n- A `command` (used to execute client side or server side commands - for all sorts of things). For example, vscode defines a `editor.action.triggerParameterHints` client command to trigger a  signature help immediately after a completion candidate got selected.\r\n\r\nCurrently neovim core handles none of that, and instead delegates to completion plugins like nvim-cmp, nvim-lsp-compl or others.\r\n\r\n\r\n\r\n### Expected behavior\r\n\r\nHave this functionality built-in.\r\n\r\nWith https://github.com/neovim/neovim/pull/25301 the groundwork for snippet expansion is done.\r\nThe next step is to integrate it with the completion, omnifunc. For that we'll need to setup a `CompleteDone` autocmd similar to:\r\n\r\nhttps://github.com/mfussenegger/nvim-lsp-compl/blob/1642f1c57a83a0b630fdf7f339f4a5550a766407/lua/lsp_compl.lua#L565-L668\r\n\r\n\r\nOpen Questions:\r\n\r\n- [ ] Opt-in or opt-out. Enabling it by default could conflict with above established completion plugins. On the other hand, opt-in is another hurdle in getting started from scratch\r\n- [ ] Snippet expansion trigger - implicit/explicit? (For me, always implicit expanding would make this unusable)\r\n\r\n\r\nProposal:\r\n\r\n- Make it opt-in via a `vim.lsp.completion.attach(client, bufnr, [opts])` method that can be called in a `LspAttach` autocmd. It would sets up a `CompleteDone` autocmd for the given buffer and client.\r\n- Add a `vim.lsp.completion.accept()` function that if called causes the next accempted completion candidate to expand a snippet, if the completion item contains one. To be used in a mapping like:\r\n\r\n```\r\nvim.keymap.set('i', '<CR>', function()\r\n  return vim.lsp.completion.accept() and '<c-y>' or '<CR>'\r\nend, { expr = true })\r\n```\r\n\r\n`opts` relate a bit to the auto-completion aspect and https://github.com/neovim/neovim/issues/25670, and might not be necessary in a first step.\r\n",
     "closed_at": null,
-    "comment_data": [],
-    "comments": 0,
+    "comment_data": [
+        {
+            "author_association": "MEMBER",
+            "body": "> Currently neovim core handles none of that, and instead delegates to completion plugins like nvim-cmp, nvim-lsp-compl or others.\r\n\r\nCan we extend the builtin completion concepts rather than add a LSP-specific interface?\r\n\r\n> `vim.lsp.completion.attach(client, bufnr, [opts])`\r\n\r\n\"Attach to completion\" feels like we are overextending the concept of attach. (And \"attach\" in general is probably a signal that we're missing something in the [events interface](https://github.com/neovim/neovim/issues/19156).)\r\n\r\nWould it make sense to \"attach to client\"? Since LSP clients are the main primitive in LSP, like how buffer/win/tab are the primitives in Nvim.",
+            "created_at": "2023-10-28T18:50:01Z",
+            "html_url": "https://github.com/neovim/neovim/issues/25714#issuecomment-1783896243",
+            "id": 1783896243,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/25714",
+            "node_id": "IC_kwDOAPphoM5qVBiz",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1783896243/reactions"
+            },
+            "updated_at": "2023-10-28T18:50:01Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1783896243",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk"
+            }
+        }
+    ],
+    "comments": 1,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/25714/comments",
     "created_at": "2023-10-19T08:56:33Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/25714/events",
@@ -23,6 +68,15 @@
             "url": "https://api.github.com/repos/neovim/neovim/labels/enhancement"
         },
         {
+            "color": "FBCA04",
+            "default": false,
+            "description": "needs a clear design proposal",
+            "id": 124510010,
+            "name": "needs:design",
+            "node_id": "MDU6TGFiZWwxMjQ1MTAwMTA=",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/needs:design"
+        },
+        {
             "color": "c5def5",
             "default": false,
             "description": null,
@@ -30,6 +84,15 @@
             "name": "lsp",
             "node_id": "MDU6TGFiZWw2NjI1NjYzNzA=",
             "url": "https://api.github.com/repos/neovim/neovim/labels/lsp"
+        },
+        {
+            "color": "C5DEF5",
+            "default": false,
+            "description": "Nvim built-in (omni)completion",
+            "id": 3214348835,
+            "name": "completion",
+            "node_id": "MDU6TGFiZWwzMjE0MzQ4ODM1",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/completion"
         }
     ],
     "labels_url": "https://api.github.com/repos/neovim/neovim/issues/25714/labels{/name}",
@@ -39,7 +102,7 @@
     "number": 25714,
     "performed_via_github_app": null,
     "reactions": {
-        "+1": 1,
+        "+1": 16,
         "-1": 0,
         "confused": 0,
         "eyes": 0,
@@ -47,7 +110,7 @@
         "hooray": 0,
         "laugh": 0,
         "rocket": 0,
-        "total_count": 1,
+        "total_count": 16,
         "url": "https://api.github.com/repos/neovim/neovim/issues/25714/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
@@ -55,7 +118,7 @@
     "state_reason": null,
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/25714/timeline",
     "title": "Add support for LSP completion side effects (snippet expansion, command execution, additionalTextEdits)",
-    "updated_at": "2023-10-19T13:18:32Z",
+    "updated_at": "2023-10-28T18:50:17Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/25714",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/38700?v=4",

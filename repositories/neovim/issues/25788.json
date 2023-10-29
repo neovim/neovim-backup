@@ -4,7 +4,7 @@
     "assignees": [],
     "author_association": "CONTRIBUTOR",
     "body": "### Problem\r\n\r\nSome plug-ins that I use only function if LSP is available and has already run on a particular buffer. If I wanted to delay-load these plug-ins with a plug-in manager like [lazy.nvim](https://github.com/folke/lazy.nvim), there's currently no straightforward way to do this. Existing related autocmds such as `:h LspRequest` and `:h LspProgressUpdate` are spammy and also get called too early.\r\n\r\nIt'd be nice if there was a \"LSP is done now\" side-effect, which motivated the idea of a new `LspComplete` autocmd.\r\n\r\nI've got a User autocmd that basically implements what I had in mind if you want to check it out (A big thanks to [fidget.nvim](https://github.com/j-hui/fidget.nvim) for inspiring this code)\r\n\r\n<details>\r\n<summary>Click to expand</summary>\r\n\r\n```lua\r\nlocal vim_closing = false\r\nlocal tasks = {}\r\n\r\n\r\nlocal function _kill_task(task)\r\n    tasks[task] = nil\r\nend\r\n\r\n\r\nlocal function _has_tasks()\r\n  return next(tasks)\r\nend\r\n\r\n\r\nlocal function _handle_progress(err, msg, info)\r\n    -- See: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#progress\r\n    if vim_closing then\r\n        return\r\n    end\r\n\r\n    local task = msg.token\r\n    local value = msg.value\r\n\r\n    if not task then\r\n      -- Notification missing required token??\r\n      return\r\n    end\r\n\r\n    tasks[task] = true\r\n\r\n    if value.kind == \"end\" then\r\n        _kill_task(task)\r\n    end\r\n\r\n    if not _has_tasks() then\r\n        vim.api.nvim_exec_autocmds(\"User\", {pattern = \"LspComplete\"})\r\n\r\n        return\r\n    end\r\nend\r\n\r\n\r\nlocal old_handler = vim.lsp.handlers[\"$/progress\"]\r\n\r\nvim.lsp.handlers[\"$/progress\"] = function(...)\r\n    old_handler(...)\r\n    _handle_progress(...)\r\nend\r\n\r\n\r\nlocal group = vim.api.nvim_create_augroup(\"LspCustomGroup\", { clear = true })\r\n\r\nvim.api.nvim_create_autocmd(\r\n    \"User\",\r\n    { callback = function() end, group = group, pattern = \"LspComplete\" }\r\n)\r\n```\r\n\r\nAnd is callable with\r\n\r\n```lua\r\nvim.cmd(\"autocmd User LspComplete :echoerr 'blah'\")\r\n```\r\n</details>\r\n\r\nThis request might tie into or be related to future implementations of https://github.com/neovim/neovim/issues/25714\r\n\r\n### Expected behavior\r\n\r\nAn autocmd that is called after LSP has been fully attached and initialized on some buffer. I think it'd be fine it if is called more than once if the LSP needs to re-index or do some other kind of work. But ideally this should be at the \"end\" of that work",
-    "closed_at": null,
+    "closed_at": "2023-10-28T19:08:14Z",
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -16,7 +16,7 @@
             "node_id": "IC_kwDOAPphoM5qLUIm",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 1,
+                "+1": 2,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -24,7 +24,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 1,
+                "total_count": 2,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1781350950/reactions"
             },
             "updated_at": "2023-10-26T15:39:45Z",
@@ -93,9 +93,53 @@
                 "type": "User",
                 "url": "https://api.github.com/users/ColinKennedy"
             }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "> Expected behavior: An autocmd that is called after LSP has been fully attached and initialized on some buffer.\r\n\r\nWe would not add a new event for this, it could perhaps be a `v:event` field. But as alluded to above, see `:help vim.lsp.buf.server_ready()` and https://github.com/neovim/neovim/pull/23520#pullrequestreview-1419012972 : \r\n\r\n> there really is no good alternative in the specification to detect if a server is ready I'm inclined to merge this. If my interpretation of the spec is correct, after the initialize handshake a server should be ready to serve requests.\r\n> \r\n> ... edits can always re-trigger analysis/builds that's always a catch-up game, and it's also unclear what an editor should do if the server is still processing changes. It is also not a simple ready/not-ready, because depending on the implementations they can serve some requests with sensible results, some with outdated, some not at all.\r\n",
+            "created_at": "2023-10-28T19:08:14Z",
+            "html_url": "https://github.com/neovim/neovim/issues/25788#issuecomment-1783900039",
+            "id": 1783900039,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/25788",
+            "node_id": "IC_kwDOAPphoM5qVCeH",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1783900039/reactions"
+            },
+            "updated_at": "2023-10-28T19:08:14Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1783900039",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk"
+            }
         }
     ],
-    "comments": 2,
+    "comments": 3,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/25788/comments",
     "created_at": "2023-10-26T15:15:47Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/25788/events",
@@ -110,6 +154,15 @@
             "name": "enhancement",
             "node_id": "MDU6TGFiZWw3Nzk5NzQ3Ng==",
             "url": "https://api.github.com/repos/neovim/neovim/labels/enhancement"
+        },
+        {
+            "color": "FEF2C0",
+            "default": false,
+            "description": "Needs a third-party / external change or fix",
+            "id": 101945532,
+            "name": "status:blocked-external",
+            "node_id": "MDU6TGFiZWwxMDE5NDU1MzI=",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/status:blocked-external"
         },
         {
             "color": "c5def5",
@@ -140,11 +193,11 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/25788/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "not_planned",
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/25788/timeline",
     "title": "Add `LspComplete` autocmd",
-    "updated_at": "2023-10-27T07:37:36Z",
+    "updated_at": "2023-10-28T19:08:20Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/25788",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/10103049?v=4",
