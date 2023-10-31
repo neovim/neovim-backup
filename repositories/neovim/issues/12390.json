@@ -577,53 +577,9 @@
                 "type": "User",
                 "url": "https://api.github.com/users/clason"
             }
-        },
-        {
-            "author_association": "CONTRIBUTOR",
-            "body": "I've been trying this and it seems to be working so far:\r\n\r\n```lua\r\n-- Cached items for omnifunc (sync)\r\nlocal omnifunc_items = {}\r\n\r\n--- Implements 'omnifunc' compatible LSP completion (synced).\r\n--- Differently from the async variant, we don't want to cancel the completion,\r\n--- and we don't want to use |complete()|, but the standard omnifunc mechanism.\r\n---\r\n--- We use |vim.wait()| to get all completion items during the first call\r\n--- already, because in the second call the line will have changed, and the\r\n--- request parameters won't be valid anymore. The line changes during the\r\n--- second call, because vim removes the part of the word that is the prefix to\r\n--- be completed. Therefore the lsp request must be done in the first call, when\r\n--- the line is unchanged, and parameters are valid.\r\n---\r\n---@see |complete-functions|\r\n---@see |complete-items|\r\n---@see |CompleteDone|\r\n---\r\n---@param findstart integer 0 or 1, decides behavior\r\n---@param base integer findstart=0, text to match against\r\n---\r\n---@returns (integer) Decided by {findstart}:\r\n--- - findstart=0: column where the completion starts, or -2 or -3\r\n--- - findstart=1: list of matches (actually just calls |complete()|)\r\nfunction lsp.omnifunc_sync(findstart, base)\r\n  local _ = log.debug() and log.debug('omnifunc.findstart', { findstart = findstart, base = base })\r\n\r\n  local bufnr = resolve_bufnr()\r\n  local has_buffer_clients = not tbl_isempty(all_buffer_active_clients[bufnr] or {})\r\n  if not has_buffer_clients then\r\n    if findstart == 1 then\r\n      return -1\r\n    else\r\n      return {}\r\n    end\r\n  end\r\n\r\n  if findstart == 1 then\r\n    omnifunc_items = {}\r\n\r\n    local _ = log.info() and log.info('base ', base)\r\n\r\n    local pos = api.nvim_win_get_cursor(0)\r\n    local line = api.nvim_get_current_line()\r\n    local line_to_cursor = line:sub(1, pos[2])\r\n    local _ = log.trace() and log.trace('omnifunc.line', pos, line)\r\n\r\n    -- Get the start position of the current keyword\r\n    local textMatch = vim.fn.match(line_to_cursor, '\\\\k*$')\r\n\r\n    local params = util.make_position_params()\r\n    local items, requested, completed = {}, false, false\r\n\r\n    -- Perform completion request\r\n    vim.wait(1000, function()\r\n      if not requested then\r\n        requested = true\r\n        lsp.buf_request(bufnr, 'textDocument/completion', params, function(err, result, ctx)\r\n          completed = true\r\n          if err or not result or vim.fn.mode() ~= 'i' then\r\n            return\r\n          end\r\n          local client = lsp.get_client_by_id(ctx.client_id)\r\n          local encoding = client and client.offset_encoding or 'utf-16'\r\n          local candidates = util.extract_completion_items(result)\r\n          local startbyte = adjust_start_col(pos[1], line, candidates, encoding) or textMatch\r\n          local prefix = line:sub(startbyte + 1, pos[2])\r\n          local matches = util.text_document_completion_list_to_complete_items(result, prefix)\r\n          vim.list_extend(items, matches)\r\n          omnifunc_items = items\r\n        end, 10)\r\n      end\r\n      return completed\r\n    end)\r\n    return textMatch\r\n  else\r\n    return omnifunc_items\r\n  end\r\nend\r\n```\r\n\r\nI used `vim.wait` instead of `vim.lsp.buf_request_sync`, because the latter also uses `vim.wait` in pretty much the same way, but it's not possible to get the client context in that case. This way the code is almost the same of the async variant, with only the needed things to make it work.",
-            "created_at": "2023-10-20T03:33:42Z",
-            "html_url": "https://github.com/neovim/neovim/issues/12390#issuecomment-1772023274",
-            "id": 1772023274,
-            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/12390",
-            "node_id": "IC_kwDOAPphoM5pnu3q",
-            "performed_via_github_app": null,
-            "reactions": {
-                "+1": 0,
-                "-1": 0,
-                "confused": 0,
-                "eyes": 0,
-                "heart": 0,
-                "hooray": 0,
-                "laugh": 0,
-                "rocket": 0,
-                "total_count": 0,
-                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1772023274/reactions"
-            },
-            "updated_at": "2023-10-20T03:33:42Z",
-            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1772023274",
-            "user": {
-                "avatar_url": "https://avatars.githubusercontent.com/u/26169924?v=4",
-                "events_url": "https://api.github.com/users/mg979/events{/privacy}",
-                "followers_url": "https://api.github.com/users/mg979/followers",
-                "following_url": "https://api.github.com/users/mg979/following{/other_user}",
-                "gists_url": "https://api.github.com/users/mg979/gists{/gist_id}",
-                "gravatar_id": "",
-                "html_url": "https://github.com/mg979",
-                "id": 26169924,
-                "login": "mg979",
-                "node_id": "MDQ6VXNlcjI2MTY5OTI0",
-                "organizations_url": "https://api.github.com/users/mg979/orgs",
-                "received_events_url": "https://api.github.com/users/mg979/received_events",
-                "repos_url": "https://api.github.com/users/mg979/repos",
-                "site_admin": false,
-                "starred_url": "https://api.github.com/users/mg979/starred{/owner}{/repo}",
-                "subscriptions_url": "https://api.github.com/users/mg979/subscriptions",
-                "type": "User",
-                "url": "https://api.github.com/users/mg979"
-            }
         }
     ],
-    "comments": 14,
+    "comments": 13,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/12390/comments",
     "created_at": "2020-05-28T09:10:36Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/12390/events",
@@ -717,7 +673,7 @@
     "state_reason": null,
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/12390/timeline",
     "title": "lsp: synchronous omnifunc",
-    "updated_at": "2023-10-20T03:33:43Z",
+    "updated_at": "2023-10-30T16:21:52Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/12390",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1782860?v=4",
