@@ -1,28 +1,28 @@
 {
     "_links": {
         "comments": {
-            "href": "https://api.github.com/repos/neovim/neovim/issues/25934/comments"
+            "href": "https://api.github.com/repos/neovim/neovim/issues/25954/comments"
         },
         "commits": {
-            "href": "https://api.github.com/repos/neovim/neovim/pulls/25934/commits"
+            "href": "https://api.github.com/repos/neovim/neovim/pulls/25954/commits"
         },
         "html": {
-            "href": "https://github.com/neovim/neovim/pull/25934"
+            "href": "https://github.com/neovim/neovim/pull/25954"
         },
         "issue": {
-            "href": "https://api.github.com/repos/neovim/neovim/issues/25934"
+            "href": "https://api.github.com/repos/neovim/neovim/issues/25954"
         },
         "review_comment": {
             "href": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}"
         },
         "review_comments": {
-            "href": "https://api.github.com/repos/neovim/neovim/pulls/25934/comments"
+            "href": "https://api.github.com/repos/neovim/neovim/pulls/25954/comments"
         },
         "self": {
-            "href": "https://api.github.com/repos/neovim/neovim/pulls/25934"
+            "href": "https://api.github.com/repos/neovim/neovim/pulls/25954"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/b6b822bff04ff393ba0dae4b00f00a4519533dd8"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/74581ec7ebd5f9b3d47f6b1ee04a87327ad730a1"
         }
     },
     "active_lock_reason": null,
@@ -169,156 +169,18 @@
             "url": "https://api.github.com/users/neovim"
         }
     },
-    "body": "Problem: buffer text with composing chars are converted from UTF-8 to an array of up to seven UTF-32 values and then converted back to UTF-8 strings.\r\n\r\nSolution: Convert buffer text directly to UTF-8 based `schar_T` values.\r\n\r\nThe limit of the text size is now in `schar_T` bytes, which is currently 31+1 but easily could be raised as it no longer multiplies the size of the entire screen grid when not used, the full size is only required for temporary scratch buffers.\r\n\r\nAlso does some general cleanup to `win_line` text handling, which was unnecessarily complicated due to multi-byte rendering being an \"opt-in\" feature long ago. Nowadays, a char is just a char, regardless if it consists of one ASCII byte or multiple bytes.",
+    "body": "not a big deal but the malloc theft police doesn't like that we do xmalloc/xfree for random stuff in `win_line()`. A `xfree()` still remains for API generated fold text.",
     "closed_at": null,
-    "comment_data": [
-        {
-            "_links": {
-                "html": {
-                    "href": "https://github.com/neovim/neovim/pull/25934#discussion_r1386519960"
-                },
-                "pull_request": {
-                    "href": "https://api.github.com/repos/neovim/neovim/pulls/25934"
-                },
-                "self": {
-                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1386519960"
-                }
-            },
-            "author_association": "MEMBER",
-            "body": "This looks really strange. I think if two overflows can happen on this line if `utf_cp_head_off()` returns a negative value, one in the `(size_t)` cast and one in the subtraction.",
-            "commit_id": "b6b822bff04ff393ba0dae4b00f00a4519533dd8",
-            "created_at": "2023-11-08T12:11:20Z",
-            "diff_hunk": "@@ -254,11 +239,10 @@ void line_do_arabic_shape(schar_T *buf, int cols)\n     int off = utf_char2len(c0) + (c1 ? utf_char2len(c1) : 0);\n     size_t rest = strlen(scbuf + off);\n     if (rest + (size_t)off + 1 > MAX_SCHAR_SIZE) {\n-      // TODO(bfredl): this cannot happen just yet, as we only construct\n-      // schar_T values with up to MAX_MCO+1 composing codepoints. When code\n-      // is improved so that MAX_SCHAR_SIZE becomes the only/sharp limit,\n-      // we need be able to peel off a composing char which doesn't fit anymore.\n-      abort();\n+      // Too bigly, discard one code-point.\n+      // This should be enough as c0 cannot grow more than from 2 to 4 bytes\n+      // (base arabic to extended arabic)\n+      rest -= (size_t)utf_cp_head_off(scbuf + off, scbuf + off + rest - 1) + 1;",
-            "html_url": "https://github.com/neovim/neovim/pull/25934#discussion_r1386519960",
-            "id": 1386519960,
-            "line": 245,
-            "node_id": "PRRC_kwDOAPphoM5SpJ2Y",
-            "original_commit_id": "484d18c6fde7a27187831914782d150171f60175",
-            "original_line": 245,
-            "original_position": 34,
-            "original_start_line": null,
-            "path": "src/nvim/grid.c",
-            "position": 34,
-            "pull_request_review_id": 1720182531,
-            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/25934",
-            "reactions": {
-                "+1": 0,
-                "-1": 0,
-                "confused": 0,
-                "eyes": 0,
-                "heart": 0,
-                "hooray": 0,
-                "laugh": 0,
-                "rocket": 0,
-                "total_count": 0,
-                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1386519960/reactions"
-            },
-            "side": "RIGHT",
-            "start_line": null,
-            "start_side": null,
-            "subject_type": "line",
-            "updated_at": "2023-11-08T12:13:22Z",
-            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1386519960",
-            "user": {
-                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
-                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
-                "followers_url": "https://api.github.com/users/zeertzjq/followers",
-                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
-                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
-                "gravatar_id": "",
-                "html_url": "https://github.com/zeertzjq",
-                "id": 35768171,
-                "login": "zeertzjq",
-                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
-                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
-                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
-                "repos_url": "https://api.github.com/users/zeertzjq/repos",
-                "site_admin": false,
-                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
-                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
-                "type": "User",
-                "url": "https://api.github.com/users/zeertzjq"
-            }
-        },
-        {
-            "_links": {
-                "html": {
-                    "href": "https://github.com/neovim/neovim/pull/25934#discussion_r1386539484"
-                },
-                "pull_request": {
-                    "href": "https://api.github.com/repos/neovim/neovim/pulls/25934"
-                },
-                "self": {
-                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1386539484"
-                }
-            },
-            "author_association": "MEMBER",
-            "body": "right, the function tries to be \"helpful\" and returns an already negated value.",
-            "commit_id": "b6b822bff04ff393ba0dae4b00f00a4519533dd8",
-            "created_at": "2023-11-08T12:28:19Z",
-            "diff_hunk": "@@ -254,11 +239,10 @@ void line_do_arabic_shape(schar_T *buf, int cols)\n     int off = utf_char2len(c0) + (c1 ? utf_char2len(c1) : 0);\n     size_t rest = strlen(scbuf + off);\n     if (rest + (size_t)off + 1 > MAX_SCHAR_SIZE) {\n-      // TODO(bfredl): this cannot happen just yet, as we only construct\n-      // schar_T values with up to MAX_MCO+1 composing codepoints. When code\n-      // is improved so that MAX_SCHAR_SIZE becomes the only/sharp limit,\n-      // we need be able to peel off a composing char which doesn't fit anymore.\n-      abort();\n+      // Too bigly, discard one code-point.\n+      // This should be enough as c0 cannot grow more than from 2 to 4 bytes\n+      // (base arabic to extended arabic)\n+      rest -= (size_t)utf_cp_head_off(scbuf + off, scbuf + off + rest - 1) + 1;",
-            "html_url": "https://github.com/neovim/neovim/pull/25934#discussion_r1386539484",
-            "id": 1386539484,
-            "in_reply_to_id": 1386519960,
-            "line": 245,
-            "node_id": "PRRC_kwDOAPphoM5SpOnc",
-            "original_commit_id": "484d18c6fde7a27187831914782d150171f60175",
-            "original_line": 245,
-            "original_position": 34,
-            "original_start_line": null,
-            "path": "src/nvim/grid.c",
-            "position": 34,
-            "pull_request_review_id": 1720215081,
-            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/25934",
-            "reactions": {
-                "+1": 0,
-                "-1": 0,
-                "confused": 0,
-                "eyes": 0,
-                "heart": 0,
-                "hooray": 0,
-                "laugh": 0,
-                "rocket": 0,
-                "total_count": 0,
-                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1386539484/reactions"
-            },
-            "side": "RIGHT",
-            "start_line": null,
-            "start_side": null,
-            "subject_type": "line",
-            "updated_at": "2023-11-08T12:28:19Z",
-            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1386539484",
-            "user": {
-                "avatar_url": "https://avatars.githubusercontent.com/u/1363104?v=4",
-                "events_url": "https://api.github.com/users/bfredl/events{/privacy}",
-                "followers_url": "https://api.github.com/users/bfredl/followers",
-                "following_url": "https://api.github.com/users/bfredl/following{/other_user}",
-                "gists_url": "https://api.github.com/users/bfredl/gists{/gist_id}",
-                "gravatar_id": "",
-                "html_url": "https://github.com/bfredl",
-                "id": 1363104,
-                "login": "bfredl",
-                "node_id": "MDQ6VXNlcjEzNjMxMDQ=",
-                "organizations_url": "https://api.github.com/users/bfredl/orgs",
-                "received_events_url": "https://api.github.com/users/bfredl/received_events",
-                "repos_url": "https://api.github.com/users/bfredl/repos",
-                "site_admin": false,
-                "starred_url": "https://api.github.com/users/bfredl/starred{/owner}{/repo}",
-                "subscriptions_url": "https://api.github.com/users/bfredl/subscriptions",
-                "type": "User",
-                "url": "https://api.github.com/users/bfredl"
-            }
-        }
-    ],
+    "comment_data": [],
     "comment_regular_data": [],
-    "comments_url": "https://api.github.com/repos/neovim/neovim/issues/25934/comments",
-    "commits_url": "https://api.github.com/repos/neovim/neovim/pulls/25934/commits",
-    "created_at": "2023-11-08T11:27:31Z",
-    "diff_url": "https://github.com/neovim/neovim/pull/25934.diff",
-    "draft": true,
+    "comments_url": "https://api.github.com/repos/neovim/neovim/issues/25954/comments",
+    "commits_url": "https://api.github.com/repos/neovim/neovim/pulls/25954/commits",
+    "created_at": "2023-11-09T20:01:58Z",
+    "diff_url": "https://github.com/neovim/neovim/pull/25954.diff",
+    "draft": false,
     "head": {
-        "label": "bfredl:screenlinechar",
-        "ref": "screenlinechar",
+        "label": "bfredl:noxmalloc",
+        "ref": "noxmalloc",
         "repo": {
             "allow_forking": true,
             "archive_url": "https://api.github.com/repos/bfredl/neovim/{archive_format}{/ref}",
@@ -425,7 +287,7 @@
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "b6b822bff04ff393ba0dae4b00f00a4519533dd8",
+        "sha": "74581ec7ebd5f9b3d47f6b1ee04a87327ad730a1",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1363104?v=4",
             "events_url": "https://api.github.com/users/bfredl/events{/privacy}",
@@ -447,9 +309,9 @@
             "url": "https://api.github.com/users/bfredl"
         }
     },
-    "html_url": "https://github.com/neovim/neovim/pull/25934",
-    "id": 1592413624,
-    "issue_url": "https://api.github.com/repos/neovim/neovim/issues/25934",
+    "html_url": "https://github.com/neovim/neovim/pull/25954",
+    "id": 1595037779,
+    "issue_url": "https://api.github.com/repos/neovim/neovim/issues/25954",
     "labels": [
         {
             "color": "C5DEF5",
@@ -462,21 +324,21 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "96fca26a7d05399eb37f1d948f4677113aafeb3f",
+    "merge_commit_sha": "0e5771ba796f1555540dc354c220a55a129a5a19",
     "merged_at": null,
     "milestone": null,
-    "node_id": "PR_kwDOAPphoM5e6k24",
-    "number": 25934,
-    "patch_url": "https://github.com/neovim/neovim/pull/25934.patch",
+    "node_id": "PR_kwDOAPphoM5fElhT",
+    "number": 25954,
+    "patch_url": "https://github.com/neovim/neovim/pull/25954.patch",
     "requested_reviewers": [],
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
-    "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/25934/comments",
+    "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/25954/comments",
     "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/b6b822bff04ff393ba0dae4b00f00a4519533dd8",
-    "title": "refactor(grid): make screen rendering more multibyte than ever before",
-    "updated_at": "2023-11-09T19:18:41Z",
-    "url": "https://api.github.com/repos/neovim/neovim/pulls/25934",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/74581ec7ebd5f9b3d47f6b1ee04a87327ad730a1",
+    "title": "refactor(drawline): avoid xmalloc/xfree cycles on each screenline",
+    "updated_at": "2023-11-09T20:51:26Z",
+    "url": "https://api.github.com/repos/neovim/neovim/pulls/25954",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1363104?v=4",
         "events_url": "https://api.github.com/users/bfredl/events{/privacy}",
