@@ -184,50 +184,6 @@
         },
         {
             "author_association": "NONE",
-            "body": "imgcat can work well in vim but in neovim it prints chars @justinmk ",
-            "created_at": "2019-01-16T15:48:53Z",
-            "html_url": "https://github.com/neovim/neovim/issues/4349#issuecomment-454828262",
-            "id": 454828262,
-            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/4349",
-            "node_id": "MDEyOklzc3VlQ29tbWVudDQ1NDgyODI2Mg==",
-            "performed_via_github_app": null,
-            "reactions": {
-                "+1": 0,
-                "-1": 0,
-                "confused": 0,
-                "eyes": 0,
-                "heart": 0,
-                "hooray": 0,
-                "laugh": 0,
-                "rocket": 0,
-                "total_count": 0,
-                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/454828262/reactions"
-            },
-            "updated_at": "2019-01-16T15:48:53Z",
-            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/454828262",
-            "user": {
-                "avatar_url": "https://avatars.githubusercontent.com/u/7920667?v=4",
-                "events_url": "https://api.github.com/users/liubog2008/events{/privacy}",
-                "followers_url": "https://api.github.com/users/liubog2008/followers",
-                "following_url": "https://api.github.com/users/liubog2008/following{/other_user}",
-                "gists_url": "https://api.github.com/users/liubog2008/gists{/gist_id}",
-                "gravatar_id": "",
-                "html_url": "https://github.com/liubog2008",
-                "id": 7920667,
-                "login": "liubog2008",
-                "node_id": "MDQ6VXNlcjc5MjA2Njc=",
-                "organizations_url": "https://api.github.com/users/liubog2008/orgs",
-                "received_events_url": "https://api.github.com/users/liubog2008/received_events",
-                "repos_url": "https://api.github.com/users/liubog2008/repos",
-                "site_admin": false,
-                "starred_url": "https://api.github.com/users/liubog2008/starred{/owner}{/repo}",
-                "subscriptions_url": "https://api.github.com/users/liubog2008/subscriptions",
-                "type": "User",
-                "url": "https://api.github.com/users/liubog2008"
-            }
-        },
-        {
-            "author_association": "NONE",
             "body": "~It looks that `vterm_state_set_unrecognised_fallbacks` is not called though libvterm is updated?~",
             "created_at": "2019-01-16T16:01:28Z",
             "html_url": "https://github.com/neovim/neovim/issues/4349#issuecomment-454833527",
@@ -379,7 +335,7 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/503972745/reactions"
             },
-            "updated_at": "2019-06-20T10:29:18Z",
+            "updated_at": "2023-11-13T20:26:28Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/503972745",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/1813121?v=4",
@@ -1108,7 +1064,7 @@
         },
         {
             "author_association": "NONE",
-            "body": "I registered this `osc` callback:\r\n\r\n```c\r\nstatic int oscCallback(const char *c, size_t s, void *a)\r\n{\r\n  int fd;\r\n  fd = open(\"/tmp/log\", O_WRONLY | O_CREAT | O_APPEND, 0644);\r\n\r\n  write(fd, \"\\e]\", 2);\r\n  write(fd, c, s);\r\n  write(fd, \"\\7\", 1);\r\n\r\n  close(fd);\r\n  return 1;\r\n}\r\n\r\nVTermParserCallbacks callbacks = {\r\n  .osc = oscCallback,\r\n};\r\n...\r\n  vterm_state_set_unrecognised_fallbacks(state, &callbacks, NULL);\r\n```\r\nthen I was able to do these in Neovim terminal and see the results in another normal iTerm2 terminal by running `tail -f /tmp/log` in it:\r\n1. Cursor shape changes\r\n2. Changing iTerm 2 title\r\n\r\nEverything worked as expected when I cat `/tmp/log` except `imgcat`, orc callback is not triggered when `imgcat` runs. Seems like `libvterm` is doing its job. But when instead of `fd` I wrote to stdout, things got ugly and part of the prompt rendered out of the terminal window in another buffer. I guess in Neovim realm, communicating with the underlying terminal Is not as easy as directly writing to stdout.\r\n\r\nWe may be able to get rid of the virtual cursor and let the running application (bash, fish, node, etc) directly set the cursor shape by communicating with the underlying terminal emulator.\r\n\r\nAlso it may break some people's workflow, commands that were ignored in the past, now reach the underlying terminal emulator, there may be resize commands, setting title commands, setting working directory commands, etc so it will be a breaking change (someone may have an iTerm2 script that does something based on the title of the terminal and doesn't expect Neovim's embedded terminal change that, etc) so we may want to start with a feature flag that is disabled by default.\r\n\r\nNote for @leonerd: `imgcat` did not work as none of the fallback callbacks were called after running `imgcat`, I'm going to read the code to find out what are the conditions for calling `osc` callback and which condition is not satisfied with `imgcat` output. Please let me know if you have any suggestions.",
+            "body": "I registered this `osc` callback:\r\n\r\n```c\r\nstatic int oscCallback(const char *c, size_t s, void *a)\r\n{\r\n  int fd;\r\n  fd = open(\"/tmp/log\", O_WRONLY | O_CREAT | O_APPEND, 0644);\r\n\r\n  write(fd, \"\\e]\", 2);\r\n  write(fd, c, s);\r\n  write(fd, \"\\7\", 1);\r\n\r\n  close(fd);\r\n  return 1;\r\n}\r\n\r\nVTermParserCallbacks callbacks = {\r\n  .osc = oscCallback,\r\n};\r\n...\r\n  vterm_state_set_unrecognised_fallbacks(state, &callbacks, NULL);\r\n```\r\nthen I was able to do these in Neovim terminal and see the results in another normal iTerm2 terminal by running `tail -f /tmp/log` in it:\r\n1. Cursor shape changes\r\n2. Changing iTerm 2 title\r\n\r\nEverything worked as expected when I cat `/tmp/log` except `imgcat`, oscCallback is not triggered when `imgcat` runs. Seems like `libvterm` is doing its job. But when instead of `fd` I wrote to stdout, things got ugly and part of the prompt rendered out of the terminal window in another buffer. I guess in Neovim realm, communicating with the underlying terminal Is not as easy as directly writing to stdout.\r\n\r\nWe may be able to get rid of the virtual cursor and let the running application (bash, fish, node, etc) directly set the cursor shape by communicating with the underlying terminal emulator.\r\n\r\nAlso it may break some people's workflow, commands that were ignored in the past, now reach the underlying terminal emulator, there may be resize commands, setting title commands, setting working directory commands, etc so it will be a breaking change (someone may have an iTerm2 script that does something based on the title of the terminal and doesn't expect Neovim's embedded terminal change that, etc) so we may want to start with a feature flag that is disabled by default.\r\n\r\nNote for @leonerd: `imgcat` did not work as none of the fallback callbacks were called after running `imgcat`, I'm going to read the code to find out what are the conditions for calling `osc` callback and which condition is not satisfied with `imgcat` output. Please let me know if you have any suggestions.",
             "created_at": "2022-09-05T13:38:24Z",
             "html_url": "https://github.com/neovim/neovim/issues/4349#issuecomment-1237045989",
             "id": 1237045989,
@@ -1127,7 +1083,7 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1237045989/reactions"
             },
-            "updated_at": "2022-09-05T13:41:45Z",
+            "updated_at": "2023-11-13T21:04:35Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1237045989",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/1270688?v=4",
@@ -1987,7 +1943,7 @@
             }
         }
     ],
-    "comments": 45,
+    "comments": 44,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/4349/comments",
     "created_at": "2016-02-25T17:05:19Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/4349/events",
@@ -2026,7 +1982,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 587,
+        "closed_issues": 590,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -2055,10 +2011,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 412,
+        "open_issues": 410,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2023-10-17T10:34:06Z",
+        "updated_at": "2023-11-13T18:53:50Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "MDU6SXNzdWUxMzY0NDgzODI=",
@@ -2081,7 +2037,7 @@
     "state_reason": "reopened",
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/4349/timeline",
     "title": ":term should forward unknown sequences to host",
-    "updated_at": "2023-10-18T11:09:36Z",
+    "updated_at": "2023-11-13T21:04:35Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/4349",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/251450?v=4",
