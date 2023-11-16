@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/26020"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/5eb47d8da587053b4e780428a4f20ec33f38016c"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/195d3a58981e61d2459628bc643b895835213718"
         }
     },
     "active_lock_reason": null,
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1679,
-            "open_issues_count": 1679,
+            "open_issues": 1682,
+            "open_issues_count": 1682,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -118,11 +118,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2023-11-15T00:25:36Z",
+            "pushed_at": "2023-11-16T01:54:47Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 230819,
+            "size": 230640,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 70893,
+            "stargazers_count": 70930,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -140,14 +140,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2023-11-15T01:34:38Z",
+            "updated_at": "2023-11-16T01:40:26Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 70893,
-            "watchers_count": 70893,
+            "watchers": 70930,
+            "watchers_count": 70930,
             "web_commit_signoff_required": false
         },
-        "sha": "b73a829837bbc05840ae00cbe514fb1786695614",
+        "sha": "d92dd2a0c05148154c353f0e7cd2099b2427308a",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -169,8 +169,8 @@
             "url": "https://api.github.com/users/neovim"
         }
     },
-    "body": "window.c is too long. moved to floatwin.c It is convenient to add any floating window related functions later.",
-    "closed_at": null,
+    "body": "window.c is too long. moved to winfloat.c (like vim popupwin.c) It is convenient to add any floating window related functions later.",
+    "closed_at": "2023-11-16T01:54:47Z",
     "comment_data": [
         {
             "_links": {
@@ -186,7 +186,7 @@
             },
             "author_association": "MEMBER",
             "body": "`win_float` is probably a good prefix to use for the function names.\r\n\r\nI guess the file should be named `winfloat.c/h` so it is easily discoverable next to `window.c/h`",
-            "commit_id": "5eb47d8da587053b4e780428a4f20ec33f38016c",
+            "commit_id": "195d3a58981e61d2459628bc643b895835213718",
             "created_at": "2023-11-14T13:29:10Z",
             "diff_hunk": "@@ -0,0 +1,278 @@\n+// This is an open source non-commercial project. Dear PVS-Studio, please check\n+// it. PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com\n+\n+#include <stdbool.h>\n+\n+#include \"klib/kvec.h\"\n+#include \"nvim/api/private/helpers.h\"\n+#include \"nvim/buffer_defs.h\"\n+#include \"nvim/drawscreen.h\"\n+#include \"nvim/floatwin.h\"\n+#include \"nvim/globals.h\"\n+#include \"nvim/grid.h\"\n+#include \"nvim/mouse.h\"\n+#include \"nvim/move.h\"\n+#include \"nvim/option.h\"\n+#include \"nvim/optionstr.h\"\n+#include \"nvim/ui.h\"\n+#include \"nvim/vim.h\"\n+#include \"nvim/window.h\"\n+\n+/// Create a new float.\n+///\n+/// @param wp      if NULL, allocate a new window, otherwise turn existing window into a float.\n+///                It must then already belong to the current tabpage!\n+/// @param last    make the window the last one in the window list.\n+///                Only used when allocating the autocommand window.\n+/// @param config  must already have been validated!\n+win_T *win_new_float(win_T *wp, bool last, FloatConfig fconfig, Error *err)\n+{\n+  if (wp == NULL) {\n+    wp = win_alloc(last ? lastwin : lastwin_nofloating(), false);\n+    win_init(wp, curwin, 0);\n+  } else {\n+    assert(!last);\n+    assert(!wp->w_floating);\n+    if (firstwin == wp && lastwin_nofloating() == wp) {\n+      // last non-float\n+      api_set_error(err, kErrorTypeException,\n+                    \"Cannot change last window into float\");\n+      return NULL;\n+    } else if (!win_valid(wp)) {\n+      api_set_error(err, kErrorTypeException,\n+                    \"Cannot change window from different tabpage into float\");\n+      return NULL;\n+    }\n+    int dir;\n+    winframe_remove(wp, &dir, NULL);\n+    XFREE_CLEAR(wp->w_frame);\n+    (void)win_comp_pos();  // recompute window positions\n+    win_remove(wp, NULL);\n+    win_append(lastwin_nofloating(), wp);\n+  }\n+  wp->w_floating = true;\n+  wp->w_status_height = 0;\n+  wp->w_winbar_height = 0;\n+  wp->w_hsep_height = 0;\n+  wp->w_vsep_width = 0;\n+\n+  win_config_float(wp, fconfig);\n+  win_set_inner_size(wp, true);\n+  wp->w_pos_changed = true;\n+  redraw_later(wp, UPD_VALID);\n+  return wp;\n+}\n+\n+void win_set_minimal_style(win_T *wp)\n+{\n+  wp->w_p_nu = false;\n+  wp->w_p_rnu = false;\n+  wp->w_p_cul = false;\n+  wp->w_p_cuc = false;\n+  wp->w_p_spell = false;\n+  wp->w_p_list = false;\n+\n+  // Hide EOB region: use \" \" fillchar and cleared highlighting\n+  if (wp->w_p_fcs_chars.eob != ' ') {\n+    char *old = wp->w_p_fcs;\n+    wp->w_p_fcs = ((*old == NUL)\n+                   ? xstrdup(\"eob: \")\n+                   : concat_str(old, \",eob: \"));\n+    free_string_option(old);\n+  }\n+\n+  // TODO(bfredl): this could use a highlight namespace directly,\n+  // and avoid peculiarities around window options\n+  char *old = wp->w_p_winhl;\n+  wp->w_p_winhl = ((*old == NUL)\n+                   ? xstrdup(\"EndOfBuffer:\")\n+                   : concat_str(old, \",EndOfBuffer:\"));\n+  free_string_option(old);\n+  parse_winhl_opt(wp);\n+\n+  // signcolumn: use 'auto'\n+  if (wp->w_p_scl[0] != 'a' || strlen(wp->w_p_scl) >= 8) {\n+    free_string_option(wp->w_p_scl);\n+    wp->w_p_scl = xstrdup(\"auto\");\n+  }\n+\n+  // foldcolumn: use '0'\n+  if (wp->w_p_fdc[0] != '0') {\n+    free_string_option(wp->w_p_fdc);\n+    wp->w_p_fdc = xstrdup(\"0\");\n+  }\n+\n+  // colorcolumn: cleared\n+  if (wp->w_p_cc != NULL && *wp->w_p_cc != NUL) {\n+    free_string_option(wp->w_p_cc);\n+    wp->w_p_cc = xstrdup(\"\");\n+  }\n+\n+  // statuscolumn: cleared\n+  if (wp->w_p_stc != NULL && *wp->w_p_stc != NUL) {\n+    free_string_option(wp->w_p_stc);\n+    wp->w_p_stc = xstrdup(\"\");\n+  }\n+}\n+\n+int win_border_height(win_T *wp)\n+{\n+  return wp->w_border_adj[0] + wp->w_border_adj[2];\n+}\n+\n+int win_border_width(win_T *wp)\n+{\n+  return wp->w_border_adj[1] + wp->w_border_adj[3];\n+}\n+\n+void win_config_float(win_T *wp, FloatConfig fconfig)\n+{\n+  wp->w_width = MAX(fconfig.width, 1);\n+  wp->w_height = MAX(fconfig.height, 1);\n+\n+  if (fconfig.relative == kFloatRelativeCursor) {\n+    fconfig.relative = kFloatRelativeWindow;\n+    fconfig.row += curwin->w_wrow;\n+    fconfig.col += curwin->w_wcol;\n+    fconfig.window = curwin->handle;\n+  } else if (fconfig.relative == kFloatRelativeMouse) {\n+    int row = mouse_row, col = mouse_col, grid = mouse_grid;\n+    win_T *mouse_win = mouse_find_win(&grid, &row, &col);\n+    if (mouse_win != NULL) {\n+      fconfig.relative = kFloatRelativeWindow;\n+      fconfig.row += row;\n+      fconfig.col += col;\n+      fconfig.window = mouse_win->handle;\n+    }\n+  }\n+\n+  bool change_external = fconfig.external != wp->w_float_config.external;\n+  bool change_border = (fconfig.border != wp->w_float_config.border\n+                        || memcmp(fconfig.border_hl_ids,\n+                                  wp->w_float_config.border_hl_ids,\n+                                  sizeof fconfig.border_hl_ids) != 0);\n+\n+  wp->w_float_config = fconfig;\n+\n+  bool has_border = wp->w_floating && wp->w_float_config.border;\n+  for (int i = 0; i < 4; i++) {\n+    int new_adj = has_border && wp->w_float_config.border_chars[2 * i + 1][0];\n+    if (new_adj != wp->w_border_adj[i]) {\n+      change_border = true;\n+      wp->w_border_adj[i] = new_adj;\n+    }\n+  }\n+\n+  if (!ui_has(kUIMultigrid)) {\n+    wp->w_height = MIN(wp->w_height, Rows - win_border_height(wp));\n+    wp->w_width = MIN(wp->w_width, Columns - win_border_width(wp));\n+  }\n+\n+  win_set_inner_size(wp, true);\n+  must_redraw = MAX(must_redraw, UPD_VALID);\n+\n+  wp->w_pos_changed = true;\n+  if (change_external || change_border) {\n+    wp->w_hl_needs_update = true;\n+    redraw_later(wp, UPD_NOT_VALID);\n+  }\n+\n+  // compute initial position\n+  if (wp->w_float_config.relative == kFloatRelativeWindow) {\n+    int row = (int)wp->w_float_config.row;\n+    int col = (int)wp->w_float_config.col;\n+    Error dummy = ERROR_INIT;\n+    win_T *parent = find_window_by_handle(wp->w_float_config.window, &dummy);\n+    if (parent) {\n+      row += parent->w_winrow;\n+      col += parent->w_wincol;\n+      ScreenGrid *grid = &parent->w_grid;\n+      int row_off = 0, col_off = 0;\n+      grid_adjust(&grid, &row_off, &col_off);\n+      row += row_off;\n+      col += col_off;\n+      if (wp->w_float_config.bufpos.lnum >= 0) {\n+        pos_T pos = { wp->w_float_config.bufpos.lnum + 1,\n+                      wp->w_float_config.bufpos.col, 0 };\n+        int trow, tcol, tcolc, tcole;\n+        textpos2screenpos(parent, &pos, &trow, &tcol, &tcolc, &tcole, true);\n+        row += trow - 1;\n+        col += tcol - 1;\n+      }\n+    }\n+    api_clear_error(&dummy);\n+    wp->w_winrow = row;\n+    wp->w_wincol = col;\n+  } else {\n+    wp->w_winrow = (int)fconfig.row;\n+    wp->w_wincol = (int)fconfig.col;\n+  }\n+\n+  // changing border style while keeping border only requires redrawing border\n+  if (fconfig.border) {\n+    wp->w_redr_border = true;\n+    redraw_later(wp, UPD_VALID);\n+  }\n+}\n+\n+static int float_zindex_cmp(const void *a, const void *b)\n+{\n+  return (*(win_T **)b)->w_float_config.zindex - (*(win_T **)a)->w_float_config.zindex;\n+}\n+\n+void win_float_remove(bool bang, int count)\n+{\n+  kvec_t(win_T *) float_win_arr = KV_INITIAL_VALUE;\n+  for (win_T *wp = lastwin; wp && wp->w_floating; wp = wp->w_prev) {\n+    kv_push(float_win_arr, wp);\n+  }\n+  qsort(float_win_arr.items, float_win_arr.size, sizeof(win_T *), float_zindex_cmp);\n+  for (size_t i = 0; i < float_win_arr.size; i++) {\n+    if (win_close(float_win_arr.items[i], false, false) == FAIL) {\n+      break;\n+    }\n+    if (!bang) {\n+      count--;\n+      if (count == 0) {\n+        break;\n+      }\n+    }\n+  }\n+  kv_destroy(float_win_arr);\n+}\n+\n+void win_check_anchored_floats(win_T *win)\n+{\n+  for (win_T *wp = lastwin; wp && wp->w_floating; wp = wp->w_prev) {\n+    // float might be anchored to moved window\n+    if (wp->w_float_config.relative == kFloatRelativeWindow\n+        && wp->w_float_config.window == win->handle) {\n+      wp->w_pos_changed = true;\n+    }\n+  }\n+}\n+\n+void win_reconfig_floats(void)\n+{\n+  for (win_T *wp = lastwin; wp && wp->w_floating; wp = wp->w_prev) {\n+    win_config_float(wp, wp->w_float_config);\n+  }\n+}\n+\n+/// Return true if \"win\" is floating window in the current tab page.\n+///\n+/// @param  win  window to check\n+bool win_valid_floating(const win_T *win)",
             "html_url": "https://github.com/neovim/neovim/pull/26020#discussion_r1392584068",
@@ -254,7 +254,7 @@
             },
             "author_association": "MEMBER",
             "body": "```suggestion\r\nbool win_float_valid(const win_T *win)\r\n```",
-            "commit_id": "5eb47d8da587053b4e780428a4f20ec33f38016c",
+            "commit_id": "195d3a58981e61d2459628bc643b895835213718",
             "created_at": "2023-11-14T13:29:30Z",
             "diff_hunk": "@@ -0,0 +1,278 @@\n+// This is an open source non-commercial project. Dear PVS-Studio, please check\n+// it. PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com\n+\n+#include <stdbool.h>\n+\n+#include \"klib/kvec.h\"\n+#include \"nvim/api/private/helpers.h\"\n+#include \"nvim/buffer_defs.h\"\n+#include \"nvim/drawscreen.h\"\n+#include \"nvim/floatwin.h\"\n+#include \"nvim/globals.h\"\n+#include \"nvim/grid.h\"\n+#include \"nvim/mouse.h\"\n+#include \"nvim/move.h\"\n+#include \"nvim/option.h\"\n+#include \"nvim/optionstr.h\"\n+#include \"nvim/ui.h\"\n+#include \"nvim/vim.h\"\n+#include \"nvim/window.h\"\n+\n+/// Create a new float.\n+///\n+/// @param wp      if NULL, allocate a new window, otherwise turn existing window into a float.\n+///                It must then already belong to the current tabpage!\n+/// @param last    make the window the last one in the window list.\n+///                Only used when allocating the autocommand window.\n+/// @param config  must already have been validated!\n+win_T *win_new_float(win_T *wp, bool last, FloatConfig fconfig, Error *err)\n+{\n+  if (wp == NULL) {\n+    wp = win_alloc(last ? lastwin : lastwin_nofloating(), false);\n+    win_init(wp, curwin, 0);\n+  } else {\n+    assert(!last);\n+    assert(!wp->w_floating);\n+    if (firstwin == wp && lastwin_nofloating() == wp) {\n+      // last non-float\n+      api_set_error(err, kErrorTypeException,\n+                    \"Cannot change last window into float\");\n+      return NULL;\n+    } else if (!win_valid(wp)) {\n+      api_set_error(err, kErrorTypeException,\n+                    \"Cannot change window from different tabpage into float\");\n+      return NULL;\n+    }\n+    int dir;\n+    winframe_remove(wp, &dir, NULL);\n+    XFREE_CLEAR(wp->w_frame);\n+    (void)win_comp_pos();  // recompute window positions\n+    win_remove(wp, NULL);\n+    win_append(lastwin_nofloating(), wp);\n+  }\n+  wp->w_floating = true;\n+  wp->w_status_height = 0;\n+  wp->w_winbar_height = 0;\n+  wp->w_hsep_height = 0;\n+  wp->w_vsep_width = 0;\n+\n+  win_config_float(wp, fconfig);\n+  win_set_inner_size(wp, true);\n+  wp->w_pos_changed = true;\n+  redraw_later(wp, UPD_VALID);\n+  return wp;\n+}\n+\n+void win_set_minimal_style(win_T *wp)\n+{\n+  wp->w_p_nu = false;\n+  wp->w_p_rnu = false;\n+  wp->w_p_cul = false;\n+  wp->w_p_cuc = false;\n+  wp->w_p_spell = false;\n+  wp->w_p_list = false;\n+\n+  // Hide EOB region: use \" \" fillchar and cleared highlighting\n+  if (wp->w_p_fcs_chars.eob != ' ') {\n+    char *old = wp->w_p_fcs;\n+    wp->w_p_fcs = ((*old == NUL)\n+                   ? xstrdup(\"eob: \")\n+                   : concat_str(old, \",eob: \"));\n+    free_string_option(old);\n+  }\n+\n+  // TODO(bfredl): this could use a highlight namespace directly,\n+  // and avoid peculiarities around window options\n+  char *old = wp->w_p_winhl;\n+  wp->w_p_winhl = ((*old == NUL)\n+                   ? xstrdup(\"EndOfBuffer:\")\n+                   : concat_str(old, \",EndOfBuffer:\"));\n+  free_string_option(old);\n+  parse_winhl_opt(wp);\n+\n+  // signcolumn: use 'auto'\n+  if (wp->w_p_scl[0] != 'a' || strlen(wp->w_p_scl) >= 8) {\n+    free_string_option(wp->w_p_scl);\n+    wp->w_p_scl = xstrdup(\"auto\");\n+  }\n+\n+  // foldcolumn: use '0'\n+  if (wp->w_p_fdc[0] != '0') {\n+    free_string_option(wp->w_p_fdc);\n+    wp->w_p_fdc = xstrdup(\"0\");\n+  }\n+\n+  // colorcolumn: cleared\n+  if (wp->w_p_cc != NULL && *wp->w_p_cc != NUL) {\n+    free_string_option(wp->w_p_cc);\n+    wp->w_p_cc = xstrdup(\"\");\n+  }\n+\n+  // statuscolumn: cleared\n+  if (wp->w_p_stc != NULL && *wp->w_p_stc != NUL) {\n+    free_string_option(wp->w_p_stc);\n+    wp->w_p_stc = xstrdup(\"\");\n+  }\n+}\n+\n+int win_border_height(win_T *wp)\n+{\n+  return wp->w_border_adj[0] + wp->w_border_adj[2];\n+}\n+\n+int win_border_width(win_T *wp)\n+{\n+  return wp->w_border_adj[1] + wp->w_border_adj[3];\n+}\n+\n+void win_config_float(win_T *wp, FloatConfig fconfig)\n+{\n+  wp->w_width = MAX(fconfig.width, 1);\n+  wp->w_height = MAX(fconfig.height, 1);\n+\n+  if (fconfig.relative == kFloatRelativeCursor) {\n+    fconfig.relative = kFloatRelativeWindow;\n+    fconfig.row += curwin->w_wrow;\n+    fconfig.col += curwin->w_wcol;\n+    fconfig.window = curwin->handle;\n+  } else if (fconfig.relative == kFloatRelativeMouse) {\n+    int row = mouse_row, col = mouse_col, grid = mouse_grid;\n+    win_T *mouse_win = mouse_find_win(&grid, &row, &col);\n+    if (mouse_win != NULL) {\n+      fconfig.relative = kFloatRelativeWindow;\n+      fconfig.row += row;\n+      fconfig.col += col;\n+      fconfig.window = mouse_win->handle;\n+    }\n+  }\n+\n+  bool change_external = fconfig.external != wp->w_float_config.external;\n+  bool change_border = (fconfig.border != wp->w_float_config.border\n+                        || memcmp(fconfig.border_hl_ids,\n+                                  wp->w_float_config.border_hl_ids,\n+                                  sizeof fconfig.border_hl_ids) != 0);\n+\n+  wp->w_float_config = fconfig;\n+\n+  bool has_border = wp->w_floating && wp->w_float_config.border;\n+  for (int i = 0; i < 4; i++) {\n+    int new_adj = has_border && wp->w_float_config.border_chars[2 * i + 1][0];\n+    if (new_adj != wp->w_border_adj[i]) {\n+      change_border = true;\n+      wp->w_border_adj[i] = new_adj;\n+    }\n+  }\n+\n+  if (!ui_has(kUIMultigrid)) {\n+    wp->w_height = MIN(wp->w_height, Rows - win_border_height(wp));\n+    wp->w_width = MIN(wp->w_width, Columns - win_border_width(wp));\n+  }\n+\n+  win_set_inner_size(wp, true);\n+  must_redraw = MAX(must_redraw, UPD_VALID);\n+\n+  wp->w_pos_changed = true;\n+  if (change_external || change_border) {\n+    wp->w_hl_needs_update = true;\n+    redraw_later(wp, UPD_NOT_VALID);\n+  }\n+\n+  // compute initial position\n+  if (wp->w_float_config.relative == kFloatRelativeWindow) {\n+    int row = (int)wp->w_float_config.row;\n+    int col = (int)wp->w_float_config.col;\n+    Error dummy = ERROR_INIT;\n+    win_T *parent = find_window_by_handle(wp->w_float_config.window, &dummy);\n+    if (parent) {\n+      row += parent->w_winrow;\n+      col += parent->w_wincol;\n+      ScreenGrid *grid = &parent->w_grid;\n+      int row_off = 0, col_off = 0;\n+      grid_adjust(&grid, &row_off, &col_off);\n+      row += row_off;\n+      col += col_off;\n+      if (wp->w_float_config.bufpos.lnum >= 0) {\n+        pos_T pos = { wp->w_float_config.bufpos.lnum + 1,\n+                      wp->w_float_config.bufpos.col, 0 };\n+        int trow, tcol, tcolc, tcole;\n+        textpos2screenpos(parent, &pos, &trow, &tcol, &tcolc, &tcole, true);\n+        row += trow - 1;\n+        col += tcol - 1;\n+      }\n+    }\n+    api_clear_error(&dummy);\n+    wp->w_winrow = row;\n+    wp->w_wincol = col;\n+  } else {\n+    wp->w_winrow = (int)fconfig.row;\n+    wp->w_wincol = (int)fconfig.col;\n+  }\n+\n+  // changing border style while keeping border only requires redrawing border\n+  if (fconfig.border) {\n+    wp->w_redr_border = true;\n+    redraw_later(wp, UPD_VALID);\n+  }\n+}\n+\n+static int float_zindex_cmp(const void *a, const void *b)\n+{\n+  return (*(win_T **)b)->w_float_config.zindex - (*(win_T **)a)->w_float_config.zindex;\n+}\n+\n+void win_float_remove(bool bang, int count)\n+{\n+  kvec_t(win_T *) float_win_arr = KV_INITIAL_VALUE;\n+  for (win_T *wp = lastwin; wp && wp->w_floating; wp = wp->w_prev) {\n+    kv_push(float_win_arr, wp);\n+  }\n+  qsort(float_win_arr.items, float_win_arr.size, sizeof(win_T *), float_zindex_cmp);\n+  for (size_t i = 0; i < float_win_arr.size; i++) {\n+    if (win_close(float_win_arr.items[i], false, false) == FAIL) {\n+      break;\n+    }\n+    if (!bang) {\n+      count--;\n+      if (count == 0) {\n+        break;\n+      }\n+    }\n+  }\n+  kv_destroy(float_win_arr);\n+}\n+\n+void win_check_anchored_floats(win_T *win)\n+{\n+  for (win_T *wp = lastwin; wp && wp->w_floating; wp = wp->w_prev) {\n+    // float might be anchored to moved window\n+    if (wp->w_float_config.relative == kFloatRelativeWindow\n+        && wp->w_float_config.window == win->handle) {\n+      wp->w_pos_changed = true;\n+    }\n+  }\n+}\n+\n+void win_reconfig_floats(void)\n+{\n+  for (win_T *wp = lastwin; wp && wp->w_floating; wp = wp->w_prev) {\n+    win_config_float(wp, wp->w_float_config);\n+  }\n+}\n+\n+/// Return true if \"win\" is floating window in the current tab page.\n+///\n+/// @param  win  window to check\n+bool win_valid_floating(const win_T *win)",
             "html_url": "https://github.com/neovim/neovim/pull/26020#discussion_r1392584454",
@@ -322,7 +322,7 @@
             },
             "author_association": "MEMBER",
             "body": "sure",
-            "commit_id": "5eb47d8da587053b4e780428a4f20ec33f38016c",
+            "commit_id": "195d3a58981e61d2459628bc643b895835213718",
             "created_at": "2023-11-14T13:37:37Z",
             "diff_hunk": "@@ -0,0 +1,278 @@\n+// This is an open source non-commercial project. Dear PVS-Studio, please check\n+// it. PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com\n+\n+#include <stdbool.h>\n+\n+#include \"klib/kvec.h\"\n+#include \"nvim/api/private/helpers.h\"\n+#include \"nvim/buffer_defs.h\"\n+#include \"nvim/drawscreen.h\"\n+#include \"nvim/floatwin.h\"\n+#include \"nvim/globals.h\"\n+#include \"nvim/grid.h\"\n+#include \"nvim/mouse.h\"\n+#include \"nvim/move.h\"\n+#include \"nvim/option.h\"\n+#include \"nvim/optionstr.h\"\n+#include \"nvim/ui.h\"\n+#include \"nvim/vim.h\"\n+#include \"nvim/window.h\"\n+\n+/// Create a new float.\n+///\n+/// @param wp      if NULL, allocate a new window, otherwise turn existing window into a float.\n+///                It must then already belong to the current tabpage!\n+/// @param last    make the window the last one in the window list.\n+///                Only used when allocating the autocommand window.\n+/// @param config  must already have been validated!\n+win_T *win_new_float(win_T *wp, bool last, FloatConfig fconfig, Error *err)\n+{\n+  if (wp == NULL) {\n+    wp = win_alloc(last ? lastwin : lastwin_nofloating(), false);\n+    win_init(wp, curwin, 0);\n+  } else {\n+    assert(!last);\n+    assert(!wp->w_floating);\n+    if (firstwin == wp && lastwin_nofloating() == wp) {\n+      // last non-float\n+      api_set_error(err, kErrorTypeException,\n+                    \"Cannot change last window into float\");\n+      return NULL;\n+    } else if (!win_valid(wp)) {\n+      api_set_error(err, kErrorTypeException,\n+                    \"Cannot change window from different tabpage into float\");\n+      return NULL;\n+    }\n+    int dir;\n+    winframe_remove(wp, &dir, NULL);\n+    XFREE_CLEAR(wp->w_frame);\n+    (void)win_comp_pos();  // recompute window positions\n+    win_remove(wp, NULL);\n+    win_append(lastwin_nofloating(), wp);\n+  }\n+  wp->w_floating = true;\n+  wp->w_status_height = 0;\n+  wp->w_winbar_height = 0;\n+  wp->w_hsep_height = 0;\n+  wp->w_vsep_width = 0;\n+\n+  win_config_float(wp, fconfig);\n+  win_set_inner_size(wp, true);\n+  wp->w_pos_changed = true;\n+  redraw_later(wp, UPD_VALID);\n+  return wp;\n+}\n+\n+void win_set_minimal_style(win_T *wp)\n+{\n+  wp->w_p_nu = false;\n+  wp->w_p_rnu = false;\n+  wp->w_p_cul = false;\n+  wp->w_p_cuc = false;\n+  wp->w_p_spell = false;\n+  wp->w_p_list = false;\n+\n+  // Hide EOB region: use \" \" fillchar and cleared highlighting\n+  if (wp->w_p_fcs_chars.eob != ' ') {\n+    char *old = wp->w_p_fcs;\n+    wp->w_p_fcs = ((*old == NUL)\n+                   ? xstrdup(\"eob: \")\n+                   : concat_str(old, \",eob: \"));\n+    free_string_option(old);\n+  }\n+\n+  // TODO(bfredl): this could use a highlight namespace directly,\n+  // and avoid peculiarities around window options\n+  char *old = wp->w_p_winhl;\n+  wp->w_p_winhl = ((*old == NUL)\n+                   ? xstrdup(\"EndOfBuffer:\")\n+                   : concat_str(old, \",EndOfBuffer:\"));\n+  free_string_option(old);\n+  parse_winhl_opt(wp);\n+\n+  // signcolumn: use 'auto'\n+  if (wp->w_p_scl[0] != 'a' || strlen(wp->w_p_scl) >= 8) {\n+    free_string_option(wp->w_p_scl);\n+    wp->w_p_scl = xstrdup(\"auto\");\n+  }\n+\n+  // foldcolumn: use '0'\n+  if (wp->w_p_fdc[0] != '0') {\n+    free_string_option(wp->w_p_fdc);\n+    wp->w_p_fdc = xstrdup(\"0\");\n+  }\n+\n+  // colorcolumn: cleared\n+  if (wp->w_p_cc != NULL && *wp->w_p_cc != NUL) {\n+    free_string_option(wp->w_p_cc);\n+    wp->w_p_cc = xstrdup(\"\");\n+  }\n+\n+  // statuscolumn: cleared\n+  if (wp->w_p_stc != NULL && *wp->w_p_stc != NUL) {\n+    free_string_option(wp->w_p_stc);\n+    wp->w_p_stc = xstrdup(\"\");\n+  }\n+}\n+\n+int win_border_height(win_T *wp)\n+{\n+  return wp->w_border_adj[0] + wp->w_border_adj[2];\n+}\n+\n+int win_border_width(win_T *wp)\n+{\n+  return wp->w_border_adj[1] + wp->w_border_adj[3];\n+}\n+\n+void win_config_float(win_T *wp, FloatConfig fconfig)\n+{\n+  wp->w_width = MAX(fconfig.width, 1);\n+  wp->w_height = MAX(fconfig.height, 1);\n+\n+  if (fconfig.relative == kFloatRelativeCursor) {\n+    fconfig.relative = kFloatRelativeWindow;\n+    fconfig.row += curwin->w_wrow;\n+    fconfig.col += curwin->w_wcol;\n+    fconfig.window = curwin->handle;\n+  } else if (fconfig.relative == kFloatRelativeMouse) {\n+    int row = mouse_row, col = mouse_col, grid = mouse_grid;\n+    win_T *mouse_win = mouse_find_win(&grid, &row, &col);\n+    if (mouse_win != NULL) {\n+      fconfig.relative = kFloatRelativeWindow;\n+      fconfig.row += row;\n+      fconfig.col += col;\n+      fconfig.window = mouse_win->handle;\n+    }\n+  }\n+\n+  bool change_external = fconfig.external != wp->w_float_config.external;\n+  bool change_border = (fconfig.border != wp->w_float_config.border\n+                        || memcmp(fconfig.border_hl_ids,\n+                                  wp->w_float_config.border_hl_ids,\n+                                  sizeof fconfig.border_hl_ids) != 0);\n+\n+  wp->w_float_config = fconfig;\n+\n+  bool has_border = wp->w_floating && wp->w_float_config.border;\n+  for (int i = 0; i < 4; i++) {\n+    int new_adj = has_border && wp->w_float_config.border_chars[2 * i + 1][0];\n+    if (new_adj != wp->w_border_adj[i]) {\n+      change_border = true;\n+      wp->w_border_adj[i] = new_adj;\n+    }\n+  }\n+\n+  if (!ui_has(kUIMultigrid)) {\n+    wp->w_height = MIN(wp->w_height, Rows - win_border_height(wp));\n+    wp->w_width = MIN(wp->w_width, Columns - win_border_width(wp));\n+  }\n+\n+  win_set_inner_size(wp, true);\n+  must_redraw = MAX(must_redraw, UPD_VALID);\n+\n+  wp->w_pos_changed = true;\n+  if (change_external || change_border) {\n+    wp->w_hl_needs_update = true;\n+    redraw_later(wp, UPD_NOT_VALID);\n+  }\n+\n+  // compute initial position\n+  if (wp->w_float_config.relative == kFloatRelativeWindow) {\n+    int row = (int)wp->w_float_config.row;\n+    int col = (int)wp->w_float_config.col;\n+    Error dummy = ERROR_INIT;\n+    win_T *parent = find_window_by_handle(wp->w_float_config.window, &dummy);\n+    if (parent) {\n+      row += parent->w_winrow;\n+      col += parent->w_wincol;\n+      ScreenGrid *grid = &parent->w_grid;\n+      int row_off = 0, col_off = 0;\n+      grid_adjust(&grid, &row_off, &col_off);\n+      row += row_off;\n+      col += col_off;\n+      if (wp->w_float_config.bufpos.lnum >= 0) {\n+        pos_T pos = { wp->w_float_config.bufpos.lnum + 1,\n+                      wp->w_float_config.bufpos.col, 0 };\n+        int trow, tcol, tcolc, tcole;\n+        textpos2screenpos(parent, &pos, &trow, &tcol, &tcolc, &tcole, true);\n+        row += trow - 1;\n+        col += tcol - 1;\n+      }\n+    }\n+    api_clear_error(&dummy);\n+    wp->w_winrow = row;\n+    wp->w_wincol = col;\n+  } else {\n+    wp->w_winrow = (int)fconfig.row;\n+    wp->w_wincol = (int)fconfig.col;\n+  }\n+\n+  // changing border style while keeping border only requires redrawing border\n+  if (fconfig.border) {\n+    wp->w_redr_border = true;\n+    redraw_later(wp, UPD_VALID);\n+  }\n+}\n+\n+static int float_zindex_cmp(const void *a, const void *b)\n+{\n+  return (*(win_T **)b)->w_float_config.zindex - (*(win_T **)a)->w_float_config.zindex;\n+}\n+\n+void win_float_remove(bool bang, int count)\n+{\n+  kvec_t(win_T *) float_win_arr = KV_INITIAL_VALUE;\n+  for (win_T *wp = lastwin; wp && wp->w_floating; wp = wp->w_prev) {\n+    kv_push(float_win_arr, wp);\n+  }\n+  qsort(float_win_arr.items, float_win_arr.size, sizeof(win_T *), float_zindex_cmp);\n+  for (size_t i = 0; i < float_win_arr.size; i++) {\n+    if (win_close(float_win_arr.items[i], false, false) == FAIL) {\n+      break;\n+    }\n+    if (!bang) {\n+      count--;\n+      if (count == 0) {\n+        break;\n+      }\n+    }\n+  }\n+  kv_destroy(float_win_arr);\n+}\n+\n+void win_check_anchored_floats(win_T *win)\n+{\n+  for (win_T *wp = lastwin; wp && wp->w_floating; wp = wp->w_prev) {\n+    // float might be anchored to moved window\n+    if (wp->w_float_config.relative == kFloatRelativeWindow\n+        && wp->w_float_config.window == win->handle) {\n+      wp->w_pos_changed = true;\n+    }\n+  }\n+}\n+\n+void win_reconfig_floats(void)\n+{\n+  for (win_T *wp = lastwin; wp && wp->w_floating; wp = wp->w_prev) {\n+    win_config_float(wp, wp->w_float_config);\n+  }\n+}\n+\n+/// Return true if \"win\" is floating window in the current tab page.\n+///\n+/// @param  win  window to check\n+bool win_valid_floating(const win_T *win)",
             "html_url": "https://github.com/neovim/neovim/pull/26020#discussion_r1392595152",
@@ -391,7 +391,7 @@
             },
             "author_association": "MEMBER",
             "body": "PVS has been removed\r\n```suggestion\r\n```",
-            "commit_id": "5eb47d8da587053b4e780428a4f20ec33f38016c",
+            "commit_id": "195d3a58981e61d2459628bc643b895835213718",
             "created_at": "2023-11-14T13:54:40Z",
             "diff_hunk": "@@ -0,0 +1,278 @@\n+// This is an open source non-commercial project. Dear PVS-Studio, please check\n+// it. PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com\n+",
             "html_url": "https://github.com/neovim/neovim/pull/26020#discussion_r1392616967",
@@ -424,6 +424,74 @@
             "subject_type": "line",
             "updated_at": "2023-11-14T13:54:40Z",
             "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1392616967",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+                "followers_url": "https://api.github.com/users/zeertzjq/followers",
+                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/zeertzjq",
+                "id": 35768171,
+                "login": "zeertzjq",
+                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+                "repos_url": "https://api.github.com/users/zeertzjq/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/zeertzjq"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26020#discussion_r1394119064"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26020"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1394119064"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\r\n\r\n#ifdef INCLUDE_GENERATED_DECLARATIONS\r\n# include \"winfloat.c.generated.h\"\r\n#endif\r\n\r\n```",
+            "commit_id": "195d3a58981e61d2459628bc643b895835213718",
+            "created_at": "2023-11-15T12:13:31Z",
+            "diff_hunk": "@@ -0,0 +1,275 @@\n+#include <stdbool.h>\n+\n+#include \"klib/kvec.h\"\n+#include \"nvim/api/private/helpers.h\"\n+#include \"nvim/buffer_defs.h\"\n+#include \"nvim/drawscreen.h\"\n+#include \"nvim/globals.h\"\n+#include \"nvim/grid.h\"\n+#include \"nvim/mouse.h\"\n+#include \"nvim/move.h\"\n+#include \"nvim/option.h\"\n+#include \"nvim/optionstr.h\"\n+#include \"nvim/ui.h\"\n+#include \"nvim/vim.h\"\n+#include \"nvim/window.h\"\n+#include \"nvim/winfloat.h\"\n+",
+            "html_url": "https://github.com/neovim/neovim/pull/26020#discussion_r1394119064",
+            "id": 1394119064,
+            "line": 17,
+            "node_id": "PRRC_kwDOAPphoM5TGJGY",
+            "original_commit_id": "5eb47d8da587053b4e780428a4f20ec33f38016c",
+            "original_line": 17,
+            "original_position": 17,
+            "original_start_line": null,
+            "path": "src/nvim/winfloat.c",
+            "position": 17,
+            "pull_request_review_id": 1731904826,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26020",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1394119064/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-11-15T12:13:31Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1394119064",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
                 "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
@@ -540,9 +608,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/glepnir/neovim/pulls{/number}",
-            "pushed_at": "2023-11-14T13:56:50Z",
+            "pushed_at": "2023-11-15T12:16:52Z",
             "releases_url": "https://api.github.com/repos/glepnir/neovim/releases{/id}",
-            "size": 227860,
+            "size": 227723,
             "ssh_url": "git@github.com:glepnir/neovim.git",
             "stargazers_count": 1,
             "stargazers_url": "https://api.github.com/repos/glepnir/neovim/stargazers",
@@ -561,7 +629,7 @@
             "watchers_count": 1,
             "web_commit_signoff_required": false
         },
-        "sha": "5eb47d8da587053b4e780428a4f20ec33f38016c",
+        "sha": "195d3a58981e61d2459628bc643b895835213718",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",
             "events_url": "https://api.github.com/users/glepnir/events{/privacy}",
@@ -598,8 +666,8 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "56c2b66910aa2e41b2c1b27502c397e76316d6a9",
-    "merged_at": null,
+    "merge_commit_sha": "326d46f690b383846f136f2a25523cffe2882f27",
+    "merged_at": "2023-11-16T01:54:47Z",
     "milestone": null,
     "node_id": "PR_kwDOAPphoM5fQIl9",
     "number": 26020,
@@ -608,10 +676,10 @@
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/26020/comments",
-    "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/5eb47d8da587053b4e780428a4f20ec33f38016c",
+    "state": "closed",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/195d3a58981e61d2459628bc643b895835213718",
     "title": "refactor: move some functions to winfloat.c",
-    "updated_at": "2023-11-14T14:18:53Z",
+    "updated_at": "2023-11-16T01:54:48Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/26020",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",
