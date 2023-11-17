@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1679,
-            "open_issues_count": 1679,
+            "open_issues": 1688,
+            "open_issues_count": 1688,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -118,11 +118,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2023-11-15T00:25:36Z",
+            "pushed_at": "2023-11-17T01:59:41Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 230819,
+            "size": 239093,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 70893,
+            "stargazers_count": 70942,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -140,11 +140,11 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2023-11-15T01:34:38Z",
+            "updated_at": "2023-11-17T01:19:06Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 70893,
-            "watchers_count": 70893,
+            "watchers": 70942,
+            "watchers_count": 70942,
             "web_commit_signoff_required": false
         },
         "sha": "d1e0f7454b5fc61d26db5af5ce00c1894e7c49fc",
@@ -185,7 +185,7 @@
                 }
             },
             "author_association": "MEMBER",
-            "body": "If the event is named `TermCode` we could \"osc\", \"dcs\", etc in the event \"pattern\".",
+            "body": "If the event is named ~~`TermCode`~~ `TermRequest` we could \"osc\", \"dcs\", etc in the event \"pattern\".",
             "commit_id": "947a130569da5093da33ef4d3c4df003bab03546",
             "created_at": "2023-11-14T15:17:05Z",
             "diff_hunk": "@@ -169,6 +170,50 @@ static VTermScreenCallbacks vterm_screen_callbacks = {\n   .sb_popline  = term_sb_pop,\n };\n \n+static void emit_osc_event(void **argv)\n+{\n+  int command = (int)(ptrdiff_t)argv[0];\n+  char *payload = argv[1];\n+  int payload_length = (int)(ptrdiff_t)argv[2];\n+\n+  save_v_event_T save_v_event;\n+  dict_T *dict = get_v_event(&save_v_event);\n+\n+  typval_T cmd;\n+  cmd.v_type = VAR_NUMBER;\n+  cmd.vval.v_number = command;\n+  tv_dict_add_nr(dict, S_LEN(\"command\"), cmd.vval.v_number);\n+\n+  typval_T str;\n+  str.v_type = VAR_STRING;\n+  str.vval.v_string = payload;\n+  tv_dict_add_str_len(dict, S_LEN(\"payload\"), str.vval.v_string, payload_length);\n+\n+  tv_dict_set_keys_readonly(dict);\n+\n+  apply_autocmds(EVENT_TERMOSC, NULL, NULL, false, curbuf);\n+\n+  restore_v_event(dict, &save_v_event);\n+  xfree(payload);\n+}\n+\n+static int on_osc(int command, VTermStringFragment frag, void *user)\n+{\n+  char *str = xmemdupz(frag.str, frag.len);\n+  multiqueue_put(main_loop.events, emit_osc_event, 3, command, str, frag.len);\n+  return 1;\n+}\n+\n+static VTermStateFallbacks vterm_fallbacks = {\n+  .control = NULL,\n+  .csi = NULL,\n+  .osc = on_osc,\n+  .dcs = NULL,\n+  .apc = NULL,\n+  .pm = NULL,\n+  .sos = NULL,",
@@ -217,7 +217,7 @@
             "start_line": null,
             "start_side": null,
             "subject_type": "line",
-            "updated_at": "2023-11-14T15:17:05Z",
+            "updated_at": "2023-11-15T17:30:08Z",
             "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1392765089",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -238,6 +238,74 @@
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
                 "url": "https://api.github.com/users/justinmk"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/22159#discussion_r1395916202"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/22159"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1395916202"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Instead of passing the command as a separate field from the payload, I suggest putting the command back into the sequence so that TermRequest handlers can parse the OSC sequence directly (this is how TermResponse works).\r\n\r\nSo e.g. instead of checking `v:event.command` and `v:event.payload`, have only `v:event.termrequest` (or make a `v:termrequest` analogous to `v:termresponse`? Or maybe `v:termresponse` should be moved into `v:event`?) which contains the `\\x1b]{command}` prefix.\r\n\r\n```suggestion\r\n  StringBuilder request = KV_INITIAL_VALUE;\r\n  kv_printf(request, \"\\x1b]%d%s\", command, frag.str);\r\n  multiqueue_put(main_loop.events, emit_osc_event, 1, request.items, request.size);\r\n```",
+            "commit_id": "947a130569da5093da33ef4d3c4df003bab03546",
+            "created_at": "2023-11-16T15:34:09Z",
+            "diff_hunk": "@@ -169,6 +170,50 @@ static VTermScreenCallbacks vterm_screen_callbacks = {\n   .sb_popline  = term_sb_pop,\n };\n \n+static void emit_osc_event(void **argv)\n+{\n+  int command = (int)(ptrdiff_t)argv[0];\n+  char *payload = argv[1];\n+  int payload_length = (int)(ptrdiff_t)argv[2];\n+\n+  save_v_event_T save_v_event;\n+  dict_T *dict = get_v_event(&save_v_event);\n+\n+  typval_T cmd;\n+  cmd.v_type = VAR_NUMBER;\n+  cmd.vval.v_number = command;\n+  tv_dict_add_nr(dict, S_LEN(\"command\"), cmd.vval.v_number);\n+\n+  typval_T str;\n+  str.v_type = VAR_STRING;\n+  str.vval.v_string = payload;\n+  tv_dict_add_str_len(dict, S_LEN(\"payload\"), str.vval.v_string, payload_length);\n+\n+  tv_dict_set_keys_readonly(dict);\n+\n+  apply_autocmds(EVENT_TERMOSC, NULL, NULL, false, curbuf);\n+\n+  restore_v_event(dict, &save_v_event);\n+  xfree(payload);\n+}\n+\n+static int on_osc(int command, VTermStringFragment frag, void *user)\n+{\n+  char *str = xmemdupz(frag.str, frag.len);\n+  multiqueue_put(main_loop.events, emit_osc_event, 3, command, str, frag.len);",
+            "html_url": "https://github.com/neovim/neovim/pull/22159#discussion_r1395916202",
+            "id": 1395916202,
+            "line": 203,
+            "node_id": "PRRC_kwDOAPphoM5TM_2q",
+            "original_commit_id": "947a130569da5093da33ef4d3c4df003bab03546",
+            "original_line": 203,
+            "original_position": 42,
+            "original_start_line": 202,
+            "path": "src/nvim/terminal.c",
+            "position": 42,
+            "pull_request_review_id": 1734748768,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/22159",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 1,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1395916202/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 202,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2023-11-16T15:34:19Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1395916202",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/8965202?v=4",
+                "events_url": "https://api.github.com/users/gpanders/events{/privacy}",
+                "followers_url": "https://api.github.com/users/gpanders/followers",
+                "following_url": "https://api.github.com/users/gpanders/following{/other_user}",
+                "gists_url": "https://api.github.com/users/gpanders/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/gpanders",
+                "id": 8965202,
+                "login": "gpanders",
+                "node_id": "MDQ6VXNlcjg5NjUyMDI=",
+                "organizations_url": "https://api.github.com/users/gpanders/orgs",
+                "received_events_url": "https://api.github.com/users/gpanders/received_events",
+                "repos_url": "https://api.github.com/users/gpanders/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/gpanders/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/gpanders/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/gpanders"
             }
         }
     ],
@@ -527,7 +595,7 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1473688053/reactions"
             },
-            "updated_at": "2023-03-17T11:28:51Z",
+            "updated_at": "2023-11-16T15:49:53Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1473688053",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -847,7 +915,7 @@
     "merged_at": null,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 182,
+        "closed_issues": 184,
         "created_at": "2023-02-02T14:11:43Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1363104?v=4",
@@ -876,10 +944,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/36/labels",
         "node_id": "MI_kwDOAPphoM4AiUsW",
         "number": 36,
-        "open_issues": 130,
+        "open_issues": 129,
         "state": "open",
         "title": "0.10",
-        "updated_at": "2023-11-14T14:54:00Z",
+        "updated_at": "2023-11-16T21:02:47Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/36"
     },
     "node_id": "PR_kwDOAPphoM5JdsFr",
@@ -892,7 +960,7 @@
     "state": "open",
     "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/947a130569da5093da33ef4d3c4df003bab03546",
     "title": "feat(terminal): trigger TermOSC autocommand events",
-    "updated_at": "2023-11-14T15:19:34Z",
+    "updated_at": "2023-11-16T15:49:53Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/22159",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/11534587?v=4",

@@ -1,31 +1,31 @@
 {
     "_links": {
         "comments": {
-            "href": "https://api.github.com/repos/neovim/neovim/issues/25918/comments"
+            "href": "https://api.github.com/repos/neovim/neovim/issues/26075/comments"
         },
         "commits": {
-            "href": "https://api.github.com/repos/neovim/neovim/pulls/25918/commits"
+            "href": "https://api.github.com/repos/neovim/neovim/pulls/26075/commits"
         },
         "html": {
-            "href": "https://github.com/neovim/neovim/pull/25918"
+            "href": "https://github.com/neovim/neovim/pull/26075"
         },
         "issue": {
-            "href": "https://api.github.com/repos/neovim/neovim/issues/25918"
+            "href": "https://api.github.com/repos/neovim/neovim/issues/26075"
         },
         "review_comment": {
             "href": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}"
         },
         "review_comments": {
-            "href": "https://api.github.com/repos/neovim/neovim/pulls/25918/comments"
+            "href": "https://api.github.com/repos/neovim/neovim/pulls/26075/comments"
         },
         "self": {
-            "href": "https://api.github.com/repos/neovim/neovim/pulls/25918"
+            "href": "https://api.github.com/repos/neovim/neovim/pulls/26075"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/22eb2ba18336df6cd70a88f666818ee5d8ba92d2"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/5c7752f27a1ae237d9f9c23ca2cf647706621047"
         }
     },
-    "active_lock_reason": "resolved",
+    "active_lock_reason": null,
     "assignee": null,
     "assignees": [],
     "author_association": "MEMBER",
@@ -147,7 +147,7 @@
             "watchers_count": 70942,
             "web_commit_signoff_required": false
         },
-        "sha": "28f4f3c48498086307ed825d1761edb5789ca0e8",
+        "sha": "5d75d9aef2b69036328501820df770b29d57a308",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -169,38 +169,38 @@
             "url": "https://api.github.com/users/neovim"
         }
     },
-    "body": "Now that we have the `TermResponse` event we have everything we need to do this in Lua instead of C. The Lua implementation is much more straightforward and simple.\r\n\r\nThere is a functional change: the background detection happens later in the Nvim startup process. This shouldn't matter, as in either case the `'background'` option isn't changed if it has already been set by the user.\r\n\r\nThis deprecates the `term_background` UI option. I am not removing it in this PR but I am marking it deprecated to be removed in a future release.",
-    "closed_at": "2023-11-14T01:21:08Z",
+    "body": "Fixes: https://github.com/neovim/neovim/issues/26074\r\n",
+    "closed_at": null,
     "comment_data": [
         {
             "_links": {
                 "html": {
-                    "href": "https://github.com/neovim/neovim/pull/25918#discussion_r1384093859"
+                    "href": "https://github.com/neovim/neovim/pull/26075#discussion_r1396317293"
                 },
                 "pull_request": {
-                    "href": "https://api.github.com/repos/neovim/neovim/pulls/25918"
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26075"
                 },
                 "self": {
-                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1384093859"
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1396317293"
                 }
             },
             "author_association": "MEMBER",
-            "body": "TODO: Add a timer to delete this autocommand if no response is received after some timeout",
-            "commit_id": "22eb2ba18336df6cd70a88f666818ee5d8ba92d2",
-            "created_at": "2023-11-06T22:18:06Z",
-            "diff_hunk": "@@ -1176,9 +1176,85 @@ function vim._init_default_autocmds()\n   })\n end\n \n+--- Parse a string of hex chars as a color.\n+---\n+--- The string can contain 1 to 4 hex characters. The returned value is a\n+--- fractional value between 0 and 1 representing the intensity of the color in\n+--- the range.\n+---\n+--- For instance, if only a single hex char \"a\" is used, then this function\n+--- returns 0.625 (10 / 16), while a value of \"aa\" would return 0.664 (170 /\n+--- 256).\n+---\n+--- @param c string Color as a string of hex chars\n+--- @return number Intensity of the color\n+local function hexcolor(c)\n+  local len = #c\n+  if not c:match('^0x') then\n+    c = string.format('0x%s', c)\n+  end\n+\n+  local max = tonumber(string.format('0x%s', string.rep('f', len)))\n+  return tonumber(c) / max\n+end\n+\n+--- Guess value of 'bg' based on terminal color.\n+---\n+--- We write Operating System Command (OSC) 11 to the terminal to request the\n+--- terminal's background color. We then wait for a response. If the response\n+--- matches `rgba:RRRR/GGGG/BBBB/AAAA` where R, G, B, and A are hex digits, then\n+--- compute the luminance[1] of the RGB color and classify it as light/dark\n+--- accordingly. Note that the color components may have anywhere from one to\n+--- four hex digits, and require scaling accordingly as values out of 4, 8, 12,\n+--- or 16 bits. Also note the A(lpha) component is optional, and is parsed but\n+--- ignored in the calculations.\n+--- \n+--- [1] https://en.wikipedia.org/wiki/Luma_%28video%29\n+local function guess_background_color()\n+  if vim.api.nvim_get_option_info2('bg', {}).was_set then\n+    -- Don't do anything if 'bg' is already set\n+    return\n+  end\n+\n+  vim.api.nvim_create_autocmd('TermResponse', {",
-            "html_url": "https://github.com/neovim/neovim/pull/25918#discussion_r1384093859",
-            "id": 1384093859,
+            "body": "The values of `blinkon` and `blinkoff` don't appear to actually be interpreted as intervals in milliseconds. As far as I can tell, `blinkon` is actually a boolean flag, which means the following is sufficient:\r\n\r\n```vim\r\nset guicursor+=n:blinkon1\r\n```\r\n\r\nBut this contradicts the help text in `:h cursor-blinking`. cc @justinmk ",
+            "commit_id": "5c7752f27a1ae237d9f9c23ca2cf647706621047",
+            "created_at": "2023-11-16T20:46:40Z",
+            "diff_hunk": "@@ -15,6 +15,13 @@ BREAKING CHANGES                                                *news-breaking*\n \n The following changes may require adaptations in user config or plugins.\n \n+• In some cases, the cursor in Nvim would blink even without configuring\n+  'guicursor' as mentioned in |cursor-blinking|. This was a bug that has now\n+  been fixed. If your cursor has stopped blinking, add the following (or\n+  similar, adapted to user preference) to your |config| file: >vim\n+\n+    set guicursor+=n:blinkon100-blinkoff100",
+            "html_url": "https://github.com/neovim/neovim/pull/26075#discussion_r1396317293",
+            "id": 1396317293,
             "line": null,
-            "node_id": "PRRC_kwDOAPphoM5Sf5ij",
-            "original_commit_id": "aca7bd3d031e54842c84d8b7477827d74decaa40",
-            "original_line": 1219,
-            "original_position": 44,
+            "node_id": "PRRC_kwDOAPphoM5TOhxt",
+            "original_commit_id": "7143127a97eda5febff2f88f05b6d011bf1489ef",
+            "original_line": 23,
+            "original_position": 9,
             "original_start_line": null,
-            "path": "runtime/lua/vim/_editor.lua",
+            "path": "runtime/doc/news.txt",
             "position": null,
-            "pull_request_review_id": 1716387613,
-            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/25918",
+            "pull_request_review_id": 1735462626,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26075",
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -211,14 +211,14 @@
                 "laugh": 0,
                 "rocket": 0,
                 "total_count": 0,
-                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1384093859/reactions"
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1396317293/reactions"
             },
             "side": "RIGHT",
             "start_line": null,
             "start_side": null,
             "subject_type": "line",
-            "updated_at": "2023-11-06T22:18:06Z",
-            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1384093859",
+            "updated_at": "2023-11-16T20:46:40Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1396317293",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/8965202?v=4",
                 "events_url": "https://api.github.com/users/gpanders/events{/privacy}",
@@ -243,32 +243,33 @@
         {
             "_links": {
                 "html": {
-                    "href": "https://github.com/neovim/neovim/pull/25918#discussion_r1384102977"
+                    "href": "https://github.com/neovim/neovim/pull/26075#discussion_r1396321425"
                 },
                 "pull_request": {
-                    "href": "https://api.github.com/repos/neovim/neovim/pulls/25918"
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26075"
                 },
                 "self": {
-                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1384102977"
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1396321425"
                 }
             },
-            "author_association": "MEMBER",
-            "body": "```suggestion\r\n    if ui.chan == 1 and ui.stdout_tty then\r\n```",
-            "commit_id": "22eb2ba18336df6cd70a88f666818ee5d8ba92d2",
-            "created_at": "2023-11-06T22:23:45Z",
-            "diff_hunk": "@@ -1176,9 +1176,85 @@ function vim._init_default_autocmds()\n   })\n end\n \n+--- Parse a string of hex chars as a color.\n+---\n+--- The string can contain 1 to 4 hex characters. The returned value is a\n+--- fractional value between 0 and 1 representing the intensity of the color in\n+--- the range.\n+---\n+--- For instance, if only a single hex char \"a\" is used, then this function\n+--- returns 0.625 (10 / 16), while a value of \"aa\" would return 0.664 (170 /\n+--- 256).\n+---\n+--- @param c string Color as a string of hex chars\n+--- @return number Intensity of the color\n+local function hexcolor(c)\n+  local len = #c\n+  if not c:match('^0x') then\n+    c = string.format('0x%s', c)\n+  end\n+\n+  local max = tonumber(string.format('0x%s', string.rep('f', len)))\n+  return tonumber(c) / max\n+end\n+\n+--- Guess value of 'bg' based on terminal color.\n+---\n+--- We write Operating System Command (OSC) 11 to the terminal to request the\n+--- terminal's background color. We then wait for a response. If the response\n+--- matches `rgba:RRRR/GGGG/BBBB/AAAA` where R, G, B, and A are hex digits, then\n+--- compute the luminance[1] of the RGB color and classify it as light/dark\n+--- accordingly. Note that the color components may have anywhere from one to\n+--- four hex digits, and require scaling accordingly as values out of 4, 8, 12,\n+--- or 16 bits. Also note the A(lpha) component is optional, and is parsed but\n+--- ignored in the calculations.\n+--- \n+--- [1] https://en.wikipedia.org/wiki/Luma_%28video%29\n+local function guess_background_color()\n+  if vim.api.nvim_get_option_info2('bg', {}).was_set then\n+    -- Don't do anything if 'bg' is already set\n+    return\n+  end\n+\n+  vim.api.nvim_create_autocmd('TermResponse', {\n+    callback = function(args)\n+      if vim.api.nvim_get_option_info2('bg', {}).was_set then\n+        -- We need to check again if 'bg' was set, because it could have been set while waiting for\n+        -- the terminal response\n+        vim.print(vim.api.nvim_get_option_info2('bg', {}))\n+        return\n+      end\n+\n+      local resp = args.data ---@type string\n+      local r, g, b = resp:match('^\\x1b%]11;rgba?:(%x+)/(%x+)/(%x+)')\n+      if r and g and b then\n+        local rr = hexcolor(r)\n+        local gg = hexcolor(g)\n+        local bb = hexcolor(b)\n+        local luminance = (0.299 * rr) + (0.587 * gg) + (0.114 * bb)\n+        local bg = luminance < 0.5 and 'dark' or 'light'\n+        if bg ~= vim.o.bg then\n+          vim.o.bg = bg\n+        end\n+\n+        return true\n+      end\n+    end,\n+  })\n+\n+  io.stdout:write('\\x1b]11;?\\x1b\\\\')\n+end\n+\n function vim._init_defaults()\n   vim._init_default_mappings()\n   vim._init_default_autocmds()\n+\n+  for _, ui in ipairs(vim.api.nvim_list_uis()) do\n+    if ui.stdout_tty then",
-            "html_url": "https://github.com/neovim/neovim/pull/25918#discussion_r1384102977",
-            "id": 1384102977,
+            "author_association": "NONE",
+            "body": "I suppose that happens because you can ask the terminal to make the cursor blink, but not set a frequency to it (unlike in a custom UI).",
+            "commit_id": "5c7752f27a1ae237d9f9c23ca2cf647706621047",
+            "created_at": "2023-11-16T20:51:17Z",
+            "diff_hunk": "@@ -15,6 +15,13 @@ BREAKING CHANGES                                                *news-breaking*\n \n The following changes may require adaptations in user config or plugins.\n \n+• In some cases, the cursor in Nvim would blink even without configuring\n+  'guicursor' as mentioned in |cursor-blinking|. This was a bug that has now\n+  been fixed. If your cursor has stopped blinking, add the following (or\n+  similar, adapted to user preference) to your |config| file: >vim\n+\n+    set guicursor+=n:blinkon100-blinkoff100",
+            "html_url": "https://github.com/neovim/neovim/pull/26075#discussion_r1396321425",
+            "id": 1396321425,
+            "in_reply_to_id": 1396317293,
             "line": null,
-            "node_id": "PRRC_kwDOAPphoM5Sf7xB",
-            "original_commit_id": "aca7bd3d031e54842c84d8b7477827d74decaa40",
-            "original_line": 1253,
-            "original_position": 78,
+            "node_id": "PRRC_kwDOAPphoM5TOiyR",
+            "original_commit_id": "7143127a97eda5febff2f88f05b6d011bf1489ef",
+            "original_line": 23,
+            "original_position": 9,
             "original_start_line": null,
-            "path": "runtime/lua/vim/_editor.lua",
+            "path": "runtime/doc/news.txt",
             "position": null,
-            "pull_request_review_id": 1716402882,
-            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/25918",
+            "pull_request_review_id": 1735473664,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26075",
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -279,64 +280,65 @@
                 "laugh": 0,
                 "rocket": 0,
                 "total_count": 0,
-                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1384102977/reactions"
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1396321425/reactions"
             },
             "side": "RIGHT",
             "start_line": null,
             "start_side": null,
             "subject_type": "line",
-            "updated_at": "2023-11-06T22:23:45Z",
-            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1384102977",
+            "updated_at": "2023-11-16T20:51:17Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1396321425",
             "user": {
-                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
-                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
-                "followers_url": "https://api.github.com/users/zeertzjq/followers",
-                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
-                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+                "avatar_url": "https://avatars.githubusercontent.com/u/2947276?v=4",
+                "events_url": "https://api.github.com/users/leiserfg/events{/privacy}",
+                "followers_url": "https://api.github.com/users/leiserfg/followers",
+                "following_url": "https://api.github.com/users/leiserfg/following{/other_user}",
+                "gists_url": "https://api.github.com/users/leiserfg/gists{/gist_id}",
                 "gravatar_id": "",
-                "html_url": "https://github.com/zeertzjq",
-                "id": 35768171,
-                "login": "zeertzjq",
-                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
-                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
-                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
-                "repos_url": "https://api.github.com/users/zeertzjq/repos",
+                "html_url": "https://github.com/leiserfg",
+                "id": 2947276,
+                "login": "leiserfg",
+                "node_id": "MDQ6VXNlcjI5NDcyNzY=",
+                "organizations_url": "https://api.github.com/users/leiserfg/orgs",
+                "received_events_url": "https://api.github.com/users/leiserfg/received_events",
+                "repos_url": "https://api.github.com/users/leiserfg/repos",
                 "site_admin": false,
-                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
-                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+                "starred_url": "https://api.github.com/users/leiserfg/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/leiserfg/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/zeertzjq"
+                "url": "https://api.github.com/users/leiserfg"
             }
         },
         {
             "_links": {
                 "html": {
-                    "href": "https://github.com/neovim/neovim/pull/25918#discussion_r1391790543"
+                    "href": "https://github.com/neovim/neovim/pull/26075#discussion_r1396321842"
                 },
                 "pull_request": {
-                    "href": "https://api.github.com/repos/neovim/neovim/pulls/25918"
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26075"
                 },
                 "self": {
-                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1391790543"
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1396321842"
                 }
             },
             "author_association": "MEMBER",
-            "body": "also worth mentioning in deprecated.txt",
-            "commit_id": "22eb2ba18336df6cd70a88f666818ee5d8ba92d2",
-            "created_at": "2023-11-13T22:56:12Z",
-            "diff_hunk": "@@ -340,4 +340,8 @@ release.\n • vim.treesitter.languagetree functions:\n   - |LanguageTree:for_each_child()|\tUse |LanguageTree:children()| (non-recursive) instead.\n \n+• The \"term_background\" UI option |ui-ext-options| is deprecated and no longer",
-            "html_url": "https://github.com/neovim/neovim/pull/25918#discussion_r1391790543",
-            "id": 1391790543,
-            "line": 343,
-            "node_id": "PRRC_kwDOAPphoM5S9QnP",
-            "original_commit_id": "bd1ead7a46c8eb53eb1ed231546a54fe778c1eb0",
-            "original_line": 343,
-            "original_position": 4,
+            "body": "Right, my suspicion is that the \"interval in milliseconds\" thing is for external GUIs, but not for the TUI.",
+            "commit_id": "5c7752f27a1ae237d9f9c23ca2cf647706621047",
+            "created_at": "2023-11-16T20:51:46Z",
+            "diff_hunk": "@@ -15,6 +15,13 @@ BREAKING CHANGES                                                *news-breaking*\n \n The following changes may require adaptations in user config or plugins.\n \n+• In some cases, the cursor in Nvim would blink even without configuring\n+  'guicursor' as mentioned in |cursor-blinking|. This was a bug that has now\n+  been fixed. If your cursor has stopped blinking, add the following (or\n+  similar, adapted to user preference) to your |config| file: >vim\n+\n+    set guicursor+=n:blinkon100-blinkoff100",
+            "html_url": "https://github.com/neovim/neovim/pull/26075#discussion_r1396321842",
+            "id": 1396321842,
+            "in_reply_to_id": 1396317293,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5TOi4y",
+            "original_commit_id": "7143127a97eda5febff2f88f05b6d011bf1489ef",
+            "original_line": 23,
+            "original_position": 9,
             "original_start_line": null,
             "path": "runtime/doc/news.txt",
-            "position": 4,
-            "pull_request_review_id": 1728415961,
-            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/25918",
+            "position": null,
+            "pull_request_review_id": 1735474903,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26075",
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -347,45 +349,45 @@
                 "laugh": 0,
                 "rocket": 0,
                 "total_count": 0,
-                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1391790543/reactions"
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1396321842/reactions"
             },
             "side": "RIGHT",
             "start_line": null,
             "start_side": null,
             "subject_type": "line",
-            "updated_at": "2023-11-13T22:56:13Z",
-            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1391790543",
+            "updated_at": "2023-11-16T20:51:46Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1396321842",
             "user": {
-                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
-                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
-                "followers_url": "https://api.github.com/users/justinmk/followers",
-                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
-                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "avatar_url": "https://avatars.githubusercontent.com/u/8965202?v=4",
+                "events_url": "https://api.github.com/users/gpanders/events{/privacy}",
+                "followers_url": "https://api.github.com/users/gpanders/followers",
+                "following_url": "https://api.github.com/users/gpanders/following{/other_user}",
+                "gists_url": "https://api.github.com/users/gpanders/gists{/gist_id}",
                 "gravatar_id": "",
-                "html_url": "https://github.com/justinmk",
-                "id": 1359421,
-                "login": "justinmk",
-                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
-                "organizations_url": "https://api.github.com/users/justinmk/orgs",
-                "received_events_url": "https://api.github.com/users/justinmk/received_events",
-                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "html_url": "https://github.com/gpanders",
+                "id": 8965202,
+                "login": "gpanders",
+                "node_id": "MDQ6VXNlcjg5NjUyMDI=",
+                "organizations_url": "https://api.github.com/users/gpanders/orgs",
+                "received_events_url": "https://api.github.com/users/gpanders/received_events",
+                "repos_url": "https://api.github.com/users/gpanders/repos",
                 "site_admin": false,
-                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
-                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "starred_url": "https://api.github.com/users/gpanders/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/gpanders/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/gpanders"
             }
         }
     ],
     "comment_regular_data": [
         {
             "author_association": "NONE",
-            "body": "after updating nvim recently i noticed that when running `:wq` on zig files with [zls](https://github.com/zigtools/zls) theres a large delay, 1-2 seconds, before it actually exits. `:w` and `:q` on their own dont do this and ive bisected it to 22eb2ba18336df6cd70a88f666818ee5d8ba92d2, any ideas?",
-            "created_at": "2023-11-16T21:58:41Z",
-            "html_url": "https://github.com/neovim/neovim/pull/25918#issuecomment-1815380610",
-            "id": 1815380610,
-            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/25918",
-            "node_id": "IC_kwDOAPphoM5sNIKC",
+            "body": "In the old behavior, it also blinked in cmd mode, so I think it will be better to point to `guicursor` in the doc, as it has an example that makes it work like it used to.  ",
+            "created_at": "2023-11-16T20:48:09Z",
+            "html_url": "https://github.com/neovim/neovim/pull/26075#issuecomment-1815289167",
+            "id": 1815289167,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/26075",
+            "node_id": "IC_kwDOAPphoM5sMx1P",
             "performed_via_github_app": null,
             "reactions": {
                 "+1": 0,
@@ -397,42 +399,42 @@
                 "laugh": 0,
                 "rocket": 0,
                 "total_count": 0,
-                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1815380610/reactions"
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1815289167/reactions"
             },
-            "updated_at": "2023-11-16T22:01:45Z",
-            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1815380610",
+            "updated_at": "2023-11-16T20:48:40Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1815289167",
             "user": {
-                "avatar_url": "https://avatars.githubusercontent.com/u/51252236?v=4",
-                "events_url": "https://api.github.com/users/xdBronch/events{/privacy}",
-                "followers_url": "https://api.github.com/users/xdBronch/followers",
-                "following_url": "https://api.github.com/users/xdBronch/following{/other_user}",
-                "gists_url": "https://api.github.com/users/xdBronch/gists{/gist_id}",
+                "avatar_url": "https://avatars.githubusercontent.com/u/2947276?v=4",
+                "events_url": "https://api.github.com/users/leiserfg/events{/privacy}",
+                "followers_url": "https://api.github.com/users/leiserfg/followers",
+                "following_url": "https://api.github.com/users/leiserfg/following{/other_user}",
+                "gists_url": "https://api.github.com/users/leiserfg/gists{/gist_id}",
                 "gravatar_id": "",
-                "html_url": "https://github.com/xdBronch",
-                "id": 51252236,
-                "login": "xdBronch",
-                "node_id": "MDQ6VXNlcjUxMjUyMjM2",
-                "organizations_url": "https://api.github.com/users/xdBronch/orgs",
-                "received_events_url": "https://api.github.com/users/xdBronch/received_events",
-                "repos_url": "https://api.github.com/users/xdBronch/repos",
+                "html_url": "https://github.com/leiserfg",
+                "id": 2947276,
+                "login": "leiserfg",
+                "node_id": "MDQ6VXNlcjI5NDcyNzY=",
+                "organizations_url": "https://api.github.com/users/leiserfg/orgs",
+                "received_events_url": "https://api.github.com/users/leiserfg/received_events",
+                "repos_url": "https://api.github.com/users/leiserfg/repos",
                 "site_admin": false,
-                "starred_url": "https://api.github.com/users/xdBronch/starred{/owner}{/repo}",
-                "subscriptions_url": "https://api.github.com/users/xdBronch/subscriptions",
+                "starred_url": "https://api.github.com/users/leiserfg/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/leiserfg/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/xdBronch"
+                "url": "https://api.github.com/users/leiserfg"
             }
         },
         {
             "author_association": "MEMBER",
-            "body": "Please provide compile flags from `:verbose version` or `nvim -V1 -v`.",
-            "created_at": "2023-11-16T22:01:11Z",
-            "html_url": "https://github.com/neovim/neovim/pull/25918#issuecomment-1815383545",
-            "id": 1815383545,
-            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/25918",
-            "node_id": "IC_kwDOAPphoM5sNI35",
+            "body": "> In the old behavior, it also blinked in cmd mode, so I think it will be better to point to `guicursor` in the doc, as it has an example that makes it work like it used to.\r\n\r\nProbably should be `n-v-c` then",
+            "created_at": "2023-11-16T20:53:01Z",
+            "html_url": "https://github.com/neovim/neovim/pull/26075#issuecomment-1815295086",
+            "id": 1815295086,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/26075",
+            "node_id": "IC_kwDOAPphoM5sMzRu",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 0,
+                "+1": 1,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -440,85 +442,41 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 0,
-                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1815383545/reactions"
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1815295086/reactions"
             },
-            "updated_at": "2023-11-16T22:02:06Z",
-            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1815383545",
+            "updated_at": "2023-11-16T20:53:01Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1815295086",
             "user": {
-                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
-                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
-                "followers_url": "https://api.github.com/users/zeertzjq/followers",
-                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
-                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+                "avatar_url": "https://avatars.githubusercontent.com/u/8965202?v=4",
+                "events_url": "https://api.github.com/users/gpanders/events{/privacy}",
+                "followers_url": "https://api.github.com/users/gpanders/followers",
+                "following_url": "https://api.github.com/users/gpanders/following{/other_user}",
+                "gists_url": "https://api.github.com/users/gpanders/gists{/gist_id}",
                 "gravatar_id": "",
-                "html_url": "https://github.com/zeertzjq",
-                "id": 35768171,
-                "login": "zeertzjq",
-                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
-                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
-                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
-                "repos_url": "https://api.github.com/users/zeertzjq/repos",
+                "html_url": "https://github.com/gpanders",
+                "id": 8965202,
+                "login": "gpanders",
+                "node_id": "MDQ6VXNlcjg5NjUyMDI=",
+                "organizations_url": "https://api.github.com/users/gpanders/orgs",
+                "received_events_url": "https://api.github.com/users/gpanders/received_events",
+                "repos_url": "https://api.github.com/users/gpanders/repos",
                 "site_admin": false,
-                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
-                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+                "starred_url": "https://api.github.com/users/gpanders/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/gpanders/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/zeertzjq"
-            }
-        },
-        {
-            "author_association": "MEMBER",
-            "body": "Please open a new issue and provide all the necessary information.\r\n",
-            "created_at": "2023-11-16T22:02:26Z",
-            "html_url": "https://github.com/neovim/neovim/pull/25918#issuecomment-1815385072",
-            "id": 1815385072,
-            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/25918",
-            "node_id": "IC_kwDOAPphoM5sNJPw",
-            "performed_via_github_app": null,
-            "reactions": {
-                "+1": 0,
-                "-1": 0,
-                "confused": 0,
-                "eyes": 0,
-                "heart": 0,
-                "hooray": 0,
-                "laugh": 0,
-                "rocket": 0,
-                "total_count": 0,
-                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1815385072/reactions"
-            },
-            "updated_at": "2023-11-16T22:02:42Z",
-            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1815385072",
-            "user": {
-                "avatar_url": "https://avatars.githubusercontent.com/u/2361214?v=4",
-                "events_url": "https://api.github.com/users/clason/events{/privacy}",
-                "followers_url": "https://api.github.com/users/clason/followers",
-                "following_url": "https://api.github.com/users/clason/following{/other_user}",
-                "gists_url": "https://api.github.com/users/clason/gists{/gist_id}",
-                "gravatar_id": "",
-                "html_url": "https://github.com/clason",
-                "id": 2361214,
-                "login": "clason",
-                "node_id": "MDQ6VXNlcjIzNjEyMTQ=",
-                "organizations_url": "https://api.github.com/users/clason/orgs",
-                "received_events_url": "https://api.github.com/users/clason/received_events",
-                "repos_url": "https://api.github.com/users/clason/repos",
-                "site_admin": false,
-                "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
-                "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
-                "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/gpanders"
             }
         }
     ],
-    "comments_url": "https://api.github.com/repos/neovim/neovim/issues/25918/comments",
-    "commits_url": "https://api.github.com/repos/neovim/neovim/pulls/25918/commits",
-    "created_at": "2023-11-06T22:16:16Z",
-    "diff_url": "https://github.com/neovim/neovim/pull/25918.diff",
+    "comments_url": "https://api.github.com/repos/neovim/neovim/issues/26075/comments",
+    "commits_url": "https://api.github.com/repos/neovim/neovim/pulls/26075/commits",
+    "created_at": "2023-11-16T20:45:20Z",
+    "diff_url": "https://github.com/neovim/neovim/pull/26075.diff",
     "draft": false,
     "head": {
-        "label": "gpanders:background-color",
-        "ref": "background-color",
+        "label": "gpanders:news-cursor-blink",
+        "ref": "news-cursor-blink",
         "repo": {
             "allow_forking": true,
             "archive_url": "https://api.github.com/repos/gpanders/neovim/{archive_format}{/ref}",
@@ -625,7 +583,7 @@
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "22eb2ba18336df6cd70a88f666818ee5d8ba92d2",
+        "sha": "5c7752f27a1ae237d9f9c23ca2cf647706621047",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/8965202?v=4",
             "events_url": "https://api.github.com/users/gpanders/events{/privacy}",
@@ -647,45 +605,57 @@
             "url": "https://api.github.com/users/gpanders"
         }
     },
-    "html_url": "https://github.com/neovim/neovim/pull/25918",
-    "id": 1589530405,
-    "issue_url": "https://api.github.com/repos/neovim/neovim/issues/25918",
+    "html_url": "https://github.com/neovim/neovim/pull/26075",
+    "id": 1605209956,
+    "issue_url": "https://api.github.com/repos/neovim/neovim/issues/26075",
     "labels": [
         {
-            "color": "C5DEF5",
-            "default": false,
-            "description": "changes that are not features or bugfixes",
-            "id": 106949155,
-            "name": "refactor",
-            "node_id": "MDU6TGFiZWwxMDY5NDkxNTU=",
-            "url": "https://api.github.com/repos/neovim/neovim/labels/refactor"
-        },
-        {
             "color": "c5def5",
-            "default": false,
+            "default": true,
             "description": "",
-            "id": 197254545,
-            "name": "tui",
-            "node_id": "MDU6TGFiZWwxOTcyNTQ1NDU=",
-            "url": "https://api.github.com/repos/neovim/neovim/labels/tui"
+            "id": 84744038,
+            "name": "documentation",
+            "node_id": "MDU6TGFiZWw4NDc0NDAzOA==",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/documentation"
         }
     ],
-    "locked": true,
-    "merge_commit_sha": "582d7f47905d82f315dc852a9d2937cd5b655e55",
-    "merged_at": "2023-11-14T01:21:08Z",
+    "locked": false,
+    "merge_commit_sha": "8a50a474c836ad4329f5520296c8bd0851d46a82",
+    "merged_at": null,
     "milestone": null,
-    "node_id": "PR_kwDOAPphoM5evk8l",
-    "number": 25918,
-    "patch_url": "https://github.com/neovim/neovim/pull/25918.patch",
-    "requested_reviewers": [],
+    "node_id": "PR_kwDOAPphoM5frY9k",
+    "number": 26075,
+    "patch_url": "https://github.com/neovim/neovim/pull/26075.patch",
+    "requested_reviewers": [
+        {
+            "avatar_url": "https://avatars.githubusercontent.com/u/2361214?v=4",
+            "events_url": "https://api.github.com/users/clason/events{/privacy}",
+            "followers_url": "https://api.github.com/users/clason/followers",
+            "following_url": "https://api.github.com/users/clason/following{/other_user}",
+            "gists_url": "https://api.github.com/users/clason/gists{/gist_id}",
+            "gravatar_id": "",
+            "html_url": "https://github.com/clason",
+            "id": 2361214,
+            "login": "clason",
+            "node_id": "MDQ6VXNlcjIzNjEyMTQ=",
+            "organizations_url": "https://api.github.com/users/clason/orgs",
+            "received_events_url": "https://api.github.com/users/clason/received_events",
+            "repos_url": "https://api.github.com/users/clason/repos",
+            "site_admin": false,
+            "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
+            "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
+            "type": "User",
+            "url": "https://api.github.com/users/clason"
+        }
+    ],
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
-    "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/25918/comments",
-    "state": "closed",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/22eb2ba18336df6cd70a88f666818ee5d8ba92d2",
-    "title": "refactor: move background detection into Lua",
-    "updated_at": "2023-11-16T22:02:42Z",
-    "url": "https://api.github.com/repos/neovim/neovim/pulls/25918",
+    "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/26075/comments",
+    "state": "open",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/5c7752f27a1ae237d9f9c23ca2cf647706621047",
+    "title": "docs: document breaking change of cursor blink behavior",
+    "updated_at": "2023-11-16T20:55:34Z",
+    "url": "https://api.github.com/repos/neovim/neovim/pulls/26075",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/8965202?v=4",
         "events_url": "https://api.github.com/users/gpanders/events{/privacy}",
