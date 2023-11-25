@@ -4,7 +4,7 @@
     "assignees": [],
     "author_association": "CONTRIBUTOR",
     "body": "### Problem\n\nThis was originally reported here causing a crash of Neovide due to the wrong window size being sent, but it turns out that Neovim itself crashes as well (a little bit later)\r\n* https://github.com/neovide/neovide/issues/2141\r\n\r\nNote I have debugged this a little bit and the width is -1 here\r\n<details><summary>callstack</summary>\r\n\r\n```\r\nwin_new_width(win_T * wp, int width) (/home/fredizzimo/proj/neovim/src/nvim/window.c:6703)\r\nframe_new_width(frame_T * topfrp, int width, _Bool leftfirst, _Bool wfw) (/home/fredizzimo/proj/neovim/src/nvim/window.c:3664)\r\nwin_equal_rec(win_T * next_curwin, _Bool current, frame_T * topfr, int dir, int col, int row, int width, int height) (/home/fredizzimo/proj/neovim/src/nvim/window.c:2205)\r\nwin_equal_rec(win_T * next_curwin, _Bool current, frame_T * topfr, int dir, int col, int row, int width, int height) (/home/fredizzimo/proj/neovim/src/nvim/window.c:2325)\r\nwin_equal(win_T * next_curwin, _Bool current, int dir) (/home/fredizzimo/proj/neovim/src/nvim/window.c:2166)\r\ndo_window(int nchar, long Prenum, int xchar) (/home/fredizzimo/proj/neovim/src/nvim/window.c:437)\r\nex_wincmd(exarg_T * eap) (/home/fredizzimo/proj/neovim/src/nvim/ex_docmd.c:5750)\r\nexecute_cmd0(int * retv, exarg_T * eap, char ** errormsg, _Bool preview) (/home/fredizzimo/proj/neovim/src/nvim/ex_docmd.c:1620)\r\ndo_one_cmd(char ** cmdlinep, int flags, cstack_T * cstack, LineGetter fgetline, void * cookie) (/home/fredizzimo/proj/neovim/src/nvim/ex_docmd.c:2279)\r\ndo_cmdline(char * cmdline, LineGetter fgetline, void * cookie, int flags) (/home/fredizzimo/proj/neovim/src/nvim/ex_docmd.c:578)\r\nex_listdo(exarg_T * eap) (/home/fredizzimo/proj/neovim/src/nvim/ex_cmds2.c:590)\r\nexecute_cmd0(int * retv, exarg_T * eap, char ** errormsg, _Bool preview) (/home/fredizzimo/proj/neovim/src/nvim/ex_docmd.c:1620)\r\ndo_one_cmd(char ** cmdlinep, int flags, cstack_T * cstack, LineGetter fgetline, void * cookie) (/home/fredizzimo/proj/neovim/src/nvim/ex_docmd.c:2279)\r\ndo_cmdline(char * cmdline, LineGetter fgetline, void * cookie, int flags) (/home/fredizzimo/proj/neovim/src/nvim/ex_docmd.c:578)\r\nsource_using_linegetter(void * cookie, LineGetter fgetline, const char * traceback_name) (/home/fredizzimo/proj/neovim/src/nvim/runtime.c:1906)\r\n```\r\n</details> \n\n### Steps to reproduce\n\nCreate the a file called `neotreecrash.lua` with the following contents\r\n```lua\r\nfor name, url in pairs{\r\n    neotree = 'https://github.com/nvim-neo-tree/neo-tree.nvim',\r\n    plenary = \"https://github.com/nvim-lua/plenary.nvim\",\r\n    webicons = \"https://github.com/nvim-tree/nvim-web-devicons\", -- not strictly required, but recommended\r\n    nui = \"https://github.com/MunifTanjim/nui.nvim\",\r\n} do\r\n  local install_path = vim.fn.fnamemodify(\"nvim_issue/\"..name, \":p\")\r\n  if vim.fn.isdirectory(install_path) == 0 then\r\n    vim.fn.system { \"git\", \"clone\", \"--depth=1\", url, install_path }\r\n  end\r\n  vim.opt.runtimepath:append(install_path)\r\nend\r\n\r\nlocal function augroup(name)\r\n  return vim.api.nvim_create_augroup(\"lazyvim_\" .. name, { clear = true })\r\nend\r\n\r\nvim.api.nvim_create_autocmd({ \"VimResized\" }, {\r\n  group = augroup(\"resize_splits\"),\r\n  callback = function()\r\n    local current_tab = vim.fn.tabpagenr()\r\n    vim.cmd(\"tabdo wincmd =\")\r\n    vim.cmd(\"tabnext \" .. current_tab)\r\n  end,\r\n})\r\n\r\nvim.o.winminwidth=3\r\nvim.o.winwidth=10\r\n\r\nvim.api.nvim_create_autocmd({ \"VimEnter\" }, {\r\n    group = augroup(\"enter\"),\r\n    callback = function()\r\n    vim.cmd(\"Neotree\")\r\n    local timer = vim.loop.new_timer()\r\n    timer:start(1000, 0, vim.schedule_wrap(function()\r\n        -- Does not crash\r\n        -- vim.o.columns=vim.o.winminwidth + vim.o.winwidth + 1\r\n        -- This and a smaller value crashes\r\n        vim.o.columns=vim.o.winminwidth + vim.o.winwidth\r\n    end))\r\n    end,\r\n})\r\n```\r\n\r\nThen run `nvim --clean -u neotreecrash.lua` and notice that neovim crashes\n\n### Expected behavior\n\nIt should not crash, and not report invalid window sizes or cursor positions to UIs (it does all of that currently).\n\n### Neovim version (nvim -v)\n\n0.9.4\n\n### Vim (not Nvim) behaves the same?\n\nN/A\n\n### Operating system/version\n\nArch Linux\n\n### Terminal name/version\n\nAlacritty/Neovide\n\n### $TERM environment variable\n\nalacritty\n\n### Installation\n\npacman",
-    "closed_at": "2023-11-23T21:59:07Z",
+    "closed_at": null,
     "comment_data": [
         {
             "author_association": "CONTRIBUTOR",
@@ -401,9 +401,53 @@
                 "type": "User",
                 "url": "https://api.github.com/users/zeertzjq"
             }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "Nvim no longer crashes, but it still calls `grid_cursor_goto` with a column number of `-1`, should I create a new bug report for that?",
+            "created_at": "2023-11-24T08:52:35Z",
+            "html_url": "https://github.com/neovim/neovim/issues/26155#issuecomment-1825332793",
+            "id": 1825332793,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/26155",
+            "node_id": "IC_kwDOAPphoM5szF45",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1825332793/reactions"
+            },
+            "updated_at": "2023-11-24T08:52:35Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1825332793",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/9946255?v=4",
+                "events_url": "https://api.github.com/users/fredizzimo/events{/privacy}",
+                "followers_url": "https://api.github.com/users/fredizzimo/followers",
+                "following_url": "https://api.github.com/users/fredizzimo/following{/other_user}",
+                "gists_url": "https://api.github.com/users/fredizzimo/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/fredizzimo",
+                "id": 9946255,
+                "login": "fredizzimo",
+                "node_id": "MDQ6VXNlcjk5NDYyNTU=",
+                "organizations_url": "https://api.github.com/users/fredizzimo/orgs",
+                "received_events_url": "https://api.github.com/users/fredizzimo/received_events",
+                "repos_url": "https://api.github.com/users/fredizzimo/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/fredizzimo/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/fredizzimo/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/fredizzimo"
+            }
         }
     ],
-    "comments": 9,
+    "comments": 10,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/26155/comments",
     "created_at": "2023-11-22T16:27:47Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/26155/events",
@@ -466,11 +510,11 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/26155/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "closed",
-    "state_reason": "completed",
+    "state": "open",
+    "state_reason": "reopened",
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/26155/timeline",
     "title": "Neovim crashes when resizing using neo-tree and using an autocommand to make the all windows equal",
-    "updated_at": "2023-11-23T21:59:07Z",
+    "updated_at": "2023-11-24T08:56:04Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/26155",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/9946255?v=4",
