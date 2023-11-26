@@ -3,7 +3,7 @@
     "assignee": null,
     "assignees": [],
     "author_association": "MEMBER",
-    "body": "_(This is partly to check my understanding, partly to write down rationale, and partly to propose a potential change.)_ @gpanders \r\n\r\n### Problem\r\n\r\nCurrently to check if a table is a list, we use `pairs()` to iterate (potentially) the entire table. Calls to `Iter.new()` always pay this cost and can't opt-out of it.\r\nhttps://github.com/neovim/neovim/blob/e928161bde262c238f79bc0fd84e60178ff6a321/runtime/lua/vim/iter.lua#L906-L917\r\n\r\nArguments in favor of the current logic?\r\n\r\n- Iter pipelines inherently are O(n) so doing an extra scan is a reasonable cost.\r\n- Handles unusual lists/arrays.\r\n\r\n\r\nRelated: https://github.com/neovim/neovim/issues/24141\r\n\r\n### Expected behavior\r\n\r\nInstead of using `pairs()`, treat any table where `t[1] == nil` as non-list, and `t[1] ~= nil` as list. Change the logic to:\r\n\r\n```lua\r\n-- Decide if the source table is a list.\r\nif src[1] == nil then\r\n  return Iter.new(pairs(src))\r\nend\r\nend\r\nreturn ListIter.new(ipairs(src))\r\n```\r\n\r\n**Advantages:**\r\n\r\n- easy to document and understand\r\n- fast\r\n\r\n**Disadvantages:**\r\n\r\n- may treat a non-list as a list, if `t[1]` is non-nil in a table that is intended as a dict\r\n    - callers can workaround this by setting `t[1] = nil`.\r\n\r\n",
+    "body": "_(This is partly to check my understanding, partly to write down rationale, and partly to propose a potential change.)_ @gpanders \r\n\r\n### Problem\r\n\r\nCurrently to check if a table is a list, we use `pairs()` to iterate (potentially) the entire table. Calls to `Iter.new()` always pay this cost and can't opt-out of it.\r\nhttps://github.com/neovim/neovim/blob/e928161bde262c238f79bc0fd84e60178ff6a321/runtime/lua/vim/iter.lua#L906-L917\r\n\r\nArguments in favor of the current logic?\r\n\r\n- Iter pipelines inherently are O(n) so doing an extra scan is a reasonable cost.\r\n- Handles unusual lists/arrays.\r\n\r\n\r\nRelated: https://github.com/neovim/neovim/issues/24141\r\n\r\n### Expected behavior\r\n\r\nInstead of using `pairs()`, treat any table where `t[1] == nil or t[#t] == nil` as non-list, and `t[1] ~= nil and t[#t] ~= nil` as list. Change the logic to:\r\n\r\n```lua\r\n-- Decide if the source table is a list.\r\nif src[1] == nil and src[#src] == nil then\r\n  return Iter.new(pairs(src))\r\nend\r\nend\r\nreturn ListIter.new(ipairs(src))\r\n```\r\n\r\n**Advantages:**\r\n\r\n- easy to document and understand\r\n- fast\r\n\r\n**Disadvantages:**\r\n\r\n- May treat a non-list as a list, if `t[1]` and `t[#t]` are non-nil in a dict-like table.\r\n    - Callers can workaround this by setting `t[1] = nil`.\r\n\r\n",
     "closed_at": null,
     "comment_data": [
         {
@@ -577,9 +577,53 @@
                 "type": "User",
                 "url": "https://api.github.com/users/gpanders"
             }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "> Alternatively we could expose the `ListIter` table directly which would allow `vim.iter.ListIter(t)`.\r\n\r\nNot in favor of that, exposing a separate \"class\" adds lots of new surface area (+docs) compared to an optional `vim.iter('list', ...)` entrypoint.",
+            "created_at": "2023-11-25T13:54:42Z",
+            "html_url": "https://github.com/neovim/neovim/issues/24746#issuecomment-1826326033",
+            "id": 1826326033,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/24746",
+            "node_id": "IC_kwDOAPphoM5s24YR",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1826326033/reactions"
+            },
+            "updated_at": "2023-11-25T14:03:57Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1826326033",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk"
+            }
         }
     ],
-    "comments": 13,
+    "comments": 14,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/24746/comments",
     "created_at": "2023-08-16T23:59:17Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/24746/events",
@@ -618,7 +662,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 190,
+        "closed_issues": 192,
         "created_at": "2023-02-02T14:11:43Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1363104?v=4",
@@ -647,10 +691,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/36/labels",
         "node_id": "MI_kwDOAPphoM4AiUsW",
         "number": 36,
-        "open_issues": 131,
+        "open_issues": 129,
         "state": "open",
         "title": "0.10",
-        "updated_at": "2023-11-23T22:52:52Z",
+        "updated_at": "2023-11-25T14:35:50Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/36"
     },
     "node_id": "I_kwDOAPphoM5ugnfr",
@@ -670,10 +714,10 @@
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "open",
-    "state_reason": null,
+    "state_reason": "reopened",
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/24746/timeline",
     "title": "vim.iter: faster check for list-like table",
-    "updated_at": "2023-11-23T13:10:58Z",
+    "updated_at": "2023-11-25T14:35:50Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/24746",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",

@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/26169"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/e79554b95c29ee14ef9c2b8d4e55e98c3db5500c"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/f3f968ec307b4f04bbfe0de5a1832c1aab21fdc1"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 5007,
-            "forks_count": 5007,
+            "forks": 5017,
+            "forks_count": 5017,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1693,
-            "open_issues_count": 1693,
+            "open_issues": 1697,
+            "open_issues_count": 1697,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -118,11 +118,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2023-11-24T01:27:29Z",
+            "pushed_at": "2023-11-25T23:41:59Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 239638,
+            "size": 234164,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 71179,
+            "stargazers_count": 71236,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -140,11 +140,11 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2023-11-24T00:53:36Z",
+            "updated_at": "2023-11-26T01:53:42Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 71179,
-            "watchers_count": 71179,
+            "watchers": 71236,
+            "watchers_count": 71236,
             "web_commit_signoff_required": false
         },
         "sha": "df399ea0d20e86027d0b59ca4bbd445c1d035a67",
@@ -170,7 +170,7 @@
         }
     },
     "body": "Instead of changing behavior for #24141 / #24746 , document expectations. \r\n\r\ncloses #24141\r\ncloses #24746\r\n\r\ncc @gpanders for sanity check",
-    "closed_at": null,
+    "closed_at": "2023-11-25T14:35:31Z",
     "comment_data": [
         {
             "_links": {
@@ -186,19 +186,19 @@
             },
             "author_association": "MEMBER",
             "body": "`ipairs()` isn't a perfect solution because it precludes using any iterator methods that operate from the back of the list (e.g. `:rev()`, `:skipback()`, etc.)\r\n\r\nIn #24746 I proposed exposing `ListIter` directly or providing some kind of \"I know what I'm doing\" escape hatch for cases where users want to avoid the scan. I still think we could do something like this.",
-            "commit_id": "e79554b95c29ee14ef9c2b8d4e55e98c3db5500c",
+            "commit_id": "f3f968ec307b4f04bbfe0de5a1832c1aab21fdc1",
             "created_at": "2023-11-23T14:18:58Z",
             "diff_hunk": "@@ -3205,22 +3211,26 @@ Lua module: vim.iter                                                *vim.iter*\n *vim.iter()* is an interface for |iterable|s: it wraps a table or function\n argument into an *Iter* object with methods (such as |Iter:filter()| and\n |Iter:map()|) that transform the underlying source data. These methods can\n-be chained together to create iterator \"pipelines\". Each pipeline stage\n-receives as input the output values from the prior stage. The values used\n-in the first stage of the pipeline depend on the type passed to this\n-function:\n-\n-• List tables (arrays) pass only the value of each element\n-• Non-list tables (dictionaries) pass both the key and value of each\n-  element\n-• Function |iterator|s pass all of the values returned by their respective\n-  function\n-• Tables with a metatable implementing |__call()| are treated as function\n-  iterators\n-\n-The iterator pipeline terminates when the original table or function\n-iterator runs out of values (for function iterators, this means that the\n-first value returned by the function is nil).\n+be chained to create iterator \"pipelines\": the output of each pipeline\n+stage is input to the next stage. The first stage depends on the type\n+passed to `vim.iter()`:\n+\n+• List tables (arrays, |lua-list|) yield only the value of each element.\n+  • Use |Iter:enumerate()| to also pass the index to the next stage.\n+  • Or initialize with ipairs(): `vim.iter(ipairs(…))`.\n+\n+• Non-list tables (|lua-dict|) yield both the key and value of each\n+  element.\n+• Function |iterator|s yield all values returned by the underlying\n+  function.\n+• Tables with a |__call()| metamethod are treated as function iterators.\n+\n+The iterator pipeline terminates when the underlying |iterable| is\n+exhausted (for function iterators this means it returned nil).\n+\n+Note: `vim.iter()` scans table input to decide if it is a list or a dict\n+(see |list-iterator|). To avoid this cost, wrap the table in an iterator\n+such as ipairs(): `vim.iter(ipairs({…}))`.",
             "html_url": "https://github.com/neovim/neovim/pull/26169#discussion_r1403447039",
             "id": 1403447039,
-            "line": 3233,
+            "line": null,
             "node_id": "PRRC_kwDOAPphoM5Tpub_",
             "original_commit_id": "8d1c9a07a9d5f429eb098568cadaaf38c4f93ad2",
             "original_line": 3233,
             "original_position": 76,
             "original_start_line": 3232,
             "path": "runtime/doc/lua.txt",
-            "position": 76,
+            "position": null,
             "pull_request_review_id": 1746559983,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26169",
             "reactions": {
@@ -214,11 +214,217 @@
                 "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1403447039/reactions"
             },
             "side": "RIGHT",
-            "start_line": 3232,
+            "start_line": null,
             "start_side": "RIGHT",
             "subject_type": "line",
             "updated_at": "2023-11-23T14:18:58Z",
             "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1403447039",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/8965202?v=4",
+                "events_url": "https://api.github.com/users/gpanders/events{/privacy}",
+                "followers_url": "https://api.github.com/users/gpanders/followers",
+                "following_url": "https://api.github.com/users/gpanders/following{/other_user}",
+                "gists_url": "https://api.github.com/users/gpanders/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/gpanders",
+                "id": 8965202,
+                "login": "gpanders",
+                "node_id": "MDQ6VXNlcjg5NjUyMDI=",
+                "organizations_url": "https://api.github.com/users/gpanders/orgs",
+                "received_events_url": "https://api.github.com/users/gpanders/received_events",
+                "repos_url": "https://api.github.com/users/gpanders/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/gpanders/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/gpanders/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/gpanders"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26169#discussion_r1405088059"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26169"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1405088059"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Noted that caveat in latest push.\r\n\r\n> In #24746 I proposed exposing `ListIter` directly or providing some kind of \"I know what I'm doing\" escape hatch\r\n\r\nDefinitely in favor of an escape hatch, though I hope we can avoid exposing ListIter.",
+            "commit_id": "f3f968ec307b4f04bbfe0de5a1832c1aab21fdc1",
+            "created_at": "2023-11-25T14:13:36Z",
+            "diff_hunk": "@@ -3205,22 +3211,26 @@ Lua module: vim.iter                                                *vim.iter*\n *vim.iter()* is an interface for |iterable|s: it wraps a table or function\n argument into an *Iter* object with methods (such as |Iter:filter()| and\n |Iter:map()|) that transform the underlying source data. These methods can\n-be chained together to create iterator \"pipelines\". Each pipeline stage\n-receives as input the output values from the prior stage. The values used\n-in the first stage of the pipeline depend on the type passed to this\n-function:\n-\n-• List tables (arrays) pass only the value of each element\n-• Non-list tables (dictionaries) pass both the key and value of each\n-  element\n-• Function |iterator|s pass all of the values returned by their respective\n-  function\n-• Tables with a metatable implementing |__call()| are treated as function\n-  iterators\n-\n-The iterator pipeline terminates when the original table or function\n-iterator runs out of values (for function iterators, this means that the\n-first value returned by the function is nil).\n+be chained to create iterator \"pipelines\": the output of each pipeline\n+stage is input to the next stage. The first stage depends on the type\n+passed to `vim.iter()`:\n+\n+• List tables (arrays, |lua-list|) yield only the value of each element.\n+  • Use |Iter:enumerate()| to also pass the index to the next stage.\n+  • Or initialize with ipairs(): `vim.iter(ipairs(…))`.\n+\n+• Non-list tables (|lua-dict|) yield both the key and value of each\n+  element.\n+• Function |iterator|s yield all values returned by the underlying\n+  function.\n+• Tables with a |__call()| metamethod are treated as function iterators.\n+\n+The iterator pipeline terminates when the underlying |iterable| is\n+exhausted (for function iterators this means it returned nil).\n+\n+Note: `vim.iter()` scans table input to decide if it is a list or a dict\n+(see |list-iterator|). To avoid this cost, wrap the table in an iterator\n+such as ipairs(): `vim.iter(ipairs({…}))`.",
+            "html_url": "https://github.com/neovim/neovim/pull/26169#discussion_r1405088059",
+            "id": 1405088059,
+            "in_reply_to_id": 1403447039,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5Tv_E7",
+            "original_commit_id": "8d1c9a07a9d5f429eb098568cadaaf38c4f93ad2",
+            "original_line": 3233,
+            "original_position": 76,
+            "original_start_line": 3232,
+            "path": "runtime/doc/lua.txt",
+            "position": null,
+            "pull_request_review_id": 1749138509,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26169",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1405088059/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2023-11-25T14:14:24Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1405088059",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26169#discussion_r1405125062"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26169"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1405125062"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "@gpanders would it be too clever if we supported negative `n` for `nth()`, then we could eliminate `nthback()` ?\r\n\r\nThe advantage is that negative indexing feels more natural. These `*back()` functions feel rather unfamiliar, except maybe for rust users.",
+            "commit_id": "f3f968ec307b4f04bbfe0de5a1832c1aab21fdc1",
+            "created_at": "2023-11-25T14:32:10Z",
+            "diff_hunk": "@@ -3494,11 +3497,7 @@ Iter:nth({n})                                                     *Iter:nth()*\n         any\n \n Iter:nthback({n})                                             *Iter:nthback()*\n-    Return the nth value from the end of the iterator.\n-\n-    This function advances the iterator.\n-\n-    Only supported for iterators on list-like tables.\n+    Gets the nth value from the end of a |list-iterator| (and advances to it).",
+            "html_url": "https://github.com/neovim/neovim/pull/26169#discussion_r1405125062",
+            "id": 1405125062,
+            "line": 3500,
+            "node_id": "PRRC_kwDOAPphoM5TwIHG",
+            "original_commit_id": "f3f968ec307b4f04bbfe0de5a1832c1aab21fdc1",
+            "original_line": 3500,
+            "original_position": 232,
+            "original_start_line": null,
+            "path": "runtime/doc/lua.txt",
+            "position": 232,
+            "pull_request_review_id": 1749197396,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26169",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1405125062/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-11-25T14:33:47Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1405125062",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26169#discussion_r1405159963"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26169"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1405159963"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "That sounds fine to me",
+            "commit_id": "f3f968ec307b4f04bbfe0de5a1832c1aab21fdc1",
+            "created_at": "2023-11-25T16:17:30Z",
+            "diff_hunk": "@@ -3494,11 +3497,7 @@ Iter:nth({n})                                                     *Iter:nth()*\n         any\n \n Iter:nthback({n})                                             *Iter:nthback()*\n-    Return the nth value from the end of the iterator.\n-\n-    This function advances the iterator.\n-\n-    Only supported for iterators on list-like tables.\n+    Gets the nth value from the end of a |list-iterator| (and advances to it).",
+            "html_url": "https://github.com/neovim/neovim/pull/26169#discussion_r1405159963",
+            "id": 1405159963,
+            "in_reply_to_id": 1405125062,
+            "line": 3500,
+            "node_id": "PRRC_kwDOAPphoM5TwQob",
+            "original_commit_id": "f3f968ec307b4f04bbfe0de5a1832c1aab21fdc1",
+            "original_line": 3500,
+            "original_position": 232,
+            "original_start_line": null,
+            "path": "runtime/doc/lua.txt",
+            "position": 232,
+            "pull_request_review_id": 1749211425,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26169",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1405159963/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-11-25T16:17:30Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1405159963",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/8965202?v=4",
                 "events_url": "https://api.github.com/users/gpanders/events{/privacy}",
@@ -335,9 +541,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/justinmk/neovim/pulls{/number}",
-            "pushed_at": "2023-11-23T17:24:44Z",
+            "pushed_at": "2023-11-25T21:05:32Z",
             "releases_url": "https://api.github.com/repos/justinmk/neovim/releases{/id}",
-            "size": 228502,
+            "size": 229374,
             "ssh_url": "git@github.com:justinmk/neovim.git",
             "stargazers_count": 1,
             "stargazers_url": "https://api.github.com/repos/justinmk/neovim/stargazers",
@@ -356,7 +562,7 @@
             "watchers_count": 1,
             "web_commit_signoff_required": false
         },
-        "sha": "e79554b95c29ee14ef9c2b8d4e55e98c3db5500c",
+        "sha": "f3f968ec307b4f04bbfe0de5a1832c1aab21fdc1",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
             "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
@@ -383,8 +589,8 @@
     "issue_url": "https://api.github.com/repos/neovim/neovim/issues/26169",
     "labels": [],
     "locked": false,
-    "merge_commit_sha": "0859436061b5a84be26cb4b429928173d899345c",
-    "merged_at": null,
+    "merge_commit_sha": "fc4385ad94c0a12d2ce8b6d275d8336a740b04fd",
+    "merged_at": "2023-11-25T14:35:31Z",
     "milestone": null,
     "node_id": "PR_kwDOAPphoM5gOpoO",
     "number": 26169,
@@ -393,10 +599,10 @@
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/26169/comments",
-    "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/e79554b95c29ee14ef9c2b8d4e55e98c3db5500c",
+    "state": "closed",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/f3f968ec307b4f04bbfe0de5a1832c1aab21fdc1",
     "title": "docs: vim.iter",
-    "updated_at": "2023-11-23T17:24:49Z",
+    "updated_at": "2023-11-25T16:17:30Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/26169",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",

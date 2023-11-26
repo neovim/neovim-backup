@@ -357,9 +357,53 @@
                 "type": "User",
                 "url": "https://api.github.com/users/themightyoarfish"
             }
+        },
+        {
+            "author_association": "NONE",
+            "body": "For me this can be reproduced reliably when an LSP client is attached to a DAP repl. This *sometimes* (very rarely) happens outside of that as well, but I can only reliably reproduce it with DAP. I reproduced it by accident when misconfigured dap with cmp, but hopefully having a repro (even if dumb and artificial) can help with the real issue.\r\n\r\nSo the following repro requires some dependencies (python, debugpy, pyright LSP, nvim-lspconfig, nvim-dap).\r\n<details> <summary> Versions (neovim on semi-recent master, everything else fresh): </summary>\r\n\r\n```\r\nNVIM v0.10.0-dev-6abc60844\r\nBuild type: RelWithDebInfo\r\nLuaJIT 2.1.1693350652\r\nRun \"nvim -V1 -v\" for more info\r\n```\r\n\r\nDependencies versions are all in master/most recent packages and I don't think that will matter, but just in case:\r\n```\r\npython==3.11.3\r\ndebugpy==1.8.0\r\npyright==1.1.337\r\nnvim-lspconfig==553c4e0\r\nnvim-dap==e154fdb\r\n```\r\n\r\n</details>\r\n<details> <summary> Reproducing </summary>\r\n\r\n1. Install all dependencies (python, debugpy, pyright, LSP, nvim-lspconfig, nvim-dap). It is assumed that `python3 -m debugpy.adapter` will work with system python.\r\n2. Create this minimal_init.lua\r\n```lua\r\n-- ADJUST THE FOLLOWING TWO VARIABLES. YOU MUST HAVE nvim-dap, debugpy, pyright, nvim-lspconfig INSTALLED.\r\nlocal PLUGINS_PATH = vim.fn.expand(\"~/.local/share/nvim/lazy/\")\r\nlocal PYRIGHT_PATH = vim.fn.expand(\"~/.local/share/nvim/mason/bin/pyright-langserver\")\r\n\r\nlocal plugins = { \"nvim-dap\", \"nvim-lspconfig\" }\r\nfor _, plugin in ipairs(plugins) do\r\n  vim.opt.rtp:append(PLUGINS_PATH .. plugin)\r\nend\r\n\r\nrequire(\"lspconfig\").pyright.setup({ cmd = { PYRIGHT_PATH, \"--stdio\" } })\r\nlocal dap = require(\"dap\")\r\ndap.adapters.python = {\r\n  type = \"executable\",\r\n  command = \"python3\",\r\n  args = { \"-m\", \"debugpy.adapter\" },\r\n  options = {\r\n    source_filetype = \"python\",\r\n  },\r\n}\r\n\r\nlocal debugpy_config = {\r\n  name = \"Launch file\",\r\n  cwd = \"${workspaceFolder}\",\r\n  program = \"${file}\",\r\n  request = \"launch\",\r\n  stopOnEntry = \"true\",\r\n  type = \"python\",\r\n}\r\n\r\nlocal function find_dap_repl_buf()\r\n  for _, buf in ipairs(vim.api.nvim_list_bufs()) do\r\n    if vim.bo[buf].filetype == \"dap-repl\" then\r\n      return buf\r\n    end\r\n  end\r\nend\r\n\r\nfunction _G.repro()\r\n  require(\"dap\").run(debugpy_config)\r\n  require(\"dap\").repl.open()\r\n  local repl_buf = find_dap_repl_buf()\r\n  vim.lsp.buf_attach_client(repl_buf, 1)\r\n  print(\"Now type in dap-repl and press <CR>. Continue typing for more errors.\")\r\nend\r\n\r\n```\r\n3. Create `sample.py` with any non-empty content (`i = 1` will do).\r\n4. Run `nvim -u minimal_init.lua sample.py`\r\n5. Inside the new neovim instance, run `:lua repro()`\r\n6. Start typing in the dap-repl window, hit Enter, and that should give you an error. If you keep typing, there will be more errors, since the change-tracking state is now corrupted.\r\n</details>\r\n\r\nI *think* it has to do with the `>dap` prompt that causes a race condition with keeping track of the state.\r\nWhen I add the following to sync.lua:\r\n\r\n```lua\r\n  if prev_line == nil then\r\n\t  error(vim.inspect({prev_lines, curr_lines, firstline}))\r\n  end\r\n```\r\nThis repro gives me these lines:\r\n```\r\n{ { \"dap> hi\" }, { \"dap> hi\", \"dap> \" }, 2 }\r\n```\r\nSo since the line was added at the end, the first line of the diff is line 2, which did not exist in `prev_lines` before the changes. Perhaps the particular way that nvim-dap updates the buffer does not trigger the state update initially, and then further changes trigger change tracking on the broken state.\r\n\r\n@clason Does this help?\r\n",
+            "created_at": "2023-11-25T14:07:14Z",
+            "html_url": "https://github.com/neovim/neovim/issues/24972#issuecomment-1826333464",
+            "id": 1826333464,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/24972",
+            "node_id": "IC_kwDOAPphoM5s26MY",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1826333464/reactions"
+            },
+            "updated_at": "2023-11-25T14:07:14Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1826333464",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/18747677?v=4",
+                "events_url": "https://api.github.com/users/alfaix/events{/privacy}",
+                "followers_url": "https://api.github.com/users/alfaix/followers",
+                "following_url": "https://api.github.com/users/alfaix/following{/other_user}",
+                "gists_url": "https://api.github.com/users/alfaix/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/alfaix",
+                "id": 18747677,
+                "login": "alfaix",
+                "node_id": "MDQ6VXNlcjE4NzQ3Njc3",
+                "organizations_url": "https://api.github.com/users/alfaix/orgs",
+                "received_events_url": "https://api.github.com/users/alfaix/received_events",
+                "repos_url": "https://api.github.com/users/alfaix/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/alfaix/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/alfaix/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/alfaix"
+            }
         }
     ],
-    "comments": 8,
+    "comments": 9,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/24972/comments",
     "created_at": "2023-09-01T16:38:31Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/24972/events",
@@ -401,7 +445,7 @@
     "number": 24972,
     "performed_via_github_app": null,
     "reactions": {
-        "+1": 2,
+        "+1": 4,
         "-1": 0,
         "confused": 0,
         "eyes": 0,
@@ -409,7 +453,7 @@
         "hooray": 0,
         "laugh": 0,
         "rocket": 0,
-        "total_count": 2,
+        "total_count": 4,
         "url": "https://api.github.com/repos/neovim/neovim/issues/24972/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
@@ -417,7 +461,7 @@
     "state_reason": null,
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/24972/timeline",
     "title": "error attempt to get length of local 'prev_line' ",
-    "updated_at": "2023-11-06T16:55:32Z",
+    "updated_at": "2023-11-25T14:07:15Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/24972",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/72234965?v=4",
