@@ -4,7 +4,7 @@
     "assignees": [],
     "author_association": "MEMBER",
     "body": "Hey all, so one of the ongoing cleanup efforts in the neovim codebase, has been string handling. Recently, I proposed replacing `strncpy` and its variants (`STRNCPY` and `vim_strncpy`) with `(x)strlcpy` (#743, et al.) , because it's safer. *\r\n\r\nWhile this didn't go entirely to plan (issue #858) because of slight differences in behaviour **, on the whole I think this is a positive evolution. What's clear is that these changes need to be a bit more carefully planned and reviewed, no one person can hope to catch all the subtleties.\r\n\r\nThat said, there's room for improvement on the string front in other ways as well:\r\n1. We should create a wiki page detailing the best practices when dealing with strings. What functions do we use when? What are common idioms? (e.g.: `stpcpy` for repeat concatenating, ...)\r\n2. Are there any new functions that we could introduce? In a few others issues I've mentioned this. For some cases neither `strncpy + NUL-termination` nor `strlcpy` nor `stp(n)cpy` are optimal. I'll describe below what I can think of.\r\n## Example situations\r\n\r\nSometimes it's easiest to come up with better approaches by handling a few real life situations. Let's look at something @dougschneider [bumped into recently](https://github.com/dougschneider/neovim/commit/ded825dae7d04c0dda6b6917c62d8835742997ea#commitcomment-6681351).\r\n\r\nThe original code:\r\n\r\n``` c\r\n   STRCPY(IObuff, \":return \");\r\n   STRNCPY(IObuff + 8, s, IOSIZE - 8);\r\n    if (STRLEN(s) + 8 >= IOSIZE)\r\n      STRCPY(IObuff + IOSIZE - 4, \"...\");\r\n```\r\n\r\nThe rework as proposed [here](https://github.com/dougschneider/neovim/commit/955122a7cab6c716c402982d834d448e43bf37a3). There might be a small bug lurking in the fact that `sizeof(ret)` is 9 and thus `IObuff + sizeof(ret)` would be after the copied NUL byte.\r\n\r\n``` c\r\n  const char ret[] = \":return \";\r\n  STRCPY(IObuff, ret);\r\n  size_t slen = STRLCPY(IObuff + sizeof(ret), s, IOSIZE - sizeof(ret));\r\n  if (slen + sizeof(ret) >= IOSIZE)\r\n      STRCPY(IObuff + IOSIZE - 4, \"...\");\r\n```\r\n\r\nA few alternatives:\r\n\r\n``` c\r\n// compact and correct, but possibly a bit slower because of the first strlcpy call\r\nsize_t startlen = STRLCPY(IObuff,  \":return \", IOSIZE); \r\nif (STRLCPY(IObuff + startlen, s, IOSIZE - startlen) >= IOSIZE - startlen) {\r\n  // string overflowed, signal truncation with ellipsis\r\n  memcpy(IObuff + IOSIZE - 4, \"...\", 4);\r\n}\r\n```\r\n\r\n``` c\r\n// faster, but less compact and less obvious (the bug from above has been corrected by deducting one from sizeof, making it even uglier. However it has another serious error: unsigned wraparound.\r\nconst char ret[] = \":return \";\r\nmemcpy(IObuff, ret, sizeof(ret) - 1);\r\nif (STRLCPY(IObuff + sizeof(ret) - 1, s, IOSIZE - sizeof(ret) - 1) >= IOSIZE - sizeof(ret) - 1) {\r\n  // string overflowed, signal truncation with ellipsis\r\n  memcpy(IObuff + IOSIZE - 4, \"...\", 4);\r\n}\r\n```\r\n\r\n``` c\r\n// same as the one just above, assuming that a compiler knows that `strlen(string literal)` == `sizeof(string literal) - 1`, slightly prettier\r\nconst char ret[] = \":return \";\r\nmemcpy(IObuff, ret, strlen(ret));\r\nif (STRLCPY(IObuff + strlen(ret), s, IOSIZE - strlen(ret)) >= IOSIZE - strlen(ret)) {\r\n  // string overflowed, signal truncation with ellipsis\r\n  memcpy(IObuff + IOSIZE - 4, \"...\", 4);\r\n}\r\n```\r\n\r\nSo we get to choose between speed, flexibility (not having to count the amount of chars in `\":return \"`) and readability/beauty (pick any two). Why can't we have all three?\r\n\r\nIt's perhaps possible that we lack the functions or macros for this. I thought for example that for string literals, the optimum in safety and speed could be reached with this:\r\n\r\n``` c\r\n// version of `strlcpy` that will only work for string literals, optimal on both \r\n// smart and stupid compilers. Compiles down to a pure `memcpy` if the size of the\r\n// buffer is known at compile time. Otherwise it's just a branch and a `memcpy`.\r\n// note that this contains a trick to guard against using it with non-string literals (though\r\n// this can be circumvented). Note that most of the efficiency gained by using this macro\r\n// can probably also be obtained by hoisting `xstrlcpy` into the header and annotating it\r\n// with `static inline`.\r\n// @return the number of characters in the string (strlen(str))\r\n#define SSTRLCPY(dst, src, size) \\\r\n  ( \\\r\n    memcpy((dst), \"\" src, (sizeof(src) < (size)) ? sizeof(src) : (size)), \\\r\n    (dst)[((sizeof(src) < (size)) ? sizeof(src) : (size)) - 1] = '\\0', \\\r\n    sizeof(src) - 1 \\\r\n  )\r\n```\r\n\r\nThis would enable us to write:\r\n\r\n``` c\r\n  size_t total = SSTRLCPY(IObuff, \":return \", IOSIZE);\r\n  // we could check for truncation now: if (total >= IOSIZE) { ... }\r\n\r\n  total += STRLCPY(IObuff + total, s, IOSIZE - total);\r\n  if (total >= IOSIZE) {\r\n      // string overflowed, signal truncation with ellipsis\r\n      SSTRLCPY(IObuff + IOSIZE - 4, \"...\", 4); // same as memcpy(IObuff + IOSIZE - 4, \"...\", 4);\r\n  }\r\n```\r\n\r\nThis still does something redundant. We don't need to actually calculate the string length of `s`, we use it just to check for truncation. Depending on the size of `s`, we might be doing too much work.\r\n\r\nPerhaps we can make a function that just returns if the string was truncated or not:\r\n\r\n``` c\r\n/// xstrucpy - copy min(`strsize`, `bufsize` - 1) bytes, NUL terminates\r\n///\r\n/// If the string length is known, this function provides a few advantages over\r\n/// `(x)strlcpy`:\r\n///\r\n/// 1. Usually we want to know if truncation happened, not by how much.\r\n///    Truncation happens when the `src` string is larger than the `dst` buffer.\r\n///    An idiomatic way of using this is the example below.\r\n/// 2. `(x)strlcpy` calculates `strlen`, which is sometimes already known.\r\n/// 3. `xstrucpy` can be used with Pascal strings (non-NUL terminated strings).\r\n///\r\n/// Example:\r\n///\r\n/// @code{.c}\r\n///   if (xstrucpy(buf, str, bufsize, str_len) < str_len) {\r\n///     // truncation happened, deal with it\r\n///   }\r\n/// @endcode\r\n///\r\n/// @return the number of bytes copied (without the NUL terminator)\r\n///\r\n/// @see xstrlcpy\r\nsize_t xstrucpy(char *restrict dst,\r\n                const char *restrict src,\r\n                size_t bufsize,\r\n                size_t strsize)\r\n{\r\n  size_t cpy = (strsize >= bufsize) ? bufsize - 1 : strsize;\r\n\r\n  if (cpy) {\r\n    memcpy(dst, src, cpy);\r\n    dst[cpy] = '\\0';\r\n  }\r\n\r\n  return cpy;\r\n}\r\n\r\n/// xstracpy - copies `src` into `dst`, %NUL terminates `dst`\r\n///\r\n/// TODO(aktau): if this shows up in profiler traces, try to find a version\r\n///              that doesn't read `src` memory twice. This implementation should\r\n///              be plenty fast though. Glibc (among others) have a highly\r\n///              optimized memchr and memcpy. Note that I probably made an off-by-one \r\n///              error here, implementation untested.\r\n///\r\n/// @note This function can also be used with non-NUL terminated strings as\r\n///       long as the underlying buffer of `src` has at least `bufsize`\r\n///       bytes. So even though this function will work in more cases than\r\n///       `strlcpy`, it's still advisable to use proper Pascal string\r\n///       functions for Pascal strings.\r\n///\r\n/// @return false if the string was truncated, true if not. In the case of a\r\n///         non-NUL terminated string, will always report that the\r\n///         string has been truncated.\r\nbool xstracpy(char *restrict dst, const char *restrict src, size_t bufsize)\r\n{\r\n  // find the NUL-byte, if it exists\r\n  char *p = memchr(src, '\\0', bufsize);\r\n  return src + xstrucpy(dst, src, bufsize, p ? p - src : bufsize) <= p;\r\n}\r\n\r\n// as a bonus, we can now implement `xstrlcpy` as a special case of `xstrucpy`, this would\r\n// invalidate the comment about the headerized versions efficiency in the macro though.\r\nsize_t xstrlcpy(char *restrict dst, const char *restrict src, size_t size)\r\n{\r\n  size_t ret = strlen(src);\r\n  xstrucpy(dst, src, size, ret);\r\n  return ret;\r\n}\r\n```\r\n\r\nSo weaponized with `xstracpy`, we could possibly make this optimally efficient and a bit cleaner still:\r\n\r\n``` c\r\n  size_t offset = SSTRLCPY(IObuff, \":return \", IOSIZE);\r\n  // we could check for truncation now: if (total >= IOSIZE) { ... }\r\n\r\n  if (!xstracpy(IObuff + offset, s, IOSIZE - offset)) {\r\n    // string overflowed, signal truncation with ellipsis\r\n    SSTRLCPY(IObuff + IOSIZE - 4, \"...\", 4); // same as memcpy(IObuff + IOSIZE - 4, \"...\", 4);\r\n  }\r\n```\r\n\r\nI haven't thought of a good way of getting rid of the `-4` and `4` yet that wouldn't introduce a way-too-one-off function.\r\n\r\nDisadvantages? Sure: proliferation of string functions. The more we have of them, the more choice-stress people are going to get when coding something up. Ideally, the best function should be obvious from the context, and available...\r\n\r\n`*` Clever readers will notice that `strlcpy` is not safer (or less safe) than `vim_strncpy`, which always NUL-terminates. However we do have the policy of adhering to standard string function behaviour to avoid confusion and `strncpy` doesn't always NUL-terminate, so the name `vim_strncpy` is confusing.\r\n\r\n`**` `strncpy` always fills the destination buffer with zeroes after the string, `strlcpy` doesn't.\r\n\r\nBTW: I'm calling this phase 1 because this will keep the representation of strings in vim intact, namely C strings. Phase 2 might be a transition to using Pascal string (be they [sds strings](https://github.com/antirez/sds) or @tarruda's explicit struct strings), or it might be something else entirely, or it might not exist.\r\n\r\nThis post is subject to later editing.\r\n",
-    "closed_at": null,
+    "closed_at": "2023-11-28T00:48:08Z",
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -621,9 +621,53 @@
                 "type": "User",
                 "url": "https://api.github.com/users/dundargoc"
             }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "> Is the problem that we have too many buffer overflows? Is the performance of common string operations too slow?\r\n\r\nThe (unconfirmed) problem is that we have too many `strlen` calls. The first step would be to confirm if this actually matters via profiling. \r\n\r\nIt probably is most relevant for Vim regex and Vimscript. Given that we wouldn't need this for Lua code, it's probably not worth the cost of an extra layer. So we can close this (correct me if wrong).",
+            "created_at": "2023-11-28T00:46:22Z",
+            "html_url": "https://github.com/neovim/neovim/issues/859#issuecomment-1828881503",
+            "id": 1828881503,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/859",
+            "node_id": "IC_kwDOAPphoM5tAoRf",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1828881503/reactions"
+            },
+            "updated_at": "2023-11-28T00:48:05Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1828881503",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk"
+            }
         }
     ],
-    "comments": 14,
+    "comments": 15,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/859/comments",
     "created_at": "2014-06-17T22:36:38Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/859/events",
@@ -662,7 +706,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 197,
+        "closed_issues": 198,
         "created_at": "2014-11-26T22:13:11Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -691,10 +735,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/9/labels",
         "node_id": "MDk6TWlsZXN0b25lODgxOTc4",
         "number": 9,
-        "open_issues": 235,
+        "open_issues": 234,
         "state": "open",
         "title": "unplanned",
-        "updated_at": "2023-11-22T17:19:46Z",
+        "updated_at": "2023-11-28T00:48:08Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/9"
     },
     "node_id": "MDU6SXNzdWUzNTkzODgyOA==",
@@ -713,11 +757,11 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/859/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/859/timeline",
     "title": "string handling, SDS / bstrlib / ...",
-    "updated_at": "2023-11-23T13:37:18Z",
+    "updated_at": "2023-11-28T00:48:08Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/859",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/189413?v=4",
