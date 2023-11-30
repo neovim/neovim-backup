@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/26284"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/eafa2eec8a82768f44065bc13020ce3ecc90a38b"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/ed4ef8e0a506310eb1e76e41f9f14ac1e2ba81ba"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 5024,
-            "forks_count": 5024,
+            "forks": 5028,
+            "forks_count": 5028,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1702,
-            "open_issues_count": 1702,
+            "open_issues": 1690,
+            "open_issues_count": 1690,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -118,11 +118,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2023-11-29T01:47:25Z",
+            "pushed_at": "2023-11-30T01:57:02Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 241485,
+            "size": 239394,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 71307,
+            "stargazers_count": 71335,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -140,14 +140,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2023-11-29T00:42:27Z",
+            "updated_at": "2023-11-30T00:48:10Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 71307,
-            "watchers_count": 71307,
+            "watchers": 71335,
+            "watchers_count": 71335,
             "web_commit_signoff_required": false
         },
-        "sha": "aa9d9cafd0da58745178fa5a9b0773dcce96f30e",
+        "sha": "86cc791debba09c8ed1aa0d863be844108866a38",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -169,9 +169,78 @@
             "url": "https://api.github.com/users/neovim"
         }
     },
-    "body": "The OptionSet autocommand does not fire until Vim has finished starting,\nso setting 'background' before the VimEnter event would not fire the\nOptionSet event. The prior implementation also waited until VimEnter to\nset 'background', so this was a regression introduced when moving\nbackground detection into Lua.\n\nWhile we are here, also wrap the OSC 11 query in the tmux passthrough\nsequence if we detect that tmux is running. This fixes background\ndetection when running in tmux.\n",
-    "closed_at": null,
-    "comment_data": [],
+    "body": "The OptionSet autocommand does not fire until Vim has finished starting,\r\nso setting 'background' before the VimEnter event would not fire the\r\nOptionSet event. The prior implementation also waited until VimEnter to\r\nset 'background', so this was a regression introduced when moving\r\nbackground detection into Lua.\r\n",
+    "closed_at": "2023-11-29T15:43:11Z",
+    "comment_data": [
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26284#discussion_r1409407144"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26284"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1409407144"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Actually I do not think we should do this. Passthrough is disabled in tmux by default, and tmux now responds to OSC 11 requests \"natively\" on newer versions. And the original implementation of this did not use the passthrough sequence either.",
+            "commit_id": "ed4ef8e0a506310eb1e76e41f9f14ac1e2ba81ba",
+            "created_at": "2023-11-29T14:55:21Z",
+            "diff_hunk": "@@ -270,17 +286,20 @@ do\n           if rr and gg and bb then\n             local luminance = (0.299 * rr) + (0.587 * gg) + (0.114 * bb)\n             local bg = luminance < 0.5 and 'dark' or 'light'\n-            if bg ~= vim.o.background then\n-              vim.o.background = bg\n-            end\n+            setbg(bg)\n           end\n \n           return true\n         end\n       end,\n     })\n \n-    io.stdout:write('\\027]11;?\\027\\\\')\n+    local query = '\\027]11;?\\027\\\\'\n+    if os.getenv('TMUX') then\n+      query = string.format('\\027Ptmux;\\027%s\\027\\\\', query)\n+    end",
+            "html_url": "https://github.com/neovim/neovim/pull/26284#discussion_r1409407144",
+            "id": 1409407144,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5UAdio",
+            "original_commit_id": "eafa2eec8a82768f44065bc13020ce3ecc90a38b",
+            "original_line": 300,
+            "original_position": 55,
+            "original_start_line": 297,
+            "path": "runtime/lua/vim/_defaults.lua",
+            "position": null,
+            "pull_request_review_id": 1755473378,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26284",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1409407144/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2023-11-29T14:55:21Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1409407144",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/8965202?v=4",
+                "events_url": "https://api.github.com/users/gpanders/events{/privacy}",
+                "followers_url": "https://api.github.com/users/gpanders/followers",
+                "following_url": "https://api.github.com/users/gpanders/following{/other_user}",
+                "gists_url": "https://api.github.com/users/gpanders/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/gpanders",
+                "id": 8965202,
+                "login": "gpanders",
+                "node_id": "MDQ6VXNlcjg5NjUyMDI=",
+                "organizations_url": "https://api.github.com/users/gpanders/orgs",
+                "received_events_url": "https://api.github.com/users/gpanders/received_events",
+                "repos_url": "https://api.github.com/users/gpanders/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/gpanders/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/gpanders/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/gpanders"
+            }
+        }
+    ],
     "comment_regular_data": [],
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/26284/comments",
     "commits_url": "https://api.github.com/repos/neovim/neovim/pulls/26284/commits",
@@ -266,9 +335,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/gpanders/neovim/pulls{/number}",
-            "pushed_at": "2023-11-28T23:02:47Z",
+            "pushed_at": "2023-11-30T01:56:59Z",
             "releases_url": "https://api.github.com/repos/gpanders/neovim/releases{/id}",
-            "size": 236749,
+            "size": 234585,
             "ssh_url": "git@github.com:gpanders/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/gpanders/neovim/stargazers",
@@ -287,7 +356,7 @@
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "eafa2eec8a82768f44065bc13020ce3ecc90a38b",
+        "sha": "ed4ef8e0a506310eb1e76e41f9f14ac1e2ba81ba",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/8965202?v=4",
             "events_url": "https://api.github.com/users/gpanders/events{/privacy}",
@@ -324,8 +393,8 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "8e03daea878b278281c6a15eb333e7c5ab04ed4f",
-    "merged_at": null,
+    "merge_commit_sha": "9b4b23493d6976613fc3e8b561c34bb4b808399c",
+    "merged_at": "2023-11-29T15:43:11Z",
     "milestone": null,
     "node_id": "PR_kwDOAPphoM5gm5xR",
     "number": 26284,
@@ -334,10 +403,10 @@
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/26284/comments",
-    "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/eafa2eec8a82768f44065bc13020ce3ecc90a38b",
+    "state": "closed",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/ed4ef8e0a506310eb1e76e41f9f14ac1e2ba81ba",
     "title": "fix(defaults): wait until VimEnter to set background",
-    "updated_at": "2023-11-28T23:02:28Z",
+    "updated_at": "2023-11-29T15:43:14Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/26284",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/8965202?v=4",
