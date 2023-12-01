@@ -4,7 +4,7 @@
     "assignees": [],
     "author_association": "NONE",
     "body": "### Problem\n\nI'm using tmux-3.2 for in my dev environment, connected through windows terminal. When I do a copy and paste on a considerably large code section, neovim terminates with the following assert failure.\r\n\r\n```\r\nnvim: neovim/src/nvim/tui/input.c:673: handle_raw_buffer: Assertion `consumed <= rbuffer_size(input->read_stream.buffer)' failed.\r\n```\r\n\n\n### Steps to reproduce\n\n1. Run tmux with following in `.tmux.conf`, to enable osc-52 on tmux as per [this](https://github.com/tmux/tmux/wiki/Clipboard#quick-summary) link\r\n\r\n```tmux\r\nset -g default-terminal \"screen-256color\"\r\nset-option -sa terminal-overrides ',screen-256color:Tc'\r\nset -s set-clipboard on\r\nset -as terminal-features ',screen-256color:clipboard'\r\n```\r\n\r\n2. Open nvim with following minimum reproducible config\r\n```lua\r\nvim.opt.clipboard = vim.opt.clipboard + 'unnamedplus'\r\nlocal ok, osc52 = pcall(require, \"vim.clipboard.osc52\")\r\n\r\nif not ok then\r\n    return\r\nend\r\n\r\nvim.g.clipboard = {\r\n    name = 'OSC 52',\r\n    copy = {\r\n    ['+'] = osc52.copy,\r\n    ['*'] = osc52.copy,\r\n    },\r\n    paste = {\r\n    ['+'] = osc52.paste,\r\n    ['*'] = osc52.paste,\r\n    },\r\n}\r\n```\r\n\r\n3. Open the file that has the following code segment:\r\n\r\n```lua\r\n    require(\"clangd_extensions\").setup({\r\n        inlay_hints = {\r\n            inline = vim.fn.has(\"nvim-0.10\") == 1,\r\n            -- Options other than `highlight' and `priority' only work\r\n            -- if `inline' is disabled\r\n            -- Only show inlay hints for the current line\r\n            only_current_line = false,\r\n            -- Event which triggers a refresh of the inlay hints.\r\n            -- You can make this { \"CursorMoved\" } or { \"CursorMoved,CursorMovedI\" } but\r\n            -- not that this may cause  higher CPU usage.\r\n            -- This option is only respected when only_current_line and\r\n            -- autoSetHints both are true.\r\n            only_current_line_autocmd = { \"CursorHold\" },\r\n            -- whether to show parameter hints with the inlay hints or not\r\n            show_parameter_hints = true,\r\n            -- prefix for parameter hints\r\n            parameter_hints_prefix = \"<- \",\r\n            -- prefix for all the other hints (type, chaining)\r\n            other_hints_prefix = \"=> \",\r\n            -- whether to align to the length of the longest line in the file\r\n            max_len_align = false,\r\n            -- padding from the left if max_len_align is true\r\n            max_len_align_padding = 1,\r\n            -- whether to align to the extreme right or not\r\n            right_align = false,\r\n            -- padding from the right if right_align is true\r\n            right_align_padding = 7,\r\n            -- The color of the hints\r\n            highlight = \"Comment\",\r\n            -- The highlight group priority for extmark\r\n            priority = 100,\r\n        },\r\n        ast = {\r\n            -- These are unicode, should be available in any font\r\n            role_icons = {\r\n                type = \"🄣\",\r\n                declaration = \"🄓\",\r\n                expression = \"🄔\",\r\n                statement = \";\",\r\n                specifier = \"🄢\",\r\n                [\"template argument\"] = \"🆃\",\r\n            },\r\n            kind_icons = {\r\n                Compound = \"🄲\",\r\n                Recovery = \"🅁\",\r\n                TranslationUnit = \"🅄\",\r\n                PackExpansion = \"🄿\",\r\n                TemplateTypeParm = \"🅃\",\r\n                TemplateTemplateParm = \"🅃\",\r\n                TemplateParamObject = \"🅃\",\r\n            },\r\n            --[[ These require codicons (https://github.com/microsoft/vscode-codicons)\r\n                role_icons = {\r\n                    type = \"\",\r\n                    declaration = \"\",\r\n                    expression = \"\",\r\n                    specifier = \"\",\r\n                    statement = \"\",\r\n                    [\"template argument\"] = \"\",\r\n                },\r\n\r\n                kind_icons = {\r\n                    Compound = \"\",\r\n                    Recovery = \"\",\r\n                    TranslationUnit = \"\",\r\n                    PackExpansion = \"\",\r\n                    TemplateTypeParm = \"\",\r\n                    TemplateTemplateParm = \"\",\r\n                    TemplateParamObject = \"\",\r\n                }, ]]\r\n\r\n            highlights = {\r\n                detail = \"Comment\",\r\n            },\r\n        },\r\n        memory_usage = {\r\n            border = \"none\",\r\n        },\r\n        symbol_info = {\r\n            border = \"none\",\r\n        },\r\n    })\r\n    require'lspconfig'.clangd.setup{}\r\n\r\n```\r\n\r\n4. Copy above code segment (`yG`) \r\n5. Open another file in a different buffer (`:vnew`)\r\n6. Paste the copied segment (`p`)\r\n\r\nnvim crash with assert failure on debug build. On release build the process will hang\n\n### Expected behavior\n\nCopied section should be pasted on the new buffer\n\n### Neovim version (nvim -v)\n\nNVIM v0.10.0-dev (commit : 4972c80 )\n\n### Vim (not Nvim) behaves the same?\n\nNo applicable\n\n### Operating system/version\n\nCentOS 7.9\n\n### Terminal name/version\n\nWindows Terminal 1.20.3131.0\n\n### $TERM environment variable\n\nscreen-256color\n\n### Installation\n\nbuilt from source on main branch",
-    "closed_at": null,
+    "closed_at": "2023-11-30T14:04:35Z",
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -225,9 +225,53 @@
                 "type": "User",
                 "url": "https://api.github.com/users/gpanders"
             }
+        },
+        {
+            "author_association": "NONE",
+            "body": "@gpanders , thank you very much for the fix",
+            "created_at": "2023-11-30T18:43:44Z",
+            "html_url": "https://github.com/neovim/neovim/issues/26099#issuecomment-1834357707",
+            "id": 1834357707,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/26099",
+            "node_id": "IC_kwDOAPphoM5tVhPL",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1834357707/reactions"
+            },
+            "updated_at": "2023-11-30T18:43:44Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1834357707",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/10277051?v=4",
+                "events_url": "https://api.github.com/users/Badhi/events{/privacy}",
+                "followers_url": "https://api.github.com/users/Badhi/followers",
+                "following_url": "https://api.github.com/users/Badhi/following{/other_user}",
+                "gists_url": "https://api.github.com/users/Badhi/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/Badhi",
+                "id": 10277051,
+                "login": "Badhi",
+                "node_id": "MDQ6VXNlcjEwMjc3MDUx",
+                "organizations_url": "https://api.github.com/users/Badhi/orgs",
+                "received_events_url": "https://api.github.com/users/Badhi/received_events",
+                "repos_url": "https://api.github.com/users/Badhi/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/Badhi/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/Badhi/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/Badhi"
+            }
         }
     ],
-    "comments": 5,
+    "comments": 6,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/26099/comments",
     "created_at": "2023-11-18T05:01:24Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/26099/events",
@@ -290,11 +334,11 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/26099/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/26099/timeline",
     "title": "Neovim assert fails when osc52 is enabled with copy to clipboard",
-    "updated_at": "2023-11-29T21:20:18Z",
+    "updated_at": "2023-11-30T18:43:45Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/26099",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/10277051?v=4",
