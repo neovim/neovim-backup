@@ -3,7 +3,7 @@
     "assignee": null,
     "assignees": [],
     "author_association": "MEMBER",
-    "body": "[This thread](https://news.ycombinator.com/item?id=17163194) discusses CMake state-of-the-art. \r\n\r\nCurrently we use `ExternalProject_Add` combined with our own recipes for building external projects. This obviously is painful to maintain because if an upstream project changes it may break our bundled-deps build when we bump our dependency version of that project.\r\n\r\nSome recommend [hunter](https://github.com/cpp-pm/hunter) for pulling in external projects with CMake.\r\n\r\n>  Hunter aims to be a full package manager, so it strives to build a project and all of its depedendencies recursively. This is fundamentally different than just adding one external project and ignoring the depedencies (what ExternalProject_Add does). The downside is this forces Hunter to maintain many forks of original repos just to keep track of the dependency information. \r\n\r\n[Quick introduction to Hunter](https://geokon-gh.github.io/hunterintro.html):\r\n\r\n> * **Dependencies are built at configuration time:** Hunter will download the source and build all your dependencies during configuration time.\r\n> * **Dependencies are built independently:** Each dependency is configured/built/installed independently and the only thing they inherit from the parent project is the toolchain file you passed in at the command line.\r\n> * **Dependencies share their own dependencies:** If two dependencies need zlib then Hunter will install just one zlib and link both dependencies to it\r\n\r\n# Evaluation\r\n\r\n### conan\r\n\r\n- conan is missing many of our deps (libtermkey, libuv at least)\r\n- fast to install on Arch Linux (Python package)\r\n\r\n### vcpkg \r\n\r\n- vcpkg appears to provide more deps, but still also misses libtermkey, libvterm at least.\r\n- slow to install (only vcpkg-git in Arch, requires to be built)\r\n\r\n### hunter\r\n\r\n- hunter does not need to be installed really (via CMake)\r\n- [min cmake version](https://hunter.readthedocs.io/en/latest/quick-start/cmake.html)\r\n- also misses a lot of our deps, including LuaJIT: https://hunter.readthedocs.io/en/latest/packages.html\r\n\r\n### CPM https://github.com/cpm-cmake/CPM.cmake\r\n\r\n- ?\r\n\r\n### nix\r\n\r\n- ?",
+    "body": "[This thread](https://news.ycombinator.com/item?id=17163194) discusses CMake state-of-the-art. \r\n\r\nCurrently we use `ExternalProject_Add` combined with our own recipes for building external projects. This obviously is painful to maintain because if an upstream project changes it may break our bundled-deps build when we bump our dependency version of that project.\r\n\r\nSome recommend [hunter](https://github.com/cpp-pm/hunter) for pulling in external projects with CMake.\r\n\r\n>  Hunter aims to be a full package manager, so it strives to build a project and all of its depedendencies recursively. This is fundamentally different than just adding one external project and ignoring the depedencies (what ExternalProject_Add does). The downside is this forces Hunter to maintain many forks of original repos just to keep track of the dependency information. \r\n\r\n[Quick introduction to Hunter](https://geokon-gh.github.io/hunterintro.html):\r\n\r\n> * **Dependencies are built at configuration time:** Hunter will download the source and build all your dependencies during configuration time.\r\n> * **Dependencies are built independently:** Each dependency is configured/built/installed independently and the only thing they inherit from the parent project is the toolchain file you passed in at the command line.\r\n> * **Dependencies share their own dependencies:** If two dependencies need zlib then Hunter will install just one zlib and link both dependencies to it\r\n\r\n# Evaluation\r\n\r\n### conan\r\n\r\n- conan is missing many of our deps (libtermkey, libuv at least)\r\n- fast to install on Arch Linux (Python package)\r\n\r\n### vcpkg \r\n\r\n- vcpkg appears to provide more deps, but still also misses libtermkey, libvterm at least.\r\n- slow to install (only vcpkg-git in Arch, requires to be built)\r\n\r\n### hunter\r\n\r\n- hunter does not need to be installed really (via CMake)\r\n- [min cmake version](https://hunter.readthedocs.io/en/latest/quick-start/cmake.html)\r\n- also misses a lot of our deps, including LuaJIT: https://hunter.readthedocs.io/en/latest/packages.html\r\n\r\n### nix\r\n\r\n- ?",
     "closed_at": null,
     "comment_data": [
         {
@@ -709,9 +709,53 @@
                 "type": "User",
                 "url": "https://api.github.com/users/eli-schwartz"
             }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "I'm removing CPM as a candidate for the following reasons:\r\n\r\n- It is basically just a fancy wrapper over FetchContent, so it's not nearly in the same ball game with the other suggestions.\r\n\r\n- Because it's a wrapper over FetchContent, it suffers from its main drawback: doesn't work for dependencies that doesn't use cmake. Unfortunately for us we have many of those.\r\n\r\n- We already have many of its benefits, such as offline builds with `USE_EXISTING_SRC_DIR=ON`.\n\nI don't mind reintroducing it again if anyone disagrees, this is just my impression from reading the code.",
+            "created_at": "2023-12-01T13:48:39Z",
+            "html_url": "https://github.com/neovim/neovim/issues/8446#issuecomment-1836149034",
+            "id": 1836149034,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/8446",
+            "node_id": "IC_kwDOAPphoM5tcWkq",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1836149034/reactions"
+            },
+            "updated_at": "2023-12-01T14:08:34Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1836149034",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/33953936?v=4",
+                "events_url": "https://api.github.com/users/dundargoc/events{/privacy}",
+                "followers_url": "https://api.github.com/users/dundargoc/followers",
+                "following_url": "https://api.github.com/users/dundargoc/following{/other_user}",
+                "gists_url": "https://api.github.com/users/dundargoc/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/dundargoc",
+                "id": 33953936,
+                "login": "dundargoc",
+                "node_id": "MDQ6VXNlcjMzOTUzOTM2",
+                "organizations_url": "https://api.github.com/users/dundargoc/orgs",
+                "received_events_url": "https://api.github.com/users/dundargoc/received_events",
+                "repos_url": "https://api.github.com/users/dundargoc/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/dundargoc/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/dundargoc/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/dundargoc"
+            }
         }
     ],
-    "comments": 16,
+    "comments": 17,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/8446/comments",
     "created_at": "2018-05-27T18:37:37Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/8446/events",
@@ -741,7 +785,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 196,
+        "closed_issues": 198,
         "created_at": "2014-11-26T22:13:11Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -770,10 +814,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/9/labels",
         "node_id": "MDk6TWlsZXN0b25lODgxOTc4",
         "number": 9,
-        "open_issues": 231,
+        "open_issues": 237,
         "state": "open",
         "title": "unplanned",
-        "updated_at": "2023-10-13T16:33:59Z",
+        "updated_at": "2023-11-30T16:28:12Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/9"
     },
     "node_id": "MDU6SXNzdWUzMjY4Mzg5MjQ=",
@@ -795,8 +839,8 @@
     "state": "open",
     "state_reason": null,
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/8446/timeline",
-    "title": "build/CMake: consider Hunter (vcpkg, CPM, ?) for bundled dependencies",
-    "updated_at": "2023-10-27T18:07:02Z",
+    "title": "build/cmake: consider Hunter (vcpkg, ?) for bundled dependencies",
+    "updated_at": "2023-12-01T14:08:34Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/8446",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",

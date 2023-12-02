@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/25867"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/c9a645fc23b56c1450e504f0b7c6fc38484ce510"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/af5375ab7bf5452880415ab322e408c3665aff28"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 5030,
-            "forks_count": 5030,
+            "forks": 5032,
+            "forks_count": 5032,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1690,
-            "open_issues_count": 1690,
+            "open_issues": 1693,
+            "open_issues_count": 1693,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -118,11 +118,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2023-12-01T01:52:55Z",
+            "pushed_at": "2023-12-02T01:42:16Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 241664,
+            "size": 241661,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 71366,
+            "stargazers_count": 71391,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -140,14 +140,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2023-12-01T01:52:22Z",
+            "updated_at": "2023-12-02T01:09:51Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 71366,
-            "watchers_count": 71366,
+            "watchers": 71391,
+            "watchers_count": 71391,
             "web_commit_signoff_required": false
         },
-        "sha": "01b91deec7b6113ae728ac3f7a55f64f57ddb3e0",
+        "sha": "76a30f2bd0f4e5abe906eabcdce092931d712be3",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -169,7 +169,7 @@
             "url": "https://api.github.com/users/neovim"
         }
     },
-    "body": null,
+    "body": "Work on https://github.com/neovim/neovim/issues/13312.",
     "closed_at": null,
     "comment_data": [
         {
@@ -186,7 +186,7 @@
             },
             "author_association": "MEMBER",
             "body": "There's nothing specific about the 32-bit build that requires gcc-13. Vim's CI was already forcing a specific version, so I just updated that part to install the 32-bit variant.",
-            "commit_id": "c9a645fc23b56c1450e504f0b7c6fc38484ce510",
+            "commit_id": "af5375ab7bf5452880415ab322e408c3665aff28",
             "created_at": "2023-11-30T02:01:31Z",
             "diff_hunk": "@@ -124,6 +51,15 @@ jobs:\n       CC: ${{ matrix.build.cc }}\n     steps:\n       - uses: actions/checkout@v4\n+\n+      - if: ${{ matrix.build.flavor == '32' }}\n+        run: |\n+          sudo dpkg --add-architecture i386\n+          sudo apt-get update -y\n+          sudo apt-get install -y gcc-13:i386",
             "html_url": "https://github.com/neovim/neovim/pull/25867#discussion_r1410070183",
@@ -254,7 +254,7 @@
             },
             "author_association": "MEMBER",
             "body": "This is going to [undo](https://github.com/neovim/neovim/actions/runs/7038946859/job/19156962490?pr=25867#step:4:36) nearly everything from the above step because it installs `build-essential` for the native architecture.  That forces gcc-13:i386 to get removed, among other things.\r\n\r\n`install_deps.sh` really needs to be architecture aware instead.  Something like\r\n\r\n```suggestion\r\n      - run: ./.github/scripts/install_deps.sh --test --arch ${{ matrix.build.flavor }}\r\n```\r\n\r\nwhere `matrix.build.flavor` is either `native` or `i386` (or make the flavor `''` or `'--arch i386'`).\r\n\r\nThis patch for install_deps.sh should handle that.\r\n\r\n```diff\r\ndiff --git i/.github/scripts/install_deps.sh w/.github/scripts/install_deps.sh\r\nindex 9a782e969..7a3a10e87 100755\r\n--- i/.github/scripts/install_deps.sh\r\n+++ w/.github/scripts/install_deps.sh\r\n@@ -1,18 +1,25 @@\r\n #!/bin/bash\r\n \r\n+ARCH=native\r\n+\r\n while (($# > 0)); do\r\n   case $1 in\r\n   --test) # install test dependencies\r\n     TEST=1\r\n     shift\r\n     ;;\r\n+  --arch)\r\n+    shift\r\n+    ARCH=\"$1\"\r\n+    shift\r\n+    ;;\r\n   esac\r\n done\r\n \r\n os=$(uname -s)\r\n if [[ $os == Linux ]]; then\r\n   sudo apt-get update\r\n-  sudo apt-get install -y build-essential cmake curl gettext ninja-build\r\n+  sudo apt-get install -y build-essential:$ARCH cmake curl gettext ninja-build\r\n \r\n   if [[ $CC == clang ]]; then\r\n     DEFAULT_CLANG_VERSION=$(echo |  clang -dM -E - | grep __clang_major | awk '{print $3}')\r\n@@ -30,7 +37,7 @@ if [[ $os == Linux ]]; then\r\n   fi\r\n \r\n   if [[ -n $TEST ]]; then\r\n-    sudo apt-get install -y locales-all cpanminus attr libattr1-dev gdb\r\n+    sudo apt-get install -y locales-all cpanminus attr libattr1-dev:$ARCH gdb\r\n   fi\r\n elif [[ $os == Darwin ]]; then\r\n   brew update --quiet\r\n```",
-            "commit_id": "c9a645fc23b56c1450e504f0b7c6fc38484ce510",
+            "commit_id": "af5375ab7bf5452880415ab322e408c3665aff28",
             "created_at": "2023-11-30T02:22:56Z",
             "diff_hunk": "@@ -124,6 +51,15 @@ jobs:\n       CC: ${{ matrix.build.cc }}\n     steps:\n       - uses: actions/checkout@v4\n+\n+      - if: ${{ matrix.build.flavor == '32' }}\n+        run: |\n+          sudo dpkg --add-architecture i386\n+          sudo apt-get update -y\n+          sudo apt-get install -y gcc-13:i386\n+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 100\n+          sudo update-alternatives --set gcc /usr/bin/gcc-13\n+\n       - run: ./.github/scripts/install_deps.sh --test",
             "html_url": "https://github.com/neovim/neovim/pull/25867#discussion_r1410080312",
@@ -322,7 +322,7 @@
             },
             "author_association": "MEMBER",
             "body": "NIce, thanks",
-            "commit_id": "c9a645fc23b56c1450e504f0b7c6fc38484ce510",
+            "commit_id": "af5375ab7bf5452880415ab322e408c3665aff28",
             "created_at": "2023-11-30T09:08:18Z",
             "diff_hunk": "@@ -124,6 +51,15 @@ jobs:\n       CC: ${{ matrix.build.cc }}\n     steps:\n       - uses: actions/checkout@v4\n+\n+      - if: ${{ matrix.build.flavor == '32' }}\n+        run: |\n+          sudo dpkg --add-architecture i386\n+          sudo apt-get update -y\n+          sudo apt-get install -y gcc-13:i386",
             "html_url": "https://github.com/neovim/neovim/pull/25867#discussion_r1410365668",
@@ -391,7 +391,7 @@
             },
             "author_association": "MEMBER",
             "body": "```suggestion\r\n    for i in locales-all cpanminus attr libattr1-dev:\"$ARCH\" gdb; do\r\n```",
-            "commit_id": "c9a645fc23b56c1450e504f0b7c6fc38484ce510",
+            "commit_id": "af5375ab7bf5452880415ab322e408c3665aff28",
             "created_at": "2023-11-30T12:40:59Z",
             "diff_hunk": "@@ -30,7 +40,9 @@ if [[ $os == Linux ]]; then\n   fi\n \n   if [[ -n $TEST ]]; then\n-    sudo apt-get install -y locales-all cpanminus attr libattr1-dev gdb\n+    for i in locales-all cpanminus attr libattr1-dev gdb; do",
             "html_url": "https://github.com/neovim/neovim/pull/25867#discussion_r1410618547",
@@ -443,75 +443,6 @@
                 "subscriptions_url": "https://api.github.com/users/jamessan/subscriptions",
                 "type": "User",
                 "url": "https://api.github.com/users/jamessan"
-            }
-        },
-        {
-            "_links": {
-                "html": {
-                    "href": "https://github.com/neovim/neovim/pull/25867#discussion_r1410620347"
-                },
-                "pull_request": {
-                    "href": "https://api.github.com/repos/neovim/neovim/pulls/25867"
-                },
-                "self": {
-                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1410620347"
-                }
-            },
-            "author_association": "MEMBER",
-            "body": "Yeah, I just wanted to try it without to see how what happens. I wanna know how you came to the conclusion that it was needed.",
-            "commit_id": "c9a645fc23b56c1450e504f0b7c6fc38484ce510",
-            "created_at": "2023-11-30T12:42:10Z",
-            "diff_hunk": "@@ -30,7 +40,9 @@ if [[ $os == Linux ]]; then\n   fi\n \n   if [[ -n $TEST ]]; then\n-    sudo apt-get install -y locales-all cpanminus attr libattr1-dev gdb\n+    for i in locales-all cpanminus attr libattr1-dev gdb; do",
-            "html_url": "https://github.com/neovim/neovim/pull/25867#discussion_r1410620347",
-            "id": 1410620347,
-            "in_reply_to_id": 1410618547,
-            "line": null,
-            "node_id": "PRRC_kwDOAPphoM5UFFu7",
-            "original_commit_id": "b94017ccf1d2effda49e8ff24e231575038cc1f3",
-            "original_line": 43,
-            "original_position": 35,
-            "original_start_line": null,
-            "path": ".github/scripts/install_deps.sh",
-            "position": null,
-            "pull_request_review_id": 1757383577,
-            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/25867",
-            "reactions": {
-                "+1": 0,
-                "-1": 0,
-                "confused": 0,
-                "eyes": 0,
-                "heart": 0,
-                "hooray": 0,
-                "laugh": 0,
-                "rocket": 0,
-                "total_count": 0,
-                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1410620347/reactions"
-            },
-            "side": "RIGHT",
-            "start_line": null,
-            "start_side": null,
-            "subject_type": "line",
-            "updated_at": "2023-11-30T12:42:10Z",
-            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1410620347",
-            "user": {
-                "avatar_url": "https://avatars.githubusercontent.com/u/33953936?v=4",
-                "events_url": "https://api.github.com/users/dundargoc/events{/privacy}",
-                "followers_url": "https://api.github.com/users/dundargoc/followers",
-                "following_url": "https://api.github.com/users/dundargoc/following{/other_user}",
-                "gists_url": "https://api.github.com/users/dundargoc/gists{/gist_id}",
-                "gravatar_id": "",
-                "html_url": "https://github.com/dundargoc",
-                "id": 33953936,
-                "login": "dundargoc",
-                "node_id": "MDQ6VXNlcjMzOTUzOTM2",
-                "organizations_url": "https://api.github.com/users/dundargoc/orgs",
-                "received_events_url": "https://api.github.com/users/dundargoc/received_events",
-                "repos_url": "https://api.github.com/users/dundargoc/repos",
-                "site_admin": false,
-                "starred_url": "https://api.github.com/users/dundargoc/starred{/owner}{/repo}",
-                "subscriptions_url": "https://api.github.com/users/dundargoc/subscriptions",
-                "type": "User",
-                "url": "https://api.github.com/users/dundargoc"
             }
         }
     ],
@@ -654,9 +585,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/dundargoc/neovim/pulls{/number}",
-            "pushed_at": "2023-11-30T21:45:32Z",
+            "pushed_at": "2023-12-02T00:37:16Z",
             "releases_url": "https://api.github.com/repos/dundargoc/neovim/releases{/id}",
-            "size": 239081,
+            "size": 239146,
             "ssh_url": "git@github.com:dundargoc/neovim.git",
             "stargazers_count": 1,
             "stargazers_url": "https://api.github.com/repos/dundargoc/neovim/stargazers",
@@ -675,7 +606,7 @@
             "watchers_count": 1,
             "web_commit_signoff_required": false
         },
-        "sha": "c9a645fc23b56c1450e504f0b7c6fc38484ce510",
+        "sha": "af5375ab7bf5452880415ab322e408c3665aff28",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/33953936?v=4",
             "events_url": "https://api.github.com/users/dundargoc/events{/privacy}",
@@ -712,7 +643,7 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "2f1f74c437caeb27f5c20b13c8a2c76494b6fe68",
+    "merge_commit_sha": "c6dfd2587657cf8a0130b3b227c4444c0186b84c",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM5eWuWq",
@@ -723,9 +654,9 @@
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/25867/comments",
     "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/c9a645fc23b56c1450e504f0b7c6fc38484ce510",
-    "title": "ci: 32",
-    "updated_at": "2023-11-30T13:18:06Z",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/af5375ab7bf5452880415ab322e408c3665aff28",
+    "title": "ci: add 32-bit testing",
+    "updated_at": "2023-12-01T10:05:41Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/25867",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/33953936?v=4",
