@@ -1,28 +1,28 @@
 {
     "_links": {
         "comments": {
-            "href": "https://api.github.com/repos/neovim/neovim/issues/26364/comments"
+            "href": "https://api.github.com/repos/neovim/neovim/issues/26390/comments"
         },
         "commits": {
-            "href": "https://api.github.com/repos/neovim/neovim/pulls/26364/commits"
+            "href": "https://api.github.com/repos/neovim/neovim/pulls/26390/commits"
         },
         "html": {
-            "href": "https://github.com/neovim/neovim/pull/26364"
+            "href": "https://github.com/neovim/neovim/pull/26390"
         },
         "issue": {
-            "href": "https://api.github.com/repos/neovim/neovim/issues/26364"
+            "href": "https://api.github.com/repos/neovim/neovim/issues/26390"
         },
         "review_comment": {
             "href": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}"
         },
         "review_comments": {
-            "href": "https://api.github.com/repos/neovim/neovim/pulls/26364/comments"
+            "href": "https://api.github.com/repos/neovim/neovim/pulls/26390/comments"
         },
         "self": {
-            "href": "https://api.github.com/repos/neovim/neovim/pulls/26364"
+            "href": "https://api.github.com/repos/neovim/neovim/pulls/26390"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/8c61eefa3aa564b30f5dd403f1a81e0bccf03b0f"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/39fd80ab6bd4883d430dfe4fe904890b8093b0f3"
         }
     },
     "active_lock_reason": null,
@@ -147,7 +147,7 @@
             "watchers_count": 71479,
             "web_commit_signoff_required": false
         },
-        "sha": "481a3158866638946c91fab28ae5bca97ff1e814",
+        "sha": "66f1563c7a48d76f99c89e32de030e57af2abfb4",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -169,19 +169,38 @@
             "url": "https://api.github.com/users/neovim"
         }
     },
-    "body": "Problem:\r\nWith vim.treesitter.foldexpr, `o`-ing two lines above a folded region opens the fold. This does not happen with legacy foldexprs. For example, make a markdown file with the following text, enable treesitter fold, and follow the instruction in the text.\r\n\r\n    put cursor on this line and type zoo<Esc>\r\n    initially folded, revealed by zo\r\n    # then this fold will be opened\r\n    initially folded, revealed by o<Esc>\r\n\r\nAnalysis:\r\n* `o` updates folds first (done in `changed_lines`), evaluating foldexpr, and then invokes `on_bytes` (done in `extmark_splice`).\r\n* Treesitter fold allocates the foldinfo for added lines (`add_range`) on `on_bytes`.\r\n* Therefore, when treesitter foldexpr is invoked while running `o`, it sees outdated foldinfo.\r\n\r\nSolution:\r\n`extmark_splice`, and then `changed_lines`. This seems to be the standard order in other places, e.g., `nvim_buf_set_lines`.",
-    "closed_at": "2023-12-05T00:40:48Z",
-    "comment_data": [],
-    "comment_regular_data": [
+    "body": "Problem:\r\nWhen `vim._foldupdate()` is invoked inside a scheduled callback, the cursor may have moved to a line with a closed fold, e.g., after `dd` on the line that is one line above a folded region. Then it opens the fold, which is unnecessary and distracting. Legacy foldexprs do not have this issue.\r\n\r\nSolution:\r\nDon't explicitly open folds on cursor.\r\n\r\nNote:\r\nThis doesn't completely prevent spurious opening of folds. That is due to bugs in treesitter foldexpr algorithm, which should be addressed separately.",
+    "closed_at": null,
+    "comment_data": [
         {
-            "author_association": "CONTRIBUTOR",
-            "body": "Does this also handle cases where folds seems to be wrong after pressing `<BS>`? :thinking: \r\n\r\nWith the example code in #25822, it doesn't become wrong only when using `o`/`O`, also when doing `<BS>` after `A<CR>`",
-            "created_at": "2023-12-04T15:15:33Z",
-            "html_url": "https://github.com/neovim/neovim/pull/26364#issuecomment-1838858362",
-            "id": 1838858362,
-            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/26364",
-            "node_id": "IC_kwDOAPphoM5tmsB6",
-            "performed_via_github_app": null,
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26390#discussion_r1414245399"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26390"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1414245399"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Without the comment, it's not clear what the purpose of this function is. Do we still need `vim._foldupdate()` or can `zx` be used?",
+            "commit_id": "39fd80ab6bd4883d430dfe4fe904890b8093b0f3",
+            "created_at": "2023-12-04T17:28:42Z",
+            "diff_hunk": "@@ -536,11 +536,9 @@ static int nlua_iconv(lua_State *lstate)\n   return 1;\n }\n \n-// Like 'zx' but don't call newFoldLevel()\n static int nlua_foldupdate(lua_State *lstate)",
+            "html_url": "https://github.com/neovim/neovim/pull/26390#discussion_r1414245399",
+            "id": 1414245399,
+            "line": 539,
+            "node_id": "PRRC_kwDOAPphoM5US6wX",
+            "original_commit_id": "39fd80ab6bd4883d430dfe4fe904890b8093b0f3",
+            "original_line": 539,
+            "original_position": 5,
+            "original_start_line": null,
+            "path": "src/nvim/lua/stdlib.c",
+            "position": 5,
+            "pull_request_review_id": 1763007121,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26390",
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -192,40 +211,65 @@
                 "laugh": 0,
                 "rocket": 0,
                 "total_count": 0,
-                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1838858362/reactions"
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1414245399/reactions"
             },
-            "updated_at": "2023-12-04T15:15:33Z",
-            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1838858362",
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-12-04T17:28:42Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1414245399",
             "user": {
-                "avatar_url": "https://avatars.githubusercontent.com/u/29790821?v=4",
-                "events_url": "https://api.github.com/users/lucario387/events{/privacy}",
-                "followers_url": "https://api.github.com/users/lucario387/followers",
-                "following_url": "https://api.github.com/users/lucario387/following{/other_user}",
-                "gists_url": "https://api.github.com/users/lucario387/gists{/gist_id}",
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
                 "gravatar_id": "",
-                "html_url": "https://github.com/lucario387",
-                "id": 29790821,
-                "login": "lucario387",
-                "node_id": "MDQ6VXNlcjI5NzkwODIx",
-                "organizations_url": "https://api.github.com/users/lucario387/orgs",
-                "received_events_url": "https://api.github.com/users/lucario387/received_events",
-                "repos_url": "https://api.github.com/users/lucario387/repos",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
                 "site_admin": false,
-                "starred_url": "https://api.github.com/users/lucario387/starred{/owner}{/repo}",
-                "subscriptions_url": "https://api.github.com/users/lucario387/subscriptions",
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lucario387"
+                "url": "https://api.github.com/users/justinmk"
             }
         },
         {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26390#discussion_r1414269981"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26390"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1414269981"
+                }
+            },
             "author_association": "CONTRIBUTOR",
-            "body": "No, that is probably due to some bugs in treesitter foldexpr algorithm. I'm investigating the problem.",
-            "created_at": "2023-12-04T15:22:25Z",
-            "html_url": "https://github.com/neovim/neovim/pull/26364#issuecomment-1838872484",
-            "id": 1838872484,
-            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/26364",
-            "node_id": "IC_kwDOAPphoM5tmvek",
-            "performed_via_github_app": null,
+            "body": "This function evaluates foldexpr for all lines (vim.treesitter.foldexpr caches the values, so this is fast) and updates the current window's folds based on those values. This function is necessary because the actual computation done in vim.treesitter.foldexpr is vim.schedule-ed to avoid textlock. \r\nhttps://github.com/neovim/neovim/blob/66f1563c7a48d76f99c89e32de030e57af2abfb4/runtime/lua/vim/treesitter/_fold.lua#L243-L254\r\n\r\n `zx` (and the old version of this function) has the additional side effect of opening the folds under cursor, so it's not suitable here.",
+            "commit_id": "39fd80ab6bd4883d430dfe4fe904890b8093b0f3",
+            "created_at": "2023-12-04T17:50:10Z",
+            "diff_hunk": "@@ -536,11 +536,9 @@ static int nlua_iconv(lua_State *lstate)\n   return 1;\n }\n \n-// Like 'zx' but don't call newFoldLevel()\n static int nlua_foldupdate(lua_State *lstate)",
+            "html_url": "https://github.com/neovim/neovim/pull/26390#discussion_r1414269981",
+            "id": 1414269981,
+            "in_reply_to_id": 1414245399,
+            "line": 539,
+            "node_id": "PRRC_kwDOAPphoM5UTAwd",
+            "original_commit_id": "39fd80ab6bd4883d430dfe4fe904890b8093b0f3",
+            "original_line": 539,
+            "original_position": 5,
+            "original_start_line": null,
+            "path": "src/nvim/lua/stdlib.c",
+            "position": 5,
+            "pull_request_review_id": 1763047804,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26390",
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -236,10 +280,14 @@
                 "laugh": 0,
                 "rocket": 0,
                 "total_count": 0,
-                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1838872484/reactions"
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1414269981/reactions"
             },
-            "updated_at": "2023-12-04T15:22:57Z",
-            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1838872484",
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-12-04T17:50:32Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1414269981",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/19489738?v=4",
                 "events_url": "https://api.github.com/users/tomtomjhj/events{/privacy}",
@@ -260,16 +308,86 @@
                 "type": "User",
                 "url": "https://api.github.com/users/tomtomjhj"
             }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26390#discussion_r1414320601"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26390"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1414320601"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Above info is worth adding to the commit message.\r\n\r\n> `zx` has the additional side effect of opening the folds under cursor,\r\n\r\nSeems like that is worth a 1-line code comment on the function. ",
+            "commit_id": "39fd80ab6bd4883d430dfe4fe904890b8093b0f3",
+            "created_at": "2023-12-04T18:26:41Z",
+            "diff_hunk": "@@ -536,11 +536,9 @@ static int nlua_iconv(lua_State *lstate)\n   return 1;\n }\n \n-// Like 'zx' but don't call newFoldLevel()\n static int nlua_foldupdate(lua_State *lstate)",
+            "html_url": "https://github.com/neovim/neovim/pull/26390#discussion_r1414320601",
+            "id": 1414320601,
+            "in_reply_to_id": 1414245399,
+            "line": 539,
+            "node_id": "PRRC_kwDOAPphoM5UTNHZ",
+            "original_commit_id": "39fd80ab6bd4883d430dfe4fe904890b8093b0f3",
+            "original_line": 539,
+            "original_position": 5,
+            "original_start_line": null,
+            "path": "src/nvim/lua/stdlib.c",
+            "position": 5,
+            "pull_request_review_id": 1763123820,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26390",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1414320601/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-12-04T18:26:42Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1414320601",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk"
+            }
         }
     ],
-    "comments_url": "https://api.github.com/repos/neovim/neovim/issues/26364/comments",
-    "commits_url": "https://api.github.com/repos/neovim/neovim/pulls/26364/commits",
-    "created_at": "2023-12-02T18:36:39Z",
-    "diff_url": "https://github.com/neovim/neovim/pull/26364.diff",
+    "comment_regular_data": [],
+    "comments_url": "https://api.github.com/repos/neovim/neovim/issues/26390/comments",
+    "commits_url": "https://api.github.com/repos/neovim/neovim/pulls/26390/commits",
+    "created_at": "2023-12-04T14:59:09Z",
+    "diff_url": "https://github.com/neovim/neovim/pull/26390.diff",
     "draft": false,
     "head": {
-        "label": "tomtomjhj:fold-after-on_bytes",
-        "ref": "fold-after-on_bytes",
+        "label": "tomtomjhj:ts-fold-no-open",
+        "ref": "ts-fold-no-open",
         "repo": {
             "allow_forking": true,
             "archive_url": "https://api.github.com/repos/tomtomjhj/neovim/{archive_format}{/ref}",
@@ -376,7 +494,7 @@
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "8c61eefa3aa564b30f5dd403f1a81e0bccf03b0f",
+        "sha": "39fd80ab6bd4883d430dfe4fe904890b8093b0f3",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/19489738?v=4",
             "events_url": "https://api.github.com/users/tomtomjhj/events{/privacy}",
@@ -398,28 +516,29 @@
             "url": "https://api.github.com/users/tomtomjhj"
         }
     },
-    "html_url": "https://github.com/neovim/neovim/pull/26364",
-    "id": 1626811393,
-    "issue_url": "https://api.github.com/repos/neovim/neovim/issues/26364",
+    "html_url": "https://github.com/neovim/neovim/pull/26390",
+    "id": 1628489795,
+    "issue_url": "https://api.github.com/repos/neovim/neovim/issues/26390",
     "labels": [
         {
             "color": "c5def5",
             "default": false,
-            "description": "extmarks, decorations, virtual text, namespaces",
-            "id": 1680119719,
-            "name": "extmarks",
-            "node_id": "MDU6TGFiZWwxNjgwMTE5NzE5",
-            "url": "https://api.github.com/repos/neovim/neovim/labels/extmarks"
+            "description": "",
+            "id": 1799626557,
+            "name": "treesitter",
+            "node_id": "MDU6TGFiZWwxNzk5NjI2NTU3",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/treesitter"
         }
     ],
     "locked": false,
-    "merge_commit_sha": "3159a2c28f5ea8797cb525c74dedd622bfe4a0a1",
-    "merged_at": "2023-12-05T00:40:48Z",
-    "milestone": {
-        "closed_at": null,
-        "closed_issues": 199,
-        "created_at": "2023-02-02T14:11:43Z",
-        "creator": {
+    "merge_commit_sha": "de80e26a06c8c7b885bdddbb52d1acb6de4e52d4",
+    "merged_at": null,
+    "milestone": null,
+    "node_id": "PR_kwDOAPphoM5hEMhD",
+    "number": 26390,
+    "patch_url": "https://github.com/neovim/neovim/pull/26390.patch",
+    "requested_reviewers": [
+        {
             "avatar_url": "https://avatars.githubusercontent.com/u/1363104?v=4",
             "events_url": "https://api.github.com/users/bfredl/events{/privacy}",
             "followers_url": "https://api.github.com/users/bfredl/followers",
@@ -439,31 +558,35 @@
             "type": "User",
             "url": "https://api.github.com/users/bfredl"
         },
-        "description": "",
-        "due_on": "2024-03-01T08:00:00Z",
-        "html_url": "https://github.com/neovim/neovim/milestone/36",
-        "id": 8997654,
-        "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/36/labels",
-        "node_id": "MI_kwDOAPphoM4AiUsW",
-        "number": 36,
-        "open_issues": 129,
-        "state": "open",
-        "title": "0.10",
-        "updated_at": "2023-12-05T00:40:48Z",
-        "url": "https://api.github.com/repos/neovim/neovim/milestones/36"
-    },
-    "node_id": "PR_kwDOAPphoM5g9ywB",
-    "number": 26364,
-    "patch_url": "https://github.com/neovim/neovim/pull/26364.patch",
-    "requested_reviewers": [],
+        {
+            "avatar_url": "https://avatars.githubusercontent.com/u/2361214?v=4",
+            "events_url": "https://api.github.com/users/clason/events{/privacy}",
+            "followers_url": "https://api.github.com/users/clason/followers",
+            "following_url": "https://api.github.com/users/clason/following{/other_user}",
+            "gists_url": "https://api.github.com/users/clason/gists{/gist_id}",
+            "gravatar_id": "",
+            "html_url": "https://github.com/clason",
+            "id": 2361214,
+            "login": "clason",
+            "node_id": "MDQ6VXNlcjIzNjEyMTQ=",
+            "organizations_url": "https://api.github.com/users/clason/orgs",
+            "received_events_url": "https://api.github.com/users/clason/received_events",
+            "repos_url": "https://api.github.com/users/clason/repos",
+            "site_admin": false,
+            "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
+            "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
+            "type": "User",
+            "url": "https://api.github.com/users/clason"
+        }
+    ],
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
-    "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/26364/comments",
-    "state": "closed",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/8c61eefa3aa564b30f5dd403f1a81e0bccf03b0f",
-    "title": "fix(change): update fold after on_bytes",
-    "updated_at": "2023-12-05T00:41:07Z",
-    "url": "https://api.github.com/repos/neovim/neovim/pulls/26364",
+    "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/26390/comments",
+    "state": "open",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/39fd80ab6bd4883d430dfe4fe904890b8093b0f3",
+    "title": "fix(treesitter): don't forcefully open folds",
+    "updated_at": "2023-12-04T18:26:42Z",
+    "url": "https://api.github.com/repos/neovim/neovim/pulls/26390",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/19489738?v=4",
         "events_url": "https://api.github.com/users/tomtomjhj/events{/privacy}",
