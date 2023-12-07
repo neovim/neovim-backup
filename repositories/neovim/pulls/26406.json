@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/26406"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/86eb3c70c8547394fa92b9d14c85957282079f9c"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/2000abbdfe39f338c09796293f76ec8336d81b22"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 5040,
-            "forks_count": 5040,
+            "forks": 5038,
+            "forks_count": 5038,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -118,11 +118,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2023-12-06T01:55:02Z",
+            "pushed_at": "2023-12-07T01:35:41Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 243418,
+            "size": 241695,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 71506,
+            "stargazers_count": 71531,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -140,14 +140,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2023-12-06T00:51:48Z",
+            "updated_at": "2023-12-07T01:52:10Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 71506,
-            "watchers_count": 71506,
+            "watchers": 71531,
+            "watchers_count": 71531,
             "web_commit_signoff_required": false
         },
-        "sha": "ca4fe083e5b1a7c2e93cf77aa849fbec72757627",
+        "sha": "3198598e6974ae2009e816aeb96462cdfc3c59e9",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -169,9 +169,1451 @@
             "url": "https://api.github.com/users/neovim"
         }
     },
-    "body": "Problem:  The entire marktree needs to be traversed each time a sign is\r\n          removed from the sentinel line.\r\nSolution: Remove sentinel line and instead keep track of the number of\r\n          lines that hold up the 'signcolumn' in \"max_count\". Adjust this\r\n          number when adding/removing signs, and set it to 0 when the\r\n          maximum number of signs on a line changes. Only when\r\n          \"max_count\" is decremented to 0 due to sign removal do we need\r\n          to traverse the entire tree for signs. Only do this at the\r\n          start of a redraw, if \"max_count\" changes before a redraw\r\n          happens we also don't have to traverse the entire marktree.\r\n          ---\r\n          Also improve tree traversal when counting the number of signs.\r\n          Instead of looping over the to be checked range and counting\r\n          the overlap for each row, keep track of the overlap in a map\r\n          and add this to the count.",
+    "body": "Problem:  The entire marktree needs to be traversed each time a sign is removed from the sentinel line.\r\nSolution: Remove sentinel line and instead keep track of the number of lines that hold up the 'signcolumn' in \"max_count\". Adjust this number for added/removed signs, and set it to 0 when the maximum number of signs on a line changes. Only when \"max_count\" is decremented to 0 due to sign removal do we need to check the entire buffer.\r\n\r\nAlso replace \"invalid_top\" and \"invalid_bot\" with a map of invalid ranges, further reducing the number of lines to be checked.\r\n\r\nAlso improve tree traversal when counting the number of signs. Instead of looping over the to be checked range and counting the overlap for each row, keep track of the overlap in an array and add this to the count.",
     "closed_at": null,
-    "comment_data": [],
+    "comment_data": [
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26406#discussion_r1417013059"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26406"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417013059"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Why is this a 1 element array?",
+            "commit_id": "2000abbdfe39f338c09796293f76ec8336d81b22",
+            "created_at": "2023-12-06T09:46:10Z",
+            "diff_hunk": "@@ -703,11 +703,10 @@ struct file_buffer {\n                                 // may use a different synblock_T.\n \n   struct {\n-    int size;                   // last calculated number of sign columns\n-    int max;                    // maximum value size is valid for.\n-    linenr_T sentinel;          // a line number which is holding up the signcolumn\n-    linenr_T invalid_top;       // first invalid line number that needs to be checked\n-    linenr_T invalid_bot;       // last invalid line number that needs to be checked\n+    int max;                    // maximum number of signs on a single line\n+    int max_count;              // number of lines with max number of signs\n+    bool resized;               // whether max changed at start of redraw\n+    Map(int, int) invalid[1];   // map of invalid ranges to be checked",
+            "html_url": "https://github.com/neovim/neovim/pull/26406#discussion_r1417013059",
+            "id": 1417013059,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5UdedD",
+            "original_commit_id": "31a3869a02ed1c91e7e8a56550b748467de87f3c",
+            "original_line": 709,
+            "original_position": 12,
+            "original_start_line": null,
+            "path": "src/nvim/buffer_defs.h",
+            "position": null,
+            "pull_request_review_id": 1767125483,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26406",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417013059/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-12-06T10:13:36Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417013059",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",
+                "events_url": "https://api.github.com/users/lewis6991/events{/privacy}",
+                "followers_url": "https://api.github.com/users/lewis6991/followers",
+                "following_url": "https://api.github.com/users/lewis6991/following{/other_user}",
+                "gists_url": "https://api.github.com/users/lewis6991/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/lewis6991",
+                "id": 7904185,
+                "login": "lewis6991",
+                "node_id": "MDQ6VXNlcjc5MDQxODU=",
+                "organizations_url": "https://api.github.com/users/lewis6991/orgs",
+                "received_events_url": "https://api.github.com/users/lewis6991/received_events",
+                "repos_url": "https://api.github.com/users/lewis6991/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/lewis6991"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26406#discussion_r1417020795"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26406"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417020795"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "I do think this is harder to read than what it was before.",
+            "commit_id": "2000abbdfe39f338c09796293f76ec8336d81b22",
+            "created_at": "2023-12-06T09:51:37Z",
+            "diff_hunk": "@@ -735,11 +735,8 @@ void decor_redraw_signs(win_T *wp, buf_T *buf, int row, SignTextAttrs sattrs[],\n     }\n   }\n \n-  while (itr->x) {\n-    MTKey mark = marktree_itr_current(itr);\n-    if (mark.pos.row != row) {\n-      break;\n-    }\n+  MTKey mark;\n+  while ((mark = marktree_itr_current(itr)).pos.row == row) {",
+            "html_url": "https://github.com/neovim/neovim/pull/26406#discussion_r1417020795",
+            "id": 1417020795,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5UdgV7",
+            "original_commit_id": "31a3869a02ed1c91e7e8a56550b748467de87f3c",
+            "original_line": 739,
+            "original_position": 65,
+            "original_start_line": null,
+            "path": "src/nvim/decoration.c",
+            "position": null,
+            "pull_request_review_id": 1767125483,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26406",
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417020795/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-12-06T10:13:36Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417020795",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",
+                "events_url": "https://api.github.com/users/lewis6991/events{/privacy}",
+                "followers_url": "https://api.github.com/users/lewis6991/followers",
+                "following_url": "https://api.github.com/users/lewis6991/following{/other_user}",
+                "gists_url": "https://api.github.com/users/lewis6991/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/lewis6991",
+                "id": 7904185,
+                "login": "lewis6991",
+                "node_id": "MDQ6VXNlcjc5MDQxODU=",
+                "organizations_url": "https://api.github.com/users/lewis6991/orgs",
+                "received_events_url": "https://api.github.com/users/lewis6991/received_events",
+                "repos_url": "https://api.github.com/users/lewis6991/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/lewis6991"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26406#discussion_r1417026804"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26406"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417026804"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "If range is a line number then I would rename the arguments to `line1` and `line2` and add\r\n\r\n```suggestion\r\nint row1 = line1 - 1;\r\nint row2 = line2 - 1;\r\n```",
+            "commit_id": "2000abbdfe39f338c09796293f76ec8336d81b22",
+            "created_at": "2023-12-06T09:55:43Z",
+            "diff_hunk": "@@ -792,50 +789,95 @@ DecorSignHighlight *decor_find_sign(DecorInline decor)\n   }\n }\n \n-// Increase the signcolumn size and update the sentinel line if necessary for\n-// the invalidated range.\n-void decor_validate_signcols(buf_T *buf, int max)\n+/// Add overlapping signs in current row to count. If it is greater than\n+/// current max, set it and make b_signcols valid. Adjust max_count if\n+/// row has or had max signs.\n+void buf_signcols_count_row(buf_T *buf, const int overlap[], int idx, int count, bool del)\n {\n-  int signcols = 0;  // highest value of count\n-  int currow = buf->b_signcols.invalid_top - 1;\n-  // TODO(bfredl): only need to use marktree_itr_get_overlap once.\n-  // then we can process both start and end events and update state for each row\n-  for (; currow < buf->b_signcols.invalid_bot; currow++) {\n-    MarkTreeIter itr[1];\n-    if (!marktree_itr_get_overlap(buf->b_marktree, currow, 0, itr)) {\n-      continue;\n-    }\n+  count += overlap[idx];\n+  if (count > buf->b_signcols.max) {\n+    buf->b_signcols.max = count;\n+    buf->b_signcols.resized = true;\n+    buf->b_signcols.max_count = 0;\n+  }\n+  buf->b_signcols.max_count += (count == buf->b_signcols.max - del) * (del ? -1 : 1);\n+}\n \n-    int count = 0;\n-    MTPair pair;\n-    while (marktree_itr_step_overlap(buf->b_marktree, itr, &pair)) {\n-      if (!mt_invalid(pair.start) && (pair.start.flags & MT_FLAG_DECOR_SIGNTEXT)) {\n-        count++;\n-      }\n-    }\n+void buf_signcols_validate_range(buf_T *buf, int row1, int row2)\n+{\n+  bool del = row1 < 0;\n+  // Range for deleted sign is negative, make it positive.\n+  if (del) {\n+    row1 *= -1;\n+    row2 *= -1;\n+  }\n+  row1--;  // Range is actually a line number, adjust for row.\n+  row2--;",
+            "html_url": "https://github.com/neovim/neovim/pull/26406#discussion_r1417026804",
+            "id": 1417026804,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5Udhz0",
+            "original_commit_id": "31a3869a02ed1c91e7e8a56550b748467de87f3c",
+            "original_line": 815,
+            "original_position": 115,
+            "original_start_line": 814,
+            "path": "src/nvim/decoration.c",
+            "position": null,
+            "pull_request_review_id": 1767125483,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26406",
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417026804/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2023-12-06T10:13:36Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417026804",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",
+                "events_url": "https://api.github.com/users/lewis6991/events{/privacy}",
+                "followers_url": "https://api.github.com/users/lewis6991/followers",
+                "following_url": "https://api.github.com/users/lewis6991/following{/other_user}",
+                "gists_url": "https://api.github.com/users/lewis6991/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/lewis6991",
+                "id": 7904185,
+                "login": "lewis6991",
+                "node_id": "MDQ6VXNlcjc5MDQxODU=",
+                "organizations_url": "https://api.github.com/users/lewis6991/orgs",
+                "received_events_url": "https://api.github.com/users/lewis6991/received_events",
+                "repos_url": "https://api.github.com/users/lewis6991/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/lewis6991"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26406#discussion_r1417032441"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26406"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417032441"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "`overlap` and `idx` are only used once. I would move the count adjustment outside to make this function less convoluted.",
+            "commit_id": "2000abbdfe39f338c09796293f76ec8336d81b22",
+            "created_at": "2023-12-06T10:00:05Z",
+            "diff_hunk": "@@ -792,50 +789,95 @@ DecorSignHighlight *decor_find_sign(DecorInline decor)\n   }\n }\n \n-// Increase the signcolumn size and update the sentinel line if necessary for\n-// the invalidated range.\n-void decor_validate_signcols(buf_T *buf, int max)\n+/// Add overlapping signs in current row to count. If it is greater than\n+/// current max, set it and make b_signcols valid. Adjust max_count if\n+/// row has or had max signs.\n+void buf_signcols_count_row(buf_T *buf, const int overlap[], int idx, int count, bool del)",
+            "html_url": "https://github.com/neovim/neovim/pull/26406#discussion_r1417032441",
+            "id": 1417032441,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5UdjL5",
+            "original_commit_id": "31a3869a02ed1c91e7e8a56550b748467de87f3c",
+            "original_line": 795,
+            "original_position": 79,
+            "original_start_line": null,
+            "path": "src/nvim/decoration.c",
+            "position": null,
+            "pull_request_review_id": 1767125483,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26406",
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417032441/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-12-06T10:13:36Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417032441",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",
+                "events_url": "https://api.github.com/users/lewis6991/events{/privacy}",
+                "followers_url": "https://api.github.com/users/lewis6991/followers",
+                "following_url": "https://api.github.com/users/lewis6991/following{/other_user}",
+                "gists_url": "https://api.github.com/users/lewis6991/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/lewis6991",
+                "id": 7904185,
+                "login": "lewis6991",
+                "node_id": "MDQ6VXNlcjc5MDQxODU=",
+                "organizations_url": "https://api.github.com/users/lewis6991/orgs",
+                "received_events_url": "https://api.github.com/users/lewis6991/received_events",
+                "repos_url": "https://api.github.com/users/lewis6991/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/lewis6991"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26406#discussion_r1417038634"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26406"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417038634"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Should this go in the same file as `buf_signcols_validate_range`?",
+            "commit_id": "2000abbdfe39f338c09796293f76ec8336d81b22",
+            "created_at": "2023-12-06T10:05:01Z",
+            "diff_hunk": "@@ -1200,16 +1204,45 @@ void comp_col(void)\n   set_vim_var_nr(VV_ECHOSPACE, sc_col - 1);\n }\n \n-static void redraw_win_signcol(win_T *wp)\n+static int buf_signcols_validate(win_T *wp, buf_T *buf, bool force)",
+            "html_url": "https://github.com/neovim/neovim/pull/26406#discussion_r1417038634",
+            "id": 1417038634,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5Udksq",
+            "original_commit_id": "31a3869a02ed1c91e7e8a56550b748467de87f3c",
+            "original_line": 1207,
+            "original_position": 37,
+            "original_start_line": null,
+            "path": "src/nvim/drawscreen.c",
+            "position": null,
+            "pull_request_review_id": 1767125483,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26406",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417038634/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-12-06T10:13:36Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417038634",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",
+                "events_url": "https://api.github.com/users/lewis6991/events{/privacy}",
+                "followers_url": "https://api.github.com/users/lewis6991/followers",
+                "following_url": "https://api.github.com/users/lewis6991/following{/other_user}",
+                "gists_url": "https://api.github.com/users/lewis6991/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/lewis6991",
+                "id": 7904185,
+                "login": "lewis6991",
+                "node_id": "MDQ6VXNlcjc5MDQxODU=",
+                "organizations_url": "https://api.github.com/users/lewis6991/orgs",
+                "received_events_url": "https://api.github.com/users/lewis6991/received_events",
+                "repos_url": "https://api.github.com/users/lewis6991/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/lewis6991"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26406#discussion_r1417042650"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26406"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417042650"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Does this need to be state? It looks like this can be used as the return value for `buf_signcols_validate`, `buf_signcols_validate_range` and `buf_signcols_set_invalid`.",
+            "commit_id": "2000abbdfe39f338c09796293f76ec8336d81b22",
+            "created_at": "2023-12-06T10:08:11Z",
+            "diff_hunk": "@@ -703,11 +703,10 @@ struct file_buffer {\n                                 // may use a different synblock_T.\n \n   struct {\n-    int size;                   // last calculated number of sign columns\n-    int max;                    // maximum value size is valid for.\n-    linenr_T sentinel;          // a line number which is holding up the signcolumn\n-    linenr_T invalid_top;       // first invalid line number that needs to be checked\n-    linenr_T invalid_bot;       // last invalid line number that needs to be checked\n+    int max;                    // maximum number of signs on a single line\n+    int max_count;              // number of lines with max number of signs\n+    bool resized;               // whether max changed at start of redraw",
+            "html_url": "https://github.com/neovim/neovim/pull/26406#discussion_r1417042650",
+            "id": 1417042650,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5Udlra",
+            "original_commit_id": "31a3869a02ed1c91e7e8a56550b748467de87f3c",
+            "original_line": 708,
+            "original_position": 11,
+            "original_start_line": null,
+            "path": "src/nvim/buffer_defs.h",
+            "position": null,
+            "pull_request_review_id": 1767125483,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26406",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417042650/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-12-06T10:13:36Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417042650",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",
+                "events_url": "https://api.github.com/users/lewis6991/events{/privacy}",
+                "followers_url": "https://api.github.com/users/lewis6991/followers",
+                "following_url": "https://api.github.com/users/lewis6991/following{/other_user}",
+                "gists_url": "https://api.github.com/users/lewis6991/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/lewis6991",
+                "id": 7904185,
+                "login": "lewis6991",
+                "node_id": "MDQ6VXNlcjc5MDQxODU=",
+                "organizations_url": "https://api.github.com/users/lewis6991/orgs",
+                "received_events_url": "https://api.github.com/users/lewis6991/received_events",
+                "repos_url": "https://api.github.com/users/lewis6991/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/lewis6991"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26406#discussion_r1417048186"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26406"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417048186"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Is this change necessary?",
+            "commit_id": "2000abbdfe39f338c09796293f76ec8336d81b22",
+            "created_at": "2023-12-06T10:12:24Z",
+            "diff_hunk": "@@ -67,18 +67,18 @@ void extmark_set(buf_T *buf, uint32_t ns_id, uint32_t *idp, int row, colnr_T col\n       } else {\n         assert(marktree_itr_valid(itr));\n         if (old_mark.pos.row == row && old_mark.pos.col == col) {\n+          // not paired: we can revise in place\n           if (mt_decor_any(old_mark)) {\n+            mt_itr_rawkey(itr).flags &= (uint16_t) ~MT_FLAG_DECOR_SIGNTEXT;\n             buf_decor_remove(buf, row, row, mt_decor(old_mark), true);\n           }\n-\n-          // not paired: we can revise in place\n           mt_itr_rawkey(itr).flags &= (uint16_t) ~MT_FLAG_EXTERNAL_MASK;\n           mt_itr_rawkey(itr).flags |= flags;\n           mt_itr_rawkey(itr).decor_data = decor.data;\n           goto revised;\n         }\n-        buf_decor_remove(buf, old_mark.pos.row, old_mark.pos.row, mt_decor(old_mark), true);\n         marktree_del_itr(buf->b_marktree, itr, false);\n+        buf_decor_remove(buf, old_mark.pos.row, old_mark.pos.row, mt_decor(old_mark), true);",
+            "html_url": "https://github.com/neovim/neovim/pull/26406#discussion_r1417048186",
+            "id": 1417048186,
+            "line": 81,
+            "node_id": "PRRC_kwDOAPphoM5UdnB6",
+            "original_commit_id": "31a3869a02ed1c91e7e8a56550b748467de87f3c",
+            "original_line": 81,
+            "original_position": 18,
+            "original_start_line": null,
+            "path": "src/nvim/extmark.c",
+            "position": 18,
+            "pull_request_review_id": 1767125483,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26406",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417048186/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-12-06T10:13:36Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417048186",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",
+                "events_url": "https://api.github.com/users/lewis6991/events{/privacy}",
+                "followers_url": "https://api.github.com/users/lewis6991/followers",
+                "following_url": "https://api.github.com/users/lewis6991/following{/other_user}",
+                "gists_url": "https://api.github.com/users/lewis6991/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/lewis6991",
+                "id": 7904185,
+                "login": "lewis6991",
+                "node_id": "MDQ6VXNlcjc5MDQxODU=",
+                "organizations_url": "https://api.github.com/users/lewis6991/orgs",
+                "received_events_url": "https://api.github.com/users/lewis6991/received_events",
+                "repos_url": "https://api.github.com/users/lewis6991/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/lewis6991"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26406#discussion_r1417121540"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26406"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417121540"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Not sure tbh, to be consistent with `b_extmark_ns`. Presumably just to be able to call `map_` functions without taking the address.",
+            "commit_id": "2000abbdfe39f338c09796293f76ec8336d81b22",
+            "created_at": "2023-12-06T11:14:42Z",
+            "diff_hunk": "@@ -703,11 +703,10 @@ struct file_buffer {\n                                 // may use a different synblock_T.\n \n   struct {\n-    int size;                   // last calculated number of sign columns\n-    int max;                    // maximum value size is valid for.\n-    linenr_T sentinel;          // a line number which is holding up the signcolumn\n-    linenr_T invalid_top;       // first invalid line number that needs to be checked\n-    linenr_T invalid_bot;       // last invalid line number that needs to be checked\n+    int max;                    // maximum number of signs on a single line\n+    int max_count;              // number of lines with max number of signs\n+    bool resized;               // whether max changed at start of redraw\n+    Map(int, int) invalid[1];   // map of invalid ranges to be checked",
+            "html_url": "https://github.com/neovim/neovim/pull/26406#discussion_r1417121540",
+            "id": 1417121540,
+            "in_reply_to_id": 1417013059,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5Ud48E",
+            "original_commit_id": "31a3869a02ed1c91e7e8a56550b748467de87f3c",
+            "original_line": 709,
+            "original_position": 12,
+            "original_start_line": null,
+            "path": "src/nvim/buffer_defs.h",
+            "position": null,
+            "pull_request_review_id": 1767298580,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26406",
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417121540/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-12-06T11:30:46Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417121540",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/31730729?v=4",
+                "events_url": "https://api.github.com/users/luukvbaal/events{/privacy}",
+                "followers_url": "https://api.github.com/users/luukvbaal/followers",
+                "following_url": "https://api.github.com/users/luukvbaal/following{/other_user}",
+                "gists_url": "https://api.github.com/users/luukvbaal/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/luukvbaal",
+                "id": 31730729,
+                "login": "luukvbaal",
+                "node_id": "MDQ6VXNlcjMxNzMwNzI5",
+                "organizations_url": "https://api.github.com/users/luukvbaal/orgs",
+                "received_events_url": "https://api.github.com/users/luukvbaal/received_events",
+                "repos_url": "https://api.github.com/users/luukvbaal/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/luukvbaal/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/luukvbaal/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/luukvbaal"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26406#discussion_r1417126154"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26406"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417126154"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Sure, both are only used in `drawscreen.c` but have more to do with decorations I guess. Would `static` `drawscreen.c` functions be preferred or exported in `decorations.c`?",
+            "commit_id": "2000abbdfe39f338c09796293f76ec8336d81b22",
+            "created_at": "2023-12-06T11:17:53Z",
+            "diff_hunk": "@@ -1200,16 +1204,45 @@ void comp_col(void)\n   set_vim_var_nr(VV_ECHOSPACE, sc_col - 1);\n }\n \n-static void redraw_win_signcol(win_T *wp)\n+static int buf_signcols_validate(win_T *wp, buf_T *buf, bool force)",
+            "html_url": "https://github.com/neovim/neovim/pull/26406#discussion_r1417126154",
+            "id": 1417126154,
+            "in_reply_to_id": 1417038634,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5Ud6EK",
+            "original_commit_id": "31a3869a02ed1c91e7e8a56550b748467de87f3c",
+            "original_line": 1207,
+            "original_position": 37,
+            "original_start_line": null,
+            "path": "src/nvim/drawscreen.c",
+            "position": null,
+            "pull_request_review_id": 1767303759,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26406",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417126154/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-12-06T11:17:54Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417126154",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/31730729?v=4",
+                "events_url": "https://api.github.com/users/luukvbaal/events{/privacy}",
+                "followers_url": "https://api.github.com/users/luukvbaal/followers",
+                "following_url": "https://api.github.com/users/luukvbaal/following{/other_user}",
+                "gists_url": "https://api.github.com/users/luukvbaal/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/luukvbaal",
+                "id": 31730729,
+                "login": "luukvbaal",
+                "node_id": "MDQ6VXNlcjMxNzMwNzI5",
+                "organizations_url": "https://api.github.com/users/luukvbaal/orgs",
+                "received_events_url": "https://api.github.com/users/luukvbaal/received_events",
+                "repos_url": "https://api.github.com/users/luukvbaal/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/luukvbaal/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/luukvbaal/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/luukvbaal"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26406#discussion_r1417129775"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26406"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417129775"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Sure, it's only used to determine whether 'statuscolumn' needs to be rebuild when 'signcolumn' is \"number/no\". Because `w_scwidth` is and stays 0 then.",
+            "commit_id": "2000abbdfe39f338c09796293f76ec8336d81b22",
+            "created_at": "2023-12-06T11:21:01Z",
+            "diff_hunk": "@@ -703,11 +703,10 @@ struct file_buffer {\n                                 // may use a different synblock_T.\n \n   struct {\n-    int size;                   // last calculated number of sign columns\n-    int max;                    // maximum value size is valid for.\n-    linenr_T sentinel;          // a line number which is holding up the signcolumn\n-    linenr_T invalid_top;       // first invalid line number that needs to be checked\n-    linenr_T invalid_bot;       // last invalid line number that needs to be checked\n+    int max;                    // maximum number of signs on a single line\n+    int max_count;              // number of lines with max number of signs\n+    bool resized;               // whether max changed at start of redraw",
+            "html_url": "https://github.com/neovim/neovim/pull/26406#discussion_r1417129775",
+            "id": 1417129775,
+            "in_reply_to_id": 1417042650,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5Ud68v",
+            "original_commit_id": "31a3869a02ed1c91e7e8a56550b748467de87f3c",
+            "original_line": 708,
+            "original_position": 11,
+            "original_start_line": null,
+            "path": "src/nvim/buffer_defs.h",
+            "position": null,
+            "pull_request_review_id": 1767308764,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26406",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417129775/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-12-06T11:21:01Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417129775",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/31730729?v=4",
+                "events_url": "https://api.github.com/users/luukvbaal/events{/privacy}",
+                "followers_url": "https://api.github.com/users/luukvbaal/followers",
+                "following_url": "https://api.github.com/users/luukvbaal/following{/other_user}",
+                "gists_url": "https://api.github.com/users/luukvbaal/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/luukvbaal",
+                "id": 31730729,
+                "login": "luukvbaal",
+                "node_id": "MDQ6VXNlcjMxNzMwNzI5",
+                "organizations_url": "https://api.github.com/users/luukvbaal/orgs",
+                "received_events_url": "https://api.github.com/users/luukvbaal/received_events",
+                "repos_url": "https://api.github.com/users/luukvbaal/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/luukvbaal/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/luukvbaal/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/luukvbaal"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26406#discussion_r1417132817"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26406"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417132817"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "I think not `drawscreen.c`. I considered adding a new file just for column/signs, but if not that then maybe `decoration.c` for now.",
+            "commit_id": "2000abbdfe39f338c09796293f76ec8336d81b22",
+            "created_at": "2023-12-06T11:24:02Z",
+            "diff_hunk": "@@ -1200,16 +1204,45 @@ void comp_col(void)\n   set_vim_var_nr(VV_ECHOSPACE, sc_col - 1);\n }\n \n-static void redraw_win_signcol(win_T *wp)\n+static int buf_signcols_validate(win_T *wp, buf_T *buf, bool force)",
+            "html_url": "https://github.com/neovim/neovim/pull/26406#discussion_r1417132817",
+            "id": 1417132817,
+            "in_reply_to_id": 1417038634,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5Ud7sR",
+            "original_commit_id": "31a3869a02ed1c91e7e8a56550b748467de87f3c",
+            "original_line": 1207,
+            "original_position": 37,
+            "original_start_line": null,
+            "path": "src/nvim/drawscreen.c",
+            "position": null,
+            "pull_request_review_id": 1767313452,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26406",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417132817/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-12-06T11:24:03Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417132817",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",
+                "events_url": "https://api.github.com/users/lewis6991/events{/privacy}",
+                "followers_url": "https://api.github.com/users/lewis6991/followers",
+                "following_url": "https://api.github.com/users/lewis6991/following{/other_user}",
+                "gists_url": "https://api.github.com/users/lewis6991/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/lewis6991",
+                "id": 7904185,
+                "login": "lewis6991",
+                "node_id": "MDQ6VXNlcjc5MDQxODU=",
+                "organizations_url": "https://api.github.com/users/lewis6991/orgs",
+                "received_events_url": "https://api.github.com/users/lewis6991/received_events",
+                "repos_url": "https://api.github.com/users/lewis6991/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/lewis6991"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26406#discussion_r1417134178"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26406"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417134178"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Hmm since the counting is now delayed to the start of a redraw it no longer is. Can revert I guess but I think it's more correct in this order in case `buf_decor_remove()` ever handles other side effects which expect the mark to already be removed from the marktree.",
+            "commit_id": "2000abbdfe39f338c09796293f76ec8336d81b22",
+            "created_at": "2023-12-06T11:25:24Z",
+            "diff_hunk": "@@ -67,18 +67,18 @@ void extmark_set(buf_T *buf, uint32_t ns_id, uint32_t *idp, int row, colnr_T col\n       } else {\n         assert(marktree_itr_valid(itr));\n         if (old_mark.pos.row == row && old_mark.pos.col == col) {\n+          // not paired: we can revise in place\n           if (mt_decor_any(old_mark)) {\n+            mt_itr_rawkey(itr).flags &= (uint16_t) ~MT_FLAG_DECOR_SIGNTEXT;\n             buf_decor_remove(buf, row, row, mt_decor(old_mark), true);\n           }\n-\n-          // not paired: we can revise in place\n           mt_itr_rawkey(itr).flags &= (uint16_t) ~MT_FLAG_EXTERNAL_MASK;\n           mt_itr_rawkey(itr).flags |= flags;\n           mt_itr_rawkey(itr).decor_data = decor.data;\n           goto revised;\n         }\n-        buf_decor_remove(buf, old_mark.pos.row, old_mark.pos.row, mt_decor(old_mark), true);\n         marktree_del_itr(buf->b_marktree, itr, false);\n+        buf_decor_remove(buf, old_mark.pos.row, old_mark.pos.row, mt_decor(old_mark), true);",
+            "html_url": "https://github.com/neovim/neovim/pull/26406#discussion_r1417134178",
+            "id": 1417134178,
+            "in_reply_to_id": 1417048186,
+            "line": 81,
+            "node_id": "PRRC_kwDOAPphoM5Ud8Bi",
+            "original_commit_id": "31a3869a02ed1c91e7e8a56550b748467de87f3c",
+            "original_line": 81,
+            "original_position": 18,
+            "original_start_line": null,
+            "path": "src/nvim/extmark.c",
+            "position": 18,
+            "pull_request_review_id": 1767315556,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26406",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417134178/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-12-06T11:25:24Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417134178",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/31730729?v=4",
+                "events_url": "https://api.github.com/users/luukvbaal/events{/privacy}",
+                "followers_url": "https://api.github.com/users/luukvbaal/followers",
+                "following_url": "https://api.github.com/users/luukvbaal/following{/other_user}",
+                "gists_url": "https://api.github.com/users/luukvbaal/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/luukvbaal",
+                "id": 31730729,
+                "login": "luukvbaal",
+                "node_id": "MDQ6VXNlcjMxNzMwNzI5",
+                "organizations_url": "https://api.github.com/users/luukvbaal/orgs",
+                "received_events_url": "https://api.github.com/users/luukvbaal/received_events",
+                "repos_url": "https://api.github.com/users/luukvbaal/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/luukvbaal/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/luukvbaal/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/luukvbaal"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26406#discussion_r1417170863"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26406"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417170863"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "The other line only deletes an iterator. It doesn't change the marktree.",
+            "commit_id": "2000abbdfe39f338c09796293f76ec8336d81b22",
+            "created_at": "2023-12-06T11:59:17Z",
+            "diff_hunk": "@@ -67,18 +67,18 @@ void extmark_set(buf_T *buf, uint32_t ns_id, uint32_t *idp, int row, colnr_T col\n       } else {\n         assert(marktree_itr_valid(itr));\n         if (old_mark.pos.row == row && old_mark.pos.col == col) {\n+          // not paired: we can revise in place\n           if (mt_decor_any(old_mark)) {\n+            mt_itr_rawkey(itr).flags &= (uint16_t) ~MT_FLAG_DECOR_SIGNTEXT;\n             buf_decor_remove(buf, row, row, mt_decor(old_mark), true);\n           }\n-\n-          // not paired: we can revise in place\n           mt_itr_rawkey(itr).flags &= (uint16_t) ~MT_FLAG_EXTERNAL_MASK;\n           mt_itr_rawkey(itr).flags |= flags;\n           mt_itr_rawkey(itr).decor_data = decor.data;\n           goto revised;\n         }\n-        buf_decor_remove(buf, old_mark.pos.row, old_mark.pos.row, mt_decor(old_mark), true);\n         marktree_del_itr(buf->b_marktree, itr, false);\n+        buf_decor_remove(buf, old_mark.pos.row, old_mark.pos.row, mt_decor(old_mark), true);",
+            "html_url": "https://github.com/neovim/neovim/pull/26406#discussion_r1417170863",
+            "id": 1417170863,
+            "in_reply_to_id": 1417048186,
+            "line": 81,
+            "node_id": "PRRC_kwDOAPphoM5UeE-v",
+            "original_commit_id": "31a3869a02ed1c91e7e8a56550b748467de87f3c",
+            "original_line": 81,
+            "original_position": 18,
+            "original_start_line": null,
+            "path": "src/nvim/extmark.c",
+            "position": 18,
+            "pull_request_review_id": 1767373380,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26406",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417170863/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-12-06T11:59:18Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417170863",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",
+                "events_url": "https://api.github.com/users/lewis6991/events{/privacy}",
+                "followers_url": "https://api.github.com/users/lewis6991/followers",
+                "following_url": "https://api.github.com/users/lewis6991/following{/other_user}",
+                "gists_url": "https://api.github.com/users/lewis6991/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/lewis6991",
+                "id": 7904185,
+                "login": "lewis6991",
+                "node_id": "MDQ6VXNlcjc5MDQxODU=",
+                "organizations_url": "https://api.github.com/users/lewis6991/orgs",
+                "received_events_url": "https://api.github.com/users/lewis6991/received_events",
+                "repos_url": "https://api.github.com/users/lewis6991/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/lewis6991"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26406#discussion_r1417191387"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26406"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417191387"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Uhm I don't think that's true. `marktree_del_itr()` removes the key pointed to by the iterator?\r\n\r\nPoint is that the pattern of edit marktree -> handle side effects seems safer, same as in https://github.com/neovim/neovim/pull/26361. But it's no longer needed for correctness in this PR, I'm fine to revert.",
+            "commit_id": "2000abbdfe39f338c09796293f76ec8336d81b22",
+            "created_at": "2023-12-06T12:19:06Z",
+            "diff_hunk": "@@ -67,18 +67,18 @@ void extmark_set(buf_T *buf, uint32_t ns_id, uint32_t *idp, int row, colnr_T col\n       } else {\n         assert(marktree_itr_valid(itr));\n         if (old_mark.pos.row == row && old_mark.pos.col == col) {\n+          // not paired: we can revise in place\n           if (mt_decor_any(old_mark)) {\n+            mt_itr_rawkey(itr).flags &= (uint16_t) ~MT_FLAG_DECOR_SIGNTEXT;\n             buf_decor_remove(buf, row, row, mt_decor(old_mark), true);\n           }\n-\n-          // not paired: we can revise in place\n           mt_itr_rawkey(itr).flags &= (uint16_t) ~MT_FLAG_EXTERNAL_MASK;\n           mt_itr_rawkey(itr).flags |= flags;\n           mt_itr_rawkey(itr).decor_data = decor.data;\n           goto revised;\n         }\n-        buf_decor_remove(buf, old_mark.pos.row, old_mark.pos.row, mt_decor(old_mark), true);\n         marktree_del_itr(buf->b_marktree, itr, false);\n+        buf_decor_remove(buf, old_mark.pos.row, old_mark.pos.row, mt_decor(old_mark), true);",
+            "html_url": "https://github.com/neovim/neovim/pull/26406#discussion_r1417191387",
+            "id": 1417191387,
+            "in_reply_to_id": 1417048186,
+            "line": 81,
+            "node_id": "PRRC_kwDOAPphoM5UeJ_b",
+            "original_commit_id": "31a3869a02ed1c91e7e8a56550b748467de87f3c",
+            "original_line": 81,
+            "original_position": 18,
+            "original_start_line": null,
+            "path": "src/nvim/extmark.c",
+            "position": 18,
+            "pull_request_review_id": 1767406076,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26406",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417191387/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-12-06T12:22:01Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417191387",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/31730729?v=4",
+                "events_url": "https://api.github.com/users/luukvbaal/events{/privacy}",
+                "followers_url": "https://api.github.com/users/luukvbaal/followers",
+                "following_url": "https://api.github.com/users/luukvbaal/following{/other_user}",
+                "gists_url": "https://api.github.com/users/luukvbaal/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/luukvbaal",
+                "id": 31730729,
+                "login": "luukvbaal",
+                "node_id": "MDQ6VXNlcjMxNzMwNzI5",
+                "organizations_url": "https://api.github.com/users/luukvbaal/orgs",
+                "received_events_url": "https://api.github.com/users/luukvbaal/received_events",
+                "repos_url": "https://api.github.com/users/luukvbaal/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/luukvbaal/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/luukvbaal/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/luukvbaal"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26406#discussion_r1417201050"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26406"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417201050"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Is it necessary to remove? It's more convenient as a globally accessible variable.",
+            "commit_id": "2000abbdfe39f338c09796293f76ec8336d81b22",
+            "created_at": "2023-12-06T12:28:27Z",
+            "diff_hunk": "@@ -703,11 +703,10 @@ struct file_buffer {\n                                 // may use a different synblock_T.\n \n   struct {\n-    int size;                   // last calculated number of sign columns\n-    int max;                    // maximum value size is valid for.\n-    linenr_T sentinel;          // a line number which is holding up the signcolumn\n-    linenr_T invalid_top;       // first invalid line number that needs to be checked\n-    linenr_T invalid_bot;       // last invalid line number that needs to be checked\n+    int max;                    // maximum number of signs on a single line\n+    int max_count;              // number of lines with max number of signs\n+    bool resized;               // whether max changed at start of redraw",
+            "html_url": "https://github.com/neovim/neovim/pull/26406#discussion_r1417201050",
+            "id": 1417201050,
+            "in_reply_to_id": 1417042650,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5UeMWa",
+            "original_commit_id": "31a3869a02ed1c91e7e8a56550b748467de87f3c",
+            "original_line": 708,
+            "original_position": 11,
+            "original_start_line": null,
+            "path": "src/nvim/buffer_defs.h",
+            "position": null,
+            "pull_request_review_id": 1767421348,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26406",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417201050/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-12-06T12:28:27Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417201050",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/31730729?v=4",
+                "events_url": "https://api.github.com/users/luukvbaal/events{/privacy}",
+                "followers_url": "https://api.github.com/users/luukvbaal/followers",
+                "following_url": "https://api.github.com/users/luukvbaal/following{/other_user}",
+                "gists_url": "https://api.github.com/users/luukvbaal/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/luukvbaal",
+                "id": 31730729,
+                "login": "luukvbaal",
+                "node_id": "MDQ6VXNlcjMxNzMwNzI5",
+                "organizations_url": "https://api.github.com/users/luukvbaal/orgs",
+                "received_events_url": "https://api.github.com/users/luukvbaal/received_events",
+                "repos_url": "https://api.github.com/users/luukvbaal/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/luukvbaal/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/luukvbaal/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/luukvbaal"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26406#discussion_r1417556798"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26406"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417556798"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "No worries. I'm just being picky to reduce the diff.",
+            "commit_id": "2000abbdfe39f338c09796293f76ec8336d81b22",
+            "created_at": "2023-12-06T15:46:52Z",
+            "diff_hunk": "@@ -67,18 +67,18 @@ void extmark_set(buf_T *buf, uint32_t ns_id, uint32_t *idp, int row, colnr_T col\n       } else {\n         assert(marktree_itr_valid(itr));\n         if (old_mark.pos.row == row && old_mark.pos.col == col) {\n+          // not paired: we can revise in place\n           if (mt_decor_any(old_mark)) {\n+            mt_itr_rawkey(itr).flags &= (uint16_t) ~MT_FLAG_DECOR_SIGNTEXT;\n             buf_decor_remove(buf, row, row, mt_decor(old_mark), true);\n           }\n-\n-          // not paired: we can revise in place\n           mt_itr_rawkey(itr).flags &= (uint16_t) ~MT_FLAG_EXTERNAL_MASK;\n           mt_itr_rawkey(itr).flags |= flags;\n           mt_itr_rawkey(itr).decor_data = decor.data;\n           goto revised;\n         }\n-        buf_decor_remove(buf, old_mark.pos.row, old_mark.pos.row, mt_decor(old_mark), true);\n         marktree_del_itr(buf->b_marktree, itr, false);\n+        buf_decor_remove(buf, old_mark.pos.row, old_mark.pos.row, mt_decor(old_mark), true);",
+            "html_url": "https://github.com/neovim/neovim/pull/26406#discussion_r1417556798",
+            "id": 1417556798,
+            "in_reply_to_id": 1417048186,
+            "line": 81,
+            "node_id": "PRRC_kwDOAPphoM5UfjM-",
+            "original_commit_id": "31a3869a02ed1c91e7e8a56550b748467de87f3c",
+            "original_line": 81,
+            "original_position": 18,
+            "original_start_line": null,
+            "path": "src/nvim/extmark.c",
+            "position": 18,
+            "pull_request_review_id": 1767942592,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26406",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417556798/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-12-06T15:46:53Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417556798",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",
+                "events_url": "https://api.github.com/users/lewis6991/events{/privacy}",
+                "followers_url": "https://api.github.com/users/lewis6991/followers",
+                "following_url": "https://api.github.com/users/lewis6991/following{/other_user}",
+                "gists_url": "https://api.github.com/users/lewis6991/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/lewis6991",
+                "id": 7904185,
+                "login": "lewis6991",
+                "node_id": "MDQ6VXNlcjc5MDQxODU=",
+                "organizations_url": "https://api.github.com/users/lewis6991/orgs",
+                "received_events_url": "https://api.github.com/users/lewis6991/received_events",
+                "repos_url": "https://api.github.com/users/lewis6991/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/lewis6991"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26406#discussion_r1417579371"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26406"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417579371"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Global state should generally be avoided, especially in a repository with a regular rotation of contributors who don't always 100% understand the code they have inherited. There are plenty of resources that explain this (quick one from google: https://softwareengineering.stackexchange.com/questions/148108/why-is-global-state-so-evil).\r\n\r\n~I know this isn't exactly global state~ (EDIT: actually it is), but given the size of the buf_T struct, the same principles all apply.\r\n\r\nSometimes the benefits of convenience can justify it, time is a real constraint after all, but I don't think that's the case here. I think removing this piece of state will make the code cleaner, even though it is a little more effort.",
+            "commit_id": "2000abbdfe39f338c09796293f76ec8336d81b22",
+            "created_at": "2023-12-06T15:57:04Z",
+            "diff_hunk": "@@ -703,11 +703,10 @@ struct file_buffer {\n                                 // may use a different synblock_T.\n \n   struct {\n-    int size;                   // last calculated number of sign columns\n-    int max;                    // maximum value size is valid for.\n-    linenr_T sentinel;          // a line number which is holding up the signcolumn\n-    linenr_T invalid_top;       // first invalid line number that needs to be checked\n-    linenr_T invalid_bot;       // last invalid line number that needs to be checked\n+    int max;                    // maximum number of signs on a single line\n+    int max_count;              // number of lines with max number of signs\n+    bool resized;               // whether max changed at start of redraw",
+            "html_url": "https://github.com/neovim/neovim/pull/26406#discussion_r1417579371",
+            "id": 1417579371,
+            "in_reply_to_id": 1417042650,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5Ufotr",
+            "original_commit_id": "31a3869a02ed1c91e7e8a56550b748467de87f3c",
+            "original_line": 708,
+            "original_position": 11,
+            "original_start_line": null,
+            "path": "src/nvim/buffer_defs.h",
+            "position": null,
+            "pull_request_review_id": 1767977126,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26406",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417579371/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-12-06T15:58:00Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417579371",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",
+                "events_url": "https://api.github.com/users/lewis6991/events{/privacy}",
+                "followers_url": "https://api.github.com/users/lewis6991/followers",
+                "following_url": "https://api.github.com/users/lewis6991/following{/other_user}",
+                "gists_url": "https://api.github.com/users/lewis6991/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/lewis6991",
+                "id": 7904185,
+                "login": "lewis6991",
+                "node_id": "MDQ6VXNlcjc5MDQxODU=",
+                "organizations_url": "https://api.github.com/users/lewis6991/orgs",
+                "received_events_url": "https://api.github.com/users/lewis6991/received_events",
+                "repos_url": "https://api.github.com/users/lewis6991/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/lewis6991"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26406#discussion_r1417600876"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26406"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417600876"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "> Sometimes the benefits of convenience can justify it, time is a real constraint after all, but I don't think that's the case here. I think removing this piece of state will make the code cleaner, even though it is a little more effort.\r\n\r\nI had already done the work to remove it but I disagreed on it being cleaner. It requires a bunch of extra if statements to check the return value of the inner functions. And once I got to replacing this one I actually got stuck:\r\n```c\r\nvoid buf_signcols_invalidate_range(buf_T *buf, int line1, int line2)\r\n{\r\n  if (!buf->b_signs_with_text) {\r\n    buf->b_signcols.max = buf->b_signcols.max_count = 0;\r\n    buf->b_signcols.resized = true;\r\n    map_clear(int, buf->b_signcols.invalid);\r\n    return;\r\n }\r\n```\r\n\r\nThe caller of this function doesn't care about `b_signcols.resized`, and it needs to stay `true` until the 'statuscolumn' check in `update_screen()`. So while avoiding global state might be better, I'm not sure it can be avoided here.",
+            "commit_id": "2000abbdfe39f338c09796293f76ec8336d81b22",
+            "created_at": "2023-12-06T16:10:57Z",
+            "diff_hunk": "@@ -703,11 +703,10 @@ struct file_buffer {\n                                 // may use a different synblock_T.\n \n   struct {\n-    int size;                   // last calculated number of sign columns\n-    int max;                    // maximum value size is valid for.\n-    linenr_T sentinel;          // a line number which is holding up the signcolumn\n-    linenr_T invalid_top;       // first invalid line number that needs to be checked\n-    linenr_T invalid_bot;       // last invalid line number that needs to be checked\n+    int max;                    // maximum number of signs on a single line\n+    int max_count;              // number of lines with max number of signs\n+    bool resized;               // whether max changed at start of redraw",
+            "html_url": "https://github.com/neovim/neovim/pull/26406#discussion_r1417600876",
+            "id": 1417600876,
+            "in_reply_to_id": 1417042650,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5Uft9s",
+            "original_commit_id": "31a3869a02ed1c91e7e8a56550b748467de87f3c",
+            "original_line": 708,
+            "original_position": 11,
+            "original_start_line": null,
+            "path": "src/nvim/buffer_defs.h",
+            "position": null,
+            "pull_request_review_id": 1768018177,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26406",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417600876/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-12-06T16:17:02Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417600876",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/31730729?v=4",
+                "events_url": "https://api.github.com/users/luukvbaal/events{/privacy}",
+                "followers_url": "https://api.github.com/users/luukvbaal/followers",
+                "following_url": "https://api.github.com/users/luukvbaal/following{/other_user}",
+                "gists_url": "https://api.github.com/users/luukvbaal/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/luukvbaal",
+                "id": 31730729,
+                "login": "luukvbaal",
+                "node_id": "MDQ6VXNlcjMxNzMwNzI5",
+                "organizations_url": "https://api.github.com/users/luukvbaal/orgs",
+                "received_events_url": "https://api.github.com/users/luukvbaal/received_events",
+                "repos_url": "https://api.github.com/users/luukvbaal/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/luukvbaal/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/luukvbaal/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/luukvbaal"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26406#discussion_r1417615907"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26406"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417615907"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Ok, so in this case it does actually need to be state.",
+            "commit_id": "2000abbdfe39f338c09796293f76ec8336d81b22",
+            "created_at": "2023-12-06T16:21:28Z",
+            "diff_hunk": "@@ -703,11 +703,10 @@ struct file_buffer {\n                                 // may use a different synblock_T.\n \n   struct {\n-    int size;                   // last calculated number of sign columns\n-    int max;                    // maximum value size is valid for.\n-    linenr_T sentinel;          // a line number which is holding up the signcolumn\n-    linenr_T invalid_top;       // first invalid line number that needs to be checked\n-    linenr_T invalid_bot;       // last invalid line number that needs to be checked\n+    int max;                    // maximum number of signs on a single line\n+    int max_count;              // number of lines with max number of signs\n+    bool resized;               // whether max changed at start of redraw",
+            "html_url": "https://github.com/neovim/neovim/pull/26406#discussion_r1417615907",
+            "id": 1417615907,
+            "in_reply_to_id": 1417042650,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5Ufxoj",
+            "original_commit_id": "31a3869a02ed1c91e7e8a56550b748467de87f3c",
+            "original_line": 708,
+            "original_position": 11,
+            "original_start_line": null,
+            "path": "src/nvim/buffer_defs.h",
+            "position": null,
+            "pull_request_review_id": 1768043296,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26406",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417615907/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-12-06T16:21:28Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417615907",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",
+                "events_url": "https://api.github.com/users/lewis6991/events{/privacy}",
+                "followers_url": "https://api.github.com/users/lewis6991/followers",
+                "following_url": "https://api.github.com/users/lewis6991/following{/other_user}",
+                "gists_url": "https://api.github.com/users/lewis6991/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/lewis6991",
+                "id": 7904185,
+                "login": "lewis6991",
+                "node_id": "MDQ6VXNlcjc5MDQxODU=",
+                "organizations_url": "https://api.github.com/users/lewis6991/orgs",
+                "received_events_url": "https://api.github.com/users/lewis6991/received_events",
+                "repos_url": "https://api.github.com/users/lewis6991/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/lewis6991"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26406#discussion_r1417617249"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26406"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417617249"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "This is a bit of a random place to reset this. Shouldn't this be done at line 615?",
+            "commit_id": "2000abbdfe39f338c09796293f76ec8336d81b22",
+            "created_at": "2023-12-06T16:22:29Z",
+            "diff_hunk": "@@ -619,6 +621,8 @@ int update_screen(void)\n   screen_search_hl.rm.regprog = NULL;\n \n   FOR_ALL_WINDOWS_IN_TAB(wp, curtab) {\n+    wp->w_buffer->b_signcols.resized = false;",
+            "html_url": "https://github.com/neovim/neovim/pull/26406#discussion_r1417617249",
+            "id": 1417617249,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5Ufx9h",
+            "original_commit_id": "86aa78357e654bf1f38c57b9fe11c46df58e2e14",
+            "original_line": 624,
+            "original_position": 27,
+            "original_start_line": null,
+            "path": "src/nvim/drawscreen.c",
+            "position": null,
+            "pull_request_review_id": 1768045530,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26406",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417617249/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-12-06T16:22:29Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417617249",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",
+                "events_url": "https://api.github.com/users/lewis6991/events{/privacy}",
+                "followers_url": "https://api.github.com/users/lewis6991/followers",
+                "following_url": "https://api.github.com/users/lewis6991/following{/other_user}",
+                "gists_url": "https://api.github.com/users/lewis6991/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/lewis6991",
+                "id": 7904185,
+                "login": "lewis6991",
+                "node_id": "MDQ6VXNlcjc5MDQxODU=",
+                "organizations_url": "https://api.github.com/users/lewis6991/orgs",
+                "received_events_url": "https://api.github.com/users/lewis6991/received_events",
+                "repos_url": "https://api.github.com/users/lewis6991/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/lewis6991"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26406#discussion_r1417670659"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26406"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417670659"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Actually it needs to stay `true` until the above loop has ended. Otherwise, subsequent encountered windows displaying the same buffer will not have their statuscolumn rebuilt. I.e. this would fail:\r\nhttps://github.com/neovim/neovim/blob/ca7f8786a0eb578895400e23cd21e25cc0f91800/test/functional/ui/statuscolumn_spec.lua#L838-L845\r\n\r\nEDIT: I've moved the rebuild check to `win_redraw_signcols()` an the flag reset to another (seemingly random) place...",
+            "commit_id": "2000abbdfe39f338c09796293f76ec8336d81b22",
+            "created_at": "2023-12-06T17:00:45Z",
+            "diff_hunk": "@@ -619,6 +621,8 @@ int update_screen(void)\n   screen_search_hl.rm.regprog = NULL;\n \n   FOR_ALL_WINDOWS_IN_TAB(wp, curtab) {\n+    wp->w_buffer->b_signcols.resized = false;",
+            "html_url": "https://github.com/neovim/neovim/pull/26406#discussion_r1417670659",
+            "id": 1417670659,
+            "in_reply_to_id": 1417617249,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5Uf_AD",
+            "original_commit_id": "86aa78357e654bf1f38c57b9fe11c46df58e2e14",
+            "original_line": 624,
+            "original_position": 27,
+            "original_start_line": null,
+            "path": "src/nvim/drawscreen.c",
+            "position": null,
+            "pull_request_review_id": 1768130219,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26406",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417670659/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2023-12-07T00:42:03Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1417670659",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/31730729?v=4",
+                "events_url": "https://api.github.com/users/luukvbaal/events{/privacy}",
+                "followers_url": "https://api.github.com/users/luukvbaal/followers",
+                "following_url": "https://api.github.com/users/luukvbaal/following{/other_user}",
+                "gists_url": "https://api.github.com/users/luukvbaal/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/luukvbaal",
+                "id": 31730729,
+                "login": "luukvbaal",
+                "node_id": "MDQ6VXNlcjMxNzMwNzI5",
+                "organizations_url": "https://api.github.com/users/luukvbaal/orgs",
+                "received_events_url": "https://api.github.com/users/luukvbaal/received_events",
+                "repos_url": "https://api.github.com/users/luukvbaal/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/luukvbaal/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/luukvbaal/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/luukvbaal"
+            }
+        }
+    ],
     "comment_regular_data": [
         {
             "author_association": "MEMBER",
@@ -238,7 +1680,7 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1841075445/reactions"
             },
-            "updated_at": "2023-12-05T15:56:50Z",
+            "updated_at": "2023-12-06T04:57:30Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1841075445",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/31730729?v=4",
@@ -282,8 +1724,140 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1841579900/reactions"
             },
-            "updated_at": "2023-12-05T20:42:23Z",
+            "updated_at": "2023-12-06T04:57:46Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1841579900",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/31730729?v=4",
+                "events_url": "https://api.github.com/users/luukvbaal/events{/privacy}",
+                "followers_url": "https://api.github.com/users/luukvbaal/followers",
+                "following_url": "https://api.github.com/users/luukvbaal/following{/other_user}",
+                "gists_url": "https://api.github.com/users/luukvbaal/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/luukvbaal",
+                "id": 31730729,
+                "login": "luukvbaal",
+                "node_id": "MDQ6VXNlcjMxNzMwNzI5",
+                "organizations_url": "https://api.github.com/users/luukvbaal/orgs",
+                "received_events_url": "https://api.github.com/users/luukvbaal/received_events",
+                "repos_url": "https://api.github.com/users/luukvbaal/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/luukvbaal/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/luukvbaal/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/luukvbaal"
+            }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "Both the number of times we have to scan the entire buffer, and the number of lines checked is now significantly reduced.",
+            "created_at": "2023-12-06T05:07:07Z",
+            "html_url": "https://github.com/neovim/neovim/pull/26406#issuecomment-1842094652",
+            "id": 1842094652,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/26406",
+            "node_id": "IC_kwDOAPphoM5tzCI8",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1842094652/reactions"
+            },
+            "updated_at": "2023-12-06T13:54:55Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1842094652",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/31730729?v=4",
+                "events_url": "https://api.github.com/users/luukvbaal/events{/privacy}",
+                "followers_url": "https://api.github.com/users/luukvbaal/followers",
+                "following_url": "https://api.github.com/users/luukvbaal/following{/other_user}",
+                "gists_url": "https://api.github.com/users/luukvbaal/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/luukvbaal",
+                "id": 31730729,
+                "login": "luukvbaal",
+                "node_id": "MDQ6VXNlcjMxNzMwNzI5",
+                "organizations_url": "https://api.github.com/users/luukvbaal/orgs",
+                "received_events_url": "https://api.github.com/users/luukvbaal/received_events",
+                "repos_url": "https://api.github.com/users/luukvbaal/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/luukvbaal/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/luukvbaal/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/luukvbaal"
+            }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "Hmm, it fails to update the signcolumn width accordingly when removing multiple signs from a single line:\r\n```lua\r\nvim.o.signcolumn = \"auto:3\"\r\nvim.cmd.call(\"setline(1, ['aaaa']->repeat(10))\")\r\n_G.ns = vim.api.nvim_create_namespace('')\r\nvim.api.nvim_buf_set_extmark(0, ns, 0, 0, { invalidate = true, sign_text = 'S1', end_row = 2 })\r\nvim.api.nvim_buf_set_extmark(0, ns, 1, 0, { invalidate = true, sign_text = 'S2'})\r\nvim.api.nvim_buf_set_extmark(0, ns, 1, 0, { invalidate = true, sign_text = 'S3'})\r\nvim.cmd.redraw()\r\nvim.cmd.norm('2Gdd')\r\n```\r\n\r\nIf we want to keep the invalid map I think it needs to also store how many signs were removed from a line.",
+            "created_at": "2023-12-06T17:26:58Z",
+            "html_url": "https://github.com/neovim/neovim/pull/26406#issuecomment-1843341432",
+            "id": 1843341432,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/26406",
+            "node_id": "IC_kwDOAPphoM5t3yh4",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1843341432/reactions"
+            },
+            "updated_at": "2023-12-06T20:20:47Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1843341432",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/31730729?v=4",
+                "events_url": "https://api.github.com/users/luukvbaal/events{/privacy}",
+                "followers_url": "https://api.github.com/users/luukvbaal/followers",
+                "following_url": "https://api.github.com/users/luukvbaal/following{/other_user}",
+                "gists_url": "https://api.github.com/users/luukvbaal/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/luukvbaal",
+                "id": 31730729,
+                "login": "luukvbaal",
+                "node_id": "MDQ6VXNlcjMxNzMwNzI5",
+                "organizations_url": "https://api.github.com/users/luukvbaal/orgs",
+                "received_events_url": "https://api.github.com/users/luukvbaal/received_events",
+                "repos_url": "https://api.github.com/users/luukvbaal/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/luukvbaal/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/luukvbaal/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/luukvbaal"
+            }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "> If we want to keep the invalid map I think it needs to also store how many signs were removed from a line.\r\n\r\nI've gone ahead and done this, unfortunately making the diff slightly bigger (also added a test). But like I said without adding the invalid map (just adding `b_signcols.max_count`), this PR actually increases the number of lines checked. Probably because the current `b_signcols.sentinel` is disproportionally effective in `make functionaltest`. Even so, now at least we can be sure it is a pure performance improvement.",
+            "created_at": "2023-12-06T20:20:35Z",
+            "html_url": "https://github.com/neovim/neovim/pull/26406#issuecomment-1843628815",
+            "id": 1843628815,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/26406",
+            "node_id": "IC_kwDOAPphoM5t44sP",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1843628815/reactions"
+            },
+            "updated_at": "2023-12-06T20:29:59Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1843628815",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/31730729?v=4",
                 "events_url": "https://api.github.com/users/luukvbaal/events{/privacy}",
@@ -310,7 +1884,7 @@
     "commits_url": "https://api.github.com/repos/neovim/neovim/pulls/26406/commits",
     "created_at": "2023-12-05T14:55:55Z",
     "diff_url": "https://github.com/neovim/neovim/pull/26406.diff",
-    "draft": true,
+    "draft": false,
     "head": {
         "label": "luukvbaal:maxcount",
         "ref": "maxcount",
@@ -399,9 +1973,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/luukvbaal/neovim/pulls{/number}",
-            "pushed_at": "2023-12-06T00:32:48Z",
+            "pushed_at": "2023-12-07T01:29:01Z",
             "releases_url": "https://api.github.com/repos/luukvbaal/neovim/releases{/id}",
-            "size": 240266,
+            "size": 238193,
             "ssh_url": "git@github.com:luukvbaal/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/luukvbaal/neovim/stargazers",
@@ -420,7 +1994,7 @@
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "86eb3c70c8547394fa92b9d14c85957282079f9c",
+        "sha": "2000abbdfe39f338c09796293f76ec8336d81b22",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/31730729?v=4",
             "events_url": "https://api.github.com/users/luukvbaal/events{/privacy}",
@@ -457,7 +2031,7 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "b55b19375905b1d8245b20543d05fecdd22f1f82",
+    "merge_commit_sha": "7eb93a726e8c5a2451ef47ea21918df4db39630a",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM5hMHwU",
@@ -468,9 +2042,9 @@
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/26406/comments",
     "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/86eb3c70c8547394fa92b9d14c85957282079f9c",
-    "title": "perf(column): keep track of number of signs that hold up the 'signcolumn'",
-    "updated_at": "2023-12-05T20:42:23Z",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/2000abbdfe39f338c09796293f76ec8336d81b22",
+    "title": "perf(column): keep track of number of lines that hold up the 'signcolumn'",
+    "updated_at": "2023-12-07T01:29:02Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/26406",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/31730729?v=4",
