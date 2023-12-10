@@ -1,28 +1,28 @@
 {
     "_links": {
         "comments": {
-            "href": "https://api.github.com/repos/neovim/neovim/issues/26394/comments"
+            "href": "https://api.github.com/repos/neovim/neovim/issues/22054/comments"
         },
         "commits": {
-            "href": "https://api.github.com/repos/neovim/neovim/pulls/26394/commits"
+            "href": "https://api.github.com/repos/neovim/neovim/pulls/22054/commits"
         },
         "html": {
-            "href": "https://github.com/neovim/neovim/pull/26394"
+            "href": "https://github.com/neovim/neovim/pull/22054"
         },
         "issue": {
-            "href": "https://api.github.com/repos/neovim/neovim/issues/26394"
+            "href": "https://api.github.com/repos/neovim/neovim/issues/22054"
         },
         "review_comment": {
             "href": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}"
         },
         "review_comments": {
-            "href": "https://api.github.com/repos/neovim/neovim/pulls/26394/comments"
+            "href": "https://api.github.com/repos/neovim/neovim/pulls/22054/comments"
         },
         "self": {
-            "href": "https://api.github.com/repos/neovim/neovim/pulls/26394"
+            "href": "https://api.github.com/repos/neovim/neovim/pulls/22054"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/99ff5859d7509fccd55bc2b5d5fd68eaa819afe1"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/eb21c5d11c8992b9bebacfd86d285c46c315c706"
         }
     },
     "active_lock_reason": null,
@@ -147,7 +147,7 @@
             "watchers_count": 71649,
             "web_commit_signoff_required": false
         },
-        "sha": "c3836e40a2bffbc1d4e06531145b7825788dd818",
+        "sha": "ec3c569dd8f646d5e9cf6365f74b89fab7c16091",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -169,38 +169,107 @@
             "url": "https://api.github.com/users/neovim"
         }
     },
-    "body": "Using `jq` is not needed as github provides a \"latest\" shortcut to do\nwhat download the latest release.",
-    "closed_at": "2023-12-05T09:43:07Z",
-    "comment_data": [
+    "body": "Having two separate cmake processes, one for dependencies and one for\nneovim, sounds nice in theory but introduces severe limitations that are\nhard to work around.\n\nThe most important part is that the neovim build and the dependency\nbuild aren't independent builds in reality. functionaltest-lua serves as\na good example. To recreate \"make functionaltest-lua\" on Windows (or any\nother operating system that can't run the Makefile) would require one to\nrun the following commands:\n\ncmake -S cmake.deps -B .deps -G Ninja -D USE_BUNDLED_LUA=ON\ncmake --build .deps\ncmake -B build -G Ninja\ncmake --build build --target functionaltest-lua\n\nThe relationship between USE_BUNDLED_LUA and functionaltest-lua cannot\nbe established without an external glue such as Makefile, which makes\ndetermining the true dependencies and relationships between the\ndifferent parts very difficult. Having a unified, single cmake run would\nnot only eliminate these types of problems, but also make building\nneovim simpler on all platforms.",
+    "closed_at": null,
+    "comment_data": [],
+    "comment_regular_data": [
         {
-            "_links": {
-                "html": {
-                    "href": "https://github.com/neovim/neovim/pull/26394#discussion_r1414575944"
-                },
-                "pull_request": {
-                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26394"
-                },
-                "self": {
-                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1414575944"
-                }
-            },
             "author_association": "MEMBER",
-            "body": "~~https://github.com/JohnnyMorganz/StyLua/releases/download/latest/stylua-linux-x86_64.zip works for me, does that not do what we want?~~",
-            "commit_id": "99ff5859d7509fccd55bc2b5d5fd68eaa819afe1",
-            "created_at": "2023-12-04T22:18:37Z",
-            "diff_hunk": "@@ -39,8 +40,7 @@ jobs:\n \n       - name: Install stylua\n         run: |\n-          URL=$(curl -L https://api.github.com/repos/JohnnyMorganz/StyLua/releases/latest | jq -r '.assets[] | select(.name == \"stylua-linux-x86_64.zip\") | .browser_download_url')\n-          wget --directory-prefix=\"$BIN_DIR\" \"$URL\"\n+          wget --directory-prefix=\"$BIN_DIR\" \"https://github.com/JohnnyMorganz/StyLua/releases/download/${STYLUA_VERSION}/stylua-linux-x86_64.zip\"",
-            "html_url": "https://github.com/neovim/neovim/pull/26394#discussion_r1414575944",
-            "id": 1414575944,
-            "line": null,
-            "node_id": "PRRC_kwDOAPphoM5UULdI",
-            "original_commit_id": "d29f01bebeaa4a87a3840b8bf09635b2a84daabd",
-            "original_line": 43,
-            "original_position": 14,
-            "original_start_line": null,
-            "path": ".github/workflows/test.yml",
-            "position": null,
-            "pull_request_review_id": 1763550948,
-            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26394",
+            "body": "> Having two separate cmake processes, one for dependencies and one for\r\n> neovim, sounds nice in theory but introduces severe limitations that are\r\n> hard to work around.\r\n> ...\r\n> Having a unified, single cmake run would\r\n> not only eliminate these types of problems, but also make building\r\n> neovim simpler on all platforms.\r\n\r\nThe only hesitation I have with this premise is that it dissolves the line between bundled dependencies and Neovim.\r\n\r\nRight now, if I choose to just use CMake to build Neovim (as the Debian package does), I don't have to care at all about the bundled dependencies.  Combining the two makes it easier to manage them as a whole, which also potentially makes it easier to forget about/break the non-bundled workflow.",
+            "created_at": "2023-01-30T23:40:07Z",
+            "html_url": "https://github.com/neovim/neovim/pull/22054#issuecomment-1409526443",
+            "id": 1409526443,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/22054",
+            "node_id": "IC_kwDOAPphoM5UA6qr",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1409526443/reactions"
+            },
+            "updated_at": "2023-01-30T23:40:07Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1409526443",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/112971?v=4",
+                "events_url": "https://api.github.com/users/jamessan/events{/privacy}",
+                "followers_url": "https://api.github.com/users/jamessan/followers",
+                "following_url": "https://api.github.com/users/jamessan/following{/other_user}",
+                "gists_url": "https://api.github.com/users/jamessan/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/jamessan",
+                "id": 112971,
+                "login": "jamessan",
+                "node_id": "MDQ6VXNlcjExMjk3MQ==",
+                "organizations_url": "https://api.github.com/users/jamessan/orgs",
+                "received_events_url": "https://api.github.com/users/jamessan/received_events",
+                "repos_url": "https://api.github.com/users/jamessan/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/jamessan/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/jamessan/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/jamessan"
+            }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "Hmm, I agree in part. I personally like the \"mental model\" of our current setup. First we build the dependencies we need and then we just build neovim. From that perspective there is no real difference from \"bundled\" or \"external\" dependencies; they're just dependencies that happen to be in different locations or packaged differently. So I actually agree that this may make reasoning about external dependencies a bit more difficult.\r\n\r\nHowever, I believe we have pretty good safety measures to ensure neovim always works with external dependencies. We already test in our CI if neovim builds correctly with system dependencies on ubuntu. I wouldn't mind adding more CI to tighten up this aspect by also testing if neovim works with non-bundled dependencies on mac or even windows. Testing this is cheap on CI since all dependencies are already pre-built.",
+            "created_at": "2023-01-31T11:20:02Z",
+            "html_url": "https://github.com/neovim/neovim/pull/22054#issuecomment-1410181444",
+            "id": 1410181444,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/22054",
+            "node_id": "IC_kwDOAPphoM5UDalE",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1410181444/reactions"
+            },
+            "updated_at": "2023-01-31T11:20:02Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1410181444",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/33953936?v=4",
+                "events_url": "https://api.github.com/users/dundargoc/events{/privacy}",
+                "followers_url": "https://api.github.com/users/dundargoc/followers",
+                "following_url": "https://api.github.com/users/dundargoc/following{/other_user}",
+                "gists_url": "https://api.github.com/users/dundargoc/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/dundargoc",
+                "id": 33953936,
+                "login": "dundargoc",
+                "node_id": "MDQ6VXNlcjMzOTUzOTM2",
+                "organizations_url": "https://api.github.com/users/dundargoc/orgs",
+                "received_events_url": "https://api.github.com/users/dundargoc/received_events",
+                "repos_url": "https://api.github.com/users/dundargoc/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/dundargoc/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/dundargoc/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/dundargoc"
+            }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "> To recreate \"make functionaltest-lua\" on Windows (or any other operating system that can't run the Makefile) would require one to run the following commands:\r\n\r\nAnd after this change, one can skip the `cmake -S cmake.deps -B .deps` and `cmake --build .deps` steps. Having to do those steps to change the deps doesn't seem surprising to me. But I can that eliminating them can simplify documentation and removes a place where contributors could get frustrated/confused.\r\n\r\n> we have pretty good safety measures to ensure neovim always works with external dependencies. We already test in our CI if neovim builds correctly with system dependencies on ubuntu.\r\n\r\nSure, as long as we have that then it's hard to argue that we need the strict separation. The problem with the current setup doesn't seem acute to me, but I'll take your word for it. Hopefully things can be structured in CMakeLists.txt to make the separation very clear.\r\n\r\n@zeertzjq also noted:\r\n\r\n> [combining the steps] may be useful when adding some compile flags to both nvim and dependencies\r\n\r\nOn the other hand, does it risk confusion for the case where we _don't_ want the same flags for deps? I assume we'll keep the `DEPS_CMAKES_ARGS` as a separate list?",
+            "created_at": "2023-02-02T13:52:31Z",
+            "html_url": "https://github.com/neovim/neovim/pull/22054#issuecomment-1413781696",
+            "id": 1413781696,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/22054",
+            "node_id": "IC_kwDOAPphoM5URJjA",
+            "performed_via_github_app": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -211,14 +280,10 @@
                 "laugh": 0,
                 "rocket": 0,
                 "total_count": 0,
-                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1414575944/reactions"
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1413781696/reactions"
             },
-            "side": "RIGHT",
-            "start_line": null,
-            "start_side": null,
-            "subject_type": "line",
-            "updated_at": "2023-12-04T22:22:34Z",
-            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1414575944",
+            "updated_at": "2023-02-02T13:56:07Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1413781696",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
                 "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
@@ -241,37 +306,16 @@
             }
         },
         {
-            "_links": {
-                "html": {
-                    "href": "https://github.com/neovim/neovim/pull/26394#discussion_r1414578237"
-                },
-                "pull_request": {
-                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26394"
-                },
-                "self": {
-                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1414578237"
-                }
-            },
             "author_association": "MEMBER",
-            "body": "oops I mean: https://github.com/JohnnyMorganz/StyLua/releases/latest/download/stylua-linux-x86_64.zip\r\n\r\nit's tricky because github redirects to the flipped URL (`download/latest/`), but the download succeeds ... 🤨  \r\n\r\n    curl -LO https://github.com/JohnnyMorganz/StyLua/releases/latest/download/stylua-linux-x86_64.zip",
-            "commit_id": "99ff5859d7509fccd55bc2b5d5fd68eaa819afe1",
-            "created_at": "2023-12-04T22:21:30Z",
-            "diff_hunk": "@@ -39,8 +40,7 @@ jobs:\n \n       - name: Install stylua\n         run: |\n-          URL=$(curl -L https://api.github.com/repos/JohnnyMorganz/StyLua/releases/latest | jq -r '.assets[] | select(.name == \"stylua-linux-x86_64.zip\") | .browser_download_url')\n-          wget --directory-prefix=\"$BIN_DIR\" \"$URL\"\n+          wget --directory-prefix=\"$BIN_DIR\" \"https://github.com/JohnnyMorganz/StyLua/releases/download/${STYLUA_VERSION}/stylua-linux-x86_64.zip\"",
-            "html_url": "https://github.com/neovim/neovim/pull/26394#discussion_r1414578237",
-            "id": 1414578237,
-            "in_reply_to_id": 1414575944,
-            "line": null,
-            "node_id": "PRRC_kwDOAPphoM5UUMA9",
-            "original_commit_id": "d29f01bebeaa4a87a3840b8bf09635b2a84daabd",
-            "original_line": 43,
-            "original_position": 14,
-            "original_start_line": null,
-            "path": ".github/workflows/test.yml",
-            "position": null,
-            "pull_request_review_id": 1763554299,
-            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26394",
+            "body": "> On the other hand, does it risk confusion for the case where we don't want the same flags for deps? I assume we'll keep the `DEPS_CMAKES_ARGS` as a separate list?\r\n\r\nWith fetchcontent that might've been a potential problem, but externalproject (for better or worse) completely isolates dependencies from the main build. I don't see any potential risks for this specifically.\r\n\r\nMore often than not the problem is that dependencies don't use the same flags as the main build.",
+            "created_at": "2023-02-02T14:25:02Z",
+            "html_url": "https://github.com/neovim/neovim/pull/22054#issuecomment-1413827710",
+            "id": 1413827710,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/22054",
+            "node_id": "IC_kwDOAPphoM5URUx-",
+            "performed_via_github_app": null,
             "reactions": {
-                "+1": 0,
+                "+1": 1,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -279,84 +323,11 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 0,
-                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1414578237/reactions"
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1413827710/reactions"
             },
-            "side": "RIGHT",
-            "start_line": null,
-            "start_side": null,
-            "subject_type": "line",
-            "updated_at": "2023-12-04T22:26:37Z",
-            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1414578237",
-            "user": {
-                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
-                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
-                "followers_url": "https://api.github.com/users/justinmk/followers",
-                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
-                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
-                "gravatar_id": "",
-                "html_url": "https://github.com/justinmk",
-                "id": 1359421,
-                "login": "justinmk",
-                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
-                "organizations_url": "https://api.github.com/users/justinmk/orgs",
-                "received_events_url": "https://api.github.com/users/justinmk/received_events",
-                "repos_url": "https://api.github.com/users/justinmk/repos",
-                "site_admin": false,
-                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
-                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
-                "type": "User",
-                "url": "https://api.github.com/users/justinmk"
-            }
-        },
-        {
-            "_links": {
-                "html": {
-                    "href": "https://github.com/neovim/neovim/pull/26394#discussion_r1414587908"
-                },
-                "pull_request": {
-                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26394"
-                },
-                "self": {
-                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1414587908"
-                }
-            },
-            "author_association": "MEMBER",
-            "body": "Huh. Let's try that.",
-            "commit_id": "99ff5859d7509fccd55bc2b5d5fd68eaa819afe1",
-            "created_at": "2023-12-04T22:33:34Z",
-            "diff_hunk": "@@ -39,8 +40,7 @@ jobs:\n \n       - name: Install stylua\n         run: |\n-          URL=$(curl -L https://api.github.com/repos/JohnnyMorganz/StyLua/releases/latest | jq -r '.assets[] | select(.name == \"stylua-linux-x86_64.zip\") | .browser_download_url')\n-          wget --directory-prefix=\"$BIN_DIR\" \"$URL\"\n+          wget --directory-prefix=\"$BIN_DIR\" \"https://github.com/JohnnyMorganz/StyLua/releases/download/${STYLUA_VERSION}/stylua-linux-x86_64.zip\"",
-            "html_url": "https://github.com/neovim/neovim/pull/26394#discussion_r1414587908",
-            "id": 1414587908,
-            "in_reply_to_id": 1414575944,
-            "line": null,
-            "node_id": "PRRC_kwDOAPphoM5UUOYE",
-            "original_commit_id": "d29f01bebeaa4a87a3840b8bf09635b2a84daabd",
-            "original_line": 43,
-            "original_position": 14,
-            "original_start_line": null,
-            "path": ".github/workflows/test.yml",
-            "position": null,
-            "pull_request_review_id": 1763569139,
-            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26394",
-            "reactions": {
-                "+1": 0,
-                "-1": 0,
-                "confused": 0,
-                "eyes": 0,
-                "heart": 0,
-                "hooray": 0,
-                "laugh": 0,
-                "rocket": 0,
-                "total_count": 0,
-                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1414587908/reactions"
-            },
-            "side": "RIGHT",
-            "start_line": null,
-            "start_side": null,
-            "subject_type": "line",
-            "updated_at": "2023-12-04T22:33:34Z",
-            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1414587908",
+            "updated_at": "2023-02-02T14:25:02Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1413827710",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/33953936?v=4",
                 "events_url": "https://api.github.com/users/dundargoc/events{/privacy}",
@@ -379,15 +350,14 @@
             }
         }
     ],
-    "comment_regular_data": [],
-    "comments_url": "https://api.github.com/repos/neovim/neovim/issues/26394/comments",
-    "commits_url": "https://api.github.com/repos/neovim/neovim/pulls/26394/commits",
-    "created_at": "2023-12-04T19:57:03Z",
-    "diff_url": "https://github.com/neovim/neovim/pull/26394.diff",
-    "draft": false,
+    "comments_url": "https://api.github.com/repos/neovim/neovim/issues/22054/comments",
+    "commits_url": "https://api.github.com/repos/neovim/neovim/pulls/22054/commits",
+    "created_at": "2023-01-30T12:05:05Z",
+    "diff_url": "https://github.com/neovim/neovim/pull/22054.diff",
+    "draft": true,
     "head": {
-        "label": "dundargoc:ci/stylua",
-        "ref": "ci/stylua",
+        "label": "dundargoc:build/superbuild",
+        "ref": "build/superbuild",
         "repo": {
             "allow_forking": true,
             "archive_url": "https://api.github.com/repos/dundargoc/neovim/{archive_format}{/ref}",
@@ -494,7 +464,7 @@
             "watchers_count": 1,
             "web_commit_signoff_required": false
         },
-        "sha": "99ff5859d7509fccd55bc2b5d5fd68eaa819afe1",
+        "sha": "eb21c5d11c8992b9bebacfd86d285c46c315c706",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/33953936?v=4",
             "events_url": "https://api.github.com/users/dundargoc/events{/privacy}",
@@ -516,36 +486,45 @@
             "url": "https://api.github.com/users/dundargoc"
         }
     },
-    "html_url": "https://github.com/neovim/neovim/pull/26394",
-    "id": 1628986221,
-    "issue_url": "https://api.github.com/repos/neovim/neovim/issues/26394",
+    "html_url": "https://github.com/neovim/neovim/pull/22054",
+    "id": 1221521861,
+    "issue_url": "https://api.github.com/repos/neovim/neovim/issues/22054",
     "labels": [
         {
-            "color": "e6e6e6",
+            "color": "c5def5",
             "default": false,
-            "description": "automation for build, test, and release",
-            "id": 212701006,
-            "name": "ci",
-            "node_id": "MDU6TGFiZWwyMTI3MDEwMDY=",
-            "url": "https://api.github.com/repos/neovim/neovim/labels/ci"
+            "description": "building and installing Neovim using the provided scripts",
+            "id": 84723321,
+            "name": "build",
+            "node_id": "MDU6TGFiZWw4NDcyMzMyMQ==",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/build"
+        },
+        {
+            "color": "c5def5",
+            "default": false,
+            "description": "build dependencies (LuaJIT, LibUV, etc.)",
+            "id": 1205400704,
+            "name": "dependencies",
+            "node_id": "MDU6TGFiZWwxMjA1NDAwNzA0",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/dependencies"
         }
     ],
     "locked": false,
-    "merge_commit_sha": "32c8f951bb117bcff39460c3b4dd4f05112af6b3",
-    "merged_at": "2023-12-05T09:43:07Z",
+    "merge_commit_sha": "fab8200f4fe6a36f4a0c4a934bafb2593396a328",
+    "merged_at": null,
     "milestone": null,
-    "node_id": "PR_kwDOAPphoM5hGFtt",
-    "number": 26394,
-    "patch_url": "https://github.com/neovim/neovim/pull/26394.patch",
+    "node_id": "PR_kwDOAPphoM5IzvHF",
+    "number": 22054,
+    "patch_url": "https://github.com/neovim/neovim/pull/22054.patch",
     "requested_reviewers": [],
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
-    "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/26394/comments",
-    "state": "closed",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/99ff5859d7509fccd55bc2b5d5fd68eaa819afe1",
-    "title": "ci: use the latest stylua version",
-    "updated_at": "2023-12-09T14:11:23Z",
-    "url": "https://api.github.com/repos/neovim/neovim/pulls/26394",
+    "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/22054/comments",
+    "state": "open",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/eb21c5d11c8992b9bebacfd86d285c46c315c706",
+    "title": "build: combine CMakeLists.txt and cmake.deps/CMakeLists.txt into one",
+    "updated_at": "2023-12-09T22:02:41Z",
+    "url": "https://api.github.com/repos/neovim/neovim/pulls/22054",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/33953936?v=4",
         "events_url": "https://api.github.com/users/dundargoc/events{/privacy}",

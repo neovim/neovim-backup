@@ -4,7 +4,7 @@
     "assignees": [],
     "author_association": "NONE",
     "body": "### Problem\r\n\r\nThe stderr stream is often used for any output which is not intended for consumption by the calling application. I.e.: messages sent to stderr are not necessarily errors. One good example of this is visible at https://github.com/hashicorp/terraform-ls/issues/1271.\r\n\r\nWhile the `terraform-ls project` is working on their log mechanism, the current treatment of stderr is particularly harsh for language servers which follow common recommendations for outputting diagnostic information to stderr:\r\nhttps://www.gnu.org/software/libc/manual/html_node/Standard-Streams.html\r\n\r\n>    Variable: FILE * stderr\r\n>\r\n>       The standard error stream, which is used for error messages **and diagnostics** issued by the program. \r\n\r\nThe current behavior has the downside of the LSP Log growing to extremely large sizes in some cases, in addition to confusion as to the true meaning of its contents.\r\n\r\n### Steps to reproduce using \"nvim -u minimal_init.lua\"\r\n\r\n1. Configure an affected terraform-ls language server, such as terraform-ls or taplo\r\n2. Edit associated files for a while\r\n4. Run `:LspLog`\r\n\r\n### Expected behavior\r\n\r\nMinimal: Do not assume every output to stderr is an error.\r\n\r\nStretch goal: Potentially allow for custom handling of stderr output based on its contents to avoid the log file growing out of control.\r\n\r\n### Neovim version (nvim -v)\r\n\r\nNVIM v0.10.0-dev-376+g677e02be4-Homebrew Build type: Release LuaJIT 2.1.0-beta3\r\n\r\n### Language server name/version\r\n\r\nMultiple, including terraform-ls, taplo\r\n\r\n### Operating system/version\r\n\r\nmacOS 13\r\n\r\n### Log file\r\n\r\nExample:\r\n```\r\n[ERROR][2023-08-18 09:33:24] .../vim/lsp/rpc.lua:734\t\"rpc\"\t\"/Users/bgshacklett/.local/bin/taplo\"\t\"stderr\"\t' INFO taplo: registered request handler method=\"initialize\"\\n INFO taplo: registered request handler method=\"textDocument/documentSymbol\"\\n INFO taplo: registered request handler method=\"textDocument/foldingRange\"\\n INFO taplo: registered request handler method=\"textDocument/formatting\"\\n INFO taplo: registered request handler method=\"textDocument/completion\"\\n INFO taplo: registered request handler method=\"textDocument/hover\"\\n INFO taplo: registered request handler method=\"textDocument/documentLink\"\\n INFO taplo: registered request handler method=\"textDocument/semanticTokens/full\"\\n INFO taplo: registered request handler method=\"textDocument/prepareRename\"\\n INFO taplo: registered request handler method=\"textDocument/rename\"\\n INFO taplo: registered notification handler method=\"textDocument/didOpen\"\\n INFO taplo: registered notification handler method=\"initialized\"\\n INFO taplo: registered notification handler method=\"textDocument/didClose\"\\n INFO taplo: registered notification handler method=\"textDocument/didChange\"\\n INFO taplo: registered request handler method=\"taplo/convertToJson\"\\n INFO taplo: registered request handler method=\"taplo/convertToToml\"\\n INFO taplo: registered request handler method=\"taplo/listSchemas\"\\n INFO taplo: registered notification handler method=\"workspace/didChangeConfiguration\"\\n INFO taplo: registered notification handler method=\"workspace/didChangeWorkspaceFolders\"\\n INFO taplo: registered request handler method=\"taplo/associatedSchema\"\\n INFO taplo: registered notification handler method=\"taplo/associateSchema\"\\n INFO taplo: registered notification handler method=\"textDocument/didSave\"\\n INFO taplo: LSP server listening transport=\"stdio\"\\n'\r\n```",
-    "closed_at": null,
+    "closed_at": "2023-12-09T09:21:17Z",
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -93,9 +93,53 @@
                 "type": "User",
                 "url": "https://api.github.com/users/bgshacklett"
             }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "I'd rather not remove the ERROR prefix. Some servers if not configured correctly immediately exit after startup - currently the only pieces of information you got is the warning message about the exit, and then the log. Having an `ERROR` prefix for the log messages is useful in that case, as it's most likely to contain some hint of what went wrong. (And the only piece of insight you get)\r\n\r\nAnd I don't think the complexity of making this configurable per server is warranted. As far as I can tell the majority of them doesn't flood stderr.\r\nIf the log size is the main concern, we should rather have a log rotation mechanism. That relates a bit to https://github.com/neovim/neovim/pull/7062\r\n",
+            "created_at": "2023-12-09T09:21:17Z",
+            "html_url": "https://github.com/neovim/neovim/issues/24784#issuecomment-1848341710",
+            "id": 1848341710,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/24784",
+            "node_id": "IC_kwDOAPphoM5uK3TO",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1848341710/reactions"
+            },
+            "updated_at": "2023-12-09T09:21:17Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1848341710",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/38700?v=4",
+                "events_url": "https://api.github.com/users/mfussenegger/events{/privacy}",
+                "followers_url": "https://api.github.com/users/mfussenegger/followers",
+                "following_url": "https://api.github.com/users/mfussenegger/following{/other_user}",
+                "gists_url": "https://api.github.com/users/mfussenegger/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/mfussenegger",
+                "id": 38700,
+                "login": "mfussenegger",
+                "node_id": "MDQ6VXNlcjM4NzAw",
+                "organizations_url": "https://api.github.com/users/mfussenegger/orgs",
+                "received_events_url": "https://api.github.com/users/mfussenegger/received_events",
+                "repos_url": "https://api.github.com/users/mfussenegger/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/mfussenegger/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/mfussenegger/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/mfussenegger"
+            }
         }
     ],
-    "comments": 2,
+    "comments": 3,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/24784/comments",
     "created_at": "2023-08-18T13:32:48Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/24784/events",
@@ -140,11 +184,11 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/24784/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/24784/timeline",
     "title": "LSP: make stderr handling configurable per server",
-    "updated_at": "2023-08-18T16:20:05Z",
+    "updated_at": "2023-12-09T09:21:18Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/24784",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/583359?v=4",
