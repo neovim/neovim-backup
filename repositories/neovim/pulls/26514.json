@@ -28,7 +28,7 @@
     "active_lock_reason": null,
     "assignee": null,
     "assignees": [],
-    "author_association": "CONTRIBUTOR",
+    "author_association": "MEMBER",
     "auto_merge": null,
     "base": {
         "label": "neovim:master",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1714,
-            "open_issues_count": 1714,
+            "open_issues": 1715,
+            "open_issues_count": 1715,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -118,11 +118,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2023-12-11T08:02:11Z",
+            "pushed_at": "2023-12-12T01:44:46Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 244354,
+            "size": 244566,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 71695,
+            "stargazers_count": 71715,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -140,11 +140,11 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2023-12-11T07:39:45Z",
+            "updated_at": "2023-12-12T01:56:57Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 71695,
-            "watchers_count": 71695,
+            "watchers": 71715,
+            "watchers_count": 71715,
             "web_commit_signoff_required": false
         },
         "sha": "529498685bbcd4783bc0e816d6247118c9ffb9a7",
@@ -170,7 +170,7 @@
         }
     },
     "body": "Minor improvements to #23750\r\n\r\n- Improve CLI argument parsing, rejects invalid argument and commands as\r\n  early as possible. Also prints USAGE in the command line.\r\n\r\n- No longer allows `--<outfile>`, use `--out <outfile>` instead.\r\n\r\n- Print a little bit of verbose messages to better know what's going on\r\n  rather than remaining silent at all times.\r\n",
-    "closed_at": null,
+    "closed_at": "2023-12-11T09:10:00Z",
     "comment_data": [
         {
             "_links": {
@@ -184,7 +184,7 @@
                     "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1422022190"
                 }
             },
-            "author_association": "CONTRIBUTOR",
+            "author_association": "MEMBER",
             "body": "Maybe we might want to set 3.17 (Current) at this moment -- https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification/ is \"Upcoming\" (still changing). It would be subject to which LSP version/spec we want to include in neovim. The current data even includes an earlier version of 3.18, so I think 3.18 is also fine? (although non-stationary yet)\r\n\r\nOne issue is that [the current JSON data in the 3.17](https://github.com/microsoft/language-server-protocol/blob/gh-pages/_specifications/lsp/3.17/metaModel/metaModel.json?rgh-link-date=2023-12-11T02%3A19%3A24Z) specs happened to include pending ones for 3.18  (see https://github.com/microsoft/language-server-protocol/pull/1816)",
             "commit_id": "f8415824bbd283d624e98fe1de030a9454cfb011",
             "created_at": "2023-12-11T07:20:06Z",
@@ -376,11 +376,80 @@
                 "type": "User",
                 "url": "https://api.github.com/users/justinmk"
             }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26514#discussion_r1422101413"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26514"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1422101413"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "I prefer having one nested if-else here because L304-L308 altogether corresponds to handling of the \"positional argument\" `command`, but I don't have a strong opinion. Either would be fine.",
+            "commit_id": "f8415824bbd283d624e98fe1de030a9454cfb011",
+            "created_at": "2023-12-11T08:47:29Z",
+            "diff_hunk": "@@ -265,26 +283,39 @@ end\n \n local opt = {\n   output_file = 'runtime/lua/vim/lsp/_meta/protocol.lua',\n-  version = nil,\n-  methods = nil,\n+  version = DEFAULT_LSP_VERSION,\n+  methods = false,\n }\n \n-for i = 1, #_G.arg do\n+local command = nil\n+local i = 1\n+while i <= #_G.arg do\n   if _G.arg[i] == '--out' then\n-    opt.output_file = _G.arg[i + 1]\n+    opt.output_file = assert(_G.arg[i + 1], '--out <outfile> needed')\n+    i = i + 1\n   elseif _G.arg[i] == '--version' then\n-    opt.version = _G.arg[i + 1]\n+    opt.version = assert(_G.arg[i + 1], '--version <version> needed')\n+    i = i + 1\n   elseif _G.arg[i] == '--methods' then\n     opt.methods = true\n-  elseif vim.startswith(_G.arg[i], '--') then\n-    opt.output_file = _G.arg[i]:sub(3)\n+  elseif vim.startswith(_G.arg[i], '-') then\n+    error('Unrecognized args: ' .. _G.arg[i])\n+  else\n+    if command then\n+      error('More than one command was given: ' .. _G.arg[i])\n+    else\n+      command = _G.arg[i]\n+    end",
+            "html_url": "https://github.com/neovim/neovim/pull/26514#discussion_r1422101413",
+            "id": 1422101413,
+            "in_reply_to_id": 1422061645,
+            "line": 308,
+            "node_id": "PRRC_kwDOAPphoM5Uw4ul",
+            "original_commit_id": "f8415824bbd283d624e98fe1de030a9454cfb011",
+            "original_line": 308,
+            "original_position": 108,
+            "original_start_line": 303,
+            "path": "scripts/gen_lsp.lua",
+            "position": 108,
+            "pull_request_review_id": 1774560834,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26514",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1422101413/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 303,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2023-12-11T08:47:39Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1422101413",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1009873?v=4",
+                "events_url": "https://api.github.com/users/wookayin/events{/privacy}",
+                "followers_url": "https://api.github.com/users/wookayin/followers",
+                "following_url": "https://api.github.com/users/wookayin/following{/other_user}",
+                "gists_url": "https://api.github.com/users/wookayin/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/wookayin",
+                "id": 1009873,
+                "login": "wookayin",
+                "node_id": "MDQ6VXNlcjEwMDk4NzM=",
+                "organizations_url": "https://api.github.com/users/wookayin/orgs",
+                "received_events_url": "https://api.github.com/users/wookayin/received_events",
+                "repos_url": "https://api.github.com/users/wookayin/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/wookayin/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/wookayin/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/wookayin"
+            }
         }
     ],
     "comment_regular_data": [
         {
-            "author_association": "CONTRIBUTOR",
+            "author_association": "MEMBER",
             "body": "I haven't included the re-generated `vim/lsp/_meta/protocol.lua` file (which has some diff) to make the commits atomic, but if you think it'd better to regenerate and commit the meta file together I can also do that.",
             "created_at": "2023-12-11T02:43:02Z",
             "html_url": "https://github.com/neovim/neovim/pull/26514#issuecomment-1849236626",
@@ -512,7 +581,7 @@
             }
         },
         {
-            "author_association": "CONTRIBUTOR",
+            "author_association": "MEMBER",
             "body": "Yes it'd be great to have some nice high-level argument parser libs. These should be used only for build-time scripts (for `scripts/*`) rather than a part of runtime neovim API, so any reasonable library would do the job :D",
             "created_at": "2023-12-11T07:47:59Z",
             "html_url": "https://github.com/neovim/neovim/pull/26514#issuecomment-1849489420",
@@ -751,8 +820,8 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "6471d91cb2dedb6710a1da67b4e4d4d4690d2eaf",
-    "merged_at": null,
+    "merge_commit_sha": "3692fd4c873a2cd7ad69eb09765eed2993570c49",
+    "merged_at": "2023-12-11T09:10:00Z",
     "milestone": null,
     "node_id": "PR_kwDOAPphoM5hoWL5",
     "number": 26514,
@@ -761,10 +830,10 @@
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/26514/comments",
-    "state": "open",
+    "state": "closed",
     "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/f8415824bbd283d624e98fe1de030a9454cfb011",
     "title": "refactor(gen_lsp.lua): minor improvements to CLI",
-    "updated_at": "2023-12-11T08:07:53Z",
+    "updated_at": "2023-12-11T09:10:00Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/26514",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1009873?v=4",
