@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/26642"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/b28bc506d546d609b95f591a886a082a60892ff2"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/4587912527f48974e5b339af85db1c74bdd3cb43"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 5066,
-            "forks_count": 5066,
+            "forks": 5077,
+            "forks_count": 5077,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1721,
-            "open_issues_count": 1721,
+            "open_issues": 1697,
+            "open_issues_count": 1697,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -118,11 +118,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2023-12-19T00:15:23Z",
+            "pushed_at": "2023-12-26T01:26:05Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 246400,
+            "size": 247838,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 71892,
+            "stargazers_count": 72074,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -140,14 +140,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2023-12-19T01:02:33Z",
+            "updated_at": "2023-12-26T01:14:58Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 71892,
-            "watchers_count": 71892,
+            "watchers": 72074,
+            "watchers_count": 72074,
             "web_commit_signoff_required": false
         },
-        "sha": "3a4aa3fc58f87a295a075fe457bc78805eef7c4d",
+        "sha": "eae6727325111e596b49bb04337a467e8833397c",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -170,14 +170,83 @@
         }
     },
     "body": null,
-    "closed_at": null,
-    "comment_data": [],
+    "closed_at": "2023-12-24T06:25:08Z",
+    "comment_data": [
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26642#discussion_r1435525989"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26642"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1435525989"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "~'lines' and 'columns' aren't the only options that can change window height. 'winheight' and 'laststatus' can as well.~\r\n\r\n~And it's possible that an autocommand triggered by an `opt_did_set_cb` changes window height.~",
+            "commit_id": "4587912527f48974e5b339af85db1c74bdd3cb43",
+            "created_at": "2023-12-23T08:09:54Z",
+            "diff_hunk": "@@ -2197,6 +2197,53 @@ static const char *did_set_laststatus(optset_T *args)\n   return NULL;\n }\n \n+/// Process the updated 'lines' or 'columns' option value.\n+static const char *did_set_lines_or_columns(optset_T *args)\n+{\n+  // If the screen (shell) height has been changed, assume it is the\n+  // physical screenheight.\n+  if (p_lines != Rows || p_columns != Columns) {\n+    // Changing the screen size is not allowed while updating the screen.\n+    if (updating_screen) {\n+      OptVal oldval = (OptVal){ .type = kOptValTypeNumber, .data = args->os_oldval };\n+      set_option_varp(args->os_idx, args->os_varp, oldval, false);\n+    } else if (full_screen) {\n+      screen_resize((int)p_columns, (int)p_lines);\n+    } else {\n+      // TODO(bfredl): is this branch ever needed?\n+      // Postpone the resizing; check the size and cmdline position for\n+      // messages.\n+      Rows = (int)p_lines;\n+      Columns = (int)p_columns;\n+      check_screensize();\n+      int new_row = (int)(Rows - MAX(p_ch, 1));\n+      if (cmdline_row > new_row && Rows > p_ch) {\n+        assert(p_ch >= 0 && new_row <= INT_MAX);\n+        cmdline_row = new_row;\n+      }\n+    }\n+    if (p_window >= Rows || !option_was_set(kOptWindow)) {\n+      p_window = Rows - 1;\n+    }\n+  }\n+\n+  // Adjust 'scrolljump' if needed.\n+  if (p_sj >= Rows && full_screen) {\n+    p_sj = Rows / 2;\n+  }\n+\n+  // If 'scroll' became invalid because of a side effect silently adjust it.\n+  if (full_screen) {\n+    if (curwin->w_p_scr <= 0) {\n+      curwin->w_p_scr = 1;\n+    } else if (curwin->w_p_scr > curwin->w_height_inner && curwin->w_height_inner > 0) {\n+      curwin->w_p_scr = curwin->w_height_inner;\n+    }\n+  }",
+            "html_url": "https://github.com/neovim/neovim/pull/26642#discussion_r1435525989",
+            "id": 1435525989,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5VkGNl",
+            "original_commit_id": "1d87e360c7a6de66388b7cb3cbd5eeac26fc5f46",
+            "original_line": 2242,
+            "original_position": 46,
+            "original_start_line": 2235,
+            "path": "src/nvim/option.c",
+            "position": null,
+            "pull_request_review_id": 1795414008,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26642",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1435525989/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2023-12-24T05:13:37Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1435525989",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+                "followers_url": "https://api.github.com/users/zeertzjq/followers",
+                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/zeertzjq",
+                "id": 35768171,
+                "login": "zeertzjq",
+                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+                "repos_url": "https://api.github.com/users/zeertzjq/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/zeertzjq"
+            }
+        }
+    ],
     "comment_regular_data": [],
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/26642/comments",
     "commits_url": "https://api.github.com/repos/neovim/neovim/pulls/26642/commits",
     "created_at": "2023-12-18T17:34:06Z",
     "diff_url": "https://github.com/neovim/neovim/pull/26642.diff",
-    "draft": true,
+    "draft": false,
     "head": {
         "label": "famiu:refactor/options/misc",
         "ref": "refactor/options/misc",
@@ -266,9 +335,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/famiu/neovim/pulls{/number}",
-            "pushed_at": "2023-12-18T17:33:44Z",
+            "pushed_at": "2023-12-24T09:36:23Z",
             "releases_url": "https://api.github.com/repos/famiu/neovim/releases{/id}",
-            "size": 240814,
+            "size": 242437,
             "ssh_url": "git@github.com:famiu/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/famiu/neovim/stargazers",
@@ -287,7 +356,7 @@
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "b28bc506d546d609b95f591a886a082a60892ff2",
+        "sha": "4587912527f48974e5b339af85db1c74bdd3cb43",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/29580810?v=4",
             "events_url": "https://api.github.com/users/famiu/events{/privacy}",
@@ -333,8 +402,8 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "95f2419a52fd7b1281a0229229029e2a6313b950",
-    "merged_at": null,
+    "merge_commit_sha": "0b66ab42c76c41494a9d7fc715d310f1a1da929d",
+    "merged_at": "2023-12-24T06:25:08Z",
     "milestone": null,
     "node_id": "PR_kwDOAPphoM5iSfIt",
     "number": 26642,
@@ -343,10 +412,10 @@
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/26642/comments",
-    "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/b28bc506d546d609b95f591a886a082a60892ff2",
+    "state": "closed",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/4587912527f48974e5b339af85db1c74bdd3cb43",
     "title": "refactor(options): miscellanous refactors",
-    "updated_at": "2023-12-18T17:34:36Z",
+    "updated_at": "2023-12-24T06:25:43Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/26642",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/29580810?v=4",
