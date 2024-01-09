@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 5077,
-            "forks_count": 5077,
+            "forks": 5121,
+            "forks_count": 5121,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1697,
-            "open_issues_count": 1697,
+            "open_issues": 1744,
+            "open_issues_count": 1744,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -118,11 +118,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2023-12-26T01:26:05Z",
+            "pushed_at": "2024-01-09T01:46:05Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 247838,
+            "size": 248837,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 72074,
+            "stargazers_count": 72546,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -140,11 +140,11 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2023-12-26T01:14:58Z",
+            "updated_at": "2024-01-09T01:49:06Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 72074,
-            "watchers_count": 72074,
+            "watchers": 72546,
+            "watchers_count": 72546,
             "web_commit_signoff_required": false
         },
         "sha": "c675e51c2f3f8bf46457a3f6653af06a2a946f69",
@@ -650,6 +650,75 @@
                 "type": "User",
                 "url": "https://api.github.com/users/MariaSolOs"
             }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26507#discussion_r1439333031"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26507"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1439333031"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "> One reason having a corresponding context for each item is to understand which lsp the item is coming from. This can be a part of a custom display of multiple items and doesn't have to be supported in neovim itself. I think this makes sense similar to how you can enable display of diagnostics source.\r\n\r\n\r\nThe current shape/structure won't let you do that because there's no association between a individual item and the context.\r\n\r\n\r\nWe'd either have to change the complete `on_list` parameter shape - which would be breaking, or add a `client_id` to each individual item.\r\n\r\nEither way, this doesn't need to block this PR.\r\n",
+            "commit_id": "a57fb25b6ac6802acddaf67a7ef45a8cf9973628",
+            "created_at": "2024-01-02T10:44:00Z",
+            "diff_hunk": "@@ -76,8 +76,76 @@ end\n ---     - on_list: (function) |lsp-on-list-handler| replacing the default handler.\n ---       Called for any non-empty result.\n function M.definition(options)\n+  options = options or {}\n   local params = util.make_position_params()\n-  request_with_options(ms.textDocument_definition, params, options)\n+  local bufnr = api.nvim_get_current_buf()\n+\n+  ---@param results table<integer, {error: lsp.ResponseError, result: lsp.Location|lsp.Location[]|lsp.LocationLink[]|nil}>\n+  local function handler(results)\n+    local client_id_to_items = {}\n+    local total_items = 0\n+    for client_id, v in pairs(results) do\n+      if v.error == nil and v.result ~= nil then\n+        -- first check for Location | LocationLink because\n+        -- tbl_islist returns `false` for empty lists\n+        if v.result.uri or v.result.targetUri then\n+          local client = vim.lsp.get_client_by_id(client_id)\n+          local items = util.locations_to_items({ v.result }, client.offset_encoding)\n+          total_items = total_items + #items\n+          client_id_to_items[client_id] = items\n+        elseif vim.tbl_islist(v.result) then\n+          local client = vim.lsp.get_client_by_id(client_id)\n+          local items = util.locations_to_items(v.result, client.offset_encoding)\n+          total_items = total_items + #items\n+          client_id_to_items[client_id] = items\n+        end\n+      end\n+    end\n+\n+    if total_items == 0 then\n+      return\n+    end\n+\n+    local items = {}\n+\n+    -- luacheck: ignore 512\n+    for _, v in pairs(client_id_to_items) do\n+      for _, v2 in ipairs(v) do\n+        table.insert(items, v2)\n+      end\n+    end\n+\n+    local title = 'LSP locations'\n+    if options.on_list then\n+      assert(type(options.on_list) == 'function', 'on_list is not a function')\n+      return options.on_list({\n+        title = title,\n+        items = items,\n+        -- FIXME currently passing nil as items can come from multiple clients\n+        -- need a better way to attribute items to context\n+        context = nil,",
+            "html_url": "https://github.com/neovim/neovim/pull/26507#discussion_r1439333031",
+            "id": 1439333031,
+            "in_reply_to_id": 1434951201,
+            "line": 126,
+            "node_id": "PRRC_kwDOAPphoM5Vynqn",
+            "original_commit_id": "a57fb25b6ac6802acddaf67a7ef45a8cf9973628",
+            "original_line": 126,
+            "original_position": 52,
+            "original_start_line": 124,
+            "path": "runtime/lua/vim/lsp/buf.lua",
+            "position": 52,
+            "pull_request_review_id": 1800240639,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26507",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1439333031/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 124,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2024-01-02T10:44:01Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1439333031",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/38700?v=4",
+                "events_url": "https://api.github.com/users/mfussenegger/events{/privacy}",
+                "followers_url": "https://api.github.com/users/mfussenegger/followers",
+                "following_url": "https://api.github.com/users/mfussenegger/following{/other_user}",
+                "gists_url": "https://api.github.com/users/mfussenegger/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/mfussenegger",
+                "id": 38700,
+                "login": "mfussenegger",
+                "node_id": "MDQ6VXNlcjM4NzAw",
+                "organizations_url": "https://api.github.com/users/mfussenegger/orgs",
+                "received_events_url": "https://api.github.com/users/mfussenegger/received_events",
+                "repos_url": "https://api.github.com/users/mfussenegger/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/mfussenegger/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/mfussenegger/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/mfussenegger"
+            }
         }
     ],
     "comment_regular_data": [
@@ -849,7 +918,7 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "78947cb53cc47b86837d25c6d53544273e790439",
+    "merge_commit_sha": "5397eeead053c92d4e6b908b5666835656ebeb98",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM5hnXJ1",
@@ -883,7 +952,7 @@
     "state": "open",
     "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/a57fb25b6ac6802acddaf67a7ef45a8cf9973628",
     "title": "fix(lsp): lsp.buf.definition() handles responses from multiple servers",
-    "updated_at": "2023-12-24T16:12:05Z",
+    "updated_at": "2024-01-02T10:44:00Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/26507",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/5817809?v=4",
