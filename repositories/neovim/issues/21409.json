@@ -533,9 +533,53 @@
                 "type": "User",
                 "url": "https://api.github.com/users/clason"
             }
+        },
+        {
+            "author_association": "NONE",
+            "body": "I can reproduce the crash after the second healthcheck with the lazynvim starter config (https://github.com/LazyVim/starter) on:\r\n\r\n```\r\n$ nvim --version\r\nNVIM v0.10.0-dev-2073+gc8f696f2b\r\nBuild type: Debug\r\nLuaJIT 2.1.1703358377\r\nRun \"nvim -V1 -v\" for more info\r\n```\r\n\r\nHere is a backtrace with more debug symbols included:\r\n\r\n```bash\r\nThread 1 \"nvim\" received signal SIGSEGV, Segmentation fault.\r\n0x0000555674b5a3e8 in frame2win (frp=0x0) at /opt/neovim/src/nvim/window.c:3291\r\n3291      while (frp->fr_win == NULL) {\r\n(gdb) bt\r\n#0  0x0000555674b5a3e8 in frame2win (frp=0x0) at /opt/neovim/src/nvim/window.c:3291\r\n#1  0x0000555674b59cda in winframe_remove (win=0x555676e756f0, dirp=0x7ffcd920d468, tp=0x555676bcab70)\r\n    at /opt/neovim/src/nvim/window.c:3089\r\n#2  0x0000555674b59b6d in win_free_mem (win=0x555676e756f0, dirp=0x7ffcd920d468, tp=0x555676bcab70)\r\n    at /opt/neovim/src/nvim/window.c:2999\r\n#3  0x0000555674b59ad1 in win_close_othertab (win=0x555676e756f0, free_buf=0, tp=0x555676bcab70)\r\n    at /opt/neovim/src/nvim/window.c:2978\r\n#4  0x0000555674b5885d in close_windows (buf=0x555676e6ea70, keep_curwin=false) at /opt/neovim/src/nvim/window.c:2410\r\n#5  0x000055567485b792 in do_buffer (action=4, start=1, dir=1, count=525, forceit=0)\r\n    at /opt/neovim/src/nvim/buffer.c:1369\r\n#6  0x000055567485ad6a in do_bufdel (command=4, arg=0x555676dd0d4f \"\", addr_count=1, start_bnr=543, end_bnr=525,\r\n    forceit=0) at /opt/neovim/src/nvim/buffer.c:1079\r\n#7  0x000055567492a468 in ex_bunload (eap=0x7ffcd920ddd0) at /opt/neovim/src/nvim/ex_docmd.c:4405\r\n#8  0x000055567492300a in execute_cmd0 (retv=0x7ffcd920d694, eap=0x7ffcd920ddd0, errormsg=0x7ffcd920d698, preview=false)\r\n    at /opt/neovim/src/nvim/ex_docmd.c:1654\r\n#9  0x0000555674923620 in execute_cmd (eap=0x7ffcd920ddd0, cmdinfo=0x7ffcd920df10, preview=false)\r\n    at /opt/neovim/src/nvim/ex_docmd.c:1735\r\n#10 0x000055567480bbd6 in nvim_cmd (channel_id=9223372036854775809, cmd=0x7ffcd920e080, opts=0x7ffcd920e057,\r\n    err=0x7ffcd920e060) at /opt/neovim/src/nvim/api/command.c:655\r\n#11 0x00005556747eaec0 in nlua_api_nvim_cmd (lstate=0x7f64352c2380)\r\n    at /opt/neovim/build/src/nvim/auto/lua_api_c_bindings.generated.c:1606\r\n#12 0x0000555674bef2a6 in lj_BC_FUNCC ()\r\n#13 0x0000555674bdb439 in lua_pcall (L=0x7f64352c2380, nargs=<optimized out>, nresults=1, errfunc=<optimized out>)\r\n    at lj_api.c:1121\r\n#14 0x0000555674991881 in nlua_pcall (lstate=0x7f64352c2380, nargs=2, nresults=1)\r\n    at /opt/neovim/src/nvim/lua/executor.c:172\r\n#15 0x000055567499559a in nlua_exec (str=..., args=..., err=0x7ffcd920e360) at /opt/neovim/src/nvim/lua/executor.c:1563\r\n#16 0x0000555674931048 in ex_checkhealth (eap=0x7ffcd920e8e0) at /opt/neovim/src/nvim/ex_docmd.c:7421\r\n#17 0x000055567492300a in execute_cmd0 (retv=0x7ffcd920e898, eap=0x7ffcd920e8e0, errormsg=0x7ffcd920e8b0, preview=false)\r\n    at /opt/neovim/src/nvim/ex_docmd.c:1654\r\n#18 0x0000555674924f43 in do_one_cmd (cmdlinep=0x7ffcd920eb00, flags=0, cstack=0x7ffcd920ec10,\r\n    fgetline=0x55567493d25f <getexline>, cookie=0x0) at /opt/neovim/src/nvim/ex_docmd.c:2316\r\n#19 0x00005556749209ec in do_cmdline (cmdline=0x0, fgetline=0x55567493d25f <getexline>, cookie=0x0, flags=0)\r\n    at /opt/neovim/src/nvim/ex_docmd.c:612\r\n#20 0x0000555674a02789 in nv_colon (cap=0x7ffcd920f280) at /opt/neovim/src/nvim/normal.c:3223\r\n#21 0x00005556749fe335 in normal_execute (state=0x7ffcd920f210, key=58) at /opt/neovim/src/nvim/normal.c:1227\r\n#22 0x0000555674adccca in state_enter (s=0x7ffcd920f210) at /opt/neovim/src/nvim/state.c:101\r\n#23 0x00005556749fc58d in normal_enter (cmdwin=false, noexmode=false) at /opt/neovim/src/nvim/normal.c:516\r\n#24 0x00005556749a193e in main (argc=3, argv=0x7ffcd920f5f8) at /opt/neovim/src/nvim/main.c:651\r\n(gdb)\r\n```",
+            "created_at": "2024-01-13T10:21:38Z",
+            "html_url": "https://github.com/neovim/neovim/issues/21409#issuecomment-1890408679",
+            "id": 1890408679,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/21409",
+            "node_id": "IC_kwDOAPphoM5wrVjn",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1890408679/reactions"
+            },
+            "updated_at": "2024-01-13T10:33:06Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1890408679",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/20600565?v=4",
+                "events_url": "https://api.github.com/users/alichtman/events{/privacy}",
+                "followers_url": "https://api.github.com/users/alichtman/followers",
+                "following_url": "https://api.github.com/users/alichtman/following{/other_user}",
+                "gists_url": "https://api.github.com/users/alichtman/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/alichtman",
+                "id": 20600565,
+                "login": "alichtman",
+                "node_id": "MDQ6VXNlcjIwNjAwNTY1",
+                "organizations_url": "https://api.github.com/users/alichtman/orgs",
+                "received_events_url": "https://api.github.com/users/alichtman/received_events",
+                "repos_url": "https://api.github.com/users/alichtman/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/alichtman/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/alichtman/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/alichtman"
+            }
         }
     ],
-    "comments": 12,
+    "comments": 13,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/21409/comments",
     "created_at": "2022-12-14T10:41:02Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/21409/events",
@@ -602,7 +646,7 @@
     "state_reason": null,
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/21409/timeline",
     "title": "SIGSEGV on second call to :checkhealth for a missing plugin with nui/noice",
-    "updated_at": "2024-01-07T12:47:34Z",
+    "updated_at": "2024-01-13T10:33:06Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/21409",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1973?v=4",
