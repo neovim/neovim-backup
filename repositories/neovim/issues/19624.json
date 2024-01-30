@@ -3,7 +3,7 @@
     "assignee": null,
     "assignees": [],
     "author_association": "MEMBER",
-    "body": "related: https://github.com/neovim/neovim/issues/11312\r\n\r\n## Summary\r\n\r\nDo we want/need an abstraction for working with \"promises\" (coroutines) in the Nvim lua stdlib? E.g. https://github.com/ms-jpq/lua-async-await \r\n\r\n## Detail\r\n\r\nWhat are the current patterns for queuing promises in Lua, that are being used in the wild for Nvim plugins (and Nvim core itself)? Are these good enough? Do we need any sugar in the Nvim lua stdlib to encourage these patterns?\r\n\r\nAn obvious example is something like javascript's [Promise.all()](https://developer.mozilla.org/de/docs/Web/JavaScript/Reference/Global_Objects/Promise/all), which takes a set of promises and waits for all of them.\r\n\r\nhttps://github.com/ms-jpq/lua-async-await has `await_all`. This can be very useful for waiting on \"jobs\", but it also should have a way to\r\n\r\n- handle errors and cancellations\r\n- programmatically cancel specific coroutines/promises\r\n- aggregate results\r\n    - This is something `jobwait()` currently doesn't help with.\r\n\r\n\r\n\r\n## Related\r\n\r\n- https://github.com/sourcegraph/conc",
+    "body": "related: https://github.com/neovim/neovim/issues/11312\r\n\r\n## Problem\r\n\r\nThere's no builtin abstraction for:\r\n\r\n- Representing a task.\r\n    - Example: `vim.system()` returns its own ad-hoc \"task\" that can be \"awaited\" via `:wait()`.\r\n- Orchestrating \"pipelines\" (quasi monads?) of work (\"tasks\") and handling errors.\r\n    - Example: shell-like task chains: `vim.fs.files():filter(..):map(function(f) vim.fs.delete(f) end)`\r\n    - See also `vim.iter`.\r\n\r\n## Request for comments\r\n\r\nWhat are the current patterns for queuing promises in Lua, that are being used in the wild for Nvim plugins (and Nvim core itself)? Are these good enough? Do we need any sugar in the Nvim lua stdlib to encourage these patterns?\r\n\r\n## Expected behavior\r\n\r\nTask or Promise abstraction:\r\n- \"Promise\" abstraction (or something better), maximally leveraging Lua coroutines + libuv.\r\n- \"Task\" abstraction (could this be avoided by overloading the \"Promise\" concept (or vice versa)?).\r\n- Function that creates an awaitable task from \"normal\" functions.\r\n    - Don't want to have to call `await` everywhere, that is a horrible result of JavaScript's async/await model.\r\n    - Instead, could something like `vim.system()` be \"promisified\" without its knowledge? Or could it handle differently when it detects that it's in a coroutine? So `vim.system()` would be synchronous normally, but `vim.async(vim.system, ...):wait()` would be asynchronous.\r\n\r\nStructured concurrency:\r\n- `await_all`, `await_any` (pseudo-names). See javascript's [Promise.all()](https://developer.mozilla.org/de/docs/Web/JavaScript/Reference/Global_Objects/Promise/all).\r\n- Programmer can handle errors and cancellations.\r\n- Programmer can cancel specific coroutines/promises.\r\n- Aggregate results\r\n    - This is something `jobwait()` currently doesn't help with.\r\n\r\n## Implementations\r\n\r\n- https://github.com/lewis6991/async.nvim\r\n- https://github.com/kevinhwang91/promise-async\r\n- https://github.com/ms-jpq/lua-async-await\r\n\r\n## Related\r\n\r\n- https://github.com/sourcegraph/conc\r\n- https://github.com/bitfield/script (example of \"pipeline\" interface)\r\n",
     "closed_at": null,
     "comment_data": [
         {
@@ -3019,7 +3019,7 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1455356917/reactions"
             },
-            "updated_at": "2023-03-06T03:02:37Z",
+            "updated_at": "2024-01-25T00:27:18Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1455356917",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/16338335?v=4",
@@ -3040,94 +3040,6 @@
                 "subscriptions_url": "https://api.github.com/users/wfjt/subscriptions",
                 "type": "User",
                 "url": "https://api.github.com/users/wfjt"
-            }
-        },
-        {
-            "author_association": "NONE",
-            "body": "@jtws \r\nThis seems to be _roughly_ the answer to that question\r\nhttps://github.com/neovim/neovim/issues/19624#issuecomment-1336298582\r\n\r\n> Comforting javascript users is not a goal, and should not be factored into any of the designs here. As a typescript/javascript user myself, I'm very skeptical that async/await is a good interface. We should focus on what feels right for a Lua + Nvim.",
-            "created_at": "2023-03-06T02:59:17Z",
-            "html_url": "https://github.com/neovim/neovim/issues/19624#issuecomment-1455359056",
-            "id": 1455359056,
-            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/19624",
-            "node_id": "IC_kwDOAPphoM5WvwRQ",
-            "performed_via_github_app": null,
-            "reactions": {
-                "+1": 1,
-                "-1": 0,
-                "confused": 0,
-                "eyes": 0,
-                "heart": 0,
-                "hooray": 0,
-                "laugh": 0,
-                "rocket": 0,
-                "total_count": 1,
-                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1455359056/reactions"
-            },
-            "updated_at": "2023-03-06T02:59:17Z",
-            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1455359056",
-            "user": {
-                "avatar_url": "https://avatars.githubusercontent.com/u/2640668?v=4",
-                "events_url": "https://api.github.com/users/miversen33/events{/privacy}",
-                "followers_url": "https://api.github.com/users/miversen33/followers",
-                "following_url": "https://api.github.com/users/miversen33/following{/other_user}",
-                "gists_url": "https://api.github.com/users/miversen33/gists{/gist_id}",
-                "gravatar_id": "",
-                "html_url": "https://github.com/miversen33",
-                "id": 2640668,
-                "login": "miversen33",
-                "node_id": "MDQ6VXNlcjI2NDA2Njg=",
-                "organizations_url": "https://api.github.com/users/miversen33/orgs",
-                "received_events_url": "https://api.github.com/users/miversen33/received_events",
-                "repos_url": "https://api.github.com/users/miversen33/repos",
-                "site_admin": false,
-                "starred_url": "https://api.github.com/users/miversen33/starred{/owner}{/repo}",
-                "subscriptions_url": "https://api.github.com/users/miversen33/subscriptions",
-                "type": "User",
-                "url": "https://api.github.com/users/miversen33"
-            }
-        },
-        {
-            "author_association": "MEMBER",
-            "body": "> In my opinion, the nvim solution shouldn't aim for simplicity but use established patterns and provide all the tools for async including synchronization, etc.\r\n\r\nFalse dichotomy. We can have both, without blindly mimicking javascript.\r\n\r\n> Python async uses futures and tasks and asyncio/asyncfile, JS promises, so why should Neovim core not aim for the same level of features and usability?\r\n\r\nThe \"structured concurrency\" features of python's tasks is in fact part of the goals described in the main issue description.",
-            "created_at": "2023-03-06T10:00:56Z",
-            "html_url": "https://github.com/neovim/neovim/issues/19624#issuecomment-1455826853",
-            "id": 1455826853,
-            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/19624",
-            "node_id": "IC_kwDOAPphoM5Wxiel",
-            "performed_via_github_app": null,
-            "reactions": {
-                "+1": 0,
-                "-1": 0,
-                "confused": 0,
-                "eyes": 0,
-                "heart": 0,
-                "hooray": 0,
-                "laugh": 0,
-                "rocket": 0,
-                "total_count": 0,
-                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1455826853/reactions"
-            },
-            "updated_at": "2023-03-06T10:00:56Z",
-            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1455826853",
-            "user": {
-                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
-                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
-                "followers_url": "https://api.github.com/users/justinmk/followers",
-                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
-                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
-                "gravatar_id": "",
-                "html_url": "https://github.com/justinmk",
-                "id": 1359421,
-                "login": "justinmk",
-                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
-                "organizations_url": "https://api.github.com/users/justinmk/orgs",
-                "received_events_url": "https://api.github.com/users/justinmk/received_events",
-                "repos_url": "https://api.github.com/users/justinmk/repos",
-                "site_admin": false,
-                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
-                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
-                "type": "User",
-                "url": "https://api.github.com/users/justinmk"
             }
         },
         {
@@ -3187,12 +3099,12 @@
                 "+1": 0,
                 "-1": 0,
                 "confused": 0,
-                "eyes": 1,
+                "eyes": 2,
                 "heart": 0,
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 1,
+                "total_count": 2,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1766105873/reactions"
             },
             "updated_at": "2023-10-17T10:14:02Z",
@@ -3283,7 +3195,7 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1824765320/reactions"
             },
-            "updated_at": "2023-11-23T17:35:40Z",
+            "updated_at": "2024-01-25T00:23:42Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1824765320",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/18459807?v=4",
@@ -3316,7 +3228,7 @@
             "node_id": "IC_kwDOAPphoM5s2bWz",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 0,
+                "+1": 1,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -3324,7 +3236,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 0,
+                "total_count": 1,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1826207155/reactions"
             },
             "updated_at": "2023-11-25T04:03:26Z",
@@ -3351,7 +3263,7 @@
             }
         }
     ],
-    "comments": 76,
+    "comments": 74,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/19624/comments",
     "created_at": "2022-08-02T11:39:42Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/19624/events",
@@ -3370,7 +3282,7 @@
         {
             "color": "c5def5",
             "default": false,
-            "description": null,
+            "description": "stdlib",
             "id": 573222693,
             "name": "lua",
             "node_id": "MDU6TGFiZWw1NzMyMjI2OTM=",
@@ -3384,13 +3296,22 @@
             "name": "architecture",
             "node_id": "LA_kwDOAPphoM8AAAABCaq3oQ",
             "url": "https://api.github.com/repos/neovim/neovim/labels/architecture"
+        },
+        {
+            "color": "C5DEF5",
+            "default": false,
+            "description": "futures/promises, async/await, concurrency, task pipelines",
+            "id": 5683343649,
+            "name": "async",
+            "node_id": "LA_kwDOAPphoM8AAAABUsDxIQ",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/async"
         }
     ],
     "labels_url": "https://api.github.com/repos/neovim/neovim/issues/19624/labels{/name}",
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 590,
+        "closed_issues": 597,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -3419,10 +3340,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 419,
+        "open_issues": 425,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2023-11-23T13:10:58Z",
+        "updated_at": "2024-01-29T02:41:32Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM5PBO-Z",
@@ -3444,8 +3365,8 @@
     "state": "open",
     "state_reason": null,
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/19624/timeline",
-    "title": "Lua: async/await/await_all abstraction, structured concurrency",
-    "updated_at": "2023-11-25T04:03:26Z",
+    "title": "Lua: structured concurrency, Promises, task pipelines",
+    "updated_at": "2024-01-29T00:35:03Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/19624",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",

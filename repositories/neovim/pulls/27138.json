@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/27138"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/13714732c265c2318a298c27a040ea150e67759f"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/3e1ab18735edc5dce7576e7d4fc13878ad6486b6"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 5156,
-            "forks_count": 5156,
+            "forks": 5174,
+            "forks_count": 5174,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1738,
-            "open_issues_count": 1738,
+            "open_issues": 1735,
+            "open_issues_count": 1735,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -118,11 +118,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2024-01-23T01:27:16Z",
+            "pushed_at": "2024-01-30T00:09:25Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 251208,
+            "size": 251558,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 72998,
+            "stargazers_count": 73268,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -140,14 +140,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2024-01-23T01:05:36Z",
+            "updated_at": "2024-01-30T01:30:36Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 72998,
-            "watchers_count": 72998,
+            "watchers": 73268,
+            "watchers_count": 73268,
             "web_commit_signoff_required": false
         },
-        "sha": "dc466f9a63ede5e2bbddc33688c0c972abfe9a52",
+        "sha": "8c044f0862f417a525eaf319471c286a5588d493",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -170,14 +170,494 @@
         }
     },
     "body": null,
-    "closed_at": null,
-    "comment_data": [],
+    "closed_at": "2024-01-24T10:55:29Z",
+    "comment_data": [
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/27138#discussion_r1463365766"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/27138"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1463365766"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\r\n    -- Ensure that we can load the Perl host before bootstrapping\r\n```",
+            "commit_id": "3e1ab18735edc5dce7576e7d4fc13878ad6486b6",
+            "created_at": "2024-01-23T14:28:51Z",
+            "diff_hunk": "@@ -0,0 +1,66 @@\n+local M = {}\n+local s_err ---@type string?\n+local s_host ---@type string?\n+\n+function M.require(host, prog)\n+  local args = { prog, '-e', 'use Neovim::Ext; start_host();' }\n+\n+  -- Collect registered perl plugins into args\n+  local perl_plugins = vim.fn['remote#host#PluginsForHost'](host.name) ---@type any\n+  ---@param plugin any\n+  for _, plugin in ipairs(perl_plugins) do\n+    table.insert(args, plugin.path)\n+  end\n+\n+  return vim.fn['provider#Poll'](args, host.orig_name, '$NVIM_PERL_LOG_FILE')\n+end\n+\n+--- @return string? path to detected perl, if any; nil if not found\n+--- @return string? error message if perl can't be detected; nil if success\n+function M.detect()\n+  -- use g:perl_host_prog if set or check if perl is on the path\n+  local prog = vim.fn.exepath(vim.g.perl_host_prog or 'perl')\n+  if prog == '' then\n+    return nil, 'No perl executable found'\n+  end\n+\n+  -- if perl is available, make sure we have 5.22+\n+  vim.fn.system({ prog, '-e', 'use v5.22' })\n+  if vim.v.shell_error ~= 0 then\n+    return nil, 'Perl version is too old, 5.22+ required'\n+  end\n+\n+  -- if perl is available, make sure the required module is available\n+  vim.fn.system({ prog, '-W', '-MNeovim::Ext', '-e', '' })\n+  if vim.v.shell_error ~= 0 then\n+    return nil, '\"Neovim::Ext\" cpan module is not installed'\n+  end\n+  return prog, nil\n+end\n+\n+function M.call(method, args)\n+  if s_err then\n+    return\n+  end\n+\n+  if not s_host then\n+    -- Ensure that we can load the Python3 host before bootstrapping",
+            "html_url": "https://github.com/neovim/neovim/pull/27138#discussion_r1463365766",
+            "id": 1463365766,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5XOTCG",
+            "original_commit_id": "91cbd1cf0019c8b0cdf7613d7dfa52fc449e8b7e",
+            "original_line": 47,
+            "original_position": 47,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/provider/perl.lua",
+            "position": null,
+            "pull_request_review_id": 1838930513,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27138",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1463365766/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-01-23T22:49:25Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1463365766",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1009873?v=4",
+                "events_url": "https://api.github.com/users/wookayin/events{/privacy}",
+                "followers_url": "https://api.github.com/users/wookayin/followers",
+                "following_url": "https://api.github.com/users/wookayin/following{/other_user}",
+                "gists_url": "https://api.github.com/users/wookayin/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/wookayin",
+                "id": 1009873,
+                "login": "wookayin",
+                "node_id": "MDQ6VXNlcjEwMDk4NzM=",
+                "organizations_url": "https://api.github.com/users/wookayin/orgs",
+                "received_events_url": "https://api.github.com/users/wookayin/received_events",
+                "repos_url": "https://api.github.com/users/wookayin/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/wookayin/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/wookayin/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/wookayin"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/27138#discussion_r1464088850"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/27138"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1464088850"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "`vim.system` does not work here, I think there's a bug.",
+            "commit_id": "3e1ab18735edc5dce7576e7d4fc13878ad6486b6",
+            "created_at": "2024-01-23T22:51:23Z",
+            "diff_hunk": "@@ -0,0 +1,66 @@\n+local M = {}\n+local s_err ---@type string?\n+local s_host ---@type string?\n+\n+function M.require(host, prog)\n+  local args = { prog, '-e', 'use Neovim::Ext; start_host();' }\n+\n+  -- Collect registered perl plugins into args\n+  local perl_plugins = vim.fn['remote#host#PluginsForHost'](host.name) ---@type any\n+  ---@param plugin any\n+  for _, plugin in ipairs(perl_plugins) do\n+    table.insert(args, plugin.path)\n+  end\n+\n+  return vim.fn['provider#Poll'](args, host.orig_name, '$NVIM_PERL_LOG_FILE')\n+end\n+\n+--- @return string? path to detected perl, if any; nil if not found\n+--- @return string? error message if perl can't be detected; nil if success\n+function M.detect()\n+  -- use g:perl_host_prog if set or check if perl is on the path\n+  local prog = vim.fn.exepath(vim.g.perl_host_prog or 'perl')\n+  if prog == '' then\n+    return nil, 'No perl executable found'\n+  end\n+\n+  -- if perl is available, make sure we have 5.22+\n+  vim.fn.system({ prog, '-e', 'use v5.22' })",
+            "html_url": "https://github.com/neovim/neovim/pull/27138#discussion_r1464088850",
+            "id": 1464088850,
+            "line": 28,
+            "node_id": "PRRC_kwDOAPphoM5XRDkS",
+            "original_commit_id": "294f832fabbe54f3f9f0b08fdd0a84fff0db3382",
+            "original_line": 28,
+            "original_position": 28,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/provider/perl.lua",
+            "position": 28,
+            "pull_request_review_id": 1840081369,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27138",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1464088850/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-01-23T22:51:23Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1464088850",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/33953936?v=4",
+                "events_url": "https://api.github.com/users/dundargoc/events{/privacy}",
+                "followers_url": "https://api.github.com/users/dundargoc/followers",
+                "following_url": "https://api.github.com/users/dundargoc/following{/other_user}",
+                "gists_url": "https://api.github.com/users/dundargoc/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/dundargoc",
+                "id": 33953936,
+                "login": "dundargoc",
+                "node_id": "MDQ6VXNlcjMzOTUzOTM2",
+                "organizations_url": "https://api.github.com/users/dundargoc/orgs",
+                "received_events_url": "https://api.github.com/users/dundargoc/received_events",
+                "repos_url": "https://api.github.com/users/dundargoc/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/dundargoc/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/dundargoc/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/dundargoc"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/27138#discussion_r1464090186"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/27138"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1464090186"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "interesting. what happens exactly?",
+            "commit_id": "3e1ab18735edc5dce7576e7d4fc13878ad6486b6",
+            "created_at": "2024-01-23T22:53:26Z",
+            "diff_hunk": "@@ -0,0 +1,66 @@\n+local M = {}\n+local s_err ---@type string?\n+local s_host ---@type string?\n+\n+function M.require(host, prog)\n+  local args = { prog, '-e', 'use Neovim::Ext; start_host();' }\n+\n+  -- Collect registered perl plugins into args\n+  local perl_plugins = vim.fn['remote#host#PluginsForHost'](host.name) ---@type any\n+  ---@param plugin any\n+  for _, plugin in ipairs(perl_plugins) do\n+    table.insert(args, plugin.path)\n+  end\n+\n+  return vim.fn['provider#Poll'](args, host.orig_name, '$NVIM_PERL_LOG_FILE')\n+end\n+\n+--- @return string? path to detected perl, if any; nil if not found\n+--- @return string? error message if perl can't be detected; nil if success\n+function M.detect()\n+  -- use g:perl_host_prog if set or check if perl is on the path\n+  local prog = vim.fn.exepath(vim.g.perl_host_prog or 'perl')\n+  if prog == '' then\n+    return nil, 'No perl executable found'\n+  end\n+\n+  -- if perl is available, make sure we have 5.22+\n+  vim.fn.system({ prog, '-e', 'use v5.22' })",
+            "html_url": "https://github.com/neovim/neovim/pull/27138#discussion_r1464090186",
+            "id": 1464090186,
+            "in_reply_to_id": 1464088850,
+            "line": 28,
+            "node_id": "PRRC_kwDOAPphoM5XRD5K",
+            "original_commit_id": "294f832fabbe54f3f9f0b08fdd0a84fff0db3382",
+            "original_line": 28,
+            "original_position": 28,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/provider/perl.lua",
+            "position": 28,
+            "pull_request_review_id": 1840083346,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27138",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1464090186/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-01-23T22:53:26Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1464090186",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1009873?v=4",
+                "events_url": "https://api.github.com/users/wookayin/events{/privacy}",
+                "followers_url": "https://api.github.com/users/wookayin/followers",
+                "following_url": "https://api.github.com/users/wookayin/following{/other_user}",
+                "gists_url": "https://api.github.com/users/wookayin/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/wookayin",
+                "id": 1009873,
+                "login": "wookayin",
+                "node_id": "MDQ6VXNlcjEwMDk4NzM=",
+                "organizations_url": "https://api.github.com/users/wookayin/orgs",
+                "received_events_url": "https://api.github.com/users/wookayin/received_events",
+                "repos_url": "https://api.github.com/users/wookayin/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/wookayin/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/wookayin/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/wookayin"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/27138#discussion_r1464093106"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/27138"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1464093106"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "`vim.system` just silently aborts in one of the tests, causing it to fail.",
+            "commit_id": "3e1ab18735edc5dce7576e7d4fc13878ad6486b6",
+            "created_at": "2024-01-23T22:54:54Z",
+            "diff_hunk": "@@ -0,0 +1,66 @@\n+local M = {}\n+local s_err ---@type string?\n+local s_host ---@type string?\n+\n+function M.require(host, prog)\n+  local args = { prog, '-e', 'use Neovim::Ext; start_host();' }\n+\n+  -- Collect registered perl plugins into args\n+  local perl_plugins = vim.fn['remote#host#PluginsForHost'](host.name) ---@type any\n+  ---@param plugin any\n+  for _, plugin in ipairs(perl_plugins) do\n+    table.insert(args, plugin.path)\n+  end\n+\n+  return vim.fn['provider#Poll'](args, host.orig_name, '$NVIM_PERL_LOG_FILE')\n+end\n+\n+--- @return string? path to detected perl, if any; nil if not found\n+--- @return string? error message if perl can't be detected; nil if success\n+function M.detect()\n+  -- use g:perl_host_prog if set or check if perl is on the path\n+  local prog = vim.fn.exepath(vim.g.perl_host_prog or 'perl')\n+  if prog == '' then\n+    return nil, 'No perl executable found'\n+  end\n+\n+  -- if perl is available, make sure we have 5.22+\n+  vim.fn.system({ prog, '-e', 'use v5.22' })",
+            "html_url": "https://github.com/neovim/neovim/pull/27138#discussion_r1464093106",
+            "id": 1464093106,
+            "in_reply_to_id": 1464088850,
+            "line": 28,
+            "node_id": "PRRC_kwDOAPphoM5XREmy",
+            "original_commit_id": "294f832fabbe54f3f9f0b08fdd0a84fff0db3382",
+            "original_line": 28,
+            "original_position": 28,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/provider/perl.lua",
+            "position": 28,
+            "pull_request_review_id": 1840088857,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27138",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 1,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1464093106/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-01-23T22:54:54Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1464093106",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/33953936?v=4",
+                "events_url": "https://api.github.com/users/dundargoc/events{/privacy}",
+                "followers_url": "https://api.github.com/users/dundargoc/followers",
+                "following_url": "https://api.github.com/users/dundargoc/following{/other_user}",
+                "gists_url": "https://api.github.com/users/dundargoc/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/dundargoc",
+                "id": 33953936,
+                "login": "dundargoc",
+                "node_id": "MDQ6VXNlcjMzOTUzOTM2",
+                "organizations_url": "https://api.github.com/users/dundargoc/orgs",
+                "received_events_url": "https://api.github.com/users/dundargoc/received_events",
+                "repos_url": "https://api.github.com/users/dundargoc/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/dundargoc/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/dundargoc/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/dundargoc"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/27138#discussion_r1464096075"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/27138"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1464096075"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "When user set an invalid `g:perl_host_prog`, it doesn't speak anything about the wrong `g:perl_host_prog`. Like in python provider helathcheck, it'd be good to print out `g:perl_host_prog` if set.\r\n\r\nNVM if it sounds like out of scope of this work (\"rewriting\" provider) -- such a minor improvement can be done separately outside this PR if needed.",
+            "commit_id": "3e1ab18735edc5dce7576e7d4fc13878ad6486b6",
+            "created_at": "2024-01-23T22:59:15Z",
+            "diff_hunk": "@@ -9,19 +9,14 @@ function M.check()\n     return\n   end\n \n-  local perl_detect_table = vim.fn['provider#perl#Detect']()\n-  local perl_exec = perl_detect_table[1]\n-  local perl_warnings = perl_detect_table[2]\n+  local perl_exec, perl_warnings = require('vim.provider.perl').detect()\n \n-  if perl_exec:find('^%s*$') then\n-    if perl_warnings:find('%S') then\n-      health.warn(perl_warnings, {\n-        'See :help provider-perl for more information.',\n-        'You may disable this provider (and warning) by adding `let g:loaded_perl_provider = 0` to your init.vim',\n-      })\n-    else\n-      health.warn('No usable perl executable found')\n-    end\n+  if not perl_exec then\n+    health.warn(assert(perl_warnings), {\n+      'See :help provider-perl for more information.',\n+      'You may disable this provider (and warning) by adding `let g:loaded_perl_provider = 0` to your init.vim',\n+    })\n+    health.warn('No usable perl executable found')",
+            "html_url": "https://github.com/neovim/neovim/pull/27138#discussion_r1464096075",
+            "id": 1464096075,
+            "line": 19,
+            "node_id": "PRRC_kwDOAPphoM5XRFVL",
+            "original_commit_id": "294f832fabbe54f3f9f0b08fdd0a84fff0db3382",
+            "original_line": 19,
+            "original_position": 23,
+            "original_start_line": null,
+            "path": "runtime/lua/provider/perl/health.lua",
+            "position": 23,
+            "pull_request_review_id": 1840093204,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27138",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1464096075/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-01-23T23:02:09Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1464096075",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1009873?v=4",
+                "events_url": "https://api.github.com/users/wookayin/events{/privacy}",
+                "followers_url": "https://api.github.com/users/wookayin/followers",
+                "following_url": "https://api.github.com/users/wookayin/following{/other_user}",
+                "gists_url": "https://api.github.com/users/wookayin/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/wookayin",
+                "id": 1009873,
+                "login": "wookayin",
+                "node_id": "MDQ6VXNlcjEwMDk4NzM=",
+                "organizations_url": "https://api.github.com/users/wookayin/orgs",
+                "received_events_url": "https://api.github.com/users/wookayin/received_events",
+                "repos_url": "https://api.github.com/users/wookayin/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/wookayin/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/wookayin/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/wookayin"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/27138#discussion_r1464101877"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/27138"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1464101877"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Now that `s:loaded_perl_provider = 1` is gone, Line 1 should be changed to:\r\n```diff\r\n-if exists('s:loaded_perl_provider')\r\n+if exists('g:loaded_perl_provider')\r\n```",
+            "commit_id": "3e1ab18735edc5dce7576e7d4fc13878ad6486b6",
+            "created_at": "2024-01-23T23:08:12Z",
+            "diff_hunk": "@@ -2,82 +2,14 @@ if exists('s:loaded_perl_provider')\n   finish\n endif\n \n-let s:loaded_perl_provider = 1",
+            "html_url": "https://github.com/neovim/neovim/pull/27138#discussion_r1464101877",
+            "id": 1464101877,
+            "line": 5,
+            "node_id": "PRRC_kwDOAPphoM5XRGv1",
+            "original_commit_id": "294f832fabbe54f3f9f0b08fdd0a84fff0db3382",
+            "original_line": 5,
+            "original_position": 4,
+            "original_start_line": null,
+            "path": "runtime/autoload/provider/perl.vim",
+            "position": 6,
+            "pull_request_review_id": 1840101849,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27138",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1464101877/reactions"
+            },
+            "side": "LEFT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-01-23T23:08:17Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1464101877",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1009873?v=4",
+                "events_url": "https://api.github.com/users/wookayin/events{/privacy}",
+                "followers_url": "https://api.github.com/users/wookayin/followers",
+                "following_url": "https://api.github.com/users/wookayin/following{/other_user}",
+                "gists_url": "https://api.github.com/users/wookayin/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/wookayin",
+                "id": 1009873,
+                "login": "wookayin",
+                "node_id": "MDQ6VXNlcjEwMDk4NzM=",
+                "organizations_url": "https://api.github.com/users/wookayin/orgs",
+                "received_events_url": "https://api.github.com/users/wookayin/received_events",
+                "repos_url": "https://api.github.com/users/wookayin/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/wookayin/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/wookayin/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/wookayin"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/27138#discussion_r1464709812"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/27138"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1464709812"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Yeah, I think I'd prefer to just dump the code over to the lua side as is and treat any logical improvements as out of scope for the \"lua-ify\" PRs.",
+            "commit_id": "3e1ab18735edc5dce7576e7d4fc13878ad6486b6",
+            "created_at": "2024-01-24T10:39:02Z",
+            "diff_hunk": "@@ -9,19 +9,14 @@ function M.check()\n     return\n   end\n \n-  local perl_detect_table = vim.fn['provider#perl#Detect']()\n-  local perl_exec = perl_detect_table[1]\n-  local perl_warnings = perl_detect_table[2]\n+  local perl_exec, perl_warnings = require('vim.provider.perl').detect()\n \n-  if perl_exec:find('^%s*$') then\n-    if perl_warnings:find('%S') then\n-      health.warn(perl_warnings, {\n-        'See :help provider-perl for more information.',\n-        'You may disable this provider (and warning) by adding `let g:loaded_perl_provider = 0` to your init.vim',\n-      })\n-    else\n-      health.warn('No usable perl executable found')\n-    end\n+  if not perl_exec then\n+    health.warn(assert(perl_warnings), {\n+      'See :help provider-perl for more information.',\n+      'You may disable this provider (and warning) by adding `let g:loaded_perl_provider = 0` to your init.vim',\n+    })\n+    health.warn('No usable perl executable found')",
+            "html_url": "https://github.com/neovim/neovim/pull/27138#discussion_r1464709812",
+            "id": 1464709812,
+            "in_reply_to_id": 1464096075,
+            "line": 19,
+            "node_id": "PRRC_kwDOAPphoM5XTbK0",
+            "original_commit_id": "294f832fabbe54f3f9f0b08fdd0a84fff0db3382",
+            "original_line": 19,
+            "original_position": 23,
+            "original_start_line": null,
+            "path": "runtime/lua/provider/perl/health.lua",
+            "position": 23,
+            "pull_request_review_id": 1841059748,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27138",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1464709812/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-01-24T10:39:02Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1464709812",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/33953936?v=4",
+                "events_url": "https://api.github.com/users/dundargoc/events{/privacy}",
+                "followers_url": "https://api.github.com/users/dundargoc/followers",
+                "following_url": "https://api.github.com/users/dundargoc/following{/other_user}",
+                "gists_url": "https://api.github.com/users/dundargoc/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/dundargoc",
+                "id": 33953936,
+                "login": "dundargoc",
+                "node_id": "MDQ6VXNlcjMzOTUzOTM2",
+                "organizations_url": "https://api.github.com/users/dundargoc/orgs",
+                "received_events_url": "https://api.github.com/users/dundargoc/received_events",
+                "repos_url": "https://api.github.com/users/dundargoc/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/dundargoc/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/dundargoc/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/dundargoc"
+            }
+        }
+    ],
     "comment_regular_data": [],
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/27138/comments",
     "commits_url": "https://api.github.com/repos/neovim/neovim/pulls/27138/commits",
     "created_at": "2024-01-22T21:49:21Z",
     "diff_url": "https://github.com/neovim/neovim/pull/27138.diff",
-    "draft": true,
+    "draft": false,
     "head": {
         "label": "dundargoc:refactor/provider/perl",
         "ref": "refactor/provider/perl",
@@ -266,9 +746,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/dundargoc/neovim/pulls{/number}",
-            "pushed_at": "2024-01-22T23:42:26Z",
+            "pushed_at": "2024-01-29T20:02:03Z",
             "releases_url": "https://api.github.com/repos/dundargoc/neovim/releases{/id}",
-            "size": 247813,
+            "size": 248250,
             "ssh_url": "git@github.com:dundargoc/neovim.git",
             "stargazers_count": 1,
             "stargazers_url": "https://api.github.com/repos/dundargoc/neovim/stargazers",
@@ -287,7 +767,7 @@
             "watchers_count": 1,
             "web_commit_signoff_required": false
         },
-        "sha": "13714732c265c2318a298c27a040ea150e67759f",
+        "sha": "3e1ab18735edc5dce7576e7d4fc13878ad6486b6",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/33953936?v=4",
             "events_url": "https://api.github.com/users/dundargoc/events{/privacy}",
@@ -321,11 +801,20 @@
             "name": "refactor",
             "node_id": "MDU6TGFiZWwxMDY5NDkxNTU=",
             "url": "https://api.github.com/repos/neovim/neovim/labels/refactor"
+        },
+        {
+            "color": "c5def5",
+            "default": false,
+            "description": null,
+            "id": 144672485,
+            "name": "provider",
+            "node_id": "MDU6TGFiZWwxNDQ2NzI0ODU=",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/provider"
         }
     ],
     "locked": false,
-    "merge_commit_sha": "88f8c8a29668740be0e9eccd90b4090995164e4a",
-    "merged_at": null,
+    "merge_commit_sha": "576db141be6e4d9b5d9b840c599bac670df25d1a",
+    "merged_at": "2024-01-24T10:55:29Z",
     "milestone": null,
     "node_id": "PR_kwDOAPphoM5kxQEp",
     "number": 27138,
@@ -334,10 +823,10 @@
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/27138/comments",
-    "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/13714732c265c2318a298c27a040ea150e67759f",
+    "state": "closed",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/3e1ab18735edc5dce7576e7d4fc13878ad6486b6",
     "title": "refactor: rewrite perl provider in lua",
-    "updated_at": "2024-01-22T23:42:27Z",
+    "updated_at": "2024-01-24T10:58:45Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/27138",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/33953936?v=4",

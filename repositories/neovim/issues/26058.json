@@ -4,7 +4,7 @@
     "assignees": [],
     "author_association": "NONE",
     "body": "### Problem\n\nIn windows subsystem for linux (WSL), use neovim with custom `init.lua` or with `--clean` flag always produce the following error:\r\n```\r\nWRN 2023-11-15T16:47:33.489 ?.5332     server_start:164: Failed to start server: permission denied: /run/user/1000//\r\nWRN 2023-11-15T16:48:25.884 ?.5564     server_start:164: Failed to start server: permission denied: /run/user/1000//\r\nWRN 2023-11-15T16:49:03.825 ?.5888     server_start:164: Failed to start server: permission denied: /run/user/1000//\r\nWRN 2023-11-15T16:49:17.203 ?.6133     server_start:164: Failed to start server: permission denied: /run/user/1000//\r\nWRN 2023-11-15T16:49:31.533 ?.6262     server_start:164: Failed to start server: permission denied: /run/user/1000//\r\n```\r\n\r\n`nvim` or `nvim --clean` appends a line `WRN .... ` to the file in `~/.local/state/nvim/log` \n\n### Steps to reproduce\n\n```bash\r\nnvim --clean   # `:q`\r\ncat ~/.local/state/nvim/log\r\n```\n\n### Expected behavior\n\nI also use neovim in powershell from the host system (windows 10), the log file (`~/AppData/Local/nvim-data/log`) does not contain such errors. Therefore, this may be a bug in neovim when used inside WSL environment.\n\n### Neovim version (nvim -v)\n\n0.9.4\n\n### Vim (not Nvim) behaves the same?\n\ni don't use vim\n\n### Operating system/version\n\nubuntu 22.04 (WSL)\n\n### Terminal name/version\n\nwindows terminal/ 1.19.2682.0\n\n### $TERM environment variable\n\nxterm-256color\n\n### Installation\n\nappimage",
-    "closed_at": null,
+    "closed_at": "2024-01-26T19:16:16Z",
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -52,7 +52,7 @@
         },
         {
             "author_association": "NONE",
-            "body": "> > permission denied: /run/user/1000//\r\n> \r\n> This implies that the temp directory being calculated by `vim_mktempdir` is not correct. Maybe this function is failing:\r\n> \r\n> https://github.com/neovim/neovim/blob/400b7842a98355bc3fcf2ecfaeda8ccf259d917a/src/nvim/os/users.c#L125-L133\r\n> \r\n> * Is `/run/user/1000/` an existing directory on your system?\r\n> * What does does this show:\r\n>   ```\r\n>   :echo v:servername\r\n>   :echo stdpath('run')\r\n>   :echo tempname()\r\n>   ```\r\n> * What happens if you start Nvim with the $TMPDIR env var set to the current directory?\r\n>   ```\r\n>   TMPDIR=. nvim\r\n>   ```\r\n>   \r\n>   \r\n>       \r\n>         \r\n>       \r\n>   \r\n>         \r\n>       \r\n>   \r\n>       \r\n>     \r\n>   \r\n>   * What does `:echo tempname()`, etc., say in that case?\r\n> * If you are interested in debugging this, should be easy to set a breakpoint here: https://github.com/neovim/neovim/blob/400b7842a98355bc3fcf2ecfaeda8ccf259d917a/src/nvim/fileio.c#L3273\r\n\r\nSorry for replying so late. \r\n\r\n1. `/run/user/1000` is an existing directory but it is empty and requires `sudo`.\r\n\r\n2.  Here are the results:\r\n\r\n```\r\n:echo v:servername\r\n\r\n```\r\n\r\n```\r\n:echo stdpath('run') \r\n/run/user/1000/\r\n```\r\n\r\n```\r\n:echo tempname()\r\n/tmp/nvim.myUserName/0EKFgk/0\r\n```\r\n\r\n3. `TMPDIR=. nvim` results in `:echo tempname()` being directory  `./nvim.myUserName/someRandomString/` under current directory when using nvim. After exiting neovim, only `./nvim.myUserName/` exist. \r\nOutputs of `:echo v:servername` and `:echo stdpath('run')` remain unchanged.",
+            "body": "> > permission denied: /run/user/1000//\r\n> \r\n> This implies that the temp directory being calculated by `vim_mktempdir` is not correct. Maybe this function is failing:\r\n> ...\r\n\r\nSorry for replying so late. \r\n\r\n1. `/run/user/1000` is an existing directory but it is empty and requires `sudo`.\r\n\r\n2.  Here are the results:\r\n\r\n```\r\n:echo v:servername\r\n\r\n```\r\n\r\n```\r\n:echo stdpath('run') \r\n/run/user/1000/\r\n```\r\n\r\n```\r\n:echo tempname()\r\n/tmp/nvim.myUserName/0EKFgk/0\r\n```\r\n\r\n3. `TMPDIR=. nvim` results in `:echo tempname()` being directory  `./nvim.myUserName/someRandomString/` under current directory when using nvim. After exiting neovim, only `./nvim.myUserName/` exist. \r\nOutputs of `:echo v:servername` and `:echo stdpath('run')` remain unchanged.",
             "created_at": "2024-01-21T02:34:19Z",
             "html_url": "https://github.com/neovim/neovim/issues/26058#issuecomment-1902482662",
             "id": 1902482662,
@@ -71,8 +71,96 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1902482662/reactions"
             },
-            "updated_at": "2024-01-21T02:34:19Z",
+            "updated_at": "2024-01-26T23:38:26Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1902482662",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/61672396?v=4",
+                "events_url": "https://api.github.com/users/xudyang1/events{/privacy}",
+                "followers_url": "https://api.github.com/users/xudyang1/followers",
+                "following_url": "https://api.github.com/users/xudyang1/following{/other_user}",
+                "gists_url": "https://api.github.com/users/xudyang1/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/xudyang1",
+                "id": 61672396,
+                "login": "xudyang1",
+                "node_id": "MDQ6VXNlcjYxNjcyMzk2",
+                "organizations_url": "https://api.github.com/users/xudyang1/orgs",
+                "received_events_url": "https://api.github.com/users/xudyang1/received_events",
+                "repos_url": "https://api.github.com/users/xudyang1/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/xudyang1/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/xudyang1/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/xudyang1"
+            }
+        },
+        {
+            "author_association": "NONE",
+            "body": "@justinmk I think this issue is particularly related to the failed service `user@1000.service` in WSL2 with `systemd` enabled.\r\n\r\n```bash\r\n$ systemctl --failed\r\n  UNIT              LOAD   ACTIVE SUB    DESCRIPTION\r\n● user@1000.service loaded failed failed User Manager for UID 1000\r\n\r\nLOAD   = Reflects whether the unit definition was properly loaded.\r\nACTIVE = The high-level unit activation state, i.e. generalization of SUB.\r\nSUB    = The low-level unit activation state, values depend on unit type.\r\n1 loaded units listed.\r\n```\r\n\r\n```bash\r\n$ systemctl status user@1000.service\r\n× user@1000.service - User Manager for UID 1000\r\n     Loaded: loaded (/lib/systemd/system/user@.service; static)\r\n    Drop-In: /usr/lib/systemd/system/user@.service.d\r\n             └─timeout.conf\r\n     Active: failed (Result: exit-code) since Fri 2024-01-26 12:20:01 EST; 23min ago\r\n       Docs: man:user@.service(5)\r\n    Process: 1625 ExecStart=/lib/systemd/systemd --user (code=exited, status=1/FAILURE)\r\n   Main PID: 1625 (code=exited, status=1/FAILURE)\r\n        CPU: 15ms\r\n\r\nJan 26 12:20:01 DESKTOP-********* systemd[1]: Starting User Manager for UID 1000...\r\nJan 26 12:20:01 DESKTOP-********* systemd[1625]: pam_unix(systemd-user:session): session opened for user bell(uid=1000) by (uid=0)\r\nJan 26 12:20:01 DESKTOP-********* systemd[1625]: pam_systemd(systemd-user:session): Runtime directory '/run/user/1000' is not owned by UI>\r\nJan 26 12:20:01 DESKTOP-********* systemd[1625]: pam_systemd(systemd-user:session): Not setting $XDG_RUNTIME_DIR, as the directory is not>\r\nJan 26 12:20:01 DESKTOP-********* systemd[1625]: Trying to run as user instance, but $XDG_RUNTIME_DIR is not set.\r\nJan 26 12:20:01 DESKTOP-********* systemd[1]: user@1000.service: Main process exited, code=exited, status=1/FAILURE\r\nJan 26 12:20:01 DESKTOP-********* systemd[1]: user@1000.service: Failed with result 'exit-code'.\r\nJan 26 12:20:01 DESKTOP-********* systemd[1]: Failed to start User Manager for UID 1000.\r\n```\r\n\r\n```bash\r\n$ sudo systemctl restart user@1000.service\r\nJob for user@1000.service failed because the control process exited with error code.\r\nSee \"systemctl status user@1000.service\" and \"journalctl -xeu user@1000.service\" for details.\r\n```\r\n\r\n```bash\r\n$ journalctl -xeu user@1000.service\r\nJan 26 12:47:44 DESKTOP-********* systemd[1]: Starting User Manager for UID 1000...\r\n░░ Subject: A start job for unit user@1000.service has begun execution\r\n░░ Defined-By: systemd\r\n░░ Support: http://www.ubuntu.com/support\r\n░░\r\n░░ A start job for unit user@1000.service has begun execution.\r\n░░\r\n░░ The job identifier is 573.\r\nJan 26 12:47:44 DESKTOP-********* systemd[2356]: pam_unix(systemd-user:session): session opened for user bell(uid=1000) by (uid=0)\r\nJan 26 12:47:44 DESKTOP-********* systemd[2356]: pam_systemd(systemd-user:session): Runtime directory '/run/user/1000' is not owned by UI>\r\nJan 26 12:47:44 DESKTOP-********* systemd[2356]: pam_systemd(systemd-user:session): Not setting $XDG_RUNTIME_DIR, as the directory is not>\r\nJan 26 12:47:44 DESKTOP-********* systemd[2356]: Trying to run as user instance, but $XDG_RUNTIME_DIR is not set.\r\nJan 26 12:47:44 DESKTOP-********* systemd[1]: user@1000.service: Main process exited, code=exited, status=1/FAILURE\r\n░░ Subject: Unit process exited\r\n░░ Defined-By: systemd\r\n░░ Support: http://www.ubuntu.com/support\r\n░░\r\n░░ An ExecStart= process belonging to unit user@1000.service has exited.\r\n░░\r\n░░ The process' exit code is 'exited' and its exit status is 1.\r\nJan 26 12:47:44 DESKTOP-********* systemd[1]: user@1000.service: Failed with result 'exit-code'.\r\n░░ Subject: Unit failed\r\n░░ Defined-By: systemd\r\n░░ Support: http://www.ubuntu.com/support\r\n░░\r\n░░ The unit user@1000.service has entered the 'failed' state with result 'exit-code'.\r\nJan 26 12:47:44 DESKTOP-********* systemd[1]: Failed to start User Manager for UID 1000.\r\n░░ Subject: A start job for unit user@1000.service has failed\r\n░░ Defined-By: systemd\r\n░░ Support: http://www.ubuntu.com/support\r\n░░\r\n░░ A start job for unit user@1000.service has finished with a failure.\r\n░░\r\n░░ The job identifier is 573 and the job result is failed.\r\n```\r\n\r\n- Also note that WSL Ubuntu-22.04 does not set `$TMP`, `TMPDIR`, `$TEMP`, and `$USERPROFILE`:\r\n\r\n```bash\r\n$ echo $TMP,$TMPDIR,$TEMP,$USERPROFILE\r\n,,,\r\n```\r\n\r\n- But `$XDG_RUNTIME_DIR` is set despite the error message from the command `$ systemctl status user@1000.service`\r\n\r\n```bash\r\n$ echo $XDG_RUNTIME_DIR\r\n/run/user/1000/\r\n```\r\n\r\n- `/run/user/1000/` is owned by root user only, this may be the consequence of the failed service `user@1000.service`.\r\n\r\n```bash\r\n$ sudo ls -ld /run/user/1000/\r\ndrwx------ 2 root root 4096 Nov 15 10:49 /run/user/1000/\r\n```\r\n\r\nRelated: \r\n- [WSL2 /run/user/1000 permission denied](https://github.com/microsoft/WSL/issues/10498)\r\n- [WSL2 /run/user/1000 owned by root](https://github.com/microsoft/WSL/issues/10473)\r\n- [disabling wslg makes $XDG_RUNTIME_DIR not user accessible](https://github.com/microsoft/WSL/issues/10846)\r\n",
+            "created_at": "2024-01-26T18:26:16Z",
+            "html_url": "https://github.com/neovim/neovim/issues/26058#issuecomment-1912500648",
+            "id": 1912500648,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/26058",
+            "node_id": "IC_kwDOAPphoM5x_nGo",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 1,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1912500648/reactions"
+            },
+            "updated_at": "2024-01-26T18:42:05Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1912500648",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/61672396?v=4",
+                "events_url": "https://api.github.com/users/xudyang1/events{/privacy}",
+                "followers_url": "https://api.github.com/users/xudyang1/followers",
+                "following_url": "https://api.github.com/users/xudyang1/following{/other_user}",
+                "gists_url": "https://api.github.com/users/xudyang1/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/xudyang1",
+                "id": 61672396,
+                "login": "xudyang1",
+                "node_id": "MDQ6VXNlcjYxNjcyMzk2",
+                "organizations_url": "https://api.github.com/users/xudyang1/orgs",
+                "received_events_url": "https://api.github.com/users/xudyang1/received_events",
+                "repos_url": "https://api.github.com/users/xudyang1/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/xudyang1/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/xudyang1/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/xudyang1"
+            }
+        },
+        {
+            "author_association": "NONE",
+            "body": "It could be this [podman issue](https://github.com/containers/podman/issues/13338), solved by changing owner to current user `sudo chown username:usergroup /run/user/1000`.\r\n\r\nClosed.",
+            "created_at": "2024-01-26T19:16:16Z",
+            "html_url": "https://github.com/neovim/neovim/issues/26058#issuecomment-1912564698",
+            "id": 1912564698,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/26058",
+            "node_id": "IC_kwDOAPphoM5x_2va",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1912564698/reactions"
+            },
+            "updated_at": "2024-01-26T19:16:16Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1912564698",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/61672396?v=4",
                 "events_url": "https://api.github.com/users/xudyang1/events{/privacy}",
@@ -95,22 +183,13 @@
             }
         }
     ],
-    "comments": 2,
+    "comments": 4,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/26058/comments",
     "created_at": "2023-11-15T22:04:45Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/26058/events",
     "html_url": "https://github.com/neovim/neovim/issues/26058",
     "id": 1995647912,
     "labels": [
-        {
-            "color": "f9d0c4",
-            "default": true,
-            "description": "issues reporting wrong behavior",
-            "id": 77997474,
-            "name": "bug",
-            "node_id": "MDU6TGFiZWw3Nzk5NzQ3NA==",
-            "url": "https://api.github.com/repos/neovim/neovim/labels/bug"
-        },
         {
             "color": "BFDADC",
             "default": false,
@@ -130,6 +209,15 @@
             "url": "https://api.github.com/repos/neovim/neovim/labels/startup"
         },
         {
+            "color": "C5DEF5",
+            "default": false,
+            "description": "filenames, path manipulation",
+            "id": 3386070083,
+            "name": "filesystem",
+            "node_id": "LA_kwDOAPphoM7J01RD",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/filesystem"
+        },
+        {
             "color": "D4C5F9",
             "default": false,
             "description": "",
@@ -143,7 +231,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 596,
+        "closed_issues": 597,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -175,7 +263,7 @@
         "open_issues": 425,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2024-01-21T23:52:55Z",
+        "updated_at": "2024-01-29T02:41:32Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM528yuo",
@@ -194,11 +282,11 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/26058/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/26058/timeline",
-    "title": "neovim always log `server_start:164` error in WSL",
-    "updated_at": "2024-01-21T02:34:20Z",
+    "title": "Nvim always logs `server_start:164` error in WSL (SOLVED: permissions issue)",
+    "updated_at": "2024-01-26T23:39:57Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/26058",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/61672396?v=4",
