@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 4866,
-            "forks_count": 4866,
+            "forks": 5189,
+            "forks_count": 5189,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1672,
-            "open_issues_count": 1672,
+            "open_issues": 1744,
+            "open_issues_count": 1744,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -118,11 +118,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2023-09-16T01:27:58Z",
+            "pushed_at": "2024-02-06T01:17:01Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 246081,
+            "size": 252434,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 69411,
+            "stargazers_count": 73474,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -140,11 +140,11 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2023-09-16T01:26:16Z",
+            "updated_at": "2024-02-06T00:27:03Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 69411,
-            "watchers_count": 69411,
+            "watchers": 73474,
+            "watchers_count": 73474,
             "web_commit_signoff_required": false
         },
         "sha": "fe7cdc7cc0037bb41bd940bee7818a5235ffaa79",
@@ -170,7 +170,7 @@
         }
     },
     "body": "This PR closes #23232. Implements `vim.net.fetch()` and `vim.net.download()`. Wraps CURL.\r\n\r\nI am asking everyone for their thoughts on the interface and implementation, I decided this would be a fun project to write over a few days.\r\n\r\nIt wraps curl's stdout, somewhat \"handles\" errors, and has some tests written. It is implemented in the best way I could think, please let me know if there is a smarter way to wrap curl.\r\n\r\nNot everything is fully covered in the tests, however ive made many requests using it and ironed out a ridiculous amount of bugs. Even with `vim.json.encod`'ing entire certificates its still somehow faster than netrw.\r\n\r\n### `vim.net.fetch()`\r\nAsynchronously make HTTP requests. I took some inspiration from Javascript's `fetch()`.\r\n\r\nIt is likely that it will have to be expanded to other protocols. It is also likely that some already work, but they are entirely untested.\r\n\r\n<details>\r\n  <summary>Code Example</summary>\r\n  \r\n```lua\r\n-- GET a url\r\nvim.net.fetch(\"https://example.com/api/data\", {\r\n on_complete = function (response)\r\n   -- Lets read the response!\r\n\r\n   if response.ok then\r\n     -- Read response body\r\n     local body = response.body()\r\n   else\r\n end\r\n})\r\n\r\n-- POST to a url, sending a table as JSON and providing an authorization header\r\nvim.net.fetch(\"https://example.com/api/data\", {\r\n method = \"POST\",\r\n data = {\r\n   key = value\r\n },\r\n headers = {\r\n   Authorization = \"Bearer \" .. token\r\n },\r\n on_complete = function (response)\r\n   -- Lets read the response!\r\n\r\n   if response.ok then\r\n     -- Read JSON response\r\n     local table = response.json()\r\n   else\r\n\r\n   -- What went wrong?\r\n   vim.print(response.status)\r\n end\r\n})\r\n\r\n```\r\n</details>\r\n\r\n### `vim.net.download()`\r\nAsynchronously download a file. To read the response metadata, such as headers and body, use `vi.net.fetch()`.\r\n\r\nShares a few options with `vim.net.fetch()`, but not all of them.\r\n\r\nIt is entirely possible that this function gets removed, as the `:edit URL` implementation saves the file contents to memory. (Unlike netrw's `wget` implementation).\r\n\r\n<details>\r\n  <summary>Code Example</summary>\r\n\r\n```lua\r\n vim.net.download(\"https://.../path/file\", \"~/.cache/download/location\", {\r\n   on_complete = function ()\r\n     vim.notify(\"File Downloaded\", vim.log.levels.INFO)\r\n   end\r\n })\r\n```\r\n\r\n</details>\r\n\r\n### `HeaderTable`\r\n\r\nHelper class to deal with header operations, both internal and external plugins can benefit from its methods. See `:help vim.net`. \r\n\r\n### `:e, :w, :[range]w!, :r  URL`\r\n\r\nCurrently, this PR only handles `https://*,http://*,scp://*,ftp://*`. \r\n\r\n[Screencast from 2023-05-04 11-44-45.webm](https://user-images.githubusercontent.com/40532058/236091188-a1150780-b780-4789-b20c-eb7dd7045d52.webm)\r\n\r\n### **Benchmarks**\r\n\r\nUsing this command, we can benchmark the time it takes to \"read\" a readme. This isnt proper benchmark, more data is required, but I think it might be enough.\r\n\r\n```vim\r\n:let start_time = reltime() | edit https://raw.githubusercontent.com/neovim/neovim/master/README.md | let end_time = reltime() | echo reltimestr(reltime(start_time, end_time))\r\n```\r\n\r\n`nvim --clean` on **vim.net** it took about `0.08` seconds.\r\n\r\n![image](https://user-images.githubusercontent.com/40532058/235909157-0ceba42a-19a7-4831-9fe2-e82ea07394b4.png)\r\n\r\nStock `nvim --clean` on **master**.\r\n\r\n![image](https://user-images.githubusercontent.com/40532058/235908873-e7d6b111-1e97-424b-9f0b-3f04927e2463.png)\r\n\r\n`vim --clean` (for fun) (also showing that master is pretty similar)\r\n\r\n![image](https://user-images.githubusercontent.com/40532058/235909266-42918a8b-9d3f-421f-ad31-9acddaf83d5f.png)\r\n\r\n",
-    "closed_at": null,
+    "closed_at": "2024-02-02T23:09:34Z",
     "comment_data": [
         {
             "_links": {
@@ -3505,7 +3505,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "@mrshmllow I have a few suggestions about your implementation:\r\n\r\n1. `netrw`'s **BufReadCmd** autocmd triggers **BufReadPre** and **BufReadPost** autocmds, this solutions could do the same. _Why? see item 4._\r\n2. `netrw`'s **FileReadCmd** autocmd triggers **FileReadPre** and **FileReadPost** autocmds, this solutions could do the same. _Why? see item 4._\r\n3. `netrw`'s has **SourceCmd** autocmd implemented, it should not be that hard to do it here.\r\n4. There are some cases when I `gf` an URL and I have to add some custom header to the request, `netrw` has `g:netrw_http_xcmd` where I can customize the `curl` command to add the headers on **BufReadPre/FileReadPre** autocmd. This solution could add something similar but I don't like the idea of a global variable to manage that. **Suggestion:** This could be stored as a buffer variable, maybe even on the `HeaderTable` class like: `HeaderTable:new(bufnr)` and keep the storage as buffer variables.\r\n5. You don't have to change the `netrwPlugin.vim` file to disable it, you could:\r\n    - Since `runtime/plugin/net.lua` is sourced before `runtime/plugin/net.lua` you can manually disable it with:\r\n        ```lua\r\n        vim.g.loaded_netrw = 1\r\n        vim.g.loaded_netrwPlugin = 1\r\n        ```\r\n    - Or **not so pretty solution**: make sure `net.lua` is loaded after `netrwPlugin.vim` by renaming it to something like `netz.lua` and create the augroup with the same name as `netrw`'s, therefore overwriting it: `local id = vim.api.nvim_create_augroup('LuaNetwork', { clear = true, })`\r\n6. `vim.g.lua_net_ft_full` is not properly checking for `json` filetype, this PR could add the `json` check on `vim.filetype` or maybe introduce a `content_type` argument on `vim.filetype.match()` function.\r\n\r\nI could work on it and send you a PR if those changes if they make sense.",
             "created_at": "2023-08-29T19:50:30Z",
             "html_url": "https://github.com/neovim/neovim/pull/23461#issuecomment-1698038419",
@@ -3736,7 +3736,7 @@
         {
             "color": "c5def5",
             "default": false,
-            "description": null,
+            "description": "stdlib",
             "id": 573222693,
             "name": "lua",
             "node_id": "MDU6TGFiZWw1NzMyMjI2OTM=",
@@ -3754,10 +3754,10 @@
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/23461/comments",
-    "state": "open",
+    "state": "closed",
     "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/5d76fcb6e3fc1382c9b691c4b6f2b376e7894c42",
     "title": "feat(vim.net): `fetch()`, `download()`, and `:e URL` in lua",
-    "updated_at": "2023-09-15T10:32:43Z",
+    "updated_at": "2024-02-02T23:09:34Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/23461",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/40532058?v=4",
