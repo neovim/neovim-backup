@@ -3,7 +3,7 @@
     "assignee": null,
     "assignees": [],
     "author_association": "MEMBER",
-    "body": "Users/plugins should be able to easily detect whether capslock is enabled. This can be done with a provider using these strategies:\r\n- X11: `xset -q | grep Caps`\r\n- Windows: http://stackoverflow.com/questions/13905342/winapi-how-to-get-the-caps-lock-state\r\n  - we can probably bake this into the nvim core without much trouble; otherwise it can be a small shell utility\r\n  - or we could use AutoHotkey: https://github.com/kshenoy/CapsUnlocked\r\n- OS X: https://developer.apple.com/library/mac/qa/qa1519/_index.html\r\n  - or https://discussions.apple.com/thread/7094207 (found by @nimitbhardwaj )\r\n",
+    "body": "Users/plugins should be able to easily detect whether capslock is enabled. This can be done with a provider using these strategies:\r\n- X11: `xset -q | grep Caps`\r\n- Windows: http://stackoverflow.com/questions/13905342/winapi-how-to-get-the-caps-lock-state\r\n  - we can probably bake this into the nvim core without much trouble; otherwise it can be a small shell utility\r\n  - or we could use AutoHotkey: https://github.com/kshenoy/CapsUnlocked\r\n- macOS `IOHIDGetModifierLockState` ([sample code](https://github.com/neovim/neovim/issues/1480#issuecomment-1936273719))\r\n  - old/outdated: ~~https://developer.apple.com/library/mac/qa/qa1519/_index.html~~ , ~~https://discussions.apple.com/thread/7094207~~\r\n",
     "closed_at": null,
     "comment_data": [
         {
@@ -225,9 +225,53 @@
                 "type": "User",
                 "url": "https://api.github.com/users/dundargoc"
             }
+        },
+        {
+            "author_association": "NONE",
+            "body": "# OSX only\r\n\r\nIt worked to me by creating my own command following link provided in the description above https://discussions.apple.com/thread/7094207\r\n\r\nI tried to reply in the discussion but seems that currently it is disabled, so I share an update of the script here if this could be useful for someone. By compiling this code you can then create your own rules on nvim.\r\n\r\nkIOMasterPortDefault is deprecated so I had to use the new naming:\r\n\r\n```\r\n/*\r\n    file:\r\n        main.c\r\n    \r\n    function:\r\n        get and set capslock state\r\n    \r\n    compile:\r\n        gcc -std=c99 -framework IOKit -framework CoreFoundation -o capslock main.c\r\n    \r\n    usage: \r\n        ./capslock [0|1|-1]\r\n             0 : capslock off\r\n             1 : capslock on\r\n            -1 : toggle capslock state\r\n               : print current capslock state (0|1)\r\n\r\n    * written and published as free software by Hiroto, 2015-06\r\n*/\r\n\r\n#include <IOKit/IOKitLib.h>\r\n#include <IOKit/hidsystem/IOHIDLib.h>\r\n#include <IOKit/hidsystem/IOHIDParameter.h>\r\n#include <CoreFoundation/CoreFoundation.h>\r\n\r\n#include <libgen.h> // basename\r\n\r\n#define CAPSLOCK_OFF    0\r\n#define CAPSLOCK_ON     1\r\n#define CAPSLOCK_TOGGLE -1\r\n#define CAPSLOCK_QUERY  9\r\n\r\nint main(int argc, char ** argv)\r\n{\r\n    kern_return_t kr;\r\n    io_service_t ios;\r\n    io_connect_t ioc;\r\n    CFMutableDictionaryRef mdict;\r\n    int op;\r\n    bool state;\r\n    \r\n    if (argc < 2)\r\n        op = CAPSLOCK_QUERY;\r\n    else\r\n        op = atoi(argv[1]);\r\n    if (op != CAPSLOCK_ON && op != CAPSLOCK_OFF && op != CAPSLOCK_TOGGLE && op != CAPSLOCK_QUERY)\r\n    {\r\n        fprintf(stderr, \"Usage: %s %s\\n\\t\\%s\\n\\t%s\\n\\t%s\\n\\t%s\\n\",\r\n            basename(argv[0]),\r\n            \"[0|1|-1]\",\r\n            \" 0 : capslock off\",\r\n            \" 1 : capslock on\",\r\n            \"-1 : toggle capslock state\",\r\n            \"   : print current capslock state (0|1)\"\r\n        );\r\n        return 1;\r\n    }\r\n    \r\n    mdict = IOServiceMatching(kIOHIDSystemClass);\r\n    ios = IOServiceGetMatchingService(kIOMainPortDefault, (CFDictionaryRef) mdict);\r\n    if (!ios)\r\n    {\r\n        if (mdict)\r\n            CFRelease(mdict);\r\n        fprintf(stderr, \"IOServiceGetMatchingService() failed: %x\\n\", kr);\r\n        return (int) kr;\r\n    }\r\n\r\n    kr = IOServiceOpen(ios, mach_task_self(), kIOHIDParamConnectType, &ioc);\r\n    IOObjectRelease(ios);\r\n    if (kr != KERN_SUCCESS)\r\n    {\r\n        fprintf(stderr, \"IOServiceOpen() failed: %x\\n\", kr);\r\n        return (int) kr;\r\n    }\r\n\r\n    switch (op)\r\n    {\r\n    case CAPSLOCK_ON:\r\n    case CAPSLOCK_OFF:\r\n        state = (op == CAPSLOCK_ON);\r\n        kr = IOHIDSetModifierLockState(ioc, kIOHIDCapsLockState, state);\r\n        if (kr != KERN_SUCCESS)\r\n        {\r\n            IOServiceClose(ioc);\r\n            fprintf(stderr, \"IOHIDSetModifierLockState() failed: %x\\n\", kr);\r\n            return (int) kr;\r\n        }\r\n        break;\r\n    case CAPSLOCK_TOGGLE:\r\n        kr = IOHIDGetModifierLockState(ioc, kIOHIDCapsLockState, &state);\r\n        if (kr != KERN_SUCCESS)\r\n        {\r\n            IOServiceClose(ioc);\r\n            fprintf(stderr, \"IOHIDGetModifierLockState() failed: %x\\n\", kr);\r\n            return (int) kr;\r\n        }\r\n        state = !state;\r\n        kr = IOHIDSetModifierLockState(ioc, kIOHIDCapsLockState, state);\r\n        if (kr != KERN_SUCCESS)\r\n        {\r\n            IOServiceClose(ioc);\r\n            fprintf(stderr, \"IOHIDSetModifierLockState() failed: %x\\n\", kr);\r\n            return (int) kr;\r\n        }\r\n        break;\r\n    case CAPSLOCK_QUERY:\r\n        kr = IOHIDGetModifierLockState(ioc, kIOHIDCapsLockState, &state);\r\n        if (kr != KERN_SUCCESS)\r\n        {\r\n            IOServiceClose(ioc);\r\n            fprintf(stderr, \"IOHIDGetModifierLockState() failed: %x\\n\", kr);\r\n            return (int) kr;\r\n        }\r\n        break;\r\n    }\r\n\r\n    IOServiceClose(ioc);\r\n    fprintf(stdout, \"%d\\n\", (int) state);\r\n    return 0;\r\n}\r\n\r\n```\r\n",
+            "created_at": "2024-02-09T16:59:40Z",
+            "html_url": "https://github.com/neovim/neovim/issues/1480#issuecomment-1936273719",
+            "id": 1936273719,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/1480",
+            "node_id": "IC_kwDOAPphoM5zaTE3",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1936273719/reactions"
+            },
+            "updated_at": "2024-02-09T17:00:13Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1936273719",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/2434997?v=4",
+                "events_url": "https://api.github.com/users/martinezcoder/events{/privacy}",
+                "followers_url": "https://api.github.com/users/martinezcoder/followers",
+                "following_url": "https://api.github.com/users/martinezcoder/following{/other_user}",
+                "gists_url": "https://api.github.com/users/martinezcoder/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/martinezcoder",
+                "id": 2434997,
+                "login": "martinezcoder",
+                "node_id": "MDQ6VXNlcjI0MzQ5OTc=",
+                "organizations_url": "https://api.github.com/users/martinezcoder/orgs",
+                "received_events_url": "https://api.github.com/users/martinezcoder/received_events",
+                "repos_url": "https://api.github.com/users/martinezcoder/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/martinezcoder/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/martinezcoder/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/martinezcoder"
+            }
         }
     ],
-    "comments": 5,
+    "comments": 6,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/1480/comments",
     "created_at": "2014-11-15T17:01:33Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/1480/events",
@@ -242,13 +286,31 @@
             "name": "enhancement",
             "node_id": "MDU6TGFiZWw3Nzk5NzQ3Ng==",
             "url": "https://api.github.com/repos/neovim/neovim/labels/enhancement"
+        },
+        {
+            "color": "C5DEF5",
+            "default": false,
+            "description": "key bindings",
+            "id": 3304938718,
+            "name": "mappings",
+            "node_id": "MDU6TGFiZWwzMzA0OTM4NzE4",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/mappings"
+        },
+        {
+            "color": "C5DEF5",
+            "default": false,
+            "description": "text objects, normal commands",
+            "id": 5826986707,
+            "name": "normal-mode",
+            "node_id": "LA_kwDOAPphoM8AAAABW1DC0w",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/normal-mode"
         }
     ],
     "labels_url": "https://api.github.com/repos/neovim/neovim/issues/1480/labels{/name}",
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 590,
+        "closed_issues": 601,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -277,17 +339,17 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 419,
+        "open_issues": 424,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2023-11-23T13:10:58Z",
+        "updated_at": "2024-02-12T15:43:47Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "MDU6SXNzdWU0ODkxNjc3MQ==",
     "number": 1480,
     "performed_via_github_app": null,
     "reactions": {
-        "+1": 8,
+        "+1": 9,
         "-1": 0,
         "confused": 0,
         "eyes": 0,
@@ -295,7 +357,7 @@
         "hooray": 0,
         "laugh": 0,
         "rocket": 0,
-        "total_count": 8,
+        "total_count": 9,
         "url": "https://api.github.com/repos/neovim/neovim/issues/1480/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
@@ -303,7 +365,7 @@
     "state_reason": null,
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/1480/timeline",
     "title": "CAPSLOCK detection provider",
-    "updated_at": "2023-11-23T18:52:11Z",
+    "updated_at": "2024-02-09T22:15:45Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/1480",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
