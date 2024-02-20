@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/27339"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/b4e3a8ad49c52fd4aaa52be033ce6832762af5c8"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/a5ce04f8048c098f639ed5d536e640cd73960738"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 5189,
-            "forks_count": 5189,
+            "forks": 5259,
+            "forks_count": 5259,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1744,
-            "open_issues_count": 1744,
+            "open_issues": 1730,
+            "open_issues_count": 1730,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -118,11 +118,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2024-02-06T01:17:01Z",
+            "pushed_at": "2024-02-20T01:37:56Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 252434,
+            "size": 253965,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 73474,
+            "stargazers_count": 74120,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -140,14 +140,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2024-02-06T00:27:03Z",
+            "updated_at": "2024-02-20T01:31:12Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 73474,
-            "watchers_count": 73474,
+            "watchers": 74120,
+            "watchers_count": 74120,
             "web_commit_signoff_required": false
         },
-        "sha": "1ed6b9cd2c04bf015b7e053ee5ea778634141b35",
+        "sha": "8952a89db588db10a9dba16356f9bbd35ca5fabb",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -171,7 +171,213 @@
     },
     "body": "Closes #25714",
     "closed_at": null,
-    "comment_data": [],
+    "comment_data": [
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/27339#discussion_r1493820152"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/27339"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1493820152"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Reluctant to add \"attach to client\" (or \"attach to completion\") as yet another way to extend the LSP client. There are already so many ways: start, callbacks, protocol handlers (local and global).\r\n\r\n> Make it opt-in via a `vim.lsp.completion.attach(client, bufnr, [opts])` method\r\n\r\nIf we enabled it by default, then it could be _opt-out_, by documenting how to delete the `CompleteDone` handler. Any problem with that?\r\n\r\nAlternatively, for _opt-in_ behavior, we could document how to define a `CompleteDone` handler that calls a function we provide. \r\n",
+            "commit_id": "a5ce04f8048c098f639ed5d536e640cd73960738",
+            "created_at": "2024-02-18T18:22:54Z",
+            "diff_hunk": "@@ -0,0 +1,93 @@\n+local M = {}\n+\n+--- @class vim.lsp.completion.BufHandle\n+--- @field clients table<integer, lsp.Client>\n+--- @field triggers table<string, lsp.Client[]>\n+\n+--- @type table<integer, vim.lsp.completion.BufHandle>\n+local buf_handles = {}\n+\n+local function complete_done() end\n+\n+--- Initializes the completion commands for the given client.\n+---\n+--- @param client lsp.Client\n+local function init_commands(client)\n+  local trigger_completion_cmd = 'editor.action.triggerSuggest'\n+\n+  -- Check if the command is in the global registry or in the client's commands.\n+  if\n+    not vim.lsp.commands[trigger_completion_cmd] and not client.commands[trigger_completion_cmd]\n+  then\n+    client.commands[trigger_completion_cmd] = function()\n+      local ok, res = pcall(M.trigger_completion)\n+      return ok and vim.NIL\n+        or vim.lsp.rpc_response_error(vim.lsp.protocol.ErrorCodes.InternalError, res)\n+    end\n+  end\n+end\n+\n+function M.trigger_completion() end\n+\n+--- TODO(mariasolos): Document.\n+---\n+--- @param client_id integer Client ID\n+--- @param bufnr integer Buffer handle, or 0 for the current buffer\n+function M.attach(client_id, bufnr)",
+            "html_url": "https://github.com/neovim/neovim/pull/27339#discussion_r1493820152",
+            "id": 1493820152,
+            "line": 261,
+            "node_id": "PRRC_kwDOAPphoM5ZCeL4",
+            "original_commit_id": "baf818cc1dbfef9bd864fd27065c050370223bf4",
+            "original_line": 261,
+            "original_position": 36,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/lsp/completion.lua",
+            "position": 261,
+            "pull_request_review_id": 1887302138,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27339",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1493820152/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-02-18T18:25:26Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1493820152",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/27339#discussion_r1493835482"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/27339"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1493835482"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "I think I prefer opt-in, at least while we develop this feature and make sure it has everything we want/need of core LSP completion.",
+            "commit_id": "a5ce04f8048c098f639ed5d536e640cd73960738",
+            "created_at": "2024-02-18T20:05:46Z",
+            "diff_hunk": "@@ -0,0 +1,93 @@\n+local M = {}\n+\n+--- @class vim.lsp.completion.BufHandle\n+--- @field clients table<integer, lsp.Client>\n+--- @field triggers table<string, lsp.Client[]>\n+\n+--- @type table<integer, vim.lsp.completion.BufHandle>\n+local buf_handles = {}\n+\n+local function complete_done() end\n+\n+--- Initializes the completion commands for the given client.\n+---\n+--- @param client lsp.Client\n+local function init_commands(client)\n+  local trigger_completion_cmd = 'editor.action.triggerSuggest'\n+\n+  -- Check if the command is in the global registry or in the client's commands.\n+  if\n+    not vim.lsp.commands[trigger_completion_cmd] and not client.commands[trigger_completion_cmd]\n+  then\n+    client.commands[trigger_completion_cmd] = function()\n+      local ok, res = pcall(M.trigger_completion)\n+      return ok and vim.NIL\n+        or vim.lsp.rpc_response_error(vim.lsp.protocol.ErrorCodes.InternalError, res)\n+    end\n+  end\n+end\n+\n+function M.trigger_completion() end\n+\n+--- TODO(mariasolos): Document.\n+---\n+--- @param client_id integer Client ID\n+--- @param bufnr integer Buffer handle, or 0 for the current buffer\n+function M.attach(client_id, bufnr)",
+            "html_url": "https://github.com/neovim/neovim/pull/27339#discussion_r1493835482",
+            "id": 1493835482,
+            "in_reply_to_id": 1493820152,
+            "line": 261,
+            "node_id": "PRRC_kwDOAPphoM5ZCh7a",
+            "original_commit_id": "baf818cc1dbfef9bd864fd27065c050370223bf4",
+            "original_line": 261,
+            "original_position": 36,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/lsp/completion.lua",
+            "position": 261,
+            "pull_request_review_id": 1887317085,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27339",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1493835482/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-02-18T20:05:46Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1493835482",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/62502207?v=4",
+                "events_url": "https://api.github.com/users/MariaSolOs/events{/privacy}",
+                "followers_url": "https://api.github.com/users/MariaSolOs/followers",
+                "following_url": "https://api.github.com/users/MariaSolOs/following{/other_user}",
+                "gists_url": "https://api.github.com/users/MariaSolOs/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/MariaSolOs",
+                "id": 62502207,
+                "login": "MariaSolOs",
+                "node_id": "MDQ6VXNlcjYyNTAyMjA3",
+                "organizations_url": "https://api.github.com/users/MariaSolOs/orgs",
+                "received_events_url": "https://api.github.com/users/MariaSolOs/received_events",
+                "repos_url": "https://api.github.com/users/MariaSolOs/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/MariaSolOs/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/MariaSolOs/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/MariaSolOs"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/27339#discussion_r1494923283"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/27339"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1494923283"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "These are only needed when we want to trigger completion when deleting. `lsp_compl` makes this configurable, but I think we should just always enable it here (?). WDYT?",
+            "commit_id": "a5ce04f8048c098f639ed5d536e640cd73960738",
+            "created_at": "2024-02-19T18:41:28Z",
+            "diff_hunk": "@@ -0,0 +1,128 @@\n+local M = {}\n+\n+--- @class vim.lsp.completion.BufHandle\n+--- @field clients table<integer, lsp.Client>\n+--- @field triggers table<string, lsp.Client[]>\n+\n+--- @type table<integer, vim.lsp.completion.BufHandle>\n+local buf_handles = {}\n+\n+--- @param handle vim.lsp.completion.BufHandle\n+local function insert_char_pre_cb(handle) end\n+\n+local function text_changed_p_cb() end\n+\n+local function text_changed_i_cb() end\n+\n+local function insert_leave_cb() end\n+\n+local function complete_done_cb() end\n+\n+--- Initializes the completion commands for the given client.\n+---\n+--- @param client lsp.Client\n+local function init_commands(client)\n+  local trigger_completion_cmd = 'editor.action.triggerSuggest'\n+\n+  -- Check if the command is in the global registry or in the client's commands.\n+  if\n+    not vim.lsp.commands[trigger_completion_cmd] and not client.commands[trigger_completion_cmd]\n+  then\n+    client.commands[trigger_completion_cmd] = function()\n+      pcall(M.trigger_completion)\n+    end\n+  end\n+end\n+\n+function M.trigger_completion() end\n+\n+--- TODO(mariasolos): Document.\n+---\n+--- @param client_id integer Client ID\n+--- @param bufnr integer Buffer handle, or 0 for the current buffer\n+function M.attach(client_id, bufnr)\n+  bufnr = (bufnr == 0 and vim.api.nvim_get_current_buf()) or bufnr\n+\n+  if not buf_handles[bufnr] then\n+    buf_handles[bufnr] = { clients = {}, triggers = {} }\n+\n+    -- Attach to buffer events.\n+    vim.api.nvim_buf_attach(bufnr, false, {\n+      on_detach = function(_, buf)\n+        buf_handles[buf] = nil\n+      end,\n+      on_reload = function(_, buf)\n+        M.attach(client_id, buf)\n+      end,\n+    })\n+\n+    -- Set up autocommands.\n+    local group =\n+      vim.api.nvim_create_augroup(string.format('vim/lsp/completion-%d', bufnr), { clear = true })\n+    vim.api.nvim_create_autocmd('InsertCharPre', {\n+      group = group,\n+      buffer = bufnr,\n+      callback = function()\n+        insert_char_pre_cb(buf_handles[bufnr])\n+      end,\n+    })\n+    vim.api.nvim_create_autocmd('TextChangedP', {\n+      group = group,\n+      buffer = bufnr,\n+      callback = function()\n+        text_changed_p_cb()\n+      end,\n+    })\n+    vim.api.nvim_create_autocmd('TextChangedI', {\n+      group = group,\n+      buffer = bufnr,\n+      callback = function()\n+        text_changed_i_cb()\n+      end,\n+    })",
+            "html_url": "https://github.com/neovim/neovim/pull/27339#discussion_r1494923283",
+            "id": 1494923283,
+            "line": 300,
+            "node_id": "PRRC_kwDOAPphoM5ZGrgT",
+            "original_commit_id": "0d2340935bea14217f4c98755899a330da76d8a2",
+            "original_line": 300,
+            "original_position": 82,
+            "original_start_line": 69,
+            "path": "runtime/lua/vim/lsp/completion.lua",
+            "position": 300,
+            "pull_request_review_id": 1889009848,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27339",
+            "reactions": {
+                "+1": 2,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 2,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1494923283/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 287,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2024-02-19T18:41:29Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1494923283",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/62502207?v=4",
+                "events_url": "https://api.github.com/users/MariaSolOs/events{/privacy}",
+                "followers_url": "https://api.github.com/users/MariaSolOs/followers",
+                "following_url": "https://api.github.com/users/MariaSolOs/following{/other_user}",
+                "gists_url": "https://api.github.com/users/MariaSolOs/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/MariaSolOs",
+                "id": 62502207,
+                "login": "MariaSolOs",
+                "node_id": "MDQ6VXNlcjYyNTAyMjA3",
+                "organizations_url": "https://api.github.com/users/MariaSolOs/orgs",
+                "received_events_url": "https://api.github.com/users/MariaSolOs/received_events",
+                "repos_url": "https://api.github.com/users/MariaSolOs/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/MariaSolOs/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/MariaSolOs/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/MariaSolOs"
+            }
+        }
+    ],
     "comment_regular_data": [],
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/27339/comments",
     "commits_url": "https://api.github.com/repos/neovim/neovim/pulls/27339/commits",
@@ -266,9 +472,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/MariaSolOs/neovim/pulls{/number}",
-            "pushed_at": "2024-02-05T05:11:20Z",
+            "pushed_at": "2024-02-19T23:40:56Z",
             "releases_url": "https://api.github.com/repos/MariaSolOs/neovim/releases{/id}",
-            "size": 245453,
+            "size": 247470,
             "ssh_url": "git@github.com:MariaSolOs/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/MariaSolOs/neovim/stargazers",
@@ -287,7 +493,7 @@
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "b4e3a8ad49c52fd4aaa52be033ce6832762af5c8",
+        "sha": "a5ce04f8048c098f639ed5d536e640cd73960738",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/62502207?v=4",
             "events_url": "https://api.github.com/users/MariaSolOs/events{/privacy}",
@@ -324,7 +530,7 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "0a2b105f90fed794176c9edc4663133abbdf5cd3",
+    "merge_commit_sha": "3892c8b2bfcc7fb8a8558ca9f73acbe67b77dc48",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM5l9W_k",
@@ -335,9 +541,9 @@
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/27339/comments",
     "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/b4e3a8ad49c52fd4aaa52be033ce6832762af5c8",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/a5ce04f8048c098f639ed5d536e640cd73960738",
     "title": "feat(lsp): completion side effects",
-    "updated_at": "2024-02-05T00:02:20Z",
+    "updated_at": "2024-02-19T23:40:57Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/27339",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/62502207?v=4",
