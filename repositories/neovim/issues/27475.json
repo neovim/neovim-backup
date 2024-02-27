@@ -4,7 +4,7 @@
     "assignees": [],
     "author_association": "NONE",
     "body": "### Problem\n\nAfter pulling latest master branch I am unable to build neovim on my machine (Ubuntu 22.04):\r\n\r\n```\r\n[~/Apps/neovim]$ lsb_release -a\r\nNo LSB modules are available.\r\nDistributor ID: Neon\r\nDescription:    KDE neon 5.27\r\nRelease:        22.04\r\nCodename:       jammy\r\n\r\n```\r\n\r\nWhen building latest master I get this error:\r\n\r\n```\r\n[~/Apps/neovim]$ make clean && make distclean && make CMAKE_EXTRA_FLAGS=\"-DCMAKE_INSTALL_PREFIX:PATH=/usr\"  CMAKE_BUILD_TYPE=RelWithDebInfo\r\ntest -d build && ninja -C build clean || true\r\nninja: Entering directory `build'\r\n[0/2] Re-checking globbed directories...\r\n-- GLOB mismatch!\r\n-- GLOB mismatch!\r\n-- GLOB mismatch!\r\n[1/2] Re-running CMake...\r\n-- Found GNU Make at /usr/bin/gmake\r\n-- CMAKE_INSTALL_PREFIX=/usr\r\n-- CMAKE_BUILD_TYPE=RelWithDebInfo\r\n-- Using Lua interpreter: /home/ryujin/Apps/neovim/.deps/usr/bin/luajit\r\n-- Using Lua interpreter for code generation: /home/ryujin/Apps/neovim/.deps/usr/bin/luajit\r\n-- Using Lua compiler: /home/ryujin/Apps/neovim/.deps/usr/bin/luajit -b -s %s -\r\n-- Found Treesitter: /home/ryujin/Apps/neovim/.deps/usr/lib/libtree-sitter.a (Required is at least version \"0.20.9\") \r\n-- Configuring done (0.3s)\r\n-- Generating done (0.0s)\r\n-- Build files have been written to: /home/ryujin/Apps/neovim/build\r\n[0/2] Re-checking globbed directories...\r\n[1/1] Cleaning all built files...\r\nCleaning... 597 files.\r\nmake -C test/old/testdir clean\r\nmake[1]: Entering directory '/home/ryujin/Apps/neovim/test/old/testdir'\r\nrm -f -rf *.out *.failed *.res *.rej *.orig *.tlog test_result.log test.log messages starttime test.out X* viminfo test.ok valgrind.* .*.swp .*.swo .gdbinit /home/ryujin/Apps/neovim/test/old/testdir/X-test-tmpdir del ../../../runtime/doc/.*.swp\r\nmake[1]: Leaving directory '/home/ryujin/Apps/neovim/test/old/testdir'\r\nmake -C runtime/indent clean\r\nmake[1]: Entering directory '/home/ryujin/Apps/neovim/runtime/indent'\r\nrm -f testdir/*.fail testdir/*.out\r\nmake[1]: Leaving directory '/home/ryujin/Apps/neovim/runtime/indent'\r\nrm -rf .deps build\r\nmake clean\r\nmake[1]: Entering directory '/home/ryujin/Apps/neovim'\r\ntest -d build && ninja -C build clean || true\r\nmake -C test/old/testdir clean\r\nmake[2]: Entering directory '/home/ryujin/Apps/neovim/test/old/testdir'\r\nrm -f -rf *.out *.failed *.res *.rej *.orig *.tlog test_result.log test.log messages starttime test.out X* viminfo test.ok valgrind.* .*.swp .*.swo .gdbinit /home/ryujin/Apps/neovim/test/old/testdir/X-test-tmpdir del ../../../runtime/doc/.*.swp\r\nmake[2]: Leaving directory '/home/ryujin/Apps/neovim/test/old/testdir'\r\nmake -C runtime/indent clean\r\nmake[2]: Entering directory '/home/ryujin/Apps/neovim/runtime/indent'\r\nrm -f testdir/*.fail testdir/*.out\r\nmake[2]: Leaving directory '/home/ryujin/Apps/neovim/runtime/indent'\r\nmake[1]: Leaving directory '/home/ryujin/Apps/neovim'\r\nmkdir -p \".deps\"\r\ncmake -S /home/ryujin/Apps/neovim//cmake.deps -B .deps -G 'Ninja' \\\r\n          \r\nmake: cmake: Permission denied\r\nmake: *** [Makefile:95: build/.ran-deps-cmake] Error 127\r\n\r\n```\r\n\r\nRunning `git bisect` the problem seems to have started on the following commit:\r\n\r\n```\r\n[~/Apps/neovim]$ git bisect good                                                                                                           \r\nae3eed53d6100598b6d26fe58e3e97541e03f3c1 is the first bad commit\r\ncommit ae3eed53d6100598b6d26fe58e3e97541e03f3c1\r\nAuthor: dundargoc <gocdundar@gmail.com>\r\nDate:   Mon Jan 1 13:08:56 2024 +0100\r\n\r\n    build: various build improvements\r\n    \r\n    - remove \"ran-\" prefix from touch files as it's redundant since the\r\n      they're already in the directory named `touches`.\r\n    - Include `contrib` when formatting with `make formatlua`.\r\n    - Use TARGET_FILE generator expression instead of assuming the\r\n      executable location.\r\n    - reuse logic that determines whether to use lua or luajit.\r\n    - add translations to the `nvim` target.\r\n    \r\n    Makefile improvements:\r\n    - rename variable `CMAKE_PRG` to `CMAKE` to make it more consistent with\r\n      the builtin `MAKE` variable.\r\n    - stop propagating flags to generator. Users should use cmake for\r\n      non-standard use cases.\r\n    - remove `+` prefix from targets. If the user for whatever reason wants\r\n      to dry-run a target then they should be able to.\r\n\r\n CMakeLists.txt                   |  2 +-\r\n Makefile                         | 52 ++++++++++++++++------------------------\r\n cmake.deps/CMakeLists.txt        | 18 ++++++++++++++\r\n cmake.deps/cmake/BuildLpeg.cmake | 18 +-------------\r\n cmake.deps/cmake/BuildLuv.cmake  | 13 +---------\r\n cmake/Util.cmake                 |  6 ++---\r\n contrib/minimal.lua              |  4 ++--\r\n runtime/CMakeLists.txt           |  6 ++---\r\n src/nvim/CMakeLists.txt          |  4 ++--\r\n src/nvim/po/CMakeLists.txt       |  3 ++-\r\n 10 files changed, 53 insertions(+), 73 deletions(-)\r\n```\n\n### Steps to reproduce\n\ngit pull  # get latest master\r\nmake clean && make distclean && make CMAKE_EXTRA_FLAGS=\"-DCMAKE_INSTALL_PREFIX:PATH=/usr\" \n\n### Expected behavior\n\nShould build without issues.\n\n### Neovim version (nvim -v)\n\ncommit d09957e0a06f350443c750d9838b5f1016c0cccc\n\n### Vim (not Nvim) behaves the same?\n\nnot tested\n\n### Operating system/version\n\nUbuntu 22.04\n\n### Terminal name/version\n\nkonsole\n\n### $TERM environment variable\n\nscreen-256color\n\n### Installation\n\nBuild from source",
-    "closed_at": null,
+    "closed_at": "2024-02-25T16:58:48Z",
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -533,15 +533,68 @@
                 "type": "User",
                 "url": "https://api.github.com/users/hsanson"
             }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "Seems like this was configuration error: https://github.com/neovim/neovim/pull/27490#issuecomment-1962807507",
+            "created_at": "2024-02-25T16:58:48Z",
+            "html_url": "https://github.com/neovim/neovim/issues/27475#issuecomment-1962999470",
+            "id": 1962999470,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/27475",
+            "node_id": "IC_kwDOAPphoM51AP6u",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1962999470/reactions"
+            },
+            "updated_at": "2024-02-25T16:58:48Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1962999470",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/33953936?v=4",
+                "events_url": "https://api.github.com/users/dundargoc/events{/privacy}",
+                "followers_url": "https://api.github.com/users/dundargoc/followers",
+                "following_url": "https://api.github.com/users/dundargoc/following{/other_user}",
+                "gists_url": "https://api.github.com/users/dundargoc/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/dundargoc",
+                "id": 33953936,
+                "login": "dundargoc",
+                "node_id": "MDQ6VXNlcjMzOTUzOTM2",
+                "organizations_url": "https://api.github.com/users/dundargoc/orgs",
+                "received_events_url": "https://api.github.com/users/dundargoc/received_events",
+                "repos_url": "https://api.github.com/users/dundargoc/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/dundargoc/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/dundargoc/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/dundargoc"
+            }
         }
     ],
-    "comments": 12,
+    "comments": 13,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/27475/comments",
     "created_at": "2024-02-15T01:11:35Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/27475/events",
     "html_url": "https://github.com/neovim/neovim/issues/27475",
     "id": 2135456009,
     "labels": [
+        {
+            "color": "e6e6e6",
+            "default": false,
+            "description": "Issues that are closed as \"invalid\"",
+            "id": 77997477,
+            "name": "closed:invalid",
+            "node_id": "MDU6TGFiZWw3Nzk5NzQ3Nw==",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/closed:invalid"
+        },
         {
             "color": "c5def5",
             "default": false,
@@ -550,15 +603,6 @@
             "name": "build",
             "node_id": "MDU6TGFiZWw4NDcyMzMyMQ==",
             "url": "https://api.github.com/repos/neovim/neovim/labels/build"
-        },
-        {
-            "color": "f9d0c4",
-            "default": false,
-            "description": "wrong behavior that was introduced in a previous commit (please bisect)",
-            "id": 619474658,
-            "name": "bug-regression",
-            "node_id": "MDU6TGFiZWw2MTk0NzQ2NTg=",
-            "url": "https://api.github.com/repos/neovim/neovim/labels/bug-regression"
         },
         {
             "color": "0E8A16",
@@ -589,11 +633,11 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/27475/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "not_planned",
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/27475/timeline",
     "title": "Unable to build (missing \"build\", \".deps\" directories)",
-    "updated_at": "2024-02-16T23:10:31Z",
+    "updated_at": "2024-02-25T16:59:10Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/27475",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/900716?v=4",
