@@ -929,9 +929,53 @@
                 "type": "User",
                 "url": "https://api.github.com/users/leonerd"
             }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "Since I can easily repeat this, I added a bit more logging:\r\n```\r\nResizing from 54x9 to 54x1; cursor was at (40,1)\r\n  rows [0..0] <- [8..8] width=0\r\n  new_row_start(0) < 0\r\n  scroll 0 rows +1 downwards\r\n  rows [0..0] <- [7..7] width=0\r\n  new_row_start(0) < 0\r\n  scroll 0 rows +1 downwards\r\n  rows [0..0] <- [6..6] width=0\r\n  new_row_start(0) < 0\r\n  scroll 0 rows +1 downwards\r\n  rows [0..0] <- [5..5] width=0\r\n  new_row_start(0) < 0\r\n  scroll 0 rows +1 downwards\r\n  rows [0..0] <- [4..4] width=0\r\n  new_row_start(0) < 0\r\n  scroll 0 rows +1 downwards\r\n  rows [0..0] <- [3..3] width=0\r\n  new_row_start(0) < 0\r\n  scroll 0 rows +1 downwards\r\n  rows [0..0] <- [2..2] width=0\r\n  new_row_start(0) < 0\r\n  scroll 0 rows +1 downwards\r\n  rows [-1..0] <- [0..1] width=107\r\n  new_row_start(-1) < 0\r\n  old_row_start(0) <= old_cursor.row(1) && old_cursor.row(1) < old_row_end(1)\r\n  old_cursor.row(1) <= old_row(0)\r\nscreen_resize failed to update cursor position\r\n```\r\n\r\nSo it does not set `new_cursor.col` or `new_cursor.row` in either of these branches\r\n```c\r\n#ifdef DEBUG_REFLOW\r\n    fprintf(stderr, \"  new_row_start(%d) < 0\\n\",\r\n        new_row_start);\r\n#endif\r\n    if(new_row_start < 0) {\r\n      #ifdef DEBUG_REFLOW\r\n      fprintf(stderr, \"  old_row_start(%d) <= old_cursor.row(%d) && old_cursor.row(%d) < old_row_end(%d)\\n\",\r\n        old_row_start, old_cursor.row, old_cursor.row, old_row_end);\r\n      #endif\r\n      if(old_row_start <= old_cursor.row && old_cursor.row < old_row_end) {\r\n        new_cursor.row = 0;\r\n        new_cursor.col = old_cursor.col;\r\n        #ifdef DEBUG_REFLOW\r\n        fprintf(stderr, \"  new_cursor.col(%d) >= new_cols(%d)\\n\",\r\n          new_cursor.col, new_cols);\r\n        #endif\r\n        if(new_cursor.col >= new_cols)\r\n          new_cursor.col = new_cols-1;\r\n      }\r\n      break;\r\n    }\r\n```\r\n\r\n```c\r\n  #ifdef DEBUG_REFLOW\r\n  fprintf(stderr, \"  old_cursor.row(%d) <= old_row(%d)\\n\",\r\n    old_cursor.row, old_row);\r\n  #endif\r\n  if(old_cursor.row <= old_row) {\r\n    /* cursor would have moved entirely off the top of the screen; lets just\r\n     * bring it within range */\r\n    new_cursor.row = 0, new_cursor.col = old_cursor.col;\r\n    #ifdef DEBUG_REFLOW\r\n      fprintf(stderr, \"  new_cursor.col(%d) >= new_cols(%d)\\n\",\r\n        new_cursor.col, new_cols);\r\n    #endif\r\n    if(new_cursor.col >= new_cols)\r\n      new_cursor.col = new_cols-1;\r\n  }\r\n```\r\n\r\nWhich triggers this condition:\r\n```c\r\n  /* We really expect the cursor position to be set by now */\r\n  if(active && (new_cursor.row == -1 || new_cursor.col == -1)) {\r\n    fprintf(stderr, \"screen_resize failed to update cursor position\\n\");\r\n    abort();\r\n  }\r\n```\r\n\r\nI have not read the code in detail to know what's going on but it's possible that the second part of this condition should be `<=`: `if(old_row_start <= old_cursor.row && old_cursor.row < old_row_end)`\r\n\r\nThe input parameters appear to be valid `Resizing from 54x9 to 54x1; cursor was at (40,1)`\r\n\r\nThe problem does not appear to be\r\n> I guess this old_row >= 0 condition needs to be changed to old_row > 0:\r\n\r\nSince, `old_row` does not become negative.",
+            "created_at": "2024-03-07T13:19:41Z",
+            "html_url": "https://github.com/neovim/neovim/issues/23762#issuecomment-1983490286",
+            "id": 1983490286,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/23762",
+            "node_id": "IC_kwDOAPphoM52Oaju",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1983490286/reactions"
+            },
+            "updated_at": "2024-03-07T13:19:41Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1983490286",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/9946255?v=4",
+                "events_url": "https://api.github.com/users/fredizzimo/events{/privacy}",
+                "followers_url": "https://api.github.com/users/fredizzimo/followers",
+                "following_url": "https://api.github.com/users/fredizzimo/following{/other_user}",
+                "gists_url": "https://api.github.com/users/fredizzimo/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/fredizzimo",
+                "id": 9946255,
+                "login": "fredizzimo",
+                "node_id": "MDQ6VXNlcjk5NDYyNTU=",
+                "organizations_url": "https://api.github.com/users/fredizzimo/orgs",
+                "received_events_url": "https://api.github.com/users/fredizzimo/received_events",
+                "repos_url": "https://api.github.com/users/fredizzimo/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/fredizzimo/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/fredizzimo/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/fredizzimo"
+            }
         }
     ],
-    "comments": 21,
+    "comments": 22,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/23762/comments",
     "created_at": "2023-05-26T03:50:13Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/23762/events",
@@ -970,7 +1014,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 165,
+        "closed_issues": 308,
         "created_at": "2023-02-02T14:11:43Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1363104?v=4",
@@ -993,16 +1037,16 @@
             "url": "https://api.github.com/users/bfredl"
         },
         "description": "",
-        "due_on": null,
+        "due_on": "2024-04-01T07:00:00Z",
         "html_url": "https://github.com/neovim/neovim/milestone/36",
         "id": 8997654,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/36/labels",
         "node_id": "MI_kwDOAPphoM4AiUsW",
         "number": 36,
-        "open_issues": 131,
+        "open_issues": 126,
         "state": "open",
         "title": "0.10",
-        "updated_at": "2023-10-11T22:49:13Z",
+        "updated_at": "2024-03-11T07:27:48Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/36"
     },
     "node_id": "I_kwDOAPphoM5m7ckI",
@@ -1025,7 +1069,7 @@
     "state_reason": null,
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/23762/timeline",
     "title": "Occasional libvterm heap-use-after-free in test \"TUI rapid resize\"",
-    "updated_at": "2023-10-12T11:30:46Z",
+    "updated_at": "2024-03-07T13:19:42Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/23762",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",

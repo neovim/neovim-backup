@@ -4,7 +4,7 @@
     "assignees": [],
     "author_association": "NONE",
     "body": "### Problem\r\n\r\nSay one wants to open `~/proj1/` as a project.\r\nThe [`exrc`](https://neovim.io/doc/user/starting.html#exrc) option is enabled.\r\nStructure of `proj1`:\r\n```\r\nproj1\r\n├── .nvim.lua\r\n├── index.qmd\r\n└── post1.qmd\r\n```\r\n`.nvim.lua` enables the project specific configurations.\r\n\r\n1. They can `nvim ~/proj1` to open the project.\r\nNeovim starts up in `~/proj1`.\r\nAs a result `.nvim.lua` configuration file is run.\r\n2. Or they may start neovim as `nvim`.\r\n**Then** switch to the project by running `:cd ~/proj1` command.\r\nBut the `.nvim.lua` project configuration isn't run.\r\n\r\nThis difference makes method 2 unsuitable for opening projects.\r\n\r\n### Expected behavior\r\n\r\nThe benefit of method 2 of opening projects:\r\n- We can create a general Neovim application shortcut.\r\n- We can switch between projects in the same session.\r\n\r\nMethod 2 should also invoke and get the benefits of `.nvim.lua` exrc configuration file.\r\nThere is not much reason to expect this difference in behaviour in my opinion.",
-    "closed_at": null,
+    "closed_at": "2024-03-05T08:47:43Z",
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -240,11 +240,11 @@
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
-                "heart": 1,
+                "heart": 2,
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 1,
+                "total_count": 2,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1962843829/reactions"
             },
             "updated_at": "2024-02-25T07:34:21Z",
@@ -269,9 +269,53 @@
                 "type": "User",
                 "url": "https://api.github.com/users/GnikDroy"
             }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "I don't think this should be added as a default mechanism. The comparison other people have made is correct in my opinion - `exrc` files should work analogous to things like `.bashrc` and other 'rc' files. It should be relegated to a plugin with much more flexibility in its configuration, similar to `direnv` in the shell world.\r\n\r\nEspecially because in addition to `:cd` (global), there is `:tcd` (tabpage scope) and `:lcd` (window scope), and in my opinion it's unclear (and highly use-case specific) how any automatic sourcing of rc files should work in the face of that.\r\n\r\nAs an example, just using `DirChanged` like above means potentially *re-sourcing `.nvim.lua` on every window switch* [(docs)](https://neovim.io/doc/user/autocmd.html#DirChanged), and no matter which behaviour Neovim tries to decide to use, inevitably there will be people who need something else and won't be able to make the default behaviour work for them.\r\n\r\nPS:\r\n\r\nI think something akin to this would be nice. ~~Maybe a little less haphazardly written though ^^~~ \r\n```lua\r\nvim.api.nvim_create_user_command('Doexrc', function()\r\n    for _, file in ipairs({ '.nvim.lua', '.nvimrc', '.exrc'}) do\r\n        local contents = vim.secure.read(file)\r\n        if contents then\r\n            if vim.endswith(file, '.lua') then\r\n                assert(loadstring(contents))()\r\n            else\r\n                vim.cmd(contents)\r\n            end\r\n            break\r\n        end\r\n    end\r\nend)\r\n```",
+            "created_at": "2024-03-05T07:10:40Z",
+            "html_url": "https://github.com/neovim/neovim/issues/27489#issuecomment-1978094385",
+            "id": 1978094385,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/27489",
+            "node_id": "IC_kwDOAPphoM5151Mx",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 2,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 2,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1978094385/reactions"
+            },
+            "updated_at": "2024-03-05T08:18:22Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1978094385",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/38919842?v=4",
+                "events_url": "https://api.github.com/users/LunarLambda/events{/privacy}",
+                "followers_url": "https://api.github.com/users/LunarLambda/followers",
+                "following_url": "https://api.github.com/users/LunarLambda/following{/other_user}",
+                "gists_url": "https://api.github.com/users/LunarLambda/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/LunarLambda",
+                "id": 38919842,
+                "login": "LunarLambda",
+                "node_id": "MDQ6VXNlcjM4OTE5ODQy",
+                "organizations_url": "https://api.github.com/users/LunarLambda/orgs",
+                "received_events_url": "https://api.github.com/users/LunarLambda/received_events",
+                "repos_url": "https://api.github.com/users/LunarLambda/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/LunarLambda/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/LunarLambda/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/LunarLambda"
+            }
         }
     ],
-    "comments": 6,
+    "comments": 7,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/27489/comments",
     "created_at": "2024-02-16T09:35:59Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/27489/events",
@@ -307,11 +351,11 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/27489/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "not_planned",
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/27489/timeline",
     "title": "make `:cd` invoke `exrc` files in the current directory. ",
-    "updated_at": "2024-02-25T07:34:22Z",
+    "updated_at": "2024-03-05T08:47:43Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/27489",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/39594914?v=4",

@@ -445,9 +445,53 @@
                 "type": "User",
                 "url": "https://api.github.com/users/dylanrenwick"
             }
+        },
+        {
+            "author_association": "NONE",
+            "body": "So I cracked the 'code' on this bug. Using the `python3.exe` or `python3.11.exe` found in $PATH (eg. `C:\\Users\\cam\\AppData\\Local\\Microsoft\\WindowsApps\\python3.11.exe` ) doesn't work. This is due to those files being 0 byte `reparse points` used by Windows 10. \r\n\r\nChecking for ourselves we can see:\r\n```\r\nC:\\Users\\cam\\AppData\\Local\\Microsoft\\WindowsApps>fsutil reparsepoint /?\r\n/? is an invalid parameter.\r\n---- REPARSEPOINT Commands Supported ----\r\n\r\ndelete          Delete a reparse point\r\nquery           Query a reparse point\r\n\r\nC:\\Users\\cam\\AppData\\Local\\Microsoft\\WindowsApps>fsutil reparsepoint query python.exe\r\nReparse Tag Value : 0x8000001b\r\nTag value: Microsoft\r\n\r\nReparse Data Length: 0x1c2\r\nReparse Data:\r\n0000:  03 00 00 00 50 00 79 00  74 00 68 00 6f 00 6e 00  ....P.y.t.h.o.n.\r\n0010:  53 00 6f 00 66 00 74 00  77 00 61 00 72 00 65 00  S.o.f.t.w.a.r.e.\r\n0020:  46 00 6f 00 75 00 6e 00  64 00 61 00 74 00 69 00  F.o.u.n.d.a.t.i.\r\n0030:  6f 00 6e 00 2e 00 50 00  79 00 74 00 68 00 6f 00  o.n...P.y.t.h.o.\r\n0040:  6e 00 2e 00 33 00 2e 00  31 00 31 00 5f 00 71 00  n...3...1.1._.q.\r\n0050:  62 00 7a 00 35 00 6e 00  32 00 6b 00 66 00 72 00  b.z.5.n.2.k.f.r.\r\n0060:  61 00 38 00 70 00 30 00  00 00 50 00 79 00 74 00  a.8.p.0...P.y.t.\r\n0070:  68 00 6f 00 6e 00 53 00  6f 00 66 00 74 00 77 00  h.o.n.S.o.f.t.w.\r\n0080:  61 00 72 00 65 00 46 00  6f 00 75 00 6e 00 64 00  a.r.e.F.o.u.n.d.\r\n0090:  61 00 74 00 69 00 6f 00  6e 00 2e 00 50 00 79 00  a.t.i.o.n...P.y.\r\n00a0:  74 00 68 00 6f 00 6e 00  2e 00 33 00 2e 00 31 00  t.h.o.n...3...1.\r\n00b0:  31 00 5f 00 71 00 62 00  7a 00 35 00 6e 00 32 00  1._.q.b.z.5.n.2.\r\n00c0:  6b 00 66 00 72 00 61 00  38 00 70 00 30 00 21 00  k.f.r.a.8.p.0.!.\r\n00d0:  50 00 79 00 74 00 68 00  6f 00 6e 00 00 00 43 00  P.y.t.h.o.n...C.\r\n00e0:  3a 00 5c 00 50 00 72 00  6f 00 67 00 72 00 61 00  :.\\.P.r.o.g.r.a.\r\n00f0:  6d 00 20 00 46 00 69 00  6c 00 65 00 73 00 5c 00  m. .F.i.l.e.s.\\.\r\n0100:  57 00 69 00 6e 00 64 00  6f 00 77 00 73 00 41 00  W.i.n.d.o.w.s.A.\r\n0110:  70 00 70 00 73 00 5c 00  50 00 79 00 74 00 68 00  p.p.s.\\.P.y.t.h.\r\n0120:  6f 00 6e 00 53 00 6f 00  66 00 74 00 77 00 61 00  o.n.S.o.f.t.w.a.\r\n0130:  72 00 65 00 46 00 6f 00  75 00 6e 00 64 00 61 00  r.e.F.o.u.n.d.a.\r\n0140:  74 00 69 00 6f 00 6e 00  2e 00 50 00 79 00 74 00  t.i.o.n...P.y.t.\r\n0150:  68 00 6f 00 6e 00 2e 00  33 00 2e 00 31 00 31 00  h.o.n...3...1.1.\r\n0160:  5f 00 33 00 2e 00 31 00  31 00 2e 00 32 00 32 00  _.3...1.1...2.2.\r\n0170:  38 00 38 00 2e 00 30 00  5f 00 78 00 36 00 34 00  8.8...0._.x.6.4.\r\n0180:  5f 00 5f 00 71 00 62 00  7a 00 35 00 6e 00 32 00  _._.q.b.z.5.n.2.\r\n0190:  6b 00 66 00 72 00 61 00  38 00 70 00 30 00 5c 00  k.f.r.a.8.p.0.\\.\r\n01a0:  70 00 79 00 74 00 68 00  6f 00 6e 00 33 00 2e 00  p.y.t.h.o.n.3...\r\n01b0:  31 00 31 00 2e 00 65 00  78 00 65 00 00 00 30 00  1.1...e.x.e...0.\r\n01c0:  00 00\r\n```\r\n\r\nThe cheap fix is to update the neovim variable to the proper (non-zero sized exe):\r\n```\r\nlet g:python3_host_prog = 'C:\\Program Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.11_3.11.2288.0_x64__qbz5n2kfra8p0\\python3.11.exe'\r\n```\r\nThe downside is imagine the path will change when ever a update is provided from the Microsoft Store.\r\n\r\nThe long term fix is probably with the neovim dev to help the Window lusers out by accomidating for this.\r\n\r\nHope that helps other users and the devs.",
+            "created_at": "2024-03-06T05:06:24Z",
+            "html_url": "https://github.com/neovim/neovim/issues/22117#issuecomment-1980095820",
+            "id": 1980095820,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/22117",
+            "node_id": "IC_kwDOAPphoM52Bd1M",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1980095820/reactions"
+            },
+            "updated_at": "2024-03-06T05:06:24Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1980095820",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/2858315?v=4",
+                "events_url": "https://api.github.com/users/camAtGitHub/events{/privacy}",
+                "followers_url": "https://api.github.com/users/camAtGitHub/followers",
+                "following_url": "https://api.github.com/users/camAtGitHub/following{/other_user}",
+                "gists_url": "https://api.github.com/users/camAtGitHub/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/camAtGitHub",
+                "id": 2858315,
+                "login": "camAtGitHub",
+                "node_id": "MDQ6VXNlcjI4NTgzMTU=",
+                "organizations_url": "https://api.github.com/users/camAtGitHub/orgs",
+                "received_events_url": "https://api.github.com/users/camAtGitHub/received_events",
+                "repos_url": "https://api.github.com/users/camAtGitHub/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/camAtGitHub/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/camAtGitHub/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/camAtGitHub"
+            }
         }
     ],
-    "comments": 10,
+    "comments": 11,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/22117/comments",
     "created_at": "2023-02-04T14:01:45Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/22117/events",
@@ -505,7 +549,7 @@
     "state_reason": "completed",
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/22117/timeline",
     "title": "neovim does not detect python on Windows 11",
-    "updated_at": "2024-03-02T03:32:47Z",
+    "updated_at": "2024-03-06T05:06:25Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/22117",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/6717655?v=4",
