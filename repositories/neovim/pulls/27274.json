@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 5189,
-            "forks_count": 5189,
+            "forks": 5202,
+            "forks_count": 5202,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1716,
-            "open_issues_count": 1716,
+            "open_issues": 1720,
+            "open_issues_count": 1720,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -118,11 +118,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2024-03-19T01:12:16Z",
+            "pushed_at": "2024-03-26T01:37:47Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 261738,
+            "size": 262768,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 75214,
+            "stargazers_count": 75451,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -140,11 +140,11 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2024-03-19T01:09:02Z",
+            "updated_at": "2024-03-26T01:55:03Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 75214,
-            "watchers_count": 75214,
+            "watchers": 75451,
+            "watchers_count": 75451,
             "web_commit_signoff_required": false
         },
         "sha": "3b29b39e6deb212456eba691bc79b17edaa8717b",
@@ -1337,6 +1337,75 @@
                 "type": "User",
                 "url": "https://api.github.com/users/wookayin"
             }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/27274#discussion_r1538306895"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/27274"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1538306895"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "I've addressed this issue by moving all the match tracking into Lua in #27921 and then adding memoization (via the match id) in #28033.",
+            "commit_id": "782d7f045d57b0ca0ec89c41aae75ca784123211",
+            "created_at": "2024-03-25T22:26:01Z",
+            "diff_hunk": "@@ -1411,26 +1420,44 @@ static int query_next_capture(lua_State *L)\n     push_node(L, capture.node, lua_upvalueindex(2));  // [index, node]\n \n     // Now check if we need to run the predicates\n+    // a predicate is executed only once within the same match.\n     uint32_t n_pred;\n     ts_query_predicates_for_pattern(query, match.pattern_index, &n_pred);\n \n-    if (n_pred > 0 && (ud->max_match_id < (int)match.id)) {\n+    if (n_pred == 0) {\n+      // No predicates. Return without the match table as a small perf optimization,\n+      // because in the iter_captures() method, match table won't be needed.\n+      // [index, node]\n+      return 2;\n+    }\n+\n+    // A new match is found. the use of `max_match_id` assumed that `ts_query_cursor_next_capture()`\n+    // would enumerate captures in the order that \"match\"es increases monotonoically.\n+    // The `ts_query_cursor_next_capture()` would enumerate captures in the order they are found.\n+    // TODO(wookayin): However, this is not guaranteed, and indeed assertion fails.\n+    // Therefore, when matches are alternating, the information about if predicate is active\n+    // won't be maintained, which can still lead to incorrect behavior of predicates.\n+    assert(ud->max_match_id <= (int)match.id);\n+    if (ud->max_match_id < (int)match.id) {",
+            "html_url": "https://github.com/neovim/neovim/pull/27274#discussion_r1538306895",
+            "id": 1538306895,
+            "in_reply_to_id": 1473335027,
+            "line": 1445,
+            "node_id": "PRRC_kwDOAPphoM5bsLNP",
+            "original_commit_id": "f1734aa02658cbcba58bfbfc7e56e639732f10ce",
+            "original_line": 1445,
+            "original_position": 81,
+            "original_start_line": null,
+            "path": "src/nvim/lua/treesitter.c",
+            "position": 39,
+            "pull_request_review_id": 1958883859,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27274",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1538306895/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-03-25T22:26:01Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1538306895",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",
+                "events_url": "https://api.github.com/users/lewis6991/events{/privacy}",
+                "followers_url": "https://api.github.com/users/lewis6991/followers",
+                "following_url": "https://api.github.com/users/lewis6991/following{/other_user}",
+                "gists_url": "https://api.github.com/users/lewis6991/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/lewis6991",
+                "id": 7904185,
+                "login": "lewis6991",
+                "node_id": "MDQ6VXNlcjc5MDQxODU=",
+                "organizations_url": "https://api.github.com/users/lewis6991/orgs",
+                "received_events_url": "https://api.github.com/users/lewis6991/received_events",
+                "repos_url": "https://api.github.com/users/lewis6991/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/lewis6991"
+            }
         }
     ],
     "comment_regular_data": [
@@ -1478,9 +1547,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/wookayin/neovim/pulls{/number}",
-            "pushed_at": "2024-03-18T05:28:25Z",
+            "pushed_at": "2024-03-25T05:25:05Z",
             "releases_url": "https://api.github.com/repos/wookayin/neovim/releases{/id}",
-            "size": 256648,
+            "size": 257547,
             "ssh_url": "git@github.com:wookayin/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/wookayin/neovim/stargazers",
@@ -1536,11 +1605,11 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "d89f504643b95237ed5559dfab4f9b4cffd5e080",
+    "merge_commit_sha": "e0881389cc114dbb58fd7dfbff257106e81a7465",
     "merged_at": null,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 317,
+        "closed_issues": 335,
         "created_at": "2023-02-02T14:11:43Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1363104?v=4",
@@ -1569,10 +1638,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/36/labels",
         "node_id": "MI_kwDOAPphoM4AiUsW",
         "number": 36,
-        "open_issues": 115,
+        "open_issues": 106,
         "state": "open",
         "title": "0.10",
-        "updated_at": "2024-03-19T00:59:38Z",
+        "updated_at": "2024-03-25T22:55:06Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/36"
     },
     "node_id": "PR_kwDOAPphoM5liGOb",
@@ -1585,7 +1654,7 @@
     "state": "open",
     "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/782d7f045d57b0ca0ec89c41aae75ca784123211",
     "title": "fix(treesitter): make iter_captures() return a correct match table",
-    "updated_at": "2024-03-17T23:25:12Z",
+    "updated_at": "2024-03-25T22:26:01Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/27274",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1009873?v=4",

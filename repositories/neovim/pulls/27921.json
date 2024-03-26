@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/27921"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/3a248ee8980aa74c526fb3e547466c5fdb405fdf"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/314f149a6a041ceecf294ed0b514f71aff570107"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 5189,
-            "forks_count": 5189,
+            "forks": 5202,
+            "forks_count": 5202,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1716,
-            "open_issues_count": 1716,
+            "open_issues": 1720,
+            "open_issues_count": 1720,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -118,11 +118,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2024-03-19T01:12:16Z",
+            "pushed_at": "2024-03-26T01:37:47Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 261738,
+            "size": 262768,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 75214,
+            "stargazers_count": 75451,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -140,14 +140,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2024-03-19T01:09:02Z",
+            "updated_at": "2024-03-26T01:55:03Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 75214,
-            "watchers_count": 75214,
+            "watchers": 75451,
+            "watchers_count": 75451,
             "web_commit_signoff_required": false
         },
-        "sha": "79af4e7e734ed460eddbd57b7bf70d3e1624d772",
+        "sha": "16a416cb3c17ed3a7f21d35da5d211fcad947768",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -169,15 +169,152 @@
             "url": "https://api.github.com/users/neovim"
         }
     },
-    "body": "## Problem\r\n\r\n`TSNode:_rawquery()` is complicated, has known issues and the Lua and C code is awkwardly coupled (see logic with `active`).\r\n\r\n## Solution\r\n\r\n- Add `TSQueryCursor` and `TSQueryMatch` bindings.\r\n- Replace `TSNode:_rawquery()` with `TSQueryCursor:next_capture()` and `TSQueryCursor:next_match()`\r\n- Do more stuff in Lua\r\n- API for `Query:iter_captures()` and `Query:iter_matches()` remains the same.\r\n",
-    "closed_at": null,
-    "comment_data": [],
+    "body": "## Problem\r\n\r\n`TSNode:_rawquery()` is complicated, has known issues and the Lua and C code is awkwardly coupled (see logic with `active`).\r\n\r\n## Solution\r\n\r\n- Add `TSQueryCursor` and `TSQueryMatch` bindings.\r\n- Replace `TSNode:_rawquery()` with `TSQueryCursor:next_capture()` and `TSQueryCursor:next_match()`\r\n- Do more stuff in Lua\r\n- API for `Query:iter_captures()` and `Query:iter_matches()` remains the same.\r\n- `treesitter.c` no longer contains any logic related to predicates.\r\n- Add `match_limit` option to `iter_matches()`. Default is still 256.\r\n",
+    "closed_at": "2024-03-19T14:24:59Z",
+    "comment_data": [
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/27921#discussion_r1530234429"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/27921"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1530234429"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "`match_id > max_match_id` causes incorrect metadata to be generated for non-first captures. The easy fix is to remove this term and locally cache `apply_directives` and `match_preds`.",
+            "commit_id": "314f149a6a041ceecf294ed0b514f71aff570107",
+            "created_at": "2024-03-19T12:02:39Z",
+            "diff_hunk": "@@ -831,33 +841,49 @@ end\n ---@param start? integer Starting line for the search. Defaults to `node:start()`.\n ---@param stop? integer Stopping line for the search (end-exclusive). Defaults to `node:end_()`.\n ---\n----@return (fun(end_line: integer|nil): integer, TSNode, vim.treesitter.query.TSMetadata, table<integer, TSNode>):\n+---@return (fun(end_line: integer|nil): integer, TSNode, vim.treesitter.query.TSMetadata, table<integer,TSNode[]>?):\n ---        capture id, capture node, metadata, match\n+---\n+---@note Captures are only returned if the query pattern of a specific capture contained predicates.\n function Query:iter_captures(node, source, start, stop)\n   if type(source) == 'number' and source == 0 then\n     source = api.nvim_get_current_buf()\n   end\n \n   start, stop = value_or_node_range(start, stop, node)\n \n-  local raw_iter = node:_rawquery(self.query, true, start, stop) ---@type fun(): integer, TSNode, vim.treesitter.query.TSMatch\n+  local cursor = vim._create_ts_querycursor(node, self.query, start, stop)\n+\n+  local max_match_id = -1\n+\n   local function iter(end_line)\n-    local capture, captured_node, match = raw_iter()\n+    local capture, captured_node, match = cursor:next_capture()\n+\n+    if not capture then\n+      return\n+    end\n+\n+    local captures --- @type table<integer,TSNode[]>?\n+    local match_id, pattern_index = match:info()\n+\n     local metadata = {}\n \n-    if match ~= nil then\n-      local active = self:match_preds(match, match.pattern, source)\n-      match.active = active\n-      if not active then\n+    local preds = self.info.patterns[pattern_index] or {}\n+\n+    if #preds > 0 and match_id > max_match_id then",
+            "html_url": "https://github.com/neovim/neovim/pull/27921#discussion_r1530234429",
+            "id": 1530234429,
+            "line": 873,
+            "node_id": "PRRC_kwDOAPphoM5bNYY9",
+            "original_commit_id": "031b7851e99b0ee48554eb0e7e070664462a3ef4",
+            "original_line": 873,
+            "original_position": 173,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/treesitter/query.lua",
+            "position": 173,
+            "pull_request_review_id": 1945997230,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27921",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1530234429/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-03-19T12:02:39Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1530234429",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",
+                "events_url": "https://api.github.com/users/lewis6991/events{/privacy}",
+                "followers_url": "https://api.github.com/users/lewis6991/followers",
+                "following_url": "https://api.github.com/users/lewis6991/following{/other_user}",
+                "gists_url": "https://api.github.com/users/lewis6991/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/lewis6991",
+                "id": 7904185,
+                "login": "lewis6991",
+                "node_id": "MDQ6VXNlcjc5MDQxODU=",
+                "organizations_url": "https://api.github.com/users/lewis6991/orgs",
+                "received_events_url": "https://api.github.com/users/lewis6991/received_events",
+                "repos_url": "https://api.github.com/users/lewis6991/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/lewis6991"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/27921#discussion_r1530237393"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/27921"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1530237393"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Keeping this out of `querymatch_info` means paying the cost of building the captures table is opt-in. A future improvement will be to cache this table to speed up multiple calls to `match:captures()`.",
+            "commit_id": "314f149a6a041ceecf294ed0b514f71aff570107",
+            "created_at": "2024-03-19T12:05:11Z",
+            "diff_hunk": "@@ -1361,173 +1365,133 @@ static int node_equal(lua_State *L)\n   return 1;\n }\n \n-/// assumes the match table being on top of the stack\n-static void set_match(lua_State *L, TSQueryMatch *match, int nodeidx)\n-{\n-  // [match]\n-  for (size_t i = 0; i < match->capture_count; i++) {\n-    lua_rawgeti(L, -1, (int)match->captures[i].index + 1);  // [match, captures]\n-    if (lua_isnil(L, -1)) {  // [match, nil]\n-      lua_pop(L, 1);  // [match]\n-      lua_createtable(L, 1, 0);  // [match, captures]\n-    }\n-    push_node(L, match->captures[i].node, nodeidx);  // [match, captures, node]\n-    lua_rawseti(L, -2, (int)lua_objlen(L, -2) + 1);  // [match, captures]\n-    lua_rawseti(L, -2, (int)match->captures[i].index + 1);  // [match]\n-  }\n-}\n-\n-static int query_next_match(lua_State *L)\n+int tslua_push_querycursor(lua_State *L)\n {\n-  TSLua_cursor *ud = lua_touserdata(L, lua_upvalueindex(1));\n-  TSQueryCursor *cursor = ud->cursor;\n+  TSQueryCursor *cursor = ts_query_cursor_new();\n+  ts_query_cursor_set_match_limit(cursor, 256);\n \n-  TSQuery *query = query_check(L, lua_upvalueindex(3));\n-  TSQueryMatch match;\n-  if (ts_query_cursor_next_match(cursor, &match)) {\n-    lua_pushinteger(L, match.pattern_index + 1);  // [index]\n-    lua_createtable(L, (int)ts_query_capture_count(query), 0);  // [index, match]\n-    set_match(L, &match, lua_upvalueindex(2));\n-    return 2;\n+  TSNode node;\n+  if (!node_check(L, 1, &node)) {\n+    return 0;\n   }\n-  return 0;\n-}\n \n-static int query_next_capture(lua_State *L)\n-{\n-  // Upvalues are:\n-  // [ cursor, node, query, current_match ]\n-  TSLua_cursor *ud = lua_touserdata(L, lua_upvalueindex(1));\n-  TSQueryCursor *cursor = ud->cursor;\n+  TSQuery *query = query_check(L, 2);\n \n-  TSQuery *query = query_check(L, lua_upvalueindex(3));\n+  ts_query_cursor_exec(cursor, query, node);\n \n-  if (ud->predicated_match > -1) {\n-    lua_getfield(L, lua_upvalueindex(4), \"active\");\n-    bool active = lua_toboolean(L, -1);\n-    lua_pop(L, 1);\n-    if (!active) {\n-      ts_query_cursor_remove_match(cursor, (uint32_t)ud->predicated_match);\n-    }\n-    ud->predicated_match = -1;\n+  if (lua_gettop(L) >= 3) {\n+    uint32_t start = (uint32_t)luaL_checkinteger(L, 3);\n+    uint32_t end = lua_gettop(L) >= 4 ? (uint32_t)luaL_checkinteger(L, 4) : MAXLNUM;\n+    ts_query_cursor_set_point_range(cursor, (TSPoint){ start, 0 }, (TSPoint){ end, 0 });\n   }\n \n-  TSQueryMatch match;\n-  uint32_t capture_index;\n-  if (ts_query_cursor_next_capture(cursor, &match, &capture_index)) {\n-    TSQueryCapture capture = match.captures[capture_index];\n-\n-    // TODO(vigoux): handle capture quantifiers here\n-    lua_pushinteger(L, capture.index + 1);  // [index]\n-    push_node(L, capture.node, lua_upvalueindex(2));  // [index, node]\n-\n-    // Now check if we need to run the predicates\n-    uint32_t n_pred;\n-    ts_query_predicates_for_pattern(query, match.pattern_index, &n_pred);\n-\n-    if (n_pred > 0 && (ud->max_match_id < (int)match.id)) {\n-      ud->max_match_id = (int)match.id;\n-\n-      // Create a new cleared match table\n-      lua_createtable(L, (int)ts_query_capture_count(query), 2);  // [index, node, match]\n-      set_match(L, &match, lua_upvalueindex(2));\n-      lua_pushinteger(L, match.pattern_index + 1);\n-      lua_setfield(L, -2, \"pattern\");\n-\n-      if (match.capture_count > 1) {\n-        ud->predicated_match = (int)match.id;\n-        lua_pushboolean(L, false);\n-        lua_setfield(L, -2, \"active\");\n-      }\n+  TSQueryCursor **ud = lua_newuserdata(L, sizeof(*ud));  // [node, query, ..., udata]\n+  *ud = cursor;\n+  lua_getfield(L, LUA_REGISTRYINDEX, TS_META_QUERYCURSOR);  // [node, query, ..., udata, meta]\n+  lua_setmetatable(L, -2);  // [node, query, ..., udata]\n \n-      // Set current_match to the new match\n-      lua_replace(L, lua_upvalueindex(4));  // [index, node]\n-      lua_pushvalue(L, lua_upvalueindex(4));  // [index, node, match]\n-      return 3;\n-    }\n-    return 2;\n-  }\n-  return 0;\n+  // Copy the fenv which contains the nodes tree.\n+  lua_getfenv(L, 1);  // [udata, reftable]\n+  lua_setfenv(L, -2);  // [udata]\n+\n+  return 1;\n }\n \n-static int node_rawquery(lua_State *L)\n+static int querycursor_remove_match(lua_State *L)\n {\n-  TSNode node;\n-  if (!node_check(L, 1, &node)) {\n-    return 0;\n-  }\n-  TSQuery *query = query_check(L, 2);\n+  TSQueryCursor *cursor = querycursor_check(L, 1);\n+  uint32_t match_id = (uint32_t)luaL_checkinteger(L, 2);\n+  ts_query_cursor_remove_match(cursor, match_id);\n+  return 0;\n+}\n \n-  TSQueryCursor *cursor;\n-  if (kv_size(cursors) > 0) {\n-    cursor = kv_pop(cursors);\n-  } else {\n-    cursor = ts_query_cursor_new();\n-  }\n+static void push_querymatch(lua_State *L, TSQueryMatch *match, int uindex)\n+{\n+  TSQueryMatch *ud = lua_newuserdata(L, sizeof(TSQueryMatch));  // [udata]\n+  *ud = *match;\n+  lua_getfield(L, LUA_REGISTRYINDEX, TS_META_QUERYMATCH);  // [udata, meta]\n+  lua_setmetatable(L, -2);  // [udata]\n \n-  ts_query_cursor_set_max_start_depth(cursor, UINT32_MAX);\n-  ts_query_cursor_set_match_limit(cursor, 256);\n-  ts_query_cursor_exec(cursor, query, node);\n+  // Copy the fenv which contains the nodes tree.\n+  lua_getfenv(L, uindex);  // [udata, reftable]\n+  lua_setfenv(L, -2);  // [udata]\n+}\n \n-  bool captures = lua_toboolean(L, 3);\n+static int querycursor_next_capture(lua_State *L)\n+{\n+  TSQueryCursor *cursor = querycursor_check(L, 1);\n \n-  if (lua_gettop(L) >= 4) {\n-    uint32_t start = (uint32_t)luaL_checkinteger(L, 4);\n-    uint32_t end = lua_gettop(L) >= 5 ? (uint32_t)luaL_checkinteger(L, 5) : MAXLNUM;\n-    ts_query_cursor_set_point_range(cursor, (TSPoint){ start, 0 }, (TSPoint){ end, 0 });\n+  TSQueryMatch match;\n+  uint32_t capture_index;\n+  if (!ts_query_cursor_next_capture(cursor, &match, &capture_index)) {\n+    return 0;\n   }\n \n-  if (lua_gettop(L) >= 6 && !lua_isnil(L, 6)) {\n-    if (!lua_istable(L, 6)) {\n-      return luaL_error(L, \"table expected\");\n-    }\n-    lua_pushnil(L);\n-    // stack: [dict, ..., nil]\n-    while (lua_next(L, 6)) {\n-      // stack: [dict, ..., key, value]\n-      if (lua_type(L, -2) == LUA_TSTRING) {\n-        char *k = (char *)lua_tostring(L, -2);\n-        if (strequal(\"max_start_depth\", k)) {\n-          uint32_t max_start_depth = (uint32_t)lua_tointeger(L, -1);\n-          ts_query_cursor_set_max_start_depth(cursor, max_start_depth);\n-        }\n-      }\n-      lua_pop(L, 1);  // pop the value; lua_next will pop the key.\n-      // stack: [dict, ..., key]\n-    }\n-  }\n+  TSQueryCapture capture = match.captures[capture_index];\n \n-  TSLua_cursor *ud = lua_newuserdata(L, sizeof(*ud));  // [udata]\n-  ud->cursor = cursor;\n-  ud->predicated_match = -1;\n-  ud->max_match_id = -1;\n+  // Handle capture quantifiers here\n+  lua_pushinteger(L, capture.index + 1);  // [index]\n+  push_node(L, capture.node, 1);  // [index, node]\n+  push_querymatch(L, &match, 1);\n \n-  lua_getfield(L, LUA_REGISTRYINDEX, TS_META_QUERYCURSOR);\n-  lua_setmetatable(L, -2);  // [udata]\n-  lua_pushvalue(L, 1);  // [udata, node]\n+  return 3;\n+}\n \n-  // include query separately, as to keep a ref to it for gc\n-  lua_pushvalue(L, 2);  // [udata, node, query]\n+static int querycursor_next_match(lua_State *L)\n+{\n+  TSQueryCursor *cursor = querycursor_check(L, 1);\n \n-  if (captures) {\n-    // placeholder for match state\n-    lua_createtable(L, (int)ts_query_capture_count(query), 2);  // [u, n, q, match]\n-    lua_pushcclosure(L, query_next_capture, 4);  // [closure]\n-  } else {\n-    lua_pushcclosure(L, query_next_match, 3);  // [closure]\n+  TSQueryMatch match;\n+  if (!ts_query_cursor_next_match(cursor, &match)) {\n+    return 0;\n   }\n \n+  push_querymatch(L, &match, 1);\n+\n   return 1;\n }\n \n+static TSQueryCursor *querycursor_check(lua_State *L, int index)\n+{\n+  TSQueryCursor **ud = luaL_checkudata(L, index, TS_META_QUERYCURSOR);\n+  return *ud;\n+}\n+\n static int querycursor_gc(lua_State *L)\n {\n-  TSLua_cursor *ud = luaL_checkudata(L, 1, TS_META_QUERYCURSOR);\n-  kv_push(cursors, ud->cursor);\n-  ud->cursor = NULL;\n+  TSQueryCursor *cursor = querycursor_check(L, 1);\n+  ts_query_cursor_delete(cursor);\n   return 0;\n }\n \n+static int querymatch_info(lua_State *L)\n+{\n+  TSQueryMatch *ud = luaL_checkudata(L, 1, TS_META_QUERYMATCH);\n+  lua_pushinteger(L, ud->id);\n+  lua_pushinteger(L, ud->pattern_index + 1);\n+  return 2;\n+}\n+\n+static int querymatch_captures(lua_State *L)",
+            "html_url": "https://github.com/neovim/neovim/pull/27921#discussion_r1530237393",
+            "id": 1530237393,
+            "line": 1498,
+            "node_id": "PRRC_kwDOAPphoM5bNZHR",
+            "original_commit_id": "031b7851e99b0ee48554eb0e7e070664462a3ef4",
+            "original_line": 1498,
+            "original_position": 308,
+            "original_start_line": null,
+            "path": "src/nvim/lua/treesitter.c",
+            "position": 325,
+            "pull_request_review_id": 1946006708,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27921",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1530237393/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-03-19T12:05:11Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1530237393",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",
+                "events_url": "https://api.github.com/users/lewis6991/events{/privacy}",
+                "followers_url": "https://api.github.com/users/lewis6991/followers",
+                "following_url": "https://api.github.com/users/lewis6991/following{/other_user}",
+                "gists_url": "https://api.github.com/users/lewis6991/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/lewis6991",
+                "id": 7904185,
+                "login": "lewis6991",
+                "node_id": "MDQ6VXNlcjc5MDQxODU=",
+                "organizations_url": "https://api.github.com/users/lewis6991/orgs",
+                "received_events_url": "https://api.github.com/users/lewis6991/received_events",
+                "repos_url": "https://api.github.com/users/lewis6991/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/lewis6991"
+            }
+        }
+    ],
     "comment_regular_data": [],
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/27921/comments",
     "commits_url": "https://api.github.com/repos/neovim/neovim/pulls/27921/commits",
     "created_at": "2024-03-18T23:19:19Z",
     "diff_url": "https://github.com/neovim/neovim/pull/27921.diff",
-    "draft": true,
+    "draft": false,
     "head": {
         "label": "lewis6991:queryiter",
         "ref": "queryiter",
@@ -266,9 +403,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/lewis6991/neovim/pulls{/number}",
-            "pushed_at": "2024-03-19T01:12:11Z",
+            "pushed_at": "2024-03-25T22:21:10Z",
             "releases_url": "https://api.github.com/repos/lewis6991/neovim/releases{/id}",
-            "size": 256235,
+            "size": 257251,
             "ssh_url": "git@github.com:lewis6991/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/lewis6991/neovim/stargazers",
@@ -287,7 +424,7 @@
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "3a248ee8980aa74c526fb3e547466c5fdb405fdf",
+        "sha": "314f149a6a041ceecf294ed0b514f71aff570107",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",
             "events_url": "https://api.github.com/users/lewis6991/events{/privacy}",
@@ -324,8 +461,8 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "691f375f18c385732630eae5d56cc70061545dc4",
-    "merged_at": null,
+    "merge_commit_sha": "aca2048bcd57937ea1c7b7f0325f25d5b82588db",
+    "merged_at": "2024-03-19T14:24:59Z",
     "milestone": null,
     "node_id": "PR_kwDOAPphoM5qBPe2",
     "number": 27921,
@@ -334,10 +471,10 @@
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/27921/comments",
-    "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/3a248ee8980aa74c526fb3e547466c5fdb405fdf",
-    "title": "feat(treesitter): redesign query iterating",
-    "updated_at": "2024-03-19T01:12:16Z",
+    "state": "closed",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/314f149a6a041ceecf294ed0b514f71aff570107",
+    "title": "refactor(treesitter): redesign query iterating",
+    "updated_at": "2024-03-19T14:25:14Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/27921",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",

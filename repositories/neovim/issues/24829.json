@@ -52,7 +52,7 @@
         },
         {
             "author_association": "MEMBER",
-            "body": "There doesn't seem to be a way to query or restore the old font. Also unlike 'guicursor', a sudden change of font is disrupting and may be unexpected for people who want 'guicursor' to only have effect in a GUI.",
+            "body": "There doesn't seem to be a way to query or restore the old font. Also unlike 'guicursor', a sudden change of font is disrupting and may be unexpected for people who want 'guifont' to only have effect in a GUI.",
             "created_at": "2023-08-22T03:40:22Z",
             "html_url": "https://github.com/neovim/neovim/issues/24829#issuecomment-1687367954",
             "id": 1687367954,
@@ -71,7 +71,7 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1687367954/reactions"
             },
-            "updated_at": "2023-08-22T03:40:22Z",
+            "updated_at": "2024-03-20T01:57:20Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1687367954",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
@@ -137,9 +137,97 @@
                 "type": "User",
                 "url": "https://api.github.com/users/AlexKurisu"
             }
+        },
+        {
+            "author_association": "NONE",
+            "body": "Querying the current font is just `OSC 50 ; ?`. For example:\r\n\r\n```sh\r\necho -e \"\\e]50;?\\e\\\\\"\r\n```\r\n\r\nIt returns the entire configuration control code sequence which allows the application to revert to the original font without guesswork.\r\n\r\nAs documented at https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Operating-System-Commands among other places.\r\n\r\nSupported by at least XTerm, Contour, URXVT (might be buggy), ESPTerm, and MinTTY.",
+            "created_at": "2024-03-20T01:54:39Z",
+            "html_url": "https://github.com/neovim/neovim/issues/24829#issuecomment-2008556160",
+            "id": 2008556160,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/24829",
+            "node_id": "IC_kwDOAPphoM53uCKA",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2008556160/reactions"
+            },
+            "updated_at": "2024-03-20T01:54:39Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2008556160",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/71984?v=4",
+                "events_url": "https://api.github.com/users/acook/events{/privacy}",
+                "followers_url": "https://api.github.com/users/acook/followers",
+                "following_url": "https://api.github.com/users/acook/following{/other_user}",
+                "gists_url": "https://api.github.com/users/acook/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/acook",
+                "id": 71984,
+                "login": "acook",
+                "node_id": "MDQ6VXNlcjcxOTg0",
+                "organizations_url": "https://api.github.com/users/acook/orgs",
+                "received_events_url": "https://api.github.com/users/acook/received_events",
+                "repos_url": "https://api.github.com/users/acook/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/acook/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/acook/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/acook"
+            }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "This seems achievable using Lua:\r\n```lua\r\nlocal saved_font\r\n\r\nlocal function tui_set_font(font)\r\n  io.stdout:write(('\\027]50;%s\\027\\\\'):format(font))\r\nend\r\n\r\nlocal function tui_may_set_font(font)\r\n  if font == '' then\r\n    return\r\n  end\r\n\r\n  if saved_font then\r\n    tui_set_font(font)\r\n    return\r\n  end\r\n\r\n  vim.api.nvim_create_autocmd('TermResponse', {\r\n    callback = function(args)\r\n      saved_font = args.data:match('^\\027%]50;(.*)$')\r\n      if saved_font then\r\n        tui_set_font(font)\r\n        return true\r\n      end\r\n    end,\r\n  })\r\n\r\n  io.stdout:write('\\027]50;?\\027\\\\')\r\nend\r\n\r\nvim.api.nvim_create_autocmd('UIEnter', {\r\n  callback = function()\r\n    tui_may_set_font(vim.o.guifont)\r\n  end,\r\n})\r\n\r\nvim.api.nvim_create_autocmd('OptionSet', {\r\n  pattern = 'guifont',\r\n  callback = function()\r\n    tui_may_set_font(vim.v.option_new)\r\n  end,\r\n})\r\n\r\nvim.api.nvim_create_autocmd('UILeave', {\r\n  callback = function()\r\n    if saved_font then\r\n      tui_set_font(saved_font)\r\n    end\r\n  end\r\n})\r\n```\r\nAlthough this:\r\n- Doesn't seem able to restore original font size in XTerm, because XTerm's response to the query doesn't include it.\r\n- Doesn't work for `--remote-ui`.",
+            "created_at": "2024-03-20T03:28:48Z",
+            "html_url": "https://github.com/neovim/neovim/issues/24829#issuecomment-2008609496",
+            "id": 2008609496,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/24829",
+            "node_id": "IC_kwDOAPphoM53uPLY",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 2,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 2,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2008609496/reactions"
+            },
+            "updated_at": "2024-03-20T03:55:10Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2008609496",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+                "followers_url": "https://api.github.com/users/zeertzjq/followers",
+                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/zeertzjq",
+                "id": 35768171,
+                "login": "zeertzjq",
+                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+                "repos_url": "https://api.github.com/users/zeertzjq/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/zeertzjq"
+            }
         }
     ],
-    "comments": 3,
+    "comments": 5,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/24829/comments",
     "created_at": "2023-08-21T16:40:59Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/24829/events",
@@ -163,22 +251,13 @@
             "name": "tui",
             "node_id": "MDU6TGFiZWwxOTcyNTQ1NDU=",
             "url": "https://api.github.com/repos/neovim/neovim/labels/tui"
-        },
-        {
-            "color": "FBCA04",
-            "default": false,
-            "description": "For PRs that propose significant changes to some part of the architecture or API",
-            "id": 212680983,
-            "name": "needs:discussion",
-            "node_id": "MDU6TGFiZWwyMTI2ODA5ODM=",
-            "url": "https://api.github.com/repos/neovim/neovim/labels/needs:discussion"
         }
     ],
     "labels_url": "https://api.github.com/repos/neovim/neovim/issues/24829/labels{/name}",
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 579,
+        "closed_issues": 601,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -207,10 +286,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 414,
+        "open_issues": 430,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2023-09-12T14:02:19Z",
+        "updated_at": "2024-03-25T22:54:54Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM5u2Y8A",
@@ -233,7 +312,7 @@
     "state_reason": null,
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/24829/timeline",
     "title": "TUI: Support 'guifont' in terminals that recognise OSC 50 (XTerm Set Font)",
-    "updated_at": "2023-09-12T14:02:19Z",
+    "updated_at": "2024-03-20T03:55:10Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/24829",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/60626727?v=4",

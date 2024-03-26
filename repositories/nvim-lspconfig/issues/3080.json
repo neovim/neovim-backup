@@ -4,7 +4,7 @@
     "assignees": [],
     "author_association": "NONE",
     "body": "### Description\r\n\r\nIt seems that for some reason after this change it is required for a server to have single file support, otherwise it would short circuit and simply spawn new clients. Which imo, is a regression, i have no idea why single_file_support matters in this case.\r\n\r\n```\r\nfunction M:add(root_dir, single_file, bufnr)\r\n  root_dir = util.path.sanitize(root_dir)\r\n  local new_config = self.make_config(root_dir)\r\n  local client = get_client(self._clients, root_dir, new_config.name)\r\n\r\n  ---If single_file_mode is false then root_dir should match client otherwise start a new client\r\n  --- this regression here would simply keep spawning new clients even though they might support multi ws.\r\n  --- why does not having single file support imply forcibly spawning new instances ?\r\n  if not client or (not single_file and client.config.root_dir and client.config.root_dir ~= root_dir) then\r\n    return self:_start_new_client(bufnr, new_config, root_dir, single_file)\r\n  end\r\n\r\n  if self._clients[root_dir] or single_file then\r\n    lsp.buf_attach_client(bufnr, client.id)\r\n    return\r\n  end\r\n\r\n  -- make sure neovim had exchanged capabilities from language server\r\n  -- it's useful to check server support workspaceFolders or not\r\n  -- this is where the multi workspace support code branches off\r\n  if client.initialized and client.server_capabilities then\r\n    self:_attach_or_spawn(bufnr, new_config, root_dir, client, single_file)\r\n  else\r\n    self:_attach_after_client_initialized(bufnr, new_config, root_dir, client, single_file)\r\n  end\r\nend\r\n\r\n```\r\n\r\n@serranomorante ?",
-    "closed_at": null,
+    "closed_at": "2024-03-24T05:39:14Z",
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -181,9 +181,53 @@
                 "type": "User",
                 "url": "https://api.github.com/users/serranomorante"
             }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "I think is best for now to just revert my changes. That will solve this issue here.\r\nMy original solution (that caused this regression) don't seem to be working anymore which is strange. Sorry for the inconvenience.",
+            "created_at": "2024-03-23T17:36:59Z",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/issues/3080#issuecomment-2016556649",
+            "id": 2016556649,
+            "issue_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/3080",
+            "node_id": "IC_kwDODTQC1854MjZp",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/comments/2016556649/reactions"
+            },
+            "updated_at": "2024-03-23T17:36:59Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/comments/2016556649",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/43413954?v=4",
+                "events_url": "https://api.github.com/users/serranomorante/events{/privacy}",
+                "followers_url": "https://api.github.com/users/serranomorante/followers",
+                "following_url": "https://api.github.com/users/serranomorante/following{/other_user}",
+                "gists_url": "https://api.github.com/users/serranomorante/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/serranomorante",
+                "id": 43413954,
+                "login": "serranomorante",
+                "node_id": "MDQ6VXNlcjQzNDEzOTU0",
+                "organizations_url": "https://api.github.com/users/serranomorante/orgs",
+                "received_events_url": "https://api.github.com/users/serranomorante/received_events",
+                "repos_url": "https://api.github.com/users/serranomorante/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/serranomorante/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/serranomorante/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/serranomorante"
+            }
         }
     ],
-    "comments": 4,
+    "comments": 5,
     "comments_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/3080/comments",
     "created_at": "2024-03-18T04:27:22Z",
     "events_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/3080/events",
@@ -219,11 +263,11 @@
         "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/3080/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/nvim-lspconfig",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "timeline_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/3080/timeline",
     "title": "Multi workspace support for language servers broken after 0a1a2aa5",
-    "updated_at": "2024-03-18T21:24:45Z",
+    "updated_at": "2024-03-24T05:39:14Z",
     "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/3080",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/15955811?v=4",
