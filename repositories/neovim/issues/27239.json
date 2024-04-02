@@ -4,7 +4,7 @@
     "assignees": [],
     "author_association": "MEMBER",
     "body": "### Problem\r\n\r\nTreesitter highlight works incorrectly with some certain queries with predicates. This example was brought by an user `refp`:\r\n\r\nLanguage: `go`\r\n\r\n<img src=\"https://github.com/neovim/neovim/assets/1009873/c61f6553-a04a-4a0f-b4e5-97a5ae72fb39\" width=500 />\r\n\r\n<br/>\r\n\r\nWith the following query, whose intention is to capture highlight a string in some function call with `@sql` when the method name is `Query`:\r\n\r\n```query\r\n((call_expression\r\n  (selector_expression\r\n    field: (field_identifier) @_field)\r\n  (argument_list\r\n    [\r\n      (raw_string_literal)\r\n      (interpreted_string_literal)\r\n    ] @sql))\r\n  (#eq? @_field \"Query\")\r\n  ; (#offset! @sql 0 0 0 0); <----------- note this hack [optional]\r\n)\r\n```\r\n\r\nThis should match only for `db.Query(\"SELECT ...\")`, but NOT for `db.NotQuery(\"SELECT ...\")`. But treesitter is returning two captures as shown in the screenshot.\r\n\r\nWhat's strange is, **when we add the directive**\r\n```\r\n(#offset! @sql 0 0 0 0)\r\n```\r\n\r\nwhich semantically does nothing, *it works*: the capture group is correct. Please see the minimal reproduction below.\r\n\r\nThis bug could be either:\r\n\r\n- a bug of neovim (in `treesitter.c` code)\r\n- or a bug of the upstream tree-sitter\r\n\r\nRelated to #23664 but slightly different (it's not about metadata, `match` being incorrect), probably sharing the same root cause.\r\n\r\n\r\n### Steps to reproduce\r\n\r\nHave a go parser installed on VIMRUNTIME.\r\n\r\n```lua\r\n-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\r\n-- 1. Prepare parser (tree) and the query.\r\n-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\r\n\r\nlocal code = [[\r\ndb.Query(\"INTERPRETED STRING\")\r\ndb.NotQuery(`RAW STRING`)\r\n]] -- lang:go\r\n\r\nlocal parser = vim.treesitter.get_string_parser(code, 'go', {}) ---@type LanguageTree\r\nlocal tree = parser:parse()[1] ---@type TSTree\r\nlocal root = tree:root() ---@type TSNode\r\n\r\nlocal query = [[\r\n((call_expression\r\n  (selector_expression\r\n    field: (field_identifier) @_field)\r\n  (argument_list\r\n    [\r\n      (raw_string_literal)\r\n      (interpreted_string_literal)\r\n    ] @sql))\r\n  (#eq? @_field \"Query\")\r\n  ; (#offset! @sql 0 0 0 0); <----------- note this hack [optional]\r\n)\r\n]]\r\n\r\n---@type Query\r\nlocal ts_query = vim.treesitter.query.parse('go', query)\r\n-- vim.print(ts_query)\r\n-- {\r\n--   captures = <1>{ \"_field\", \"sql\" },\r\n--   info = {\r\n--     captures = <table 1>,\r\n--     patterns = { {\r\n--        { \"any-of?\", 1, \"Query\" },\r\n--        { \"offset!\", 2, \"0\", \"0\", \"0\", \"0\" }  -- <--------------- optional\r\n--     } }\r\n--   },\r\n--   ...\r\n-- }\r\n\r\n-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\r\n-- 2. Execute the query and get all the captures.\r\n-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\r\n\r\nfor capture_id, node, metadata in ts_query:iter_captures(root, code, 0, 3) do\r\n  ---@cast node TSNode\r\n  ---@cast metadata TSMetadata\r\n\r\n  local name = ts_query.captures[capture_id]\r\n\r\n  local node_text = vim.treesitter.get_node_text(node, code, { metadata = metadata })\r\n  vim.print(('id=%d @%-8s : node = %s'):format(capture_id, name, node_text))\r\nend\r\n\r\n-- Result (BUG!) there is an errorneous match.\r\n-- id=1 @_field   : node = Query\r\n-- id=2 @sql      : node = \"INTERPRETED STRING\"\r\n-- id=2 @sql      : node = `RAW STRING`  <---------- should not match.\r\n\r\n-- Result with (#offset! @sql 0 0 0 0) enabled: correctly captures only one `@sql` match\r\n-- id=1 @_field   : node = Query\r\n-- id=2 @sql      : node = \"INTERPRETED STRING\"\r\n```\r\n\r\n### Expected behavior\r\n\r\n<details>\r\n<summary>(Folded: with the `dummy` directive applied)</summary>\r\n\r\n<img src=\"https://github.com/neovim/neovim/assets/1009873/1e63feae-2004-420a-98fd-0f99841dc5b2\" width=500 />\r\n\r\n</details>\r\n\r\nCorrect result: only one capture is returned for `@sql`.\r\n\r\n```diff\r\n -- id=1 @_field   : node = Query\r\n -- id=2 @sql      : node = \"INTERPRETED STRING\"\r\n```\r\n\r\nBut the above code gives an erroneous capture:\r\n\r\n```diff\r\n -- id=1 @_field   : node = Query\r\n -- id=2 @sql      : node = \"INTERPRETED STRING\"\r\n--- id=2 @sql      : node = `RAW STRING`  <---------- should not match.\r\n```\r\n\r\n\r\n### Neovim version (nvim -v)\r\n\r\n0.10-HEAD 2cd76a758\r\n\r\n<details>\r\n<summary>Other details (irrelevant)</summary>\r\n\r\n### Vim (not Nvim) behaves the same?\r\n\r\nN/A\r\n\r\n### Operating system/version\r\n\r\nmacOS 14\r\n\r\n### Terminal name/version\r\n\r\ndoesn't matter\r\n\r\n### $TERM environment variable\r\n\r\nxterm-256color\r\n\r\n### Installation\r\n\r\nbuild from source\r\n\r\n</details>\r\n",
-    "closed_at": null,
+    "closed_at": "2024-03-27T10:40:23Z",
     "comment_data": [
         {
             "author_association": "NONE",
@@ -225,9 +225,53 @@
                 "type": "User",
                 "url": "https://api.github.com/users/bfredl"
             }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "Fixed in #28033",
+            "created_at": "2024-03-27T10:40:19Z",
+            "html_url": "https://github.com/neovim/neovim/issues/27239#issuecomment-2022440307",
+            "id": 2022440307,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/27239",
+            "node_id": "IC_kwDOAPphoM54i_1z",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2022440307/reactions"
+            },
+            "updated_at": "2024-03-27T10:40:19Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2022440307",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",
+                "events_url": "https://api.github.com/users/lewis6991/events{/privacy}",
+                "followers_url": "https://api.github.com/users/lewis6991/followers",
+                "following_url": "https://api.github.com/users/lewis6991/following{/other_user}",
+                "gists_url": "https://api.github.com/users/lewis6991/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/lewis6991",
+                "id": 7904185,
+                "login": "lewis6991",
+                "node_id": "MDQ6VXNlcjc5MDQxODU=",
+                "organizations_url": "https://api.github.com/users/lewis6991/orgs",
+                "received_events_url": "https://api.github.com/users/lewis6991/received_events",
+                "repos_url": "https://api.github.com/users/lewis6991/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/lewis6991"
+            }
         }
     ],
-    "comments": 5,
+    "comments": 6,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/27239/comments",
     "created_at": "2024-01-28T01:38:12Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/27239/events",
@@ -272,11 +316,11 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/27239/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/27239/timeline",
     "title": "Treesitter captures a wrong pattern after applying predicates",
-    "updated_at": "2024-02-15T10:02:55Z",
+    "updated_at": "2024-03-27T10:40:23Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/27239",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1009873?v=4",

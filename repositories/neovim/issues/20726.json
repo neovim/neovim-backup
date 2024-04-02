@@ -148,7 +148,7 @@
             "node_id": "IC_kwDOAPphoM5UAEOv",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 1,
+                "+1": 2,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -156,7 +156,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 1,
+                "total_count": 2,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1409303471/reactions"
             },
             "updated_at": "2023-01-30T20:41:32Z",
@@ -535,7 +535,7 @@
             }
         },
         {
-            "author_association": "CONTRIBUTOR",
+            "author_association": "MEMBER",
             "body": "@mattpallissard That's a great finding! I can also confirm that setting `foldexpr=0` for the terminal window prevents neovim from freezing, very *consistently*. A great repro. I also used the `cat /dev/urandom | base64` example to flood terminal outputs.\r\n\r\nIn your workaround you globally `set foldexpr&`, but it'd be even better if one can set this locally to the terminal windows: `setlocal foldexpr&` or `setlocal foldexpr=0` so that `foldexpr` can work for other buffers. Or simply `setlocal foldmethod=manual` (for the terminal buffer) also works by disabling the execution of foldexpr, hence another workaround:\r\n\r\n```vim\r\n  autocmd TermOpen * setlocal foldmethod=manual\r\n```\r\n\r\nI've made a more refined and clean version of the repro with minimal dependencies based on @mattpallissard's observation:\r\n\r\n```lua\r\n-- Run with: nvim --clean -u repro.lua, and hit <Ctrl-C>\r\nvim.o.foldmethod = 'expr'\r\nvim.o.foldexpr = 'MyFold()'\r\n\r\nvim.cmd [[\r\n  function! MyFold() abort\r\n    \" Do some expensive(?) computation inside foldexpr, to increase the chance of neovim freezing\r\n    \" Note: this function gets called **VERY OFTEN**, every single time terminal draws with a new character\r\n    let i = 0 | while i <= 20 | let i += 1 | endwhile\r\n    return 0\r\n  endfunction\r\n]]\r\n\r\nvim.cmd [[ term base64 < /dev/urandom ]]\r\n-- vim.cmd [[ setlocal foldmethod=manual ]] -- a workaround to prevent hanging (#20726)\r\nvim.cmd [[ startinsert ]]\r\n```\r\n\r\n<details>\r\n<summary>Some additional notes regarding the above repro</summary>\r\n\r\nThe following (lua function instead of vimscript foldexpr function) doesn't result in hanging. So it's probably related to vimscript execution?\r\n```\r\nvim.o.foldexpr = 'v:lua.MyFold()'\r\nfunction _G.MyFold() return 0 end\r\n```\r\n</details>\r\n\r\n<details>\r\n<summary>The infinite loop happens here</summary>\r\n\r\nWith this repro and a bit of playing around with gdb, I also found that the infinite loop happens around:\r\n\r\n- [`safe_vgetc()`](https://github.com/neovim/neovim/blob/v0.9.4/src/nvim/state.c#L62) which always returns 3 (`CTRL-C`) (due to `got_int`, as already pointed out in the above comments), and\r\n- [`s->execute(s, key)`](https://github.com/neovim/neovim/blob/v0.9.4/src/nvim/state.c) (i.e., [`terminal_execute`](https://github.com/neovim/neovim/blob/v0.9.4/src/nvim/terminal.c#L562)) always return 1 (FAIL).\r\n\r\n</details>",
             "created_at": "2023-10-12T02:54:17Z",
             "html_url": "https://github.com/neovim/neovim/issues/20726#issuecomment-1758832263",
@@ -544,7 +544,7 @@
             "node_id": "IC_kwDOAPphoM5o1aaH",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 3,
+                "+1": 5,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -552,7 +552,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 4,
+                "total_count": 6,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1758832263/reactions"
             },
             "updated_at": "2023-10-12T03:03:04Z",
@@ -709,9 +709,53 @@
                 "type": "User",
                 "url": "https://api.github.com/users/chanha-park"
             }
+        },
+        {
+            "author_association": "NONE",
+            "body": "May or may not be related, while attempting to debug this issue I've been using `fzf-lua` and spamming FzfLua + `<C-c>`, done enough times I would sometimes be able to hang neovim. However, doing so with `gdb` attached I am unable to get to the `got_int` loop described by both @jrahm in https://github.com/neovim/neovim/issues/20726#issuecomment-1409303471 and @wookayin in https://github.com/neovim/neovim/issues/20726#issuecomment-1758832263 but I do see the below in the gdb console every single time I am able to hang neovim:\r\n> Few examples below, each depicting a would-be `got_int` hang?\r\n```\r\nThread 1 \"nvim\" received signal SIGPIPE, Broken pipe.\r\n0x00007fa66ba9d60f in __GI___libc_write (nbytes=4093, buf=0x557165339f40, fd=20) at ../sysdeps/unix/sysv/linux/write.c:26\r\n26\tin ../sysdeps/unix/sysv/linux/write.c\r\n\r\nThread 1 \"nvim\" received signal SIGPIPE, Broken pipe.\r\n0x00007fa66ba9d60f in __GI___libc_write (nbytes=2174, buf=0x55716533af50, fd=20) at ../sysdeps/unix/sysv/linux/write.c:26\r\n26\tin ../sysdeps/unix/sysv/linux/write.c\r\n\r\nThread 1 \"nvim\" received signal SIGPIPE, Broken pipe.\r\n0x00007fa66ba9d60f in __GI___libc_write (nbytes=164, buf=0x5571654bcf40, fd=21) at ../sysdeps/unix/sysv/linux/write.c:26\r\n26\tin ../sysdeps/unix/sysv/linux/write.c\r\n```\r\n\r\nIs it possible that somehow the combination of receing the `SIGPIPE` causes `got_int` to never get cleared and thus enter the infinite loop?\r\n\r\n@justinmk, is it possible this issue is not related to lua code interruption or folds?",
+            "created_at": "2024-04-01T06:02:33Z",
+            "html_url": "https://github.com/neovim/neovim/issues/20726#issuecomment-2029216449",
+            "id": 2029216449,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/20726",
+            "node_id": "IC_kwDOAPphoM5482LB",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2029216449/reactions"
+            },
+            "updated_at": "2024-04-01T06:14:25Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2029216449",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/59988195?v=4",
+                "events_url": "https://api.github.com/users/ibhagwan/events{/privacy}",
+                "followers_url": "https://api.github.com/users/ibhagwan/followers",
+                "following_url": "https://api.github.com/users/ibhagwan/following{/other_user}",
+                "gists_url": "https://api.github.com/users/ibhagwan/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/ibhagwan",
+                "id": 59988195,
+                "login": "ibhagwan",
+                "node_id": "MDQ6VXNlcjU5OTg4MTk1",
+                "organizations_url": "https://api.github.com/users/ibhagwan/orgs",
+                "received_events_url": "https://api.github.com/users/ibhagwan/received_events",
+                "repos_url": "https://api.github.com/users/ibhagwan/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/ibhagwan/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/ibhagwan/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/ibhagwan"
+            }
         }
     ],
-    "comments": 16,
+    "comments": 17,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/20726/comments",
     "created_at": "2022-10-18T20:40:23Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/20726/events",
@@ -762,7 +806,7 @@
     "number": 20726,
     "performed_via_github_app": null,
     "reactions": {
-        "+1": 2,
+        "+1": 5,
         "-1": 0,
         "confused": 0,
         "eyes": 0,
@@ -770,7 +814,7 @@
         "hooray": 0,
         "laugh": 0,
         "rocket": 0,
-        "total_count": 2,
+        "total_count": 5,
         "url": "https://api.github.com/repos/neovim/neovim/issues/20726/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
@@ -778,7 +822,7 @@
     "state_reason": null,
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/20726/timeline",
     "title": "neovim hang at 100% CPU when interrupted with <C-c>",
-    "updated_at": "2023-11-28T05:56:00Z",
+    "updated_at": "2024-04-01T06:14:25Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/20726",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/59988195?v=4",

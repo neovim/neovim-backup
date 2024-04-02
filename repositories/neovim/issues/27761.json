@@ -4,7 +4,7 @@
     "assignees": [],
     "author_association": "CONTRIBUTOR",
     "body": "### Problem\r\n\r\nThe use-case described below may be solvable already but I wasn't sure how to achieve it. Another idea came to me instead.\r\n\r\nSuppose you have 2 plugins, both of which extend the default `:mksession` with extra data. They implement this by appending extra data needed by the plugin to the end of the Session.vim, like so\r\n\r\n```vim\r\nfunction plugin_a#make_session()\r\n    let l:file_path = \"Session.vim\"\r\n    execute \"mksession \" . l:file_path\r\n    \" Add stuff to l:file_path\r\nendfunction\r\n\r\ncommand PluginAMakeSession call plugin_a#make_session()\r\n```\r\n\r\n```vim\r\nfunction plugin_b#make_session()\r\n    let l:file_path = \"Session.vim\"\r\n    execute \"mksession \" . l:file_path\r\n    \" Add stuff to l:file_path\r\nendfunction\r\n\r\ncommand PluginBMakeSession call plugin_b#make_session()\r\n```\r\n\r\nIf the user of both plugins wants to have a Session.vim that contains the contents of both plugin a and b, they can't because the plugins overwrite each other's data. The user could modify the plugins to play nice but I was thinking there could be an alternate, better way - expose an autocmd called `SessionWritePost`.\r\n\r\n### Expected behavior\r\n\r\nNeovim supports `SessionWritePost`. When triggered, `v:saved_session` (Edit: Update, forgot about `v:this_session`. So no new `v:saved_session` would be required) points to the absolute path on-disk here a session file was written. Then plugin a and b can choose to apply their changes by appending to the created file, like so:\r\n\r\n```vim\r\nfunction plugin_a#append_to_session_path(file_path)\r\n    \" Append extra data to a:file_path, below\r\nendfunction\r\n\r\nautocmd SessionWritePost * call plugin_a#append_to_session_path(v:saved_session)\r\n```\r\n\r\n```vim\r\nfunction plugin_b#append_to_session_path(file_path)\r\n    \" Append extra data to a:file_path, below\r\nendfunction\r\n\r\nautocmd SessionWritePost * call plugin_b#append_to_session_path(v:saved_session)\r\n```\r\n\r\nWith a unified autocmd to trigger from, both plugins can append their relevant data to to the session and then the user can later load the Session.vim file as normal and expect to see Vim's + plugin a's + plugin b's settings.\r\n\r\nA possible issue with this idea would be that mksession has a footer at the end of the file e.g. `\" vim: set ft=vim :`. If plugin a and b appended to the end, it would move the footer to the middle of the file. Not sure if that footer is important. Though plugin a and b could possibly append to the beginning of Session.vim instead.",
-    "closed_at": null,
+    "closed_at": "2024-03-26T21:41:42Z",
     "comment_data": [
         {
             "author_association": "CONTRIBUTOR",
@@ -93,9 +93,53 @@
                 "type": "User",
                 "url": "https://api.github.com/users/justinmk"
             }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "Thank you @zeertzjq!",
+            "created_at": "2024-03-27T01:29:36Z",
+            "html_url": "https://github.com/neovim/neovim/issues/27761#issuecomment-2021758813",
+            "id": 2021758813,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/27761",
+            "node_id": "IC_kwDOAPphoM54gZdd",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2021758813/reactions"
+            },
+            "updated_at": "2024-03-27T01:29:36Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2021758813",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/10103049?v=4",
+                "events_url": "https://api.github.com/users/ColinKennedy/events{/privacy}",
+                "followers_url": "https://api.github.com/users/ColinKennedy/followers",
+                "following_url": "https://api.github.com/users/ColinKennedy/following{/other_user}",
+                "gists_url": "https://api.github.com/users/ColinKennedy/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/ColinKennedy",
+                "id": 10103049,
+                "login": "ColinKennedy",
+                "node_id": "MDQ6VXNlcjEwMTAzMDQ5",
+                "organizations_url": "https://api.github.com/users/ColinKennedy/orgs",
+                "received_events_url": "https://api.github.com/users/ColinKennedy/received_events",
+                "repos_url": "https://api.github.com/users/ColinKennedy/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/ColinKennedy/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/ColinKennedy/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/ColinKennedy"
+            }
         }
     ],
-    "comments": 2,
+    "comments": 3,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/27761/comments",
     "created_at": "2024-03-07T02:06:25Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/27761/events",
@@ -140,11 +184,11 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/27761/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/27761/timeline",
     "title": "Add `SessionWritePost` event",
-    "updated_at": "2024-03-20T12:53:27Z",
+    "updated_at": "2024-03-27T01:29:38Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/27761",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/10103049?v=4",

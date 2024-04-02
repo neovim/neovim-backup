@@ -368,7 +368,7 @@
             "node_id": "IC_kwDOAPphoM5s26MY",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 3,
+                "+1": 6,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -376,7 +376,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 3,
+                "total_count": 6,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1826333464/reactions"
             },
             "updated_at": "2023-11-25T14:07:14Z",
@@ -401,9 +401,53 @@
                 "type": "User",
                 "url": "https://api.github.com/users/alfaix"
             }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "I encounter this error regularly, but I'm unable to reproduce (using nightly). I've added this to my config in hopes of getting more information next time it happens:\r\n\r\n``` lua\r\nlocal sync = require('vim.lsp.sync')\r\nlocal compute_diff = sync.compute_diff\r\nsync.compute_diff = function (...)\r\n\tlocal ok, result = pcall(compute_diff, ...)\r\n\tif not ok then\r\n\t\tprint(vim.inspect({ func = \"sync.compute_diff\", args = {...} }))\r\n\t\terror(result)\r\n\tend\r\n\treturn result\r\nend\r\n```\r\n\r\n~~If someone else in this thread can regularly reproduce this issue, I encourage you to add this to your config as well and post the results.~~ @clason please chime in if you see something obviously wrong with this approach.\r\n\r\n**edit:** I've updated the previous snippet to use `vlog.nvim`:\r\n\r\n``` lua\r\n-- lazy config\r\n{\r\n\t\"tjdevries/vlog.nvim\",\r\n\tconfig = function ()\r\n\t\t-- trying to detect https://github.com/neovim/neovim/issues/24972\r\n\t\tlocal log = require('vlog')\r\n\t\tlocal sync = require('vim.lsp.sync')\r\n\t\tlocal compute_diff = sync.compute_diff\r\n\r\n\t\tsync.compute_diff = function (...)\r\n\t\t\tlocal ok, result = pcall(compute_diff, ...)\r\n\t\t\tif not ok then\r\n\t\t\t\tlog.info(\"sync.compure_diff\", {...})\r\n\t\t\t\terror(result)\r\n\t\t\tend\r\n\t\t\treturn result\r\n\t\tend\r\n\tend\r\n},\r\n\r\n```\r\n\r\n**edit2:** I've managed to capture the arguments to `sync.compute_diff`, but unfortunately it contains a whole bunch of work code which I can't share :( . I'll see if I can reduce it down a sharable repro.\r\n\r\n**edit3:** After some debugging, this was a dead end. The `compute_diff` logic looks fine, it's just getting bad input.\r\n\r\n``` lua\r\n--- Returns the range table for the difference between prev and curr lines\r\n---@param prev_lines table list of lines\r\n---@param curr_lines table list of lines\r\n---@param firstline integer line to begin search for first difference\r\n---@param lastline integer line to begin search in old_lines for last difference\r\n---@param new_lastline integer line to begin search in new_lines for last difference\r\n---@param offset_encoding string encoding requested by language server\r\n---@param line_ending string\r\n---@return lsp.TextDocumentContentChangeEvent : see https://microsoft.github.io/language-server-protocol/specification/#textDocumentContentChangeEvent\r\nfunction M.compute_diff(\r\n  prev_lines,\r\n  curr_lines,\r\n  firstline,\r\n  lastline,\r\n  new_lastline,\r\n  offset_encoding,\r\n  line_ending\r\n)\r\n```\r\n\r\nThe `lastline` value is too large:\r\n\r\n```\r\ndap> lastline\r\n346\r\ndap> #prev_lines\r\n343\r\n```\r\n\r\nThis results in a `nil` value when doing `prev_lines[lastline]`\r\n\r\n**edit4:** wow I completely missed the repro @alfaix shared /facepalm\r\n\r\n**edit5:**: I added the following snippet after this line: https://github.com/neovim/neovim/blob/5a5d26b4abdfc32c0e538a7a4b0d73c6827f0e5b/runtime/lua/vim/lsp/_changetracking.lua#L149\r\n\r\n``` lua\r\nif lastline > #buf_state.lines then\r\n  local data = vim.inspect({\r\n    bufnr = bufnr,\r\n    firstline = firstline,\r\n    lastline = lastline,\r\n    new_lastline = new_lastline,\r\n    group = group,\r\n    state = state,\r\n  })\r\n  vim.fn.writefile(vim.split(data, '\\n'), 'bad-changetracking-state.txt')\r\nend\r\n```\r\n\r\nAnd the repro @alfaix posted results in this:\r\n\r\n``` lua\r\n{\r\n  bufnr = 5,\r\n  firstline = 1,\r\n  group = {\r\n    offset_encoding = \"utf-16\",\r\n    sync_kind = 2\r\n  },\r\n  lastline = 2,\r\n  new_lastline = 2,\r\n  state = {\r\n    buffers = { {\r\n        lines = { \"i = 1\" },\r\n        lines_tmp = {},\r\n        name = \"/home/icholy/sample.py\",\r\n        needs_flush = false,\r\n        pending_changes = {},\r\n        refs = 1\r\n      },\r\n      [5] = {\r\n        last_flush = 23578506122105,\r\n        lines = { \"dap> \" },\r\n        lines_tmp = {},\r\n        name = \"/home/icholy/[dap-repl]\",\r\n        needs_flush = false,\r\n        pending_changes = {},\r\n        refs = 1\r\n      }\r\n    },\r\n    clients = {}, -- omitted\r\n    debounce = 150\r\n  }\r\n}\r\n```\r\n\r\nLooks like `on_lines` callback to `nvim_buf_attach` is emitting incorrect values. The `lastline` should be `1` here.",
+            "created_at": "2024-03-26T22:03:24Z",
+            "html_url": "https://github.com/neovim/neovim/issues/24972#issuecomment-2021548566",
+            "id": 2021548566,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/24972",
+            "node_id": "IC_kwDOAPphoM54fmIW",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2021548566/reactions"
+            },
+            "updated_at": "2024-03-29T21:19:11Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2021548566",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/943597?v=4",
+                "events_url": "https://api.github.com/users/icholy/events{/privacy}",
+                "followers_url": "https://api.github.com/users/icholy/followers",
+                "following_url": "https://api.github.com/users/icholy/following{/other_user}",
+                "gists_url": "https://api.github.com/users/icholy/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/icholy",
+                "id": 943597,
+                "login": "icholy",
+                "node_id": "MDQ6VXNlcjk0MzU5Nw==",
+                "organizations_url": "https://api.github.com/users/icholy/orgs",
+                "received_events_url": "https://api.github.com/users/icholy/received_events",
+                "repos_url": "https://api.github.com/users/icholy/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/icholy/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/icholy/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/icholy"
+            }
         }
     ],
-    "comments": 9,
+    "comments": 10,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/24972/comments",
     "created_at": "2023-09-01T16:38:31Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/24972/events",
@@ -445,7 +489,7 @@
     "number": 24972,
     "performed_via_github_app": null,
     "reactions": {
-        "+1": 5,
+        "+1": 12,
         "-1": 0,
         "confused": 0,
         "eyes": 0,
@@ -453,7 +497,7 @@
         "hooray": 0,
         "laugh": 0,
         "rocket": 0,
-        "total_count": 5,
+        "total_count": 12,
         "url": "https://api.github.com/repos/neovim/neovim/issues/24972/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
@@ -461,7 +505,7 @@
     "state_reason": null,
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/24972/timeline",
     "title": "error attempt to get length of local 'prev_line' ",
-    "updated_at": "2024-01-13T17:22:23Z",
+    "updated_at": "2024-03-29T21:19:11Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/24972",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/72234965?v=4",
