@@ -4,7 +4,7 @@
     "assignees": [],
     "author_association": "CONTRIBUTOR",
     "body": "### Problem\n\nThis PR caused a regression where Neovide and other Gui clients fails to exit until xclip is either killed or something else copied to the clipboard\r\n* https://github.com/neovim/neovim/pull/21675\r\nSee:\r\n* https://github.com/neovide/neovide/issues/2003\r\n\r\nIt can be fixed by the following patch:\r\n```diff\r\ndiff --git a/runtime/autoload/provider/clipboard.vim b/runtime/autoload/provider/clipboard.vim\r\nindex 05f6bdb87..d478ba3a5 100644\r\n--- a/runtime/autoload/provider/clipboard.vim\r\n+++ b/runtime/autoload/provider/clipboard.vim\r\n@@ -215,9 +215,10 @@ function! s:clipboard.set(lines, regtype, reg) abort\r\n   if jobid > 0\r\n     call jobsend(jobid, a:lines)\r\n     call jobclose(jobid, 'stdin')\r\n-    \" xclip does not close stdout when receiving input via stdin\r\n+    \" xclip does not close stdout and stderr when receiving input via stdin\r\n     if selection.argv[0] ==# 'xclip'\r\n       call jobclose(jobid, 'stdout')\r\n+      call jobclose(jobid, 'stderr')\r\n     endif\r\n     let selection.owner = jobid\r\n     let ret = 1\r\n```\r\n\r\nBut the code originally looked like that, and the closing of `stderr` was removed here:\r\n* https://github.com/neovim/neovim/pull/11658\r\n\r\nSo clearly some other fix is needed, but I don't have time to learn that part of the code enough to do it myself right now.\r\n\r\nNOTE: One thing that I don't understand in #21675, is the following line:\r\n`dup2(STDERR_FILENO, STDIN_FILENO);` it seems like that would cause some kind of io loop within Neovim, and `stderr` is already duplicated to `stdout` earlier.\r\n\n\n### Steps to reproduce\n\n1. Start neovide 0.12.0  on an X11 system, which uses xclip\r\n2. `set clipboard=unamedplus`\r\n3. Yank something to the clipboard\r\n4. Quit the application, notice that it hangs on exit until something else is copied or xclip is killed\n\n### Expected behavior\n\nThe xclip stderr channel should be closed so that gui clients can perform a clean exit.\n\n### Neovim version (nvim -v)\n\nNVIM v0.10.0-dev-1956+gec7453804\n\n### Vim (not Nvim) behaves the same?\n\nN/A\n\n### Operating system/version\n\nArch Linux\n\n### Terminal name/version\n\nAlacritty/Neovide\n\n### $TERM environment variable\n\nalacritty\n\n### Installation\n\nbuild from repo",
-    "closed_at": null,
+    "closed_at": "2024-04-03T10:35:59Z",
     "comment_data": [
         {
             "author_association": "CONTRIBUTOR",
@@ -105,11 +105,11 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/26743/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/26743/timeline",
     "title": "Regression: xclip leaves stderr open and causes GUI clients to hang on exit",
-    "updated_at": "2023-12-26T12:55:33Z",
+    "updated_at": "2024-04-03T10:35:59Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/26743",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/9946255?v=4",
