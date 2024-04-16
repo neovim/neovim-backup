@@ -379,7 +379,7 @@
                 "total_count": 7,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1826333464/reactions"
             },
-            "updated_at": "2023-11-25T14:07:14Z",
+            "updated_at": "2024-04-10T00:52:49Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1826333464",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/18747677?v=4",
@@ -423,7 +423,7 @@
                 "total_count": 1,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2021548566/reactions"
             },
-            "updated_at": "2024-03-29T21:19:11Z",
+            "updated_at": "2024-04-10T00:52:56Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2021548566",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/943597?v=4",
@@ -448,7 +448,7 @@
         },
         {
             "author_association": "CONTRIBUTOR",
-            "body": "I've created a repository for the repro @alfaix shared: https://github.com/icholy/nvim-lsp-bug-2\r\n\r\nThe problem is that a newline is inserted in the `invoke_prompt_callback` function which increments the `ml_line_count` but doesn't emit a change event:\r\n\r\nhttps://github.com/neovim/neovim/blob/d9235efa76229708586d3c9db3dcbac46127ca0a/src/nvim/eval.c#L8907\r\n\r\n```\r\n#0  0x000062ec39bd822a in ml_append_int (buf=0x62ec3abc6f60, lnum=1, line=0x62ec39e89745 \"\", len=1, newfile=false, mark=false) at /home/icholy/src/github.com/neovim/neovim/src/nvim/memline.c:2098\r\n#1  0x000062ec39bd7f3e in ml_append (lnum=1, line=0x62ec39e89745 \"\", len=0, newfile=false) at /home/icholy/src/github.com/neovim/neovim/src/nvim/memline.c:2004\r\n#2  0x000062ec39ac1338 in invoke_prompt_callback () at /home/icholy/src/github.com/neovim/neovim/src/nvim/eval.c:8907\r\n#3  0x000062ec39aa36c4 in insert_handle_key (s=0x7fffb8702630) at /home/icholy/src/github.com/neovim/neovim/src/nvim/edit.c:1061\r\n#4  0x000062ec39aa2a8c in insert_execute (state=0x7fffb8702630, key=13) at /home/icholy/src/github.com/neovim/neovim/src/nvim/edit.c:695\r\n#5  0x000062ec39cdfdde in state_enter (s=0x7fffb8702630) at /home/icholy/src/github.com/neovim/neovim/src/nvim/state.c:101\r\n#6  0x000062ec39aa1f8b in insert_enter (s=0x7fffb8702630) at /home/icholy/src/github.com/neovim/neovim/src/nvim/edit.c:345\r\n#7  0x000062ec39aa3c5b in edit (cmdchar=105, startln=false, count=1) at /home/icholy/src/github.com/neovim/neovim/src/nvim/edit.c:1294\r\n#8  0x000062ec39c09edc in invoke_edit (cap=0x7fffb8702820, repl=0, cmd=105, startln=0) at /home/icholy/src/github.com/neovim/neovim/src/nvim/normal.c:6258\r\n#9  0x000062ec39c09e30 in nv_edit (cap=0x7fffb8702820) at /home/icholy/src/github.com/neovim/neovim/src/nvim/normal.c:6230\r\n#10 0x000062ec39bfe527 in normal_execute (state=0x7fffb87027b0, key=105) at /home/icholy/src/github.com/neovim/neovim/src/nvim/normal.c:1227\r\n#11 0x000062ec39cdfdde in state_enter (s=0x7fffb87027b0) at /home/icholy/src/github.com/neovim/neovim/src/nvim/state.c:101\r\n#12 0x000062ec39bfc753 in normal_enter (cmdwin=false, noexmode=false) at /home/icholy/src/github.com/neovim/neovim/src/nvim/normal.c:516\r\n#13 0x000062ec39ba2f23 in main (argc=6, argv=0x7fffb8702b88) at /home/icholy/src/github.com/neovim/neovim/src/nvim/main.c:663\r\n```\r\n\r\nThen `init_prompt` calls `inserted_bytes` using the `ml_line_count` as the `lnum`.\r\n\r\nhttps://github.com/neovim/neovim/blob/d9235efa76229708586d3c9db3dcbac46127ca0a/src/nvim/edit.c#L1526\r\n\r\n```\r\n#0  inserted_bytes (lnum=2, start_col=0, old_col=0, new_col=5) at /home/icholy/src/github.com/neovim/neovim/src/nvim/change.c:468\r\n#1  0x000062ec39aa4530 in init_prompt (cmdchar_todo=0) at /home/icholy/src/github.com/neovim/neovim/src/nvim/edit.c:1526\r\n#2  0x000062ec39aa224e in insert_check (state=0x7fffb8702630) at /home/icholy/src/github.com/neovim/neovim/src/nvim/edit.c:454\r\n#3  0x000062ec39cdfc45 in state_enter (s=0x7fffb8702630) at /home/icholy/src/github.com/neovim/neovim/src/nvim/state.c:40\r\n#4  0x000062ec39aa1f8b in insert_enter (s=0x7fffb8702630) at /home/icholy/src/github.com/neovim/neovim/src/nvim/edit.c:345\r\n#5  0x000062ec39aa3c5b in edit (cmdchar=105, startln=false, count=1) at /home/icholy/src/github.com/neovim/neovim/src/nvim/edit.c:1294\r\n#6  0x000062ec39c09edc in invoke_edit (cap=0x7fffb8702820, repl=0, cmd=105, startln=0)\r\n    at /home/icholy/src/github.com/neovim/neovim/src/nvim/normal.c:6258\r\n#7  0x000062ec39c09e30 in nv_edit (cap=0x7fffb8702820) at /home/icholy/src/github.com/neovim/neovim/src/nvim/normal.c:6230\r\n#8  0x000062ec39bfe527 in normal_execute (state=0x7fffb87027b0, key=105) at /home/icholy/src/github.com/neovim/neovim/src/nvim/normal.c:1227\r\n#9  0x000062ec39cdfdde in state_enter (s=0x7fffb87027b0) at /home/icholy/src/github.com/neovim/neovim/src/nvim/state.c:101\r\n#10 0x000062ec39bfc753 in normal_enter (cmdwin=false, noexmode=false) at /home/icholy/src/github.com/neovim/neovim/src/nvim/normal.c:516\r\n#11 0x000062ec39ba2f23 in main (argc=6, argv=0x7fffb8702b88) at /home/icholy/src/github.com/neovim/neovim/src/nvim/main.c:663\r\n```\r\n\r\nThat `lnum` is then one too high which results in the `firstline` parameter to `on_lines` to be one too big breaking the following guarantee:\r\n\r\n> > `{firstline}` integer line number of the first line that was replaced.\r\n        Zero-indexed: if line 1 was replaced then `{firstline}` will be 0, not\r\n        1. `{firstline}` **is always less than or equal to the number of lines\r\n        that were in the buffer before the lines were replaced.**\r\n>\r\n\r\nAdding a call to `appened_lines(lnum, 1)` to `invoke_prompt_callback` fixes the issues. Unfortunately, this only explains the off-by-one errors and not issue I've been running into.",
+            "body": "I've created a repository for the repro @alfaix shared: https://github.com/icholy/nvim-lsp-bug-2\r\n\r\nThe problem is that a newline is inserted in the `invoke_prompt_callback` function which increments the `ml_line_count` but doesn't emit a change event:\r\n\r\nhttps://github.com/neovim/neovim/blob/d9235efa76229708586d3c9db3dcbac46127ca0a/src/nvim/eval.c#L8907\r\n\r\n```\r\n#0  0x000062ec39bd822a in ml_append_int (buf=0x62ec3abc6f60, lnum=1, line=0x62ec39e89745 \"\", len=1, newfile=false, mark=false) at /home/icholy/src/github.com/neovim/neovim/src/nvim/memline.c:2098\r\n#1  0x000062ec39bd7f3e in ml_append (lnum=1, line=0x62ec39e89745 \"\", len=0, newfile=false) at /home/icholy/src/github.com/neovim/neovim/src/nvim/memline.c:2004\r\n#2  0x000062ec39ac1338 in invoke_prompt_callback () at /home/icholy/src/github.com/neovim/neovim/src/nvim/eval.c:8907\r\n#3  0x000062ec39aa36c4 in insert_handle_key (s=0x7fffb8702630) at /home/icholy/src/github.com/neovim/neovim/src/nvim/edit.c:1061\r\n#4  0x000062ec39aa2a8c in insert_execute (state=0x7fffb8702630, key=13) at /home/icholy/src/github.com/neovim/neovim/src/nvim/edit.c:695\r\n#5  0x000062ec39cdfdde in state_enter (s=0x7fffb8702630) at /home/icholy/src/github.com/neovim/neovim/src/nvim/state.c:101\r\n#6  0x000062ec39aa1f8b in insert_enter (s=0x7fffb8702630) at /home/icholy/src/github.com/neovim/neovim/src/nvim/edit.c:345\r\n#7  0x000062ec39aa3c5b in edit (cmdchar=105, startln=false, count=1) at /home/icholy/src/github.com/neovim/neovim/src/nvim/edit.c:1294\r\n#8  0x000062ec39c09edc in invoke_edit (cap=0x7fffb8702820, repl=0, cmd=105, startln=0) at /home/icholy/src/github.com/neovim/neovim/src/nvim/normal.c:6258\r\n#9  0x000062ec39c09e30 in nv_edit (cap=0x7fffb8702820) at /home/icholy/src/github.com/neovim/neovim/src/nvim/normal.c:6230\r\n#10 0x000062ec39bfe527 in normal_execute (state=0x7fffb87027b0, key=105) at /home/icholy/src/github.com/neovim/neovim/src/nvim/normal.c:1227\r\n#11 0x000062ec39cdfdde in state_enter (s=0x7fffb87027b0) at /home/icholy/src/github.com/neovim/neovim/src/nvim/state.c:101\r\n#12 0x000062ec39bfc753 in normal_enter (cmdwin=false, noexmode=false) at /home/icholy/src/github.com/neovim/neovim/src/nvim/normal.c:516\r\n#13 0x000062ec39ba2f23 in main (argc=6, argv=0x7fffb8702b88) at /home/icholy/src/github.com/neovim/neovim/src/nvim/main.c:663\r\n```\r\n\r\nThen `init_prompt` calls `inserted_bytes` using the `ml_line_count` as the `lnum`.\r\n\r\nhttps://github.com/neovim/neovim/blob/d9235efa76229708586d3c9db3dcbac46127ca0a/src/nvim/edit.c#L1526\r\n\r\n```\r\n#0  inserted_bytes (lnum=2, start_col=0, old_col=0, new_col=5) at /home/icholy/src/github.com/neovim/neovim/src/nvim/change.c:468\r\n#1  0x000062ec39aa4530 in init_prompt (cmdchar_todo=0) at /home/icholy/src/github.com/neovim/neovim/src/nvim/edit.c:1526\r\n#2  0x000062ec39aa224e in insert_check (state=0x7fffb8702630) at /home/icholy/src/github.com/neovim/neovim/src/nvim/edit.c:454\r\n#3  0x000062ec39cdfc45 in state_enter (s=0x7fffb8702630) at /home/icholy/src/github.com/neovim/neovim/src/nvim/state.c:40\r\n#4  0x000062ec39aa1f8b in insert_enter (s=0x7fffb8702630) at /home/icholy/src/github.com/neovim/neovim/src/nvim/edit.c:345\r\n#5  0x000062ec39aa3c5b in edit (cmdchar=105, startln=false, count=1) at /home/icholy/src/github.com/neovim/neovim/src/nvim/edit.c:1294\r\n#6  0x000062ec39c09edc in invoke_edit (cap=0x7fffb8702820, repl=0, cmd=105, startln=0)\r\n    at /home/icholy/src/github.com/neovim/neovim/src/nvim/normal.c:6258\r\n#7  0x000062ec39c09e30 in nv_edit (cap=0x7fffb8702820) at /home/icholy/src/github.com/neovim/neovim/src/nvim/normal.c:6230\r\n#8  0x000062ec39bfe527 in normal_execute (state=0x7fffb87027b0, key=105) at /home/icholy/src/github.com/neovim/neovim/src/nvim/normal.c:1227\r\n#9  0x000062ec39cdfdde in state_enter (s=0x7fffb87027b0) at /home/icholy/src/github.com/neovim/neovim/src/nvim/state.c:101\r\n#10 0x000062ec39bfc753 in normal_enter (cmdwin=false, noexmode=false) at /home/icholy/src/github.com/neovim/neovim/src/nvim/normal.c:516\r\n#11 0x000062ec39ba2f23 in main (argc=6, argv=0x7fffb8702b88) at /home/icholy/src/github.com/neovim/neovim/src/nvim/main.c:663\r\n```\r\n\r\nThat `lnum` is then one too high which results in the `lastline` parameter to `on_lines` to be one too big breaking the following guarantee:\r\n\r\n> > {lastline} integer line number of the first line that was not replaced (i.e. the range {firstline}, {lastline} is end-exclusive). Zero-indexed: if line numbers 2 to 5 were replaced, this will be 5 instead of 6. **{lastline} is always be less than or equal to the number of lines that were in the buffer before the lines were replaced.** {lastline} will be -1 if the event is part of the initial update after attaching. \r\n>\r\n\r\nAdding a call to `appened_lines(lnum, 1)` to `invoke_prompt_callback` fixes the issues. Unfortunately, this only explains the off-by-one errors and not issue I've been running into.",
             "created_at": "2024-04-07T15:05:33Z",
             "html_url": "https://github.com/neovim/neovim/issues/24972#issuecomment-2041499468",
             "id": 2041499468,
@@ -467,7 +467,7 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2041499468/reactions"
             },
-            "updated_at": "2024-04-07T15:06:16Z",
+            "updated_at": "2024-04-10T00:53:02Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2041499468",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/943597?v=4",
@@ -535,13 +535,13 @@
             }
         },
         {
-            "author_association": "CONTRIBUTOR",
-            "body": "@iurimateus thanks for the link, I think you're right.",
-            "created_at": "2024-04-08T01:56:03Z",
-            "html_url": "https://github.com/neovim/neovim/issues/24972#issuecomment-2041729846",
-            "id": 2041729846,
+            "author_association": "MEMBER",
+            "body": "The problem with DAP has been fixed by #28260",
+            "created_at": "2024-04-10T00:52:12Z",
+            "html_url": "https://github.com/neovim/neovim/issues/24972#issuecomment-2046263501",
+            "id": 2046263501,
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/24972",
-            "node_id": "IC_kwDOAPphoM55slM2",
+            "node_id": "IC_kwDOAPphoM5594DN",
             "performed_via_github_app": null,
             "reactions": {
                 "+1": 0,
@@ -551,31 +551,31 @@
                 "heart": 0,
                 "hooray": 0,
                 "laugh": 0,
-                "rocket": 0,
-                "total_count": 0,
-                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2041729846/reactions"
+                "rocket": 3,
+                "total_count": 3,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2046263501/reactions"
             },
-            "updated_at": "2024-04-08T01:56:03Z",
-            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2041729846",
+            "updated_at": "2024-04-10T00:52:21Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2046263501",
             "user": {
-                "avatar_url": "https://avatars.githubusercontent.com/u/943597?v=4",
-                "events_url": "https://api.github.com/users/icholy/events{/privacy}",
-                "followers_url": "https://api.github.com/users/icholy/followers",
-                "following_url": "https://api.github.com/users/icholy/following{/other_user}",
-                "gists_url": "https://api.github.com/users/icholy/gists{/gist_id}",
+                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+                "followers_url": "https://api.github.com/users/zeertzjq/followers",
+                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
                 "gravatar_id": "",
-                "html_url": "https://github.com/icholy",
-                "id": 943597,
-                "login": "icholy",
-                "node_id": "MDQ6VXNlcjk0MzU5Nw==",
-                "organizations_url": "https://api.github.com/users/icholy/orgs",
-                "received_events_url": "https://api.github.com/users/icholy/received_events",
-                "repos_url": "https://api.github.com/users/icholy/repos",
+                "html_url": "https://github.com/zeertzjq",
+                "id": 35768171,
+                "login": "zeertzjq",
+                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+                "repos_url": "https://api.github.com/users/zeertzjq/repos",
                 "site_admin": false,
-                "starred_url": "https://api.github.com/users/icholy/starred{/owner}{/repo}",
-                "subscriptions_url": "https://api.github.com/users/icholy/subscriptions",
+                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/icholy"
+                "url": "https://api.github.com/users/zeertzjq"
             }
         }
     ],
@@ -637,7 +637,7 @@
     "state_reason": null,
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/24972/timeline",
     "title": "error attempt to get length of local 'prev_line' ",
-    "updated_at": "2024-04-08T01:56:04Z",
+    "updated_at": "2024-04-10T02:42:25Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/24972",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/72234965?v=4",

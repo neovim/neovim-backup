@@ -4,11 +4,11 @@
     "assignees": [],
     "author_association": "MEMBER",
     "body": "### Problem\n\nAs can be seen [here](https://github.com/neovim/neovim/blob/849d82b80b8584fe7918bffc6480f0ec0fda9b9b/runtime/lua/vim/ui.lua#L155), `vim.ui.open` currently opens the process with `detach = true`, **which is good**, but then at the same time waits till it finishes (**is bad**).\r\n\r\nThis means that Neovim effectively locks up till you close the opened process again.\r\n\r\ntbh, I don't really see a lot of cases where this kind of behavior could be useful.\r\n\r\nThe return value of the function, could still be an error if `vim.ui.open` failed to start the process.\r\nOr even better, just return the task object itself (so `vim.system(cmd, { text = true, detach = true })`), then the caller can still use `:wait()` if they really want to.\r\n\r\nI'm willing to make a small PR to fix this, but want to get some input first on wanted behavior.\r\n\r\nSee also https://github.com/LazyVim/LazyVim/pull/2758\n\n### Steps to reproduce\n\nuse `vim.ui.open`\n\n### Expected behavior\n\nshould not block\n\n### Neovim version (nvim -v)\n\nnightly\n\n### Vim (not Nvim) behaves the same?\n\nno\n\n### Operating system/version\n\narch\n\n### Terminal name/version\n\nwezterm\n\n### $TERM environment variable\n\nxterm-256-color\n\n### Installation\n\nbob",
-    "closed_at": null,
+    "closed_at": "2024-04-15T11:33:10Z",
     "comment_data": [
         {
             "author_association": "MEMBER",
-            "body": "> Or even better, just return the task object itself\r\n\r\nIs there a way we can make it work with `vim.wait()` ? \r\n\r\nIs this bug affecting `gx` ?",
+            "body": "> Or even better, just return the task object itself\r\n\r\nIs there a way we can make it work with `vim.wait()` ? (Edit: I mean for the caller, i.e. without returning/exposing the `vim.system` result)\r\n\r\nIs this bug affecting `gx` ?",
             "created_at": "2024-03-27T16:18:29Z",
             "html_url": "https://github.com/neovim/neovim/issues/27986#issuecomment-2023177737",
             "id": 2023177737,
@@ -27,7 +27,7 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2023177737/reactions"
             },
-            "updated_at": "2024-03-27T16:18:29Z",
+            "updated_at": "2024-04-09T21:44:44Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2023177737",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -93,9 +93,53 @@
                 "type": "User",
                 "url": "https://api.github.com/users/folke"
             }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "> I suggest we return the task object itself. The caller can then still decide to wait if they really want to,\r\n\r\nYeah, that's kind of what I was trying to avoid by \"making it work with `vim.wait()` instead\". The `vim.system()` task is not really something that should \"leak\" since it's an implementation detail that may change. \r\n\r\nNot a hill worth dying on in this case, though. We also have the option of returning a wrapper object that only exposes `:wait()`.\r\n\r\n",
+            "created_at": "2024-04-09T21:26:11Z",
+            "html_url": "https://github.com/neovim/neovim/issues/27986#issuecomment-2046077939",
+            "id": 2046077939,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/27986",
+            "node_id": "IC_kwDOAPphoM559Kvz",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2046077939/reactions"
+            },
+            "updated_at": "2024-04-09T21:44:30Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2046077939",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk"
+            }
         }
     ],
-    "comments": 2,
+    "comments": 3,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/27986/comments",
     "created_at": "2024-03-22T22:21:53Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/27986/events",
@@ -143,7 +187,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 343,
+        "closed_issues": 367,
         "created_at": "2023-02-02T14:11:43Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1363104?v=4",
@@ -166,16 +210,16 @@
             "url": "https://api.github.com/users/bfredl"
         },
         "description": "",
-        "due_on": "2024-05-01T07:00:00Z",
+        "due_on": "2024-04-30T07:00:00Z",
         "html_url": "https://github.com/neovim/neovim/milestone/36",
         "id": 8997654,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/36/labels",
         "node_id": "MI_kwDOAPphoM4AiUsW",
         "number": 36,
-        "open_issues": 38,
+        "open_issues": 21,
         "state": "open",
         "title": "0.10",
-        "updated_at": "2024-04-01T11:13:57Z",
+        "updated_at": "2024-04-15T22:44:29Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/36"
     },
     "node_id": "I_kwDOAPphoM6DVV5J",
@@ -194,11 +238,11 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/27986/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/27986/timeline",
     "title": "`vim.ui.open` locks up Neovim until the opened process closes due to `:wait()`",
-    "updated_at": "2024-04-01T11:13:57Z",
+    "updated_at": "2024-04-15T11:33:11Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/27986",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/292349?v=4",
