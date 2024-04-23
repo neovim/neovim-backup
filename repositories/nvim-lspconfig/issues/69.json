@@ -7,7 +7,7 @@
     "closed_at": "2020-01-29T11:56:04Z",
     "comment_data": [
         {
-            "author_association": "MEMBER",
+            "author_association": "NONE",
             "body": "Here's a snippet for how to do it for *all servers* by changing the default callback. You could also do this on a per client level with `setup { callbacks = { [\"textDocument/publishDiagnostics\"] = ... } }`\r\n\r\n```lua\r\ndo\r\n  local method = 'textDocument/publishDiagnostics'\r\n  local default_callback = vim.lsp.callbacks[method]\r\n  vim.lsp.callbacks[method] = function(err, method, result, client_id)\r\n    default_callback(err, method, result, client_id)\r\n    if result and result.diagnostics then\r\n      for _, v in ipairs(result.diagnostics) do\r\n        v.uri = v.uri or result.uri\r\n      end\r\n      vim.lsp.util.set_qflist(result.diagnostics)\r\n    end\r\n  end\r\nend\r\n```\r\n\r\nThe reason I loop and set uri is because `set_qflist` expects a list of `Location`s and the diagnostics usually are set for a single (in this case the current) file.",
             "created_at": "2019-12-09T20:05:19Z",
             "html_url": "https://github.com/neovim/nvim-lspconfig/issues/69#issuecomment-563412235",
@@ -95,7 +95,7 @@
             }
         },
         {
-            "author_association": "MEMBER",
+            "author_association": "NONE",
             "body": "It's a notification, which means server sent one way communique.",
             "created_at": "2019-12-10T05:44:58Z",
             "html_url": "https://github.com/neovim/nvim-lspconfig/issues/69#issuecomment-563867313",
@@ -183,7 +183,7 @@
             }
         },
         {
-            "author_association": "MEMBER",
+            "author_association": "NONE",
             "body": "@teto could you expand on what \"callback member disappeared\" means? The specific error message would be good.\r\n\r\nAnd yeah, that's a good point, the `set_qflist` was something I designed originally for locations and didn't consider that they could be reused with custom messages (such as from diagnostics). I'll see about adding that as a modification of the utility function or in addition to it.\r\n\r\nIf you're interested in doing it yourself and maybe contributing to neovim builtin lsp, I would recommend looking at https://github.com/neovim/neovim/blob/master/runtime/lua/vim/lsp/util.lua#L595 for how it's currently being implemented. The simplest modification would be to make the line that reads `text = line` to consider the custom message in `row`.",
             "created_at": "2019-12-18T10:23:03Z",
             "html_url": "https://github.com/neovim/nvim-lspconfig/issues/69#issuecomment-566970705",
@@ -624,7 +624,7 @@
         },
         {
             "author_association": "NONE",
-            "body": "Here is the snippet updated for 2024:\r\n\r\n```lua\r\ndo\r\n  local method = \"textDocument/publishDiagnostics\"\r\n  local default_handler = vim.lsp.handlers[method]\r\n\r\n  vim.lsp.handlers[method] = function(err, result, ctx, config)\r\n    default_handler(err, result, ctx, config)\r\n\r\n    if result and result.diagnostics then\r\n      for _, v in ipairs(result.diagnostics) do\r\n        v.bufnr = ctx.bufnr\r\n        v.lnum = v.range.start.line + 1\r\n        v.col = v.range.start.character + 1\r\n        v.text = v.message\r\n      end\r\n\r\n\r\n      local qflist = vim.fn.getqflist({ title = 0, id = 0 })\r\n\r\n      vim.fn.setqflist({}, qflist.title == \"LSP Workspace Diagnostics\" and \"r\" or \" \", {\r\n        title = \"LSP Workspace Diagnostics\",\r\n        items = vim.diagnostic.toqflist(result.diagnostics),\r\n      })\r\n\r\n      -- don't steal focus from other qf lists\r\n      if qflist.id ~= 0 and qflist.title ~= \"LSP Workspace Diagnostics\" then\r\n        vim.cmd(\"colder\")\r\n      end\r\n    end\r\n  end\r\nend\r\n```\r\n\r\nThat will only add diagnostics from LSPs, so anything from nvim-lint, null-ls, etc. will not be included. \r\n\r\nIf you want all diagnostics, you can use this keymap:\r\n```lua\r\nvim.keymap.set(\"n\", \"gQ\", function()\r\n  vim.fn.setqflist(\r\n    {},\r\n    vim.fn.getqflist({ title = 0 }).title == \"All Diagnostics\" and \"r\" or \" \",\r\n    { title = \"Diagnostics\", items = vim.diagnostic.toqflist(vim.diagnostic.get()) }\r\n  )\r\nend, { noremap = true, desc = \"Add all diagnostics to quickfix\" })\r\n```\r\n\r\nOr do it in an autocmd:\r\n\r\n```lua\r\nvim.api.nvim_create_autocmd({ \"BufWritePost\", \"InsertLeave\", \"LspAttach\", \"TextChanged\" }, {\r\n  callback = function()\r\n    if vim.g.started_qf_diagnostics_timer == true then return end\r\n    vim.g.started_qf_diagnostics_timer = true\r\n\r\n    -- debounce the diagnostics list update\r\n    vim.fn.timer_start(1000, function()\r\n      vim.g.started_qf_diagnostics_timer = false\r\n      local qflist = vim.fn.getqflist { title = 0, id = 0 }\r\n\r\n      vim.fn.setqflist({}, qflist.title == \"All Diagnostics\" and \"r\" or \" \", {\r\n        title = \"All Diagnostics\",\r\n        items = vim.diagnostic.toqflist(vim.diagnostic.get()),\r\n      })\r\n\r\n      -- don't steal focus from other qf lists\r\n      if qflist.id ~= 0 and qflist.title ~= \"All Diagnostics\" then vim.cmd \"colder\" end\r\n    end)\r\n  end,\r\n})\r\n\r\n```",
+            "body": "A DiagnosticChanged event was recently added, so the snippet can be simplified to:\r\n\r\n```lua\r\nvim.api.nvim_create_autocmd({ \"DiagnosticChanged\" }, {\r\n  group = vim.api.nvim_create_augroup(\"user_diagnostic_qflist\", {}),\r\n  callback = function(args)\r\n    local diagnostics = vim.diagnostic.get()\r\n    if #args.data.diagnostics == 0 and #diagnostics > 0 then\r\n      return\r\n    end\r\n\r\n    local qf_info = vim.fn.getqflist({ title = 0, id = 0 })\r\n    local qf_items = vim.diagnostic.toqflist(\r\n      -- TODO: Can the event data have items not returned by vim.diagnostic.get?\r\n      -- If not, we don't need to extend the diagnostics variable here.\r\n      vim.tbl_deep_extend(\"force\", diagnostics, args.data.diagnostics)\r\n    )\r\n\r\n    vim.schedule(function()\r\n      -- Replace the latest qflist if it was created by this autocmd so other\r\n      -- qflists aren't buried due to frequently changing diagnostics.\r\n      vim.fn.setqflist({}, qf_info.title == \"All Diagnostics\" and \"r\" or \" \", {\r\n        title = \"All Diagnostics\",\r\n        items = qf_items,\r\n      })\r\n\r\n      -- Don't steal focus from other qflists. For example, when working through\r\n      -- vimgrep results, you likely want :cnext to take you to the next match,\r\n      -- rather than the next diagnostic. Use :cnew to switch to the diagnostic\r\n      -- qflist when you want it.\r\n      if qf_info.id ~= 0 and qf_info.title ~= \"All Diagnostics\" then\r\n        vim.cmd.cold()\r\n      end\r\n    end)\r\n  end,\r\n})\r\n```\r\n\r\nThe above snippet has the benefit of being fired during changes to diagnostics from nvim-lint, null-ls, etc. It also has an improvement that prevents burying other qflists with a bunch of diagnostic ones.",
             "created_at": "2024-01-04T21:26:13Z",
             "html_url": "https://github.com/neovim/nvim-lspconfig/issues/69#issuecomment-1877781941",
             "id": 1877781941,
@@ -643,7 +643,7 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/comments/1877781941/reactions"
             },
-            "updated_at": "2024-01-05T02:08:29Z",
+            "updated_at": "2024-04-20T23:42:19Z",
             "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/comments/1877781941",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/10986395?v=4",
@@ -707,7 +707,7 @@
     "state_reason": "completed",
     "timeline_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/69/timeline",
     "title": "add diagnostics to quicklist",
-    "updated_at": "2024-01-05T02:08:29Z",
+    "updated_at": "2024-04-20T23:42:19Z",
     "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/69",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/886074?v=4",
