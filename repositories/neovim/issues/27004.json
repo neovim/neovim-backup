@@ -3,8 +3,8 @@
     "assignee": null,
     "assignees": [],
     "author_association": "MEMBER",
-    "body": "# Problem\r\n\r\nWriting test code requires some \"tribal knowledge\" that requires the test author to understand which \"helper\" functions are dispatched to the `nvim` _test session_ (the \"[SUT](https://en.wikipedia.org/wiki/System_under_test)\") and which functions are handled in the context of the _test runner_.\r\n\r\nContributors must constantly be aware of the difference. Reading and writing tests can be confusing because of this, especially to non-experienced contributors.\r\n\r\n# Expected behavior\r\n\r\nMake the distinction clear by either extracting SUT functions to `test/sut.lua` or grouping them in a ~~sut~~ `nvim` container.\r\n\r\n- [x] Rename `helpers.lua` to `testutil.lua` and change the import convention to (https://github.com/neovim/neovim/pull/28145):\r\n   ```\r\n   local t = require('testutil')\r\n   ...\r\n   t.foo()\r\n   t.bar()\r\n   ```\r\n    - Thus there is no need anymore to do this:\r\n      ```\r\n      local helpers = require('testutil')\r\n      local foo = helpers.foo\r\n      local bar = helpers.bar\r\n      ```\r\n    - Test code can simply use `t.xx()` everywhere to call non-SUT test util functions.\r\n- [ ] SUT functions live on `nvim`. When using SUT functions in test code, the usage looks like:\r\n   ```lua\r\n   nvim.api.nvim_get_commands()  -- instead of helpers.api.nvim_get_commands\r\n   nvim.fn.foo()  -- instead of helpers.fn.foo()\r\n   ```\r\n    - See \"Implementation\" below.\r\n\r\n# Implementation\r\n\r\nAlmost everything in `test/functional/testutil.lua` involves a \"session\". So in practice this would mean:\r\n\r\n1. Lift any \"pure\" functionality (functions that don't require the nvim \"test session\") from `test/functional/testutil.lua` into `test/testutil.lua`.\r\n    - `test/functional/testutil.lua` calls the `nvim` \"test session\" via RPC.\r\n1. `test/testutil.lua` is no longer \"merged\" into `test/functional/testutil.lua`.\r\n    - I.e. delete this line: https://github.com/neovim/neovim/blob/fd085d90820149caecf213b299f19e46305043ee/test/functional/testutil.lua#L19\r\n1. Rename `test/functional/testutil.lua` to (e.g.) `…/nvimsession.lua`\r\n1. All test imports now look like:\r\n   ```lua\r\n   -- Test runner functions/utils.\r\n   local t = require('test.testutil')()\r\n   -- Nvim RPC session.\r\n   local nvim = require('test.functional.nvimsession')()\r\n   ```\r\n    - What should the test session be named?\r\n        - ~~nvim? session? sut?~~ We decided on `n`.\r\n\r\n# Future\r\n\r\nSome questions to consider for the future (out of scope for this issue):\r\n\r\n- Should `nvim` be a mirror of the nvim \"test session\" Lua stdlib? I.e. all `nvim.xx()` calls just dispatch to the Nvim \"test session\" `vim.xx()` ?\r\n- Currently, we have a global \"session\": https://github.com/neovim/neovim/blob/f190f758ac58d9cc955368e047b070e0a2261033/test/functional/testutil.lua#L107-L113\r\n    - This makes it less obvious what's going on in the tests.\r\n    - It is weird that \"screen\" is used as an object in test code while \"session\" is not. Especially since the \"screen\" object is strictly tied to a session anyway. You cannot have multiple screens per session.\r\n    - Solution: we could treat the Nvim session same as \"screen\", so tests would look like:\r\n      ```\r\n      local nvim = require('…/nvimsession.lua')\r\n      local n = nvim.clear()\r\n      n:command(':new foo')\r\n      t.eq(2, n:eval('1+1'))\r\n      ```\r\n\r\n# Related\r\n\r\n- https://github.com/neovim/neovim/pull/26994\r\n- https://github.com/neovim/neovim/pull/27024",
-    "closed_at": null,
+    "body": "# Problem\r\n\r\nWriting test code requires some \"tribal knowledge\" that requires the test author to understand which \"helper\" functions are dispatched to the `nvim` _test session_ (the \"[SUT](https://en.wikipedia.org/wiki/System_under_test)\") and which functions are handled in the context of the _test runner_.\r\n\r\nContributors must constantly be aware of the difference. Reading and writing tests can be confusing because of this, especially to non-experienced contributors.\r\n\r\n# Expected behavior\r\n\r\nMake the distinction clear by either extracting SUT functions to `test/sut.lua` or grouping them in a ~~sut~~ `nvim` container.\r\n\r\n- [x] Rename `helpers.lua` to `testutil.lua` and change the import convention to (https://github.com/neovim/neovim/pull/28145):\r\n   ```\r\n   local t = require('testutil')\r\n   ...\r\n   t.foo()\r\n   t.bar()\r\n   ```\r\n    - Thus there is no need anymore to do this:\r\n      ```\r\n      local helpers = require('testutil')\r\n      local foo = helpers.foo\r\n      local bar = helpers.bar\r\n      ```\r\n    - Test code can simply use `t.xx()` everywhere to call non-SUT test util functions.\r\n- [x] #28472\n   ```lua\r\n   nvim.api.nvim_get_commands()  -- instead of helpers.api.nvim_get_commands\r\n   nvim.fn.foo()  -- instead of helpers.fn.foo()\r\n   ```\r\n    - See \"Implementation\" below.\r\n\r\n# Implementation\r\n\r\nAlmost everything in `test/functional/testutil.lua` involves a \"session\". So in practice this would mean:\r\n\r\n1. Lift any \"pure\" functionality (functions that don't require the nvim \"test session\") from `test/functional/testutil.lua` into `test/testutil.lua`.\r\n    - `test/functional/testutil.lua` calls the `nvim` \"test session\" via RPC.\r\n1. `test/testutil.lua` is no longer \"merged\" into `test/functional/testutil.lua`.\r\n    - I.e. delete this line: https://github.com/neovim/neovim/blob/fd085d90820149caecf213b299f19e46305043ee/test/functional/testutil.lua#L19\r\n1. Rename `test/functional/testutil.lua` to (e.g.) `…/nvimsession.lua`\r\n1. All test imports now look like:\r\n   ```lua\r\n   -- Test runner functions/utils.\r\n   local t = require('test.testutil')()\r\n   -- Nvim RPC session.\r\n   local nvim = require('test.functional.nvimsession')()\r\n   ```\r\n    - What should the test session be named?\r\n        - ~~nvim? session? sut?~~ We decided on `n`.\r\n\r\n# Future\r\n\r\nSome questions to consider for the future (out of scope for this issue):\r\n\r\n- Should `nvim` be a mirror of the nvim \"test session\" Lua stdlib? I.e. all `nvim.xx()` calls just dispatch to the Nvim \"test session\" `vim.xx()` ?\r\n- Currently, we have a global \"session\": https://github.com/neovim/neovim/blob/f190f758ac58d9cc955368e047b070e0a2261033/test/functional/testutil.lua#L107-L113\r\n    - This makes it less obvious what's going on in the tests.\r\n    - It is weird that \"screen\" is used as an object in test code while \"session\" is not. Especially since the \"screen\" object is strictly tied to a session anyway. You cannot have multiple screens per session.\r\n    - Solution: we could treat the Nvim session same as \"screen\", so tests would look like:\r\n      ```\r\n      local nvim = require('…/nvimsession.lua')\r\n      local n = nvim.clear()\r\n      n:command(':new foo')\r\n      t.eq(2, n:eval('1+1'))\r\n      ```\r\n\r\n# Related\r\n\r\n- https://github.com/neovim/neovim/pull/26994\r\n- https://github.com/neovim/neovim/pull/27024",
+    "closed_at": "2024-04-23T16:17:06Z",
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -222,7 +222,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 607,
+        "closed_issues": 611,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -251,10 +251,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 527,
+        "open_issues": 530,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2024-04-22T11:35:03Z",
+        "updated_at": "2024-04-29T21:47:33Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM57_5k1",
@@ -273,11 +273,11 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/27004/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/27004/timeline",
     "title": "tests: improve test conventions (SUT, helpers.lua)",
-    "updated_at": "2024-04-20T21:05:19Z",
+    "updated_at": "2024-04-23T16:18:01Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/27004",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",

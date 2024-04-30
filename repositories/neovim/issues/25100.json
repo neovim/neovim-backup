@@ -2,12 +2,12 @@
     "active_lock_reason": null,
     "assignee": null,
     "assignees": [],
-    "author_association": "NONE",
+    "author_association": "CONTRIBUTOR",
     "body": "### Problem\n\nSending multiline messages throgh Noice causes assertion failure. At the moment I cannot simplify the problem within a reasonable time.\r\n\r\nI looked into https://github.com/neovim/neovim/issues/22919\n\n### Steps to reproduce\n\n- save the following content to `init.lua`:\r\n```lua\r\nlocal configDir = vim.fn.expand('<sfile>:p:h')\r\n\r\nvim.env['XDG_CONFIG_HOME'] = configDir\r\nvim.env['XDG_DATA_HOME'] = configDir .. '/.xdg/data'\r\nvim.env['XDG_STATE_HOME'] = configDir .. '/.xdg/state'\r\nvim.env['XDG_CACHE_HOME'] = configDir .. '/.xdg/cache'\r\nlocal stdPathConfig = vim.fn.stdpath('config')\r\n\r\nvim.opt.runtimepath:prepend(stdPathConfig)\r\nvim.opt.packpath:prepend(stdPathConfig)\r\nlocal plugins_path = vim.fn.fnamemodify('plugins/', ':p')\r\n\r\nfor name, url in pairs {\r\n  ['nui'] = 'https://github.com/MunifTanjim/nui.nvim',\r\n  ['noice.nvim'] = 'https://github.com/folke/noice.nvim',\r\n} do\r\n  local install_path = plugins_path .. name\r\n  if vim.fn.isdirectory(install_path) == 0 then\r\n    vim.fn.system { 'git', 'clone', '--depth=1', url, install_path }\r\n  end\r\n  vim.opt.runtimepath:append(install_path)\r\nend\r\n\r\nrequire('noice').setup({})\r\nvim.notify_once('\\n')\r\n```\r\n\r\n- run `nvim --clean -u init.lua`. For me nvim ends with code 134 and backtrace:\r\n```cpp\r\n#0  __pthread_kill_implementation (threadid=<optimized out>, signo=signo@entry=6, no_tid=no_tid@entry=0) at ./nptl/pthread_kill.c:44\r\n#1  0x00007fcb90e2114f in __pthread_kill_internal (signo=6, threadid=<optimized out>) at ./nptl/pthread_kill.c:78\r\n#2  0x00007fcb90dd3462 in __GI_raise (sig=sig@entry=6) at ../sysdeps/posix/raise.c:26\r\n#3  0x00007fcb90dbd4b2 in __GI_abort () at ./stdlib/abort.c:79\r\n#4  0x00007fcb90dbd3d5 in __assert_fail_base (fmt=0x7fcb90f31dc8 \"%s%s%s:%u: %s%sAssertion `%s' failed.\\n%n\", assertion=assertion@entry=0x55d27eff8f95 \"to_scroll >= 0\", \r\n    file=file@entry=0x55d27f018a98 \".../src/nvim/message.c\", line=line@entry=2444, function=function@entry=0x55d27efcc580 <__PRETTY_FUNCTION__.0> \"msg_scroll_flush\") at ./assert/assert.c:92\r\n#5  0x00007fcb90dcc3a2 in __assert_fail (assertion=assertion@entry=0x55d27eff8f95 \"to_scroll >= 0\", file=file@entry=0x55d27f018a98 \".../src/nvim/message.c\", line=line@entry=2444, \r\n    function=function@entry=0x55d27efcc580 <__PRETTY_FUNCTION__.0> \"msg_scroll_flush\") at ./assert/assert.c:101\r\n#6  0x000055d27ed8f93d in msg_scroll_flush () at .../src/nvim/message.c:2444\r\n#7  0x000055d27ee72119 in ui_flush () at .../src/nvim/ui.c:499\r\n#8  0x000055d27ecb5b64 in screen_resize (width=<optimized out>, height=<optimized out>) at .../src/nvim/drawscreen.c:375\r\n#9  0x000055d27ee70dfc in ui_refresh () at .../src/nvim/ui.c:228\r\n#10 0x000055d27ee72d10 in ui_add_cb (ns_id=1, cb=52, ext_widgets=<optimized out>) at .../src/nvim/ui.c:721\r\n#11 0x000055d27ed630b8 in nlua_ui_attach (lstate=0x7fcb90d75380) at .../src/nvim/lua/executor.c:690\r\n#12 0x000055d27ef32406 in lj_BC_FUNCC ()\r\n#13 0x000055d27ef1e855 in lua_pcall (L=L@entry=0x7fcb90d75380, nargs=nargs@entry=1, nresults=nresults@entry=1, errfunc=errfunc@entry=-3) at lj_api.c:1116\r\n#14 0x000055d27ed5bd09 in nlua_pcall (lstate=lstate@entry=0x7fcb90d75380, nargs=nargs@entry=1, nresults=nresults@entry=1) at .../src/nvim/lua/executor.c:164\r\n#15 0x000055d27ed62275 in nlua_call_ref (ref=<optimized out>, name=<optimized out>, args=..., retval=true, err=0x0) at .../src/nvim/lua/executor.c:1591\r\n#16 0x000055d27ec82079 in call_autocmd_callback (ac=ac@entry=0x55d27fd20100, apc=apc@entry=0x7ffc71c4a8d0) at .../src/nvim/autocmd.c:2007\r\n#17 0x000055d27ec84145 in getnextac (c=<optimized out>, cookie=0x7ffc71c4a8d0, indent=<optimized out>, do_concat=<optimized out>) at .../src/nvim/autocmd.c:2064\r\n#18 0x000055d27ed18015 in do_cmdline (cmdline=<optimized out>, fgetline=0x55d27ec83fb2 <getnextac>, cookie=0x7ffc71c4a8d0, flags=7) at .../src/nvim/ex_docmd.c:505\r\n#19 0x000055d27ec82d11 in apply_autocmds_group (event=EVENT_VIMENTER, fname=0x55d27fdc0a90 \"\", fname_io=<optimized out>, force=<optimized out>, group=group@entry=-3, buf=0x55d27fcec7f0, eap=0x0, data=0x0)\r\n    at .../src/nvim/autocmd.c:1792\r\n#20 0x000055d27ec833b1 in apply_autocmds (event=<optimized out>, fname=<optimized out>, fname_io=<optimized out>, force=<optimized out>, buf=<optimized out>) at .../src/nvim/autocmd.c:1462\r\n#21 0x000055d27ec38038 in main (argc=5, argv=<optimized out>) at .../src/nvim/main.c:592\r\n```\n\n### Expected behavior\n\nMessage can be displayed. \n\n### Neovim version (nvim -v)\n\nNVIM v0.10.0-dev-1081+gf859d16ae\n\n### Vim (not Nvim) behaves the same?\n\n- \n\n### Operating system/version\n\nDebian Sid\n\n### Terminal name/version\n\ntmux 3.3a-4, kitty 0.26.5-5\n\n### $TERM environment variable\n\ntmux-256color\n\n### Installation\n\nfrom repo",
     "closed_at": null,
     "comment_data": [
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "I managed to reproduce this bug without any plugin and with **nvim-qt** used as UI:\r\n\r\n- create some invalid `.editorconfig` file (like https://github.com/LuaLS/lua-language-server/blob/16b9ce9bafbf0f432ab7d1d063e2f18b1ed0c947/.editorconfig#L23) \r\n```editorconfig\r\n[*.lua]\r\nend_of_line = auto\r\n```\r\n- create `init.lua` with\r\n```lua\r\nvim.api.nvim_create_autocmd('VimEnter', {\r\n  pattern = '*',\r\n  nested = true,\r\n  callback = function ()\r\n    vim.opt.background = 'dark'\r\n  end,\r\n})\r\n\r\nvim.api.nvim_create_autocmd('OptionSet', {\r\n  pattern = 'background',\r\n  callback = function ()\r\n    vim.api.nvim_cmd({cmd = 'colorscheme', args = {'darkblue'}}, {})\r\n  end\r\n})\r\n```\r\n- open the config itself:\r\n```sh\r\nnvim-qt --nvim path/to/bin/nvim -- --clean -u init.lua init.lua\r\n```\r\nFor me nvim crashes with\r\n```cpp\r\n#0  __pthread_kill_implementation (threadid=<optimized out>, signo=signo@entry=6, no_tid=no_tid@entry=0) at ./nptl/pthread_kill.c:44\r\n#1  0x00007f2219bd915f in __pthread_kill_internal (signo=6, threadid=<optimized out>) at ./nptl/pthread_kill.c:78\r\n#2  0x00007f2219b8b472 in __GI_raise (sig=sig@entry=6) at ../sysdeps/posix/raise.c:26\r\n#3  0x00007f2219b754b2 in __GI_abort () at ./stdlib/abort.c:79\r\n#4  0x00007f2219b753d5 in __assert_fail_base (fmt=0x7f2219ce9dc8 \"%s%s%s:%u: %s%sAssertion `%s' failed.\\n%n\", assertion=assertion@entry=0x55e1e9271138 \"pos_delta >= 0\", \r\n    file=file@entry=0x55e1e9290d68 \".../src/nvim/message.c\", line=line@entry=2436, function=function@entry=0x55e1e9244680 <__PRETTY_FUNCTION__.0> \"msg_scroll_flush\") at ./assert/assert.c:92\r\n#5  0x00007f2219b843a2 in __assert_fail (assertion=assertion@entry=0x55e1e9271138 \"pos_delta >= 0\", file=file@entry=0x55e1e9290d68 \".../src/nvim/message.c\", line=line@entry=2436, \r\n    function=function@entry=0x55e1e9244680 <__PRETTY_FUNCTION__.0> \"msg_scroll_flush\") at ./assert/assert.c:101\r\n#6  0x000055e1e900735b in msg_scroll_flush () at .../src/nvim/message.c:2436\r\n#7  0x000055e1e90e9bab in ui_flush () at .../src/nvim/ui.c:499\r\n#8  0x000055e1e8f28f75 in screen_resize (width=<optimized out>, height=<optimized out>) at .../src/nvim/drawscreen.c:375\r\n#9  0x000055e1e90e888e in ui_refresh () at .../src/nvim/ui.c:228\r\n#10 0x000055e1e8fbf45d in do_highlight (line=<optimized out>, forceit=forceit@entry=true, init=init@entry=true) at .../src/nvim/highlight_group.c:1390\r\n#11 0x000055e1e8fbf520 in init_highlight (both=both@entry=true, reset=reset@entry=true) at .../src/nvim/highlight_group.c:649\r\n#12 0x000055e1e8fbe734 in do_highlight (line=0x55e1ea813928 \"\", forceit=<optimized out>, init=false) at .../src/nvim/highlight_group.c:1025\r\n#13 0x000055e1e8f8923d in ex_highlight (eap=0x7ffce5ff8a40) at .../src/nvim/ex_docmd.c:4485\r\n#14 0x000055e1e8f87b87 in execute_cmd0 (retv=retv@entry=0x7ffce5ff8a34, eap=eap@entry=0x7ffce5ff8a40, errormsg=errormsg@entry=0x7ffce5ff8a38, preview=preview@entry=false) at .../src/nvim/ex_docmd.c:1634\r\n#15 0x000055e1e8f8af3c in do_one_cmd (cmdlinep=cmdlinep@entry=0x7ffce5ff8c88, flags=flags@entry=7, cstack=cstack@entry=0x7ffce5ff8d10, fgetline=fgetline@entry=0x55e1e9089ede <getsourceline>, cookie=cookie@entry=0x7ffce5ff92d0)\r\n    at .../src/nvim/ex_docmd.c:2293\r\n#16 0x000055e1e8f8bb0f in do_cmdline (cmdline=<optimized out>, fgetline=0x55e1e9089ede <getsourceline>, cookie=0x7ffce5ff92d0, flags=7) at .../src/nvim/ex_docmd.c:592\r\n#17 0x000055e1e908a888 in do_source (fname=0x55e1ea8244a0 \".../share/nvim/runtime/colors/darkblue.vim\", check_other=<optimized out>, is_vimrc=<optimized out>, ret_sid=<optimized out>)\r\n    at .../src/nvim/runtime.c:2222\r\n#18 0x000055e1e9085d29 in source_callback_vim_lua (num_fnames=1, fnames=0x55e1ea74f480, all=all@entry=false, cookie=cookie@entry=0x0) at .../src/nvim/runtime.c:288\r\n#19 0x000055e1e90864e7 in gen_expand_wildcards_and_cb (num_pat=num_pat@entry=1, pats=pats@entry=0x7ffce5ff9458, flags=<optimized out>, all=all@entry=false, callback=callback@entry=0x55e1e9085cc5 <source_callback_vim_lua>, \r\n    cookie=cookie@entry=0x0) at .../src/nvim/runtime.c:899\r\n#20 0x000055e1e908739f in do_in_cached_path (name=0x55e1ea8315a0 \"colors/darkblue.*\", flags=flags@entry=24, callback=callback@entry=0x55e1e9085cc5 <source_callback_vim_lua>, cookie=cookie@entry=0x0)\r\n    at .../src/nvim/runtime.c:533\r\n#21 0x000055e1e9087539 in do_in_runtimepath (name=0x55e1ea8315a0 \"colors/darkblue.*\", flags=24, callback=callback@entry=0x55e1e9085cc5 <source_callback_vim_lua>, cookie=cookie@entry=0x0)\r\n    at .../src/nvim/runtime.c:843\r\n#22 0x000055e1e9087644 in source_runtime_vim_lua (name=<optimized out>, flags=<optimized out>) at .../src/nvim/runtime.c:867\r\n#23 0x000055e1e8fbad9a in load_colors (name=0x55e1ea834f5c \"darkblue\") at .../src/nvim/highlight_group.c:703\r\n#24 0x000055e1e8f891df in ex_colorscheme (eap=0x7ffce5ffa750) at .../src/nvim/ex_docmd.c:4475\r\n#25 0x000055e1e8f87b87 in execute_cmd0 (retv=retv@entry=0x7ffce5ffa584, eap=eap@entry=0x7ffce5ffa750, errormsg=errormsg@entry=0x7ffce5ffa588, preview=preview@entry=false) at .../src/nvim/ex_docmd.c:1634\r\n#26 0x000055e1e8f8816d in execute_cmd (eap=0x7ffce5ffa750, cmdinfo=<optimized out>, preview=<optimized out>) at .../src/nvim/ex_docmd.c:1712\r\n#27 0x000055e1e8ec7f5e in nvim_cmd (channel_id=9223372036854775809, cmd=<optimized out>, opts=0x7ffce5ffa9e7, err=0x7ffce5ffa9f0) at .../src/nvim/api/command.c:659\r\n#28 0x000055e1e8eaf1c9 in nlua_api_nvim_cmd (lstate=0x7f2219b2d380) at .../build/src/nvim/auto/lua_api_c_bindings.generated.c:1607\r\n#29 0x000055e1e91a9ef6 in lj_BC_FUNCC ()\r\n#30 0x000055e1e9196345 in lua_pcall (L=L@entry=0x7f2219b2d380, nargs=nargs@entry=1, nresults=nresults@entry=1, errfunc=errfunc@entry=-3) at lj_api.c:1116\r\n#31 0x000055e1e8fcf3be in nlua_pcall (lstate=lstate@entry=0x7f2219b2d380, nargs=nargs@entry=1, nresults=nresults@entry=1) at .../src/nvim/lua/executor.c:164\r\n#32 0x000055e1e8fd592a in nlua_call_ref (ref=<optimized out>, name=<optimized out>, args=..., retval=true, err=0x0) at .../src/nvim/lua/executor.c:1591\r\n#33 0x000055e1e8ef530b in call_autocmd_callback (ac=ac@entry=0x55e1ea7532f0, apc=apc@entry=0x7ffce5ffb450) at .../src/nvim/autocmd.c:2007\r\n#34 0x000055e1e8ef73d7 in getnextac (c=<optimized out>, cookie=0x7ffce5ffb450, indent=<optimized out>, do_concat=<optimized out>) at .../src/nvim/autocmd.c:2064\r\n#35 0x000055e1e8f8b5b6 in do_cmdline (cmdline=<optimized out>, fgetline=0x55e1e8ef7244 <getnextac>, cookie=0x7ffce5ffb450, flags=7) at .../src/nvim/ex_docmd.c:505\r\n#36 0x000055e1e8ef5fa3 in apply_autocmds_group (event=EVENT_OPTIONSET, fname=0x55e1ea831d70 \"background\", fname_io=<optimized out>, force=<optimized out>, group=group@entry=-3, buf=0x0, eap=0x0, data=0x0)\r\n    at .../src/nvim/autocmd.c:1792\r\n#37 0x000055e1e8ef6643 in apply_autocmds (event=<optimized out>, fname=<optimized out>, fname_io=<optimized out>, force=<optimized out>, buf=<optimized out>) at .../src/nvim/autocmd.c:1462\r\n#38 0x000055e1e903e167 in trigger_optionset_string (opt_idx=opt_idx@entry=10, opt_flags=opt_flags@entry=0, oldval=oldval@entry=0x55e1ea72cea0 \"dark\", oldval_l=oldval_l@entry=0x55e1ea831e10 \"dark\", \r\n    oldval_g=oldval_g@entry=0x55e1ea831dc0 \"dark\", newval=newval@entry=0x55e1ea845b10 \"dark\") at .../src/nvim/optionstr.c:204\r\n#39 0x000055e1e9041085 in set_string_option (opt_idx=10, varp_arg=<optimized out>, value=<optimized out>, opt_flags=opt_flags@entry=0, value_checked=value_checked@entry=0x7ffce5ffb677, errbuf=errbuf@entry=0x55e1e936b2a0 <errbuf> \"\", \r\n    errbuflen=1025) at .../src/nvim/optionstr.c:503\r\n#40 0x000055e1e9041133 in set_option (opt_idx=opt_idx@entry=10, varp=varp@entry=0x55e1e935fe58 <p_bg>, v=v@entry=0x7ffce5ffb6c0, opt_flags=opt_flags@entry=0, errbuf=errbuf@entry=0x55e1e936b2a0 <errbuf> \"\", errbuflen=errbuflen@entry=1025)\r\n    at .../src/nvim/option.c:3775\r\n#41 0x000055e1e904126b in set_option_value (name=0x55e1ea833030 \"background\", value=..., opt_flags=0) at .../src/nvim/option.c:3844\r\n#42 0x000055e1e8ecf387 in set_option_value_for (name=name@entry=0x55e1ea833030 \"background\", value=..., opt_flags=0, opt_type=0, from=<optimized out>, err=err@entry=0x7ffce5ffb8b0)\r\n    at .../src/nvim/api/options.c:484\r\n#43 0x000055e1e8ecf508 in nvim_set_option_value (channel_id=9223372036854775809, name=..., value=..., opts=<optimized out>, err=0x7ffce5ffb8b0) at .../src/nvim/api/options.c:296\r\n#44 0x000055e1e8eb2de0 in nlua_api_nvim_set_option_value (lstate=0x7f2219b2d380) at .../build/src/nvim/auto/lua_api_c_bindings.generated.c:3109\r\n#45 0x000055e1e91a9ef6 in lj_BC_FUNCC ()\r\n```\r\n\r\n- compare with\r\n```sh\r\npath/to/bin/nvim --clean -u init.lua init.lua\r\n```",
             "created_at": "2023-09-17T18:34:57Z",
             "html_url": "https://github.com/neovim/neovim/issues/25100#issuecomment-1722538046",
@@ -51,7 +51,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "It seems that two above examples expose different bugs: since a9a48d6b5f00241e16e7131c997f0117bc5e9047 the later does not cause crash for me, but the first still do. \r\n\r\nCc: @bfredl ",
             "created_at": "2023-10-10T22:56:48Z",
             "html_url": "https://github.com/neovim/neovim/issues/25100#issuecomment-1756402630",
@@ -95,7 +95,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "I found that I can avoid this crash by deferring the setup:\r\n```lua\r\nvim.notify_once('test\\n')\r\nvim.api.nvim_create_autocmd('UIEnter', {\r\n  once = true,\r\n  callback = function ()\r\n    require('noice').setup({})\r\n  end,\r\n})\r\n```\r\nIt works in my real environment too. Possible start-up messages are displayed in built-in way. \r\n\r\nIt works for me also after change `UIEnter` to `VimEnter` (maybe accidentally - Noice also calls `vim.ui_attach()` on `VimEnter` https://github.com/folke/noice.nvim/blob/8f1b53ab85f83e0687d0f267085ad781ec240432/lua/noice/init.lua#L29). ",
             "created_at": "2023-10-20T13:18:40Z",
             "html_url": "https://github.com/neovim/neovim/issues/25100#issuecomment-1772727478",
@@ -181,9 +181,53 @@
                 "type": "User",
                 "url": "https://api.github.com/users/duarm"
             }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "On v0.10.0-dev-3037+gca432069e I cannot reproduce this bug. Do we have any test that can cover it?",
+            "created_at": "2024-04-29T12:22:09Z",
+            "html_url": "https://github.com/neovim/neovim/issues/25100#issuecomment-2082590489",
+            "id": 2082590489,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/25100",
+            "node_id": "IC_kwDOAPphoM58Ic8Z",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2082590489/reactions"
+            },
+            "updated_at": "2024-04-29T12:22:09Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2082590489",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/11404453?v=4",
+                "events_url": "https://api.github.com/users/przepompownia/events{/privacy}",
+                "followers_url": "https://api.github.com/users/przepompownia/followers",
+                "following_url": "https://api.github.com/users/przepompownia/following{/other_user}",
+                "gists_url": "https://api.github.com/users/przepompownia/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/przepompownia",
+                "id": 11404453,
+                "login": "przepompownia",
+                "node_id": "MDQ6VXNlcjExNDA0NDUz",
+                "organizations_url": "https://api.github.com/users/przepompownia/orgs",
+                "received_events_url": "https://api.github.com/users/przepompownia/received_events",
+                "repos_url": "https://api.github.com/users/przepompownia/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/przepompownia/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/przepompownia/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/przepompownia"
+            }
         }
     ],
-    "comments": 4,
+    "comments": 5,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/25100/comments",
     "created_at": "2023-09-11T18:51:05Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/25100/events",
@@ -213,9 +257,9 @@
             "default": false,
             "description": "UI extensibility, events, protocol",
             "id": 640132777,
-            "name": "ui-ext",
+            "name": "ui-extensibility",
             "node_id": "MDU6TGFiZWw2NDAxMzI3Nzc=",
-            "url": "https://api.github.com/repos/neovim/neovim/labels/ui-ext"
+            "url": "https://api.github.com/repos/neovim/neovim/labels/ui-extensibility"
         },
         {
             "color": "C5DEF5",
@@ -250,7 +294,7 @@
     "state_reason": null,
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/25100/timeline",
     "title": "Assertion failure with newline character in message and `screen_resize`",
-    "updated_at": "2023-10-30T10:48:19Z",
+    "updated_at": "2024-04-29T12:22:11Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/25100",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/11404453?v=4",
