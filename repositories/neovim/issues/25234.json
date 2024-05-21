@@ -4,7 +4,7 @@
     "assignees": [],
     "author_association": "CONTRIBUTOR",
     "body": "### Problem\n\nNeovim crashes when subjected to a very long line in the terminal when 'number' is set. I found this while grepping and having the misfortune of matching minified javascript.\r\n\r\nContext (libvterm src/screen.c):\r\n\r\n```\r\n(gdb) list\r\n660\t  }\r\n661\t\r\n662\t  /* We really expect the cursor position to be set by now */\r\n663\t  if(active && (new_cursor.row == -1 || new_cursor.col == -1)) {\r\n664\t    fprintf(stderr, \"screen_resize failed to update cursor position\\n\");\r\n665\t    abort();\r\n666\t  }\r\n667\t\r\n668\t  if(old_row >= 0 && bufidx == BUFIDX_PRIMARY) {\r\n669\t    /* Push spare lines to scrollback buffer */\r\n```\r\n\r\nBacktrace:\r\n\r\n```\r\n#0  __pthread_kill_implementation (threadid=<optimized out>, signo=signo@entry=6, no_tid=no_tid@entry=0) at pthread_kill.c:44\r\n#1  0x00007fdf2a2b18a3 in __pthread_kill_internal (signo=6, threadid=<optimized out>) at pthread_kill.c:78\r\n#2  0x00007fdf2a261668 in __GI_raise (sig=sig@entry=6) at ../sysdeps/posix/raise.c:26\r\n#3  0x00007fdf2a2494b8 in __GI_abort () at abort.c:79\r\n#4  0x00007fdf2a68f06b in resize_buffer (screen=screen@entry=0x55b56419ef90, bufidx=bufidx@entry=0, new_rows=new_rows@entry=29, new_cols=new_cols@entry=109, active=true, statefields=statefields@entry=0x7ffc82f5a2f0) at src/screen.c:665\r\n#5  0x00007fdf2a6924c3 in resize (new_rows=29, new_cols=109, fields=0x7ffc82f5a2f0, user=0x55b56419ef90) at src/screen.c:763\r\n#6  0x00007fdf2a68c27d in on_resize (rows=29, cols=109, user=0x55b5641aa0f0) at src/state.c:1993\r\n#7  0x000055b5622fb7ba in terminal_check_size (term=0x55b5641bc300) at /home/jade/co/neovim/src/nvim/terminal.c:408\r\n#8  0x000055b5620a95cf in win_update (wp=0x55b5640efbd0, providers=0x7ffc82f5a5f0) at /home/jade/co/neovim/src/nvim/drawscreen.c:1494\r\n#9  0x000055b5620a7286 in update_screen () at /home/jade/co/neovim/src/nvim/drawscreen.c:632\r\n#10 0x000055b5622fbdce in terminal_check (state=0x7ffc82f5a720) at /home/jade/co/neovim/src/nvim/terminal.c:539\r\n#11 0x000055b5622d65d7 in state_enter (s=0x7ffc82f5a720) at /home/jade/co/neovim/src/nvim/state.c:40\r\n#12 0x000055b5622fbaaa in terminal_enter () at /home/jade/co/neovim/src/nvim/terminal.c:467\r\n#13 0x000055b5620af8b6 in edit (cmdchar=105, startln=false, count=1) at /home/jade/co/neovim/src/nvim/edit.c:1240\r\n#14 0x000055b562207261 in invoke_edit (cap=0x7ffc82f5a980, repl=0, cmd=105, startln=0) at /home/jade/co/neovim/src/nvim/normal.c:6272\r\n#15 0x000055b5622071f5 in nv_edit (cap=0x7ffc82f5a980) at /home/jade/co/neovim/src/nvim/normal.c:6249\r\n#16 0x000055b5621fc291 in normal_execute (state=0x7ffc82f5a910, key=105) at /home/jade/co/neovim/src/nvim/normal.c:1228\r\n#17 0x000055b5622d6761 in state_enter (s=0x7ffc82f5a910) at /home/jade/co/neovim/src/nvim/state.c:99\r\n#18 0x000055b5621fa50d in normal_enter (cmdwin=false, noexmode=false) at /home/jade/co/neovim/src/nvim/normal.c:517\r\n#19 0x000055b561fed05d in main (argc=7, argv=0x7ffc82f5ad28) at /home/jade/co/neovim/src/nvim/main.c:647\r\n```\n\n### Steps to reproduce\n\nIn your neovim checkout:\r\n\r\n```\r\nVIMRUNTIME=./runtime ./build/bin/nvim --clean --cmd 'set number' -c 'term bash'\r\n```\r\n\r\nthen paste:\r\n\r\n```\r\nhead -c 1000000 < /dev/zero | tr '\\0' 'a'\r\n```\r\n\r\ninto the terminal.\n\n### Expected behavior\n\nShould at least not crash. I don't care that much about a giant line being displayed properly, but currently it crashes, which is annoying.\n\n### Neovim version (nvim -v)\n\n46402c16c0c38701469c52fb28d16f2483cc7a72\n\n### Vim (not Nvim) behaves the same?\n\nunsurprisingly, no, 9.0.1882\n\n### Operating system/version\n\nArch Linux\n\n### Terminal name/version\n\nalacritty 0.12.2 (9d9982df)\n\n### $TERM environment variable\n\nalacritty\n\n### Installation\n\nreproduces in a git checkout",
-    "closed_at": null,
+    "closed_at": "2024-05-16T22:38:16Z",
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -49,9 +49,53 @@
                 "type": "User",
                 "url": "https://api.github.com/users/zeertzjq"
             }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "Let's close this for now. Reflow is now disabled and a fix in libvterm is needed to re-enable it.",
+            "created_at": "2024-05-16T22:38:16Z",
+            "html_url": "https://github.com/neovim/neovim/issues/25234#issuecomment-2116315996",
+            "id": 2116315996,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/25234",
+            "node_id": "IC_kwDOAPphoM5-JGtc",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2116315996/reactions"
+            },
+            "updated_at": "2024-05-16T22:38:16Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2116315996",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+                "followers_url": "https://api.github.com/users/zeertzjq/followers",
+                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/zeertzjq",
+                "id": 35768171,
+                "login": "zeertzjq",
+                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+                "repos_url": "https://api.github.com/users/zeertzjq/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/zeertzjq"
+            }
         }
     ],
-    "comments": 1,
+    "comments": 2,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/25234/comments",
     "created_at": "2023-09-18T18:11:25Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/25234/events",
@@ -108,7 +152,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 601,
+        "closed_issues": 621,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -137,10 +181,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 430,
+        "open_issues": 535,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2024-03-25T22:54:54Z",
+        "updated_at": "2024-05-17T18:53:34Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM5xVmTR",
@@ -159,11 +203,11 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/25234/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/25234/timeline",
     "title": "When :terminal encounters a very long line with 'number' set, libvterm aborts neovim",
-    "updated_at": "2024-03-19T13:59:20Z",
+    "updated_at": "2024-05-16T22:38:16Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/25234",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/6652840?v=4",

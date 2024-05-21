@@ -2,12 +2,12 @@
     "active_lock_reason": null,
     "assignee": null,
     "assignees": [],
-    "author_association": "NONE",
+    "author_association": "CONTRIBUTOR",
     "body": "### Language server\n\n_No response_\n\n### Requested feature\n\nI am using a language server that makes Neovim unbearably slow when I edit large files with it. Unfortunately, I often edit that file, along with other files of the same filetype. I wish to make the server do read small size buffers, and give me diagnostics etc, but I don't want it to even _attempt reading_ large files at all, even if their buffers are open in the same session along with small size buffers.\r\n\r\nI managed to disable diagnostics for such buffers, based on a [post I found here](https://neovim.discourse.group/t/how-can-i-disable-completely-diagnostics-for-a-specific-buffer/1757):\r\n\r\n```lua\r\nvim.api.nvim_create_autocmd('BufReadPre', {\r\n\tcallback = function(t)\r\n\t\tif bufIsBig(t.buf) then\r\n\t\t\tvim.diagnostic.disable(t.buf)\r\n\t\tend\r\n\tend\r\n})\r\n```\r\n\r\nBut it doesn't prevent the language server from _reading_ the large file - it just hides the diagnostics. I also tried to add `autocmd BufEnter` that will run `LspStart` and `LspStop` depending on the size of the buffer, but it turned out to make my Neovim completely stuck when I switched buffers.\r\n\r\nEssentially I wish to \"hide\" a buffer from a language server.\r\n\r\nThe language server I experience this issue with is [`nil`](https://github.com/oxalica/nil) but I don't think it matters in principle. I created a repository that reproduces the experience here:\r\n\r\nhttps://github.com/doronbehar/nvim-issues-reproduce\n\n### Other clients which have this feature\n\n_No response_",
     "closed_at": "2023-05-21T01:16:28Z",
     "comment_data": [
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "Apparently the slowness is due to this issue (Thanks to `@oxalica`):\r\n\r\nhttps://github.com/neovim/neovim/issues/23026\r\n\r\nIt would still be nice though to implement this feature.",
             "created_at": "2023-05-19T22:36:27Z",
             "html_url": "https://github.com/neovim/nvim-lspconfig/issues/2626#issuecomment-1555342510",
@@ -95,7 +95,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "> use `vim.lsp.buf_detach_client` on `LspAttach` autocmd\r\n\r\nThanks for the idea @glepnir, it looks like a nit solution. But, I tried something similar:\r\n\r\n```lua\r\n\tlsp[v].setup{\r\n\t\tautostart = true,\r\n\t\tcapabilities = capabilities,\r\n\t\ton_attach = function(client, bufnr)\r\n\t\t\tif bufIsBig(bufnr) then\r\n\t\t\t\tvim.lsp.buf_detach_client(bufnr, client.id)\r\n\t\t\tend\r\n\t\tend,\r\n\t\t-- ...\r\n\t}\r\n```\r\n\r\nWhere `v` is my language server, and I got the error upon startup (when file was big):\r\n\r\n```\r\nBuffer (id: 1) is not attached to client (id: 1). Cannot detach.\r\n```\r\n\r\nAnd also considering `LspAttach`, the following also failed for me:\r\n\r\n```lua\r\nvim.api.nvim_create_autocmd('LspAttach', {\r\n\tcallback = function(t)\r\n\t\tif bufIsBig(t.buf) then\r\n\t\t\tvim.lsp.buf_detach_client(t.buf, t.data.client_id)\r\n\t\tend\r\n\tend\r\n})\r\n```\r\n\r\nWhere the above is based upon the docs for `LspAttach`. The error is:\r\n\r\n```\r\nE5113: Error while calling lua chunk: /home/doron/.config/nvim/host-specific/ZENIX.lua:45: Expected Lua number\r\nstack traceback:\r\n        [C]: in function 'nvim_buf_get_name'\r\n        /home/doron/.config/nvim/host-specific/ZENIX.lua:45: in function 'bufIsBig'\r\n        /home/doron/.config/nvim/host-specific/ZENIX.lua:177: in main chunk\r\n```\r\n\r\n",
             "created_at": "2023-05-21T07:10:00Z",
             "html_url": "https://github.com/neovim/nvim-lspconfig/issues/2626#issuecomment-1556103348",
@@ -183,7 +183,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "It's a very simple function that just gets a buffer number and returns if it's too big:\r\n\r\n```lua\r\nbufIsBig = function(bufnr)\r\n\tlocal max_filesize = 100 * 1024 -- 100 KB\r\n\tlocal ok, stats = pcall(vim.loop.fs_stat, vim.api.nvim_buf_get_name(bufnr))\r\n\tif ok and stats and stats.size > max_filesize then\r\n\t\treturn true\r\n\telse\r\n\t\treturn false\r\n\tend\r\nend\r\n```\r\n\r\nBy contrast, the following _does_ work:\r\n\r\n```lua\r\nvim.api.nvim_create_autocmd('BufReadPre', {\r\n\tcallback = function(t)\r\n\t\tif bufIsBig(t.buf) then\r\n\t\t\tprint(\"A big file!\")\r\n\t\tend\r\n\tend\r\n})\r\n```",
             "created_at": "2023-05-21T07:21:42Z",
             "html_url": "https://github.com/neovim/nvim-lspconfig/issues/2626#issuecomment-1556105399",
@@ -236,7 +236,7 @@
             "node_id": "IC_kwDODTQC185cwFNb",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 0,
+                "+1": 1,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -244,7 +244,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 0,
+                "total_count": 1,
                 "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/comments/1556108123/reactions"
             },
             "updated_at": "2023-05-21T07:37:12Z",
@@ -271,7 +271,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "This sort of works @glepnir . I still get the following error upon startup from some reason:\r\n\r\n```\r\n[LSP] Client with id 1 not attached to buffer 1\r\n```\r\n\r\nBut at least according to `LspInfo` the client indeed is not connected to the large file's buffer, and indeed the performance indicates that. Your re-implementation of `bufIsBig` didn't make a difference to me.\r\n\r\nHowever, regarding the original issue: The usage of the `vim.schedule` function is not something trivial to realize. Also, the fact that the client is attached to the buffer and then detached seems kind of awkward to me, and this awkwardness is observed in the error message I see. Do you think perhaps it'd have been better if `e.g` the `autostart` attribute given to `lsp[v].setup` would have accepted a function instead of boolean? This function could wrap `bufIsBig` function for example.\r\n\r\nI appreciate your help, but I'd appreciate if this issue was kept open, and thus open for discussion.",
             "created_at": "2023-05-21T12:13:25Z",
             "html_url": "https://github.com/neovim/nvim-lspconfig/issues/2626#issuecomment-1556164575",
@@ -327,12 +327,12 @@
                 "+1": 0,
                 "-1": 0,
                 "confused": 0,
-                "eyes": 0,
+                "eyes": 1,
                 "heart": 0,
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 0,
+                "total_count": 1,
                 "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/comments/1716632368/reactions"
             },
             "updated_at": "2023-09-12T23:02:45Z",
@@ -357,9 +357,97 @@
                 "type": "User",
                 "url": "https://api.github.com/users/llllvvuu"
             }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "> use `vim.lsp.buf_detach_client` on `LspAttach` autocmd\r\n\r\nFinally, I managed to do this, using the following:\r\n\r\n```lua\r\nvim.api.nvim_create_autocmd('LspAttach', {\r\n\tcallback = function(t)\r\n\t\tif bufIsBig(t.buf) then\r\n\t\t\tfor _,client in pairs(vim.lsp.get_active_clients({bufnr = t.buf})) do\r\n\t\t\t\t-- Using vim.defer_fn because when this event is fired, we are\r\n\t\t\t\t-- not really attached. See:\r\n\t\t\t\t-- https://www.reddit.com/r/neovim/comments/168u3e4/comment/jyyluyo/\r\n\t\t\t\tvim.defer_fn(function()\r\n\t\t\t\t\tvim.lsp.buf_detach_client(t.buf, client.id)\r\n\t\t\t\t\tprint(\r\n\t\t\t\t\t\t\"Detaching client \" .. client.name .. \" because buffer \" ..\r\n\t\t\t\t\t\tvim.fn.bufname(t.buf) .. \" is too big\"\r\n\t\t\t\t\t)\r\n\t\t\t\tend, 10)\r\n\t\t\tend\r\n\t\tend\r\n\tend\r\n})\r\n```",
+            "created_at": "2024-05-17T08:29:10Z",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/issues/2626#issuecomment-2117022664",
+            "id": 2117022664,
+            "issue_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/2626",
+            "node_id": "IC_kwDODTQC185-LzPI",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 2,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 2,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/comments/2117022664/reactions"
+            },
+            "updated_at": "2024-05-17T08:29:10Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/comments/2117022664",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/10998835?v=4",
+                "events_url": "https://api.github.com/users/doronbehar/events{/privacy}",
+                "followers_url": "https://api.github.com/users/doronbehar/followers",
+                "following_url": "https://api.github.com/users/doronbehar/following{/other_user}",
+                "gists_url": "https://api.github.com/users/doronbehar/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/doronbehar",
+                "id": 10998835,
+                "login": "doronbehar",
+                "node_id": "MDQ6VXNlcjEwOTk4ODM1",
+                "organizations_url": "https://api.github.com/users/doronbehar/orgs",
+                "received_events_url": "https://api.github.com/users/doronbehar/received_events",
+                "repos_url": "https://api.github.com/users/doronbehar/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/doronbehar/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/doronbehar/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/doronbehar"
+            }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "`buf_detach_client` still takes some seconds before switching buffers.\r\nBlocking the \"FileType\" event altogether is much faster.\r\n\r\nThe following seems to work but I have just tested the happy path:\r\n\r\n```lua\r\nvim.api.nvim_create_autocmd('BufReadPre', {\r\n\tcallback = function(t)\r\n\t\tif bufIsBig(t.buf) then\r\n                    vim.o.eventignore = \"FileType\"\r\n                    vim.schedule(function() vim.o.eventignore = \"\" end)\r\n\t\tend\r\n\tend\r\n})\r\n```",
+            "created_at": "2024-05-19T22:15:26Z",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/issues/2626#issuecomment-2119376494",
+            "id": 2119376494,
+            "issue_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/2626",
+            "node_id": "IC_kwDODTQC185-Ux5u",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 1,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/comments/2119376494/reactions"
+            },
+            "updated_at": "2024-05-19T22:15:26Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/comments/2119376494",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/43413954?v=4",
+                "events_url": "https://api.github.com/users/serranomorante/events{/privacy}",
+                "followers_url": "https://api.github.com/users/serranomorante/followers",
+                "following_url": "https://api.github.com/users/serranomorante/following{/other_user}",
+                "gists_url": "https://api.github.com/users/serranomorante/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/serranomorante",
+                "id": 43413954,
+                "login": "serranomorante",
+                "node_id": "MDQ6VXNlcjQzNDEzOTU0",
+                "organizations_url": "https://api.github.com/users/serranomorante/orgs",
+                "received_events_url": "https://api.github.com/users/serranomorante/received_events",
+                "repos_url": "https://api.github.com/users/serranomorante/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/serranomorante/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/serranomorante/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/serranomorante"
+            }
         }
     ],
-    "comments": 8,
+    "comments": 10,
     "comments_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/2626/comments",
     "created_at": "2023-05-19T20:14:46Z",
     "events_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/2626/events",
@@ -399,7 +487,7 @@
     "state_reason": "completed",
     "timeline_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/2626/timeline",
     "title": "Prevent a language server from _reading_ a certain buffer / hide the buffer from the server",
-    "updated_at": "2023-09-12T23:02:46Z",
+    "updated_at": "2024-05-19T22:15:27Z",
     "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/2626",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/10998835?v=4",

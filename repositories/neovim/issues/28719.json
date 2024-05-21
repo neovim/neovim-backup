@@ -2,12 +2,12 @@
     "active_lock_reason": null,
     "assignee": null,
     "assignees": [],
-    "author_association": "NONE",
+    "author_association": "CONTRIBUTOR",
     "body": "### Problem\n\nThe type annotation for [vim.lsp.buf_request_sync](https://github.com/neovim/neovim/blob/4e5c633ed4871a948aff7338b793ac5f93484153/runtime/lua/vim/lsp.lua#L941C1-L941C106) has the following return type annotation:\r\n```lua\r\n---@return table<integer, {err: lsp.ResponseError, result: any}>? result Map of client_id:request_result.\r\n---@return string? err On timeout, cancel, or error, `err` is a string describing the failure reason, and `result` is nil.\r\n```\r\nThe `err: lsp.ResponseError` part of the type annotation is incorrect and actually returns `error: lsp.ResponseError`.\r\n\r\nThe real return type of the function is:\r\n```lua\r\n---@return table<integer, {error: lsp.ResponseError, result: any}>? result Map of client_id:request_result.\r\n---@return string? err On timeout, cancel, or error, `err` is a string describing the failure reason, and `result` is nil.\r\n```\r\n\r\nI believe the type annotation should be changed to match what the function returns.\n\n### Steps to reproduce using \"nvim -u minimal_init.lua\"\n\nminimal_init.lua\r\n```lua\r\nlocal pattern = 'lua'\r\nlocal cmd = { 'lua-language-server' }\r\n-- Add files/folders here that indicate the root of a project\r\nlocal root_markers = { '.git', '.editorconfig' }\r\n-- Change to table with settings if required\r\nlocal settings = vim.empty_dict()\r\n\r\nvim.api.nvim_create_autocmd('FileType', {\r\n    pattern = pattern,\r\n    callback = function(args)\r\n        local match = vim.fs.find(root_markers, { path = args.file, upward = true })[1]\r\n        local root_dir = match and vim.fn.fnamemodify(match, ':p:h') or nil\r\n        vim.lsp.start({\r\n            name = 'lua_ls',\r\n            cmd = cmd,\r\n            root_dir = root_dir,\r\n            settings = settings,\r\n        })\r\n    end,\r\n})\r\n\r\nvim.api.nvim_create_user_command('Test', function(_)\r\n    local bufnr = 0\r\n    local params = {} -- making this empty will force lsp to return the error response we want to test\r\n    local timeout = 1000\r\n    local results, _ = vim.lsp.buf_request_sync(bufnr, 'textDocument/codeAction', params, timeout)\r\n    if results[1].error == nil and result[1].err ~= nil then\r\n        vim.print('return type matched original type annotation')\r\n    elseif results[1].error ~= nil and results[1].err == nil then\r\n        vim.print(\r\n            'return type has the `error` field, but the original type annotation incorrectly says it should be `err`'\r\n        )\r\n    else\r\n        vim.print(\"something was returned that I didn't expect when making this test\")\r\n    end\r\n    vim.print(results)\r\nend, {\r\n    desc = 'Tests error response',\r\n})\r\n```\r\n\r\n1. Run `nvim ./ -u minimal_init.lua` on a lua project \r\n2. Open a lua file with netrw\r\n3. Wait for lsp to start\r\n4. Run the command `:Test`\r\n5. Inspect the messages `:messages` printed by the test command \n\n### Expected behavior\n\nThe expected messages should look something like:\r\n```\r\nreturn type has the `error` field, but the original type annotation incorrectly says it should be `err`\r\n{ {\r\n    error = {\r\n      code = -32603,\r\n      message = \"[08:10:01.606][error][#0:script\\\\provider\\\\provider.lua:864]: script\\\\provider\\\\provider.lua:864: attempt to index a nil value (field 'textDocument')\\nstack traceback:\\n\\tscript\\\\provider\\\\provider.lua:864: in function <script\\\\provider\\\r\n\\provider.lua:862>\\n\\t[C]: in function 'xpcall'\\n\\tscript\\\\proto\\\\proto.lua:203: in function <script\\\\proto\\\\proto.lua:178>\\n\",\r\n      <metatable> = {\r\n        __tostring = <function 1>\r\n      }\r\n    }\r\n  } }\r\n```\r\n\r\nThe field `error` is returned which does not match the type annotation.\n\n### Neovim version (nvim -v)\n\nv0.10.0-dev-2889+gf064e72b9\n\n### Language server name/version\n\nlua-language-server 3.7.4\n\n### Operating system/version\n\nWindows 11 Pro/23H2\n\n### Log file\n\n_No response_",
-    "closed_at": null,
+    "closed_at": "2024-05-14T23:18:35Z",
     "comment_data": [
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "I created a draft PR #28720 ",
             "created_at": "2024-05-12T13:05:08Z",
             "html_url": "https://github.com/neovim/neovim/issues/28719#issuecomment-2106240821",
@@ -114,11 +114,11 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/28719/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/28719/timeline",
     "title": "Incorrect type annotation for vim.lsp.buf_request_sync",
-    "updated_at": "2024-05-12T21:41:02Z",
+    "updated_at": "2024-05-14T23:18:35Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/28719",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/51029315?v=4",
