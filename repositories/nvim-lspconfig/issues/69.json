@@ -624,7 +624,7 @@
         },
         {
             "author_association": "NONE",
-            "body": "A DiagnosticChanged event was recently added, so the snippet can be simplified to:\r\n\r\n```lua\r\nvim.api.nvim_create_autocmd({ \"DiagnosticChanged\" }, {\r\n  group = vim.api.nvim_create_augroup(\"user_diagnostic_qflist\", {}),\r\n  callback = function(args)\r\n    local diagnostics = vim.diagnostic.get()\r\n    if #args.data.diagnostics == 0 and #diagnostics > 0 then\r\n      return\r\n    end\r\n\r\n    local qf_info = vim.fn.getqflist({ title = 0, id = 0 })\r\n    local qf_items = vim.diagnostic.toqflist(\r\n      -- TODO: Can the event data have items not returned by vim.diagnostic.get?\r\n      -- If not, we don't need to extend the diagnostics variable here.\r\n      vim.tbl_deep_extend(\"force\", diagnostics, args.data.diagnostics)\r\n    )\r\n\r\n    vim.schedule(function()\r\n      -- Replace the latest qflist if it was created by this autocmd so other\r\n      -- qflists aren't buried due to frequently changing diagnostics.\r\n      vim.fn.setqflist({}, qf_info.title == \"All Diagnostics\" and \"r\" or \" \", {\r\n        title = \"All Diagnostics\",\r\n        items = qf_items,\r\n      })\r\n\r\n      -- Don't steal focus from other qflists. For example, when working through\r\n      -- vimgrep results, you likely want :cnext to take you to the next match,\r\n      -- rather than the next diagnostic. Use :cnew to switch to the diagnostic\r\n      -- qflist when you want it.\r\n      if qf_info.id ~= 0 and qf_info.title ~= \"All Diagnostics\" then\r\n        vim.cmd.cold()\r\n      end\r\n    end)\r\n  end,\r\n})\r\n```\r\n\r\nThe above snippet has the benefit of being fired during changes to diagnostics from nvim-lint, null-ls, etc. It also has an improvement that prevents burying other qflists with a bunch of diagnostic ones.",
+            "body": "A DiagnosticChanged event was recently added, so the snippet can be simplified to:\r\n\r\n```lua\r\nvim.api.nvim_create_autocmd({ \"DiagnosticChanged\" }, {\r\n    group = vim.api.nvim_create_augroup(\"user_diagnostic_qflist\", {}),\r\n    callback = function(args)\r\n    -- Use pcall because I was getting inconsistent errors when quitting vim.\r\n    -- Possibly timing errors from trying to get/create diagnostics/qflists\r\n    -- that don't exist anymore. DiagnosticChanged fires at some strange times.\r\n    local has_diagnostics, diagnostics = pcall(vim.diagnostic.get)\r\n    local has_qflist, qflist = pcall(vim.fn.getqflist, { title = 0, id = 0, items = 0 })\r\n    if not has_diagnostics or not has_qflist then return end\r\n\r\n    -- Sometimes the event fires with an empty diagnostic list in the data.\r\n    -- This conditional prevents re-creating the qflist with the same\r\n    -- diagnostics, which reverts selection to the first item.\r\n    if\r\n      #args.data.diagnostics == 0\r\n      and #diagnostics > 0\r\n      and qflist.title == \"All Diagnostics\"\r\n      and #qflist.items == #diagnostics\r\n    then\r\n      return\r\n    end\r\n\r\n    vim.schedule(function()\r\n      -- If the last qflist was created by this autocmd, replace it so other\r\n      -- lists (e.g., vimgrep results) aren't buried due to diagnostic changes.\r\n      pcall(vim.fn.setqflist, {}, qflist.title == \"All Diagnostics\" and \"r\" or \" \", {\r\n        title = \"All Diagnostics\",\r\n        items = vim.diagnostic.toqflist(diagnostics),\r\n      })\r\n\r\n      -- Don't steal focus from other qflists. For example, when working\r\n      -- through vimgrep results, you likely want :cnext to take you to the\r\n      -- next match, rather than the next diagnostic. Use :cnew to switch to\r\n      -- the diagnostic qflist when you want it.\r\n      if qflist.id ~= 0 and qflist.title ~= \"All Diagnostics\" then pcall(vim.cmd.cold) end\r\n    end)\r\n  end,\r\n})\r\n```\r\n\r\nThe above snippet has the benefit of being fired during changes to diagnostics from nvim-lint, null-ls, etc. It also has an improvement that prevents burying other qflists with a bunch of diagnostic ones.",
             "created_at": "2024-01-04T21:26:13Z",
             "html_url": "https://github.com/neovim/nvim-lspconfig/issues/69#issuecomment-1877781941",
             "id": 1877781941,
@@ -643,7 +643,7 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/comments/1877781941/reactions"
             },
-            "updated_at": "2024-04-20T23:42:19Z",
+            "updated_at": "2024-05-22T19:20:24Z",
             "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/comments/1877781941",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/10986395?v=4",
@@ -707,7 +707,7 @@
     "state_reason": "completed",
     "timeline_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/69/timeline",
     "title": "add diagnostics to quicklist",
-    "updated_at": "2024-04-20T23:42:19Z",
+    "updated_at": "2024-05-22T19:20:24Z",
     "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/69",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/886074?v=4",

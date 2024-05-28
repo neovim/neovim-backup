@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/28856"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/baaed0fbe55c0cd621b1347f2ffbc33c3ba1d354"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/2f6e7140ee589d7579b6c0f2df9c2527e2b34920"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 5383,
-            "forks_count": 5383,
+            "forks": 5414,
+            "forks_count": 5414,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1728,
-            "open_issues_count": 1728,
+            "open_issues": 1725,
+            "open_issues_count": 1725,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -118,11 +118,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2024-05-20T23:45:59Z",
+            "pushed_at": "2024-05-27T22:51:37Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 270386,
+            "size": 271477,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 77935,
+            "stargazers_count": 78533,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -140,14 +140,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2024-05-21T02:01:06Z",
+            "updated_at": "2024-05-28T01:40:20Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 77935,
-            "watchers_count": 77935,
+            "watchers": 78533,
+            "watchers_count": 78533,
             "web_commit_signoff_required": false
         },
-        "sha": "b16b287b8f36a8e25b27f3009d7fdd0d39348894",
+        "sha": "b7782daacebf8842bece6e41a20ee9a4859721e6",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -169,10 +169,55 @@
             "url": "https://api.github.com/users/neovim"
         }
     },
-    "body": "**WIP**\r\n\r\nFix #28510 and #20463. Related PR: #27950. Likely fixes other open issues but this is still a WIP so I'll try to gather more related issues/PRs once this one gets closer to being ready for review.\r\n\r\nStill incomplete and rough around the edges, but works in many cases.\r\n\r\n**TODO**\r\n- [ ] cmdline history navigation (`<Up>`/`<Down>`) doesn't always update/clear cmdpreview\r\n- [ ] remove `cmdpreview` global, replace its uses with the `cpinfo->enabled` field (expose it via a non-static function or smth). might even want to remove that field and just check if `cpinfo->cmdpreview_type != 0`\r\n- [x] `icm=split` seems to work\r\n- [ ] problems with `cursorline`/`cursorcolumn` if a window is split (those options are disabled during cmdpreview and restored eventually, but if a window with the option disabled in this manner is split during preview, the new window inherits the *modified* options and will not be restored)\r\n- [ ] can error messages be shown now that redraws are allowed? iirc there's an issue/PR related to this, need to find it and link it here\r\n- [ ] there's a ghost buffer that isn't loaded but saved in `cmdpreview_prepare` that caused crashes when trying to restore its undo state/access its changedtick (i think it being not loaded implies it lacks some normal `b:` variables). temporarily fixed by checking `buf->b_flags & BF_NEVERLOADED` but i think this points to a logic error somewhere, needs investigation\r\n- [ ] write tests. I haven't done any manual stress testing but there's gotta be like a bazillion edge cases\r\n- [ ] the current implementation is naive. some possible optimizations (not exhaustive):\r\n  - [ ] save cmdline_ptr/cmdparseinfo/exarg across redraws. idk if this is realistic because `execute_cmd()` modifies those but if it only modifies a few of their fields then saving/restoring them might be doable\r\n  - [ ] currently the preview will always fully reexecute when any of the windows have `w_redr_type > UPD_VALID` (or if `must_redraw >= UPD_NOT_VALID`). maybe we could check if the windows really need redrawing by inspecting what lines were modified/decorated? this also kind of assumes the cmdpreview callbacks are somewhat 'pure'\r\n  - [ ] `cmdpreview_save()`/`restore()` could be modified to account for refreshing. currently when we refresh the preview or a new key is typed, everything is restored and subsequently saved, which is wasteful. don't need to recompute everything, e.g. the undo sequences could be kept. viewstates could maybe also be kept, but not in all cases (e.g. if a resize occurs between previews, or if a window is open)\r\n  - [ ] ...\r\n\r\n**NOTES/IDEAS** (brainstorm)\r\n- could this be partially (entirely?) implemented via decoration providers? pretty sure decor providers can't modify buffers but maybe adding a new provider type would be worth it\r\n- now that command previews are a little more 'persistent', we could maybe implement something like context or provide information to the callback about where we're at. for example a preview callback that has a regex could cache the compiled object in the context and have it provided back as an argument on next call\r\n- could modify/extend the `:command-preview` api so that implementors can declare how their preview callback modifies the editor state\r\n  - e.g. could specify if a callback does not only show changes within the viewport  (applies decorations/changes on the entire buffer), meaning we don't have to re-execute the preview callback on every redraw",
+    "body": "**WIP**\r\n\r\nFix #28510 and #20463. Related PR: #27950. Likely fixes other open issues but this is still a WIP so I'll try to gather more related issues/PRs once this one gets closer to being ready for review.\r\n\r\nStill incomplete and rough around the edges, but works in many cases.\r\n\r\n**TODO**\r\n- [x] ~cmdline history navigation (`<Up>`/`<Down>`) doesn't always update/clear cmdpreview~\r\n- [x] remove `cmdpreview` global, replace its uses with the `cpinfo->enabled` field (expose it via a non-static function or smth). might even want to remove that field and just check if `cpinfo->cmdpreview_type != 0`\r\n- [x] `icm=split` seems to work\r\n- [x] add documentation/docstrings. specifically, document why preview callbacks sometimes need to be re-invoked on redraws:\r\n  - [x] add docstring that explains why `cmdpreview_may_refresh()` needs to exist\r\n  - [x] add comment explaining why `cmdpreview_may_refresh()` needs to be called in `update_screen()`\r\n  - quick reference in the meantime: https://github.com/neovim/neovim/issues/28510#issuecomment-2080289950\r\n- [ ] problems with `cursorline`/`cursorcolumn` if a window is split (those options are disabled during cmdpreview and restored eventually, but if a window with the option disabled in this manner is split during preview, the new window inherits the *modified* options and will not be restored)\r\n- [ ] can error messages be shown now that redraws are allowed? iirc there's an issue/PR related to this, need to find it and link it here\r\n- [ ] there's a ghost buffer that isn't loaded but saved in `cmdpreview_prepare` that caused crashes when trying to restore its undo state/access its changedtick (i think it being not loaded implies it lacks some normal `b:` variables). temporarily fixed by checking `buf->b_flags & BF_NEVERLOADED` but i think this points to a logic error somewhere, needs investigation\r\n  - could this be fixed by `b_locked++`? like what autocommands do to prevent unloading buffers when they might still b needed\r\n- [ ] write tests. I haven't done any manual stress testing but there's gotta be like a bazillion edge cases\r\n- [ ] the current implementation is naive. some possible optimizations (not exhaustive):\r\n  - [ ] save cmdline_ptr/cmdparseinfo/exarg across redraws. idk if this is realistic because `execute_cmd()` modifies those but if it only modifies a few of their fields then saving/restoring them might be doable\r\n  - [ ] currently the preview will always fully reexecute when any of the windows have `w_redr_type > UPD_VALID` (or if `must_redraw >= UPD_NOT_VALID`). maybe we could check if the windows really need redrawing by inspecting what lines were modified/decorated? this also kind of assumes the cmdpreview callbacks are somewhat 'pure'\r\n  - [ ] `cmdpreview_save()`/`restore()` could be modified to account for refreshing. currently when we refresh the preview or a new key is typed, everything is restored and subsequently saved, which is wasteful. don't need to recompute everything, e.g. the undo sequences could be kept. viewstates could maybe also be kept, but not in all cases (e.g. if a resize occurs between previews, or if a window is open)\r\n  - [ ] ...\r\n\r\n**NOTES/IDEAS** (brainstorm)\r\n- could this be partially (entirely?) implemented via decoration providers? pretty sure decor providers can't modify buffers but maybe adding a new provider type would be worth it\r\n- now that command previews are a little more 'persistent', we could maybe implement something like context or provide information to the callback about where we're at. for example a preview callback that has a regex could cache the compiled object in the context and have it provided back as an argument on next call\r\n- ~could modify/extend the `:command-preview` api so that implementors can declare how their preview callback modifies the editor state~\r\n  - ~e.g. could specify if a callback does not only show changes within the viewport  (applies decorations/changes on the entire buffer), meaning we don't have to re-execute the preview callback on every redraw~",
     "closed_at": null,
     "comment_data": [],
-    "comment_regular_data": [],
+    "comment_regular_data": [
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "> Ah I remember now the changed viewport thing(scroll/resize), is this mainly for that?\r\n\r\nyes that's precisely why I added `cmdpreview_may_refresh()` (for anyone else looking at this discussion, see this comment https://github.com/neovim/neovim/issues/28510#issuecomment-2080289950). otherwise it wouldn't be needed.\r\n\r\n> Could you add a docstring to cmdpreview_may_refresh() that explains why it is needed?\r\n\r\ndefinitely worthy of a docstring. mybad if things aren't properly documented yet, still a WIP but I'll add it to the todo list in the pr description\r\n",
+            "created_at": "2024-05-22T13:50:02Z",
+            "html_url": "https://github.com/neovim/neovim/pull/28856#issuecomment-2124851140",
+            "id": 2124851140,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/28856",
+            "node_id": "IC_kwDOAPphoM5-pqfE",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2124851140/reactions"
+            },
+            "updated_at": "2024-05-22T13:50:02Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2124851140",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/92238946?v=4",
+                "events_url": "https://api.github.com/users/theofabilous/events{/privacy}",
+                "followers_url": "https://api.github.com/users/theofabilous/followers",
+                "following_url": "https://api.github.com/users/theofabilous/following{/other_user}",
+                "gists_url": "https://api.github.com/users/theofabilous/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/theofabilous",
+                "id": 92238946,
+                "login": "theofabilous",
+                "node_id": "U_kgDOBX90Yg",
+                "organizations_url": "https://api.github.com/users/theofabilous/orgs",
+                "received_events_url": "https://api.github.com/users/theofabilous/received_events",
+                "repos_url": "https://api.github.com/users/theofabilous/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/theofabilous/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/theofabilous/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/theofabilous"
+            }
+        }
+    ],
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/28856/comments",
     "commits_url": "https://api.github.com/repos/neovim/neovim/pulls/28856/commits",
     "created_at": "2024-05-20T03:10:10Z",
@@ -266,9 +311,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/theofabilous/neovim/pulls{/number}",
-            "pushed_at": "2024-05-20T01:59:35Z",
+            "pushed_at": "2024-05-22T16:36:55Z",
             "releases_url": "https://api.github.com/repos/theofabilous/neovim/releases{/id}",
-            "size": 264738,
+            "size": 264361,
             "ssh_url": "git@github.com:theofabilous/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/theofabilous/neovim/stargazers",
@@ -287,7 +332,7 @@
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "baaed0fbe55c0cd621b1347f2ffbc33c3ba1d354",
+        "sha": "2f6e7140ee589d7579b6c0f2df9c2527e2b34920",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/92238946?v=4",
             "events_url": "https://api.github.com/users/theofabilous/events{/privacy}",
@@ -324,7 +369,7 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "3e63d88fa9974c049797cf59e3a0e4ab9a6667d3",
+    "merge_commit_sha": "815b3ba26428fb2ad7a0c5c340a33e1516940441",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM5v58yU",
@@ -335,9 +380,9 @@
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/28856/comments",
     "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/baaed0fbe55c0cd621b1347f2ffbc33c3ba1d354",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/2f6e7140ee589d7579b6c0f2df9c2527e2b34920",
     "title": "feat(inccommand): allow redrawing during cmdpreview",
-    "updated_at": "2024-05-20T13:39:33Z",
+    "updated_at": "2024-05-23T01:58:43Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/28856",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/92238946?v=4",
