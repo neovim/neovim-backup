@@ -42,12 +42,12 @@
             "url": "https://api.github.com/users/famiu"
         }
     ],
-    "author_association": "NONE",
+    "author_association": "CONTRIBUTOR",
     "body": "### Problem\r\n\r\nThe changes made inside the `preview` function of an user created command are not discarded in some cases. I think this has something to do with creating new buffers/windows or changing between windows inside the preview function.\r\n\r\n### Steps to reproduce\r\n\r\n1. `nvim --clean -u minimal.lua` (where `minimal.lua` has the following code)\r\n\r\n```lua\r\n--- minimal.lua\r\nlocal DO_NOT_PREVIEW = 0\r\nlocal PREVIEW_WITHOUT_PREVIEW_BUFFER = 1\r\n\r\nvim.api.nvim_create_user_command(\"Test\", function(opts) end, {\r\n\tnargs = \"*\",\r\n\t---@param opts {fargs: string[]}\r\n\tpreview = function(opts)\r\n\t\tlocal file_name = opts.fargs[1]\r\n\t\tlocal text = opts.fargs[2]\r\n\r\n\t\tif (not file_name) or not text then\r\n\t\t\treturn DO_NOT_PREVIEW\r\n\t\tend\r\n\r\n\t\tlocal bufnr = vim.fn.bufnr(vim.fn.expand(file_name))\r\n\t\tlocal winnr = vim.fn.bufwinnr(bufnr)\r\n\t\tif winnr == -1 then\r\n\t\t\tvim.cmd.vsplit(file_name)\r\n\t\t\tbufnr = vim.api.nvim_get_current_buf()\r\n\t\telse\r\n\t\t\tvim.cmd.wincmd({ args = { \"w\" }, count = winnr })\r\n\t\tend\r\n\t\tvim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { text })\r\n\r\n\t\treturn PREVIEW_WITHOUT_PREVIEW_BUFFER\r\n\tend,\r\n})\r\n```\r\n3. `:Test foo.lua some_example_text<cr>`\r\n\r\nThe buffer named `foo.lua` contains a single `s` character (the first character inserted in the buffer during the preview)\r\n\r\n### Expected behavior\r\n\r\nThe buffer `foo.lua` should be empty.\r\n\r\n### Neovim version (nvim -v)\r\n\r\nNVIM v0.10.0-dev-661+gef94fb69c (this also happens on 0.9.1)\r\n\r\n### Vim (not Nvim) behaves the same?\r\n\r\nDoesn't apply\r\n\r\n### Operating system/version\r\n\r\nUbuntu 22.04.2 LTS\r\n\r\n### Terminal name/version\r\n\r\ngnome-terminal\r\n\r\n### $TERM environment variable\r\n\r\nxterm-256color\r\n\r\n### Installation\r\n\r\nnvim.appimage from github release pages",
     "closed_at": null,
     "comment_data": [
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "Maybe this could be related to #19807 (?)",
             "created_at": "2023-07-13T04:51:39Z",
             "html_url": "https://github.com/neovim/neovim/issues/24330#issuecomment-1633542093",
@@ -135,7 +135,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "I tested the latest appimage (`NVIM v0.10.0-dev-753+g4a06de40e`) and the bug is still there",
             "created_at": "2023-08-03T21:27:11Z",
             "html_url": "https://github.com/neovim/neovim/issues/24330#issuecomment-1664668309",
@@ -179,7 +179,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "Looking at the code, it seems like the state of all the windows *in the current tab* is saved before executing the preview callback [here](https://github.com/neovim/neovim/blob/29fe883aa9166bdbcae3f935523c75a8aa56fe45/src/nvim/ex_getln.c#L2532). Then, after the preview callback, the previously saved state is restored [here](https://github.com/neovim/neovim/blob/29fe883aa9166bdbcae3f935523c75a8aa56fe45/src/nvim/ex_getln.c#L2580).\r\n\r\nThe problem is that the `:Test` command is modifying a buffer (in a window) that was not present in the current tab when it's information was saved to be restored later. That's why only the first character shown in the screen is kept after executing `:Test`, when the second character was added to the buffer, the state being saved to be restored later already included the new window with the new buffer containing that first character.",
             "created_at": "2023-10-04T20:40:47Z",
             "html_url": "https://github.com/neovim/neovim/issues/24330#issuecomment-1747607932",
@@ -238,13 +238,22 @@
             "name": "bug",
             "node_id": "MDU6TGFiZWw3Nzk5NzQ3NA==",
             "url": "https://api.github.com/repos/neovim/neovim/labels/bug"
+        },
+        {
+            "color": "c5def5",
+            "default": false,
+            "description": "",
+            "id": 7015104868,
+            "name": "inccommand",
+            "node_id": "LA_kwDOAPphoM8AAAABoiIBZA",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/inccommand"
         }
     ],
     "labels_url": "https://api.github.com/repos/neovim/neovim/issues/24330/labels{/name}",
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 587,
+        "closed_issues": 621,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -273,10 +282,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 411,
+        "open_issues": 544,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2023-10-11T13:47:14Z",
+        "updated_at": "2024-06-03T00:15:21Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM5rasqy",
@@ -299,7 +308,7 @@
     "state_reason": null,
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/24330/timeline",
     "title": "inccommand: preview-callback does not rollback changes of buffers and windows created during preview-callback",
-    "updated_at": "2023-10-11T15:59:42Z",
+    "updated_at": "2024-05-29T21:29:02Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/24330",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/53507599?v=4",

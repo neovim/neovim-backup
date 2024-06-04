@@ -4,7 +4,7 @@
     "assignees": [],
     "author_association": "NONE",
     "body": "### Problem\r\n\r\nI have identified a performance issue in the Neovim Lua API, specifically with the `vim.validate` function. The function is used to validate the types and values of function arguments, which is crucial for stability and correctness. However, it appears to be significantly slower than alternative approaches, which could impact the overall performance of Lua scripts and plugins in Neovim. And the plugin developers may need to create a no validation version of that function again.\r\n\r\n### Conclusion\r\nThe performance of `vim.validate` is a critical concern for Lua script developers and users of Neovim. By implementing the proposed solution, we can maintain the robustness of our code while significantly improving performance. This will benefit the entire Neovim community by enabling faster and more efficient Lua scripting.\r\n\r\n### Steps to reproduce\r\n\r\n1. Run the attached Lua script.\r\n2. Observe the execution times for each function.\r\n\r\n### Script for Benchmarking\r\nBelow is the Lua script used for benchmarking the performance of different validation approaches:\r\n\r\n```lua\r\n---@diagnostic disable\r\nlocal function test_speed(title, t, fn)\r\n  local start_time = os.clock()\r\n  local i = 0\r\n  while i < t do\r\n    fn()\r\n    i = i + 1\r\n  end\r\n  local end_time = os.clock()\r\n  local time_taken = end_time - start_time\r\n  print(title .. \": \" .. t .. \" times took \" .. time_taken .. \" seconds\")\r\nend\r\n\r\nlocal function empty() end\r\n\r\nfunction normal_one(s, suffix)\r\n  vim.validate({ s = { s, 's' }, suffix = { suffix, 's' } })\r\n  return #suffix == 0 or s:sub(-#suffix) == suffix\r\nend\r\n\r\nlocal function no_validation(s, suffix)\r\n  return #suffix == 0 or s:sub(-#suffix) == suffix\r\nend\r\n\r\nlocal function only_create_table(s, suffix)\r\n  empty({ s = { s, \"s\" }, suffix = { suffix, \"s\" } })\r\nend\r\n\r\nlocal function pre_created_table(s, suffix)\r\n  return #suffix == 0 or s:sub(-#suffix) == suffix\r\nend\r\n\r\nlocal function _validate(fn, vali, length)\r\n  return function(...)\r\n    for i = 1, length do\r\n      vali[i][1] = select(i, ...)\r\n    end\r\n    vim.validate(vali)\r\n    fn(...)\r\n  end\r\nend\r\n\r\npre_created_table = _validate(pre_created_table, {{ nil, \"s\" }, { nil, \"s\" }}, 2)\r\n\r\nlocal t = 10000000\r\ntest_speed(\"vim.endswith\", t, function() normal_one(\"hello world\", \"world\") end)\r\ntest_speed(\"no validation\", t, function() no_validation(\"hello world\", \"world\") end)\r\ntest_speed(\"only create table\", t, function() only_create_table(\"hello world\", \"world\") end)\r\ntest_speed(\"pre-created table\", t, function() pre_created_table(\"hello world\", \"world\") end)\r\n```\r\n\r\n### Expected behavior\r\n\r\nThe `vim.validate` function should perform validation without causing a significant performance penalty.\r\n\r\n### Actual Results\r\nThe attached script benchmarks four different validation approaches:\r\n\r\n```\r\n➜  nvim git:(master) ✗ nvim --headless -l test.lua                                               \r\nvim.endswith: 10000000 times took 4.43177 seconds\r\nno validation: 10000000 times took 0.012763000000001 seconds\r\nonly create table: 10000000 times took 1.182221 seconds\r\npre-created table: 10000000 times took 2.674695 seconds\r\n```\r\n\r\nThe results show that using `vim.validate` is substantially slower compared to not validating at all or using a pre-created table for validation. In this case, in function `vim.endswith`, to create validate table, it takes 100x of times of the running of the function itself, and to validate the input, it takes 180x of times.\r\n\r\n### Proposed Solution\r\nTo improve the performance of the `vim.validate` function, I propose the following solution:\r\n\r\n1. **Reuse Validation Tables**: Instead of creating a new table for each validation, we can pre-create a table and reuse it for multiple validations. This reduces the overhead of table creation and garbage collection.\r\n\r\n2. **Optimize `vim.validate`**: The current implementation of `vim.validate` could be optimized to reduce the time complexity. This might involve better use of Lua's native type checking and avoiding unnecessary operations.\r\n\r\n3. **Provide a Configurable Validation Setting**: Allow users to configure the level of validation required. For performance-critical applications, or the values are trustful, a no validation version function could be used for speed. \r\n\r\n4. Do solution 1. slowly and eventually completely replace `vim.validation`. This optimization solution is stable and infallible.\r\n\r\n5. E.g., in the following code, if something like `--no-validation` flag was set, _validate will not execute, everything is unsafe by default.\r\n\r\n```lua\r\nlocal function _validate(fn, vali, length)\r\n if ... then -- A true condition will skip the validation step.\r\n  return fn \r\n end\r\n  return function(...)\r\n    for i = 1, length do\r\n      vali[i][1] = select(i, ...)\r\n    end\r\n    vim.validate(vali)\r\n    fn(...)\r\n  end\r\nend\r\n```\r\n\r\n6. Use `debug.getupvalue` to get the no validation version. Very useful when a trusty code block needs a performance improve. AKA `unsafe`.\r\n\r\n```lua\r\nlocal function _validate(func,vali)\r\n return function(...)\r\n  local e=select(\"#\",...)\r\n  for i=1,e do\r\n   vali[i][1]=select(i,...)\r\n  end\r\n  vim.validate(vali)\r\n  func(...)\r\n end\r\nend\r\nlocal function get_safe(fn)\r\n return select(2,debug.getupvalue(fn,2))\r\nend\r\nlocal std={}\r\nfunction std.print(str,str,str)\r\n print(str,str,str)\r\nend\r\nstd.print=_validate(std.print,{{nil,\"string\"},{nil,\"string\"},{nil,\"string\"}})\r\nlocal unsafe_print=get_safe(std.print)\r\nunsafe_print(1,2,3) -- no error\r\nstd.print(1,2,3) -- error: expect string\r\n```\r\n\r\n7. Add a max validation count parameter to `vim.validate`, so it doesn't need to declare the parameter amount at start.\r\n```lua\r\nlocal function _validate(func,vali)\r\n return function(...)\r\n  local e=select(\"#\",...)\r\n  for i=1,e do\r\n   vali[i][1]=select(i,...)\r\n  end\r\n  vim.validate(vali,e) -- there\r\n  func(...)\r\n end\r\nend\r\n```\r\n\r\n### Additional Notes\r\n- The results may vary depending on the system and Neovim configuration.\r\n- Further profiling and optimization may be required to fine-tune the performance improvements.\r\n\r\n### Neovim version (nvim -v)\r\n\r\nNVIM v0.11.0-dev-49+g10601ac5f Build type: RelWithDebInfo LuaJIT 2.1.1713484068\r\n\r\n### Vim (not Nvim) behaves the same?\r\n\r\nno\r\n\r\n### Operating system/version\r\n\r\nArch Linux x86_64, Linux 6.9.1-zen1-1-zen\r\n\r\n### Terminal name/version\r\n\r\nAlacritty\r\n\r\n### $TERM environment variable\r\n\r\nxterm-256color\r\n\r\n### Installation\r\n\r\nbob use nightly",
-    "closed_at": null,
+    "closed_at": "2024-05-28T20:06:06Z",
     "comment_data": [
         {
             "author_association": "NONE",
@@ -489,9 +489,53 @@
                 "type": "User",
                 "url": "https://api.github.com/users/gpanders"
             }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "Considering this resolved by https://github.com/neovim/neovim/pull/28977. We can convert many existing instances of `vim.validate` to the new form introduced in that PR. The old form is still slow, but should only need to be used in rare cases.",
+            "created_at": "2024-05-28T20:06:07Z",
+            "html_url": "https://github.com/neovim/neovim/issues/28921#issuecomment-2136018961",
+            "id": 2136018961,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/28921",
+            "node_id": "IC_kwDOAPphoM5_URAR",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2136018961/reactions"
+            },
+            "updated_at": "2024-05-28T20:06:07Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2136018961",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/8965202?v=4",
+                "events_url": "https://api.github.com/users/gpanders/events{/privacy}",
+                "followers_url": "https://api.github.com/users/gpanders/followers",
+                "following_url": "https://api.github.com/users/gpanders/following{/other_user}",
+                "gists_url": "https://api.github.com/users/gpanders/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/gpanders",
+                "id": 8965202,
+                "login": "gpanders",
+                "node_id": "MDQ6VXNlcjg5NjUyMDI=",
+                "organizations_url": "https://api.github.com/users/gpanders/orgs",
+                "received_events_url": "https://api.github.com/users/gpanders/received_events",
+                "repos_url": "https://api.github.com/users/gpanders/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/gpanders/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/gpanders/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/gpanders"
+            }
         }
     ],
-    "comments": 11,
+    "comments": 12,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/28921/comments",
     "created_at": "2024-05-22T19:21:30Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/28921/events",
@@ -521,7 +565,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 19,
+        "closed_issues": 24,
         "created_at": "2023-12-07T23:09:35Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -550,10 +594,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/41/labels",
         "node_id": "MI_kwDOAPphoM4AnOjk",
         "number": 41,
-        "open_issues": 55,
+        "open_issues": 50,
         "state": "open",
         "title": "0.11",
-        "updated_at": "2024-05-26T17:54:08Z",
+        "updated_at": "2024-05-28T20:06:07Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/41"
     },
     "node_id": "I_kwDOAPphoM6Jw9H9",
@@ -572,11 +616,11 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/28921/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/28921/timeline",
     "title": "performance: vim.validate, vim.startswith, vim.endswith are slow",
-    "updated_at": "2024-05-25T12:22:03Z",
+    "updated_at": "2024-05-28T20:06:07Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/28921",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/32760059?v=4",

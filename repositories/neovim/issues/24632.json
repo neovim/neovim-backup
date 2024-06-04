@@ -2,12 +2,12 @@
     "active_lock_reason": null,
     "assignee": null,
     "assignees": [],
-    "author_association": "NONE",
+    "author_association": "CONTRIBUTOR",
     "body": "### Problem\r\n\r\n`vim.ui.select` is based on the inversion of control pattern and takes as an argument the callback that will handle the selected element. This is clearly a very useful function!\r\n\r\nBut I was thinking it would also be useful with the blocking variant, perhaps called `vim.ui.select_blocking`, that will instead return the selected element and return control to the calling function. I know we have `inputlist()`, with which I can do this:\r\n\r\n```lua\r\nlocal foo = function()\r\n  local list = {\r\n    \"one\",\r\n    \"two\",\r\n    \"three\",\r\n  }\r\n\r\n  local idx = vim.fn.inputlist(list)\r\n\r\n  print(\"You chose: \" .. list[idx])\r\nend\r\n```\r\n\r\nHowever, I would argue that `inputlist()` is quite restricted with regards to allowing modern UIs. With `vim.ui.select`, we are able to give the user quite a lot of flexibility. Both with regards to things like adding a formatter function and on allowing different implementations/backends (e.g. fzf, Telescope). Further, `inputlist()` really \"feels\" old fashioned. It does not work well with things like noice.nvim. I could go on, but I believe most of you understand what I'm talking about here.\r\n\r\n### Expected behavior\r\n\r\nI would like to do things like this:\r\n\r\n```lua\r\nlocal foo = function()\r\n  local list = {\r\n    \"one\",\r\n    \"two\",\r\n    \"three\",\r\n  }\r\n\r\n  local selection = vim.ui.select_blocking(list, {\r\n      prompt =  \"please select:\",\r\n      format_item =  function(i) return \"→ \" .. i end,\r\n  })\r\n\r\n  print(\"You chose: \" .. selection)\r\nend\r\n```\r\n\r\nWhere `select_blocking` can have a useful default implementation that can be overridden by users that want to use e.g. things like fzf, Telescope or similar as backends.",
     "closed_at": null,
     "comment_data": [
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "By the way: If the community should agree that this would be useful, then I would also think the same \"logic\" applies for building the corresponding blocking variants of `vim.ui.input` and `vim.ui.confirm`. If so, I can open similar feature requests for these. But I'll hold back until we've had a discussion on the `select` behaviour first.",
             "created_at": "2023-08-09T17:52:18Z",
             "html_url": "https://github.com/neovim/neovim/issues/24632#issuecomment-1671884752",
@@ -104,7 +104,7 @@
             "node_id": "IC_kwDOAPphoM5jpzZf",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 4,
+                "+1": 5,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -112,7 +112,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 4,
+                "total_count": 5,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1671902815/reactions"
             },
             "updated_at": "2023-08-09T18:06:03Z",
@@ -148,7 +148,7 @@
             "node_id": "IC_kwDOAPphoM5jysl6",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 2,
+                "+1": 3,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -156,7 +156,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 2,
+                "total_count": 3,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1674234234/reactions"
             },
             "updated_at": "2023-08-11T06:06:58Z",
@@ -183,7 +183,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "> > Where select_blocking can have a useful default implementation that can be overridden by users that want to use e.g. things like fzf, Telescope or similar as backends.\r\n> \r\n> It's afaik impossible to implement a version using fzf or telescope that's _blocking_ the main loop. The main loop has to run in order to display the window and process input.\r\n\r\nNo, it is _not_ impossible. And IMHO clearly so: More or less all of the \"classic\" selector plugins were blocking (e.g. CtrlP).\r\n\r\nWe have all the building blocks to build a blocking selector. I built one for wiki.vim - the source is [here](https://github.com/lervag/wiki.vim/blob/04459625f1b6faa2b02ce763fc6fbc24d4a51f21/autoload/wiki/ui/nvim.vim#L90-L143). I'm not saying it's very good, my point is only to say that this is indeed possible.\r\n\r\nFor Telescope, it _would_ require some work that perhaps no one is interested in doing. But for fzf, I think it is fair to point out that the first fzf integrations in Vim was always blocking (but clearly very much of a hack!).\r\n\r\n> The way to go is to use coroutine's if you want to avoid callback nesting. See also #19624\r\n\r\nIf we use coroutine's then we don't need the blocking variant. However, I believe this means we need to be able to control the coroutine's from the caller. This means the concept becomes impossible to work with in Vimscript, but it also means it will be much harder to use also in Lua scripts.\r\n\r\n> > I think that could be done with sync = true keyword (or omitted on_choice function?), so no need for separate functions. (Of course, whether the overriding UIs respect that is another question entirely...)\r\n> \r\n> > Or luv style where omitting a callback infers sync.\r\n> \r\n> Even if it would be possible to implement a blocking style, adding new options or changing signatures is unfortunately also problematic - see discussions in #21681 and #20053\r\n\r\nI believe you might be right about this one, though - I don't quite see how to properly combine the blocking style with the non-blocking in a single function. I think the only way would be to have an outer interface that wraps both variants. And this would be a major breaking change.\r\n\r\nPersonally, I'm fine with having a new name for the blocking style.",
             "created_at": "2023-08-11T06:32:15Z",
             "html_url": "https://github.com/neovim/neovim/issues/24632#issuecomment-1674269021",
@@ -315,7 +315,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "> In that case, a way forward could be to: …\r\n\r\nYes, your suggestions make a lot of sense to me! And I agree with your argument that adding a new function is suboptimal.",
             "created_at": "2023-08-12T10:00:07Z",
             "html_url": "https://github.com/neovim/neovim/issues/24632#issuecomment-1675825690",
@@ -401,9 +401,53 @@
                 "type": "User",
                 "url": "https://api.github.com/users/mfussenegger"
             }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "> We'd need to have a spot for this provider lookup and fallback logic. If users continue to override `vim.ui.select` directly, or via `on_func`, we wouldn't have that.\r\n\r\nCouldn't `on_func` (which allows \"stacking\", btw) maintain that lookup? ",
+            "created_at": "2024-06-03T13:20:05Z",
+            "html_url": "https://github.com/neovim/neovim/issues/24632#issuecomment-2145187821",
+            "id": 2145187821,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/24632",
+            "node_id": "IC_kwDOAPphoM5_3Pft",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2145187821/reactions"
+            },
+            "updated_at": "2024-06-03T13:20:05Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2145187821",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk"
+            }
         }
     ],
-    "comments": 9,
+    "comments": 10,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/24632/comments",
     "created_at": "2023-08-09T17:39:56Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/24632/events",
@@ -422,7 +466,7 @@
         {
             "color": "c5def5",
             "default": false,
-            "description": null,
+            "description": "stdlib",
             "id": 573222693,
             "name": "lua",
             "node_id": "MDU6TGFiZWw1NzMyMjI2OTM=",
@@ -431,7 +475,7 @@
         {
             "color": "C5DEF5",
             "default": false,
-            "description": "futures/promises, async/await, concurrency",
+            "description": "futures/promises, async/await, concurrency, task pipelines",
             "id": 5683343649,
             "name": "async",
             "node_id": "LA_kwDOAPphoM8AAAABUsDxIQ",
@@ -442,7 +486,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 576,
+        "closed_issues": 621,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -471,17 +515,17 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 416,
+        "open_issues": 544,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2023-08-24T22:05:35Z",
+        "updated_at": "2024-06-03T00:15:21Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM5t5RmL",
     "number": 24632,
     "performed_via_github_app": null,
     "reactions": {
-        "+1": 1,
+        "+1": 3,
         "-1": 0,
         "confused": 0,
         "eyes": 0,
@@ -489,7 +533,7 @@
         "hooray": 0,
         "laugh": 0,
         "rocket": 0,
-        "total_count": 1,
+        "total_count": 3,
         "url": "https://api.github.com/repos/neovim/neovim/issues/24632/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
@@ -497,7 +541,7 @@
     "state_reason": null,
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/24632/timeline",
     "title": "vim.ui.select \"blocking\" version that yields result similar to inputlist()",
-    "updated_at": "2023-08-24T07:33:55Z",
+    "updated_at": "2024-06-03T13:20:07Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/24632",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/998898?v=4",

@@ -4,7 +4,7 @@
     "assignees": [],
     "author_association": "CONTRIBUTOR",
     "body": "### Problem\n\nI caught a:\r\n```\r\n*** Error in `nvim': free(): invalid next size (normal): 0x000000000260b430 ***\r\n```\r\nand abort in neovim 0.10.0\r\n\r\nI was able to use Valgrind to track down the location:\r\n```\r\n==29288== Invalid write of size 4\r\n==29288==    at 0x4DE07A: draw_sign (drawline.c:468)\r\n==29288==    by 0x4DE469: draw_lnum_col (drawline.c:553)\r\n==29288==    by 0x4E1A5B: win_line (drawline.c:1547)\r\n==29288==    by 0x4EBC1C: win_update (drawscreen.c:2286)\r\n==29288==    by 0x4E73E5: update_screen (drawscreen.c:647)\r\n==29288==    by 0x65995B: normal_redraw (normal.c:1353)\r\n==29288==    by 0x659BE7: normal_check (normal.c:1455)\r\n==29288==    by 0x733879: state_enter (state.c:40)\r\n==29288==    by 0x657839: normal_enter (normal.c:518)\r\n==29288==    by 0x60027B: main (main.c:664)\r\n==29288==  Address 0x5e5c93c is 4 bytes before a block of size 1,096 alloc'd\r\n==29288==    at 0x402D7BB: malloc (vg_replace_malloc.c:393)\r\n==29288==    by 0x638A59: try_malloc (memory.c:98)\r\n==29288==    by 0x638AD0: xmalloc (memory.c:132)\r\n==29288==    by 0x5A8192: grid_alloc (grid.c:860)\r\n==29288==    by 0x4E6686: default_grid_alloc (drawscreen.c:202)\r\n==29288==    by 0x4E6A51: screen_resize (drawscreen.c:308)\r\n==29288==    by 0x773A45: ui_refresh (ui.c:241)\r\n==29288==    by 0x773FC6: ui_attach_impl (ui.c:401)\r\n==29288==    by 0x486AA8: nvim_ui_attach (ui.c:194)\r\n==29288==    by 0x474409: handle_nvim_ui_attach (dispatch_wrappers.generated.h:6155)\r\n==29288==    by 0x6530A9: request_event (channel.c:407)\r\n==29288==    by 0x55564E: multiqueue_process_events (multiqueue.c:149)\r\n```\r\n\r\nThe problem is that, in `draw_sign`, the computed `sign_pos` can wind up being negative if `numberwidth=1` and `signcolumn=number`.\r\n\r\nI _think_ this only happens with an extmark, not a normal sign.\n\n### Steps to reproduce\n\nAdd this patch to provoke a crash if `sign_pos` ever winds up negative:\r\n```diff\r\ndiff --git a/src/nvim/drawline.c b/src/nvim/drawline.c\r\nindex 283f7d9d6..39004d780 100644\r\n--- a/src/nvim/drawline.c\r\n+++ b/src/nvim/drawline.c\r\n@@ -465,6 +465,7 @@ static void draw_sign(bool nrcol, win_T *wp, winlinevars_T *wlv, int sign_idx, i\r\n     int fill = nrcol ? number_width(wp) + 1 : SIGN_WIDTH;\r\n     draw_col_fill(wlv, schar_from_ascii(' '), fill, attr);\r\n     int sign_pos = wlv->off - SIGN_WIDTH - (int)nrcol;\r\n+    assert(sign_pos >= 0);\r\n     linebuf_char[sign_pos] = sattr.text[0];\r\n     linebuf_char[sign_pos + 1] = sattr.text[1];\r\n   } else {\r\n```\r\nThen make a debug build (`CMAKE_BUILD_TYPE=Debug`) and run with:\r\n```sh\r\nvim --clean -c 'set number numberwidth=1 signcolumn=number' -c 'au VimEnter * call nvim_buf_set_extmark(1, nvim_create_namespace(\"\"), 0, 0, {\"sign_text\": \"X\"})'\r\n```\r\n\r\nNote that it _doesn't_ reproduce without the VimEnter autocommand. If you just do `-c 'call nvim_buf_set_extmark(...)'` the number column winds up being grown to 2 spaces wide, instead. I think what's happening is that when the sign is placed asynchronously, the number column isn't being grown, and neovim is instead trying to draw a 2 character wide sign in a 1 character wide column, and winds up overwriting the byte before the start of the buffer.\n\n### Expected behavior\n\nNo crash 😄\n\n### Neovim version (nvim -v)\n\n0.10.0 commit 27fb62988\n\n### Vim (not Nvim) behaves the same?\n\nn/a (no extmarks)\n\n### Operating system/version\n\nRHEL 7\n\n### Terminal name/version\n\nwsltty\n\n### $TERM environment variable\n\nscreen-256color\n\n### Installation\n\nbuild from repo",
-    "closed_at": null,
+    "closed_at": "2024-06-01T10:10:36Z",
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -90,7 +90,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 29,
+        "closed_issues": 37,
         "created_at": "2024-05-14T14:02:12Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
@@ -119,10 +119,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/42/labels",
         "node_id": "MI_kwDOAPphoM4AqKMR",
         "number": 42,
-        "open_issues": 6,
+        "open_issues": 5,
         "state": "open",
         "title": "0.10.1",
-        "updated_at": "2024-05-28T01:49:49Z",
+        "updated_at": "2024-06-03T00:15:21Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/42"
     },
     "node_id": "I_kwDOAPphoM6KDqMh",
@@ -141,11 +141,11 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/28984/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/28984/timeline",
     "title": "Crash with signcolumn=number and numberwidth=1",
-    "updated_at": "2024-05-24T23:28:04Z",
+    "updated_at": "2024-06-01T10:10:37Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/28984",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/29423?v=4",
