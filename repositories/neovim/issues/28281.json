@@ -137,9 +137,53 @@
                 "type": "User",
                 "url": "https://api.github.com/users/glepnir"
             }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "> Please provide a minimal detailed steps to reproduce\r\n\r\nHey, maybe it's not exactly the same issue, but `locations_to_items` (which is used in `vim.lsp.buf.definition` function) also is not tolerating ranges which go beyond line length.\r\n\r\nLSP spec [states](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#position) that \"if the character value is greater than the line length it defaults back to the line length\", but `locations_to_items` gives the error in that case.\r\n\r\nHere is a reproducer. `minimal_init.lua`:\r\n\r\n```lua\r\n---Definition provider, returns static result\r\n---@param uri string\r\n---@return lsp.Definition\r\nlocal function go_to_definition(uri)\r\n  ---@type lsp.Definition\r\n  local result = {\r\n    -- Document start\r\n    {\r\n      uri = uri,\r\n      range = { start = { line = 0, character = 0 }, [\"end\"] = { line = 0, character = 0 } },\r\n    },\r\n    -- More than line length\r\n    {\r\n      uri = uri,\r\n      range = { start = { line = 1, character = 1000 }, [\"end\"] = { line = 1, character = 1000 } },\r\n    },\r\n  }\r\n  return result\r\nend\r\n\r\n---Fake LSP server\r\n---@param dispatchers vim.lsp.rpc.Dispatchers\r\n---@return vim.lsp.rpc.PublicClient\r\nlocal function fake_server(dispatchers)\r\n  local request_id = 0\r\n\r\n  ---@type vim.lsp.rpc.PublicClient\r\n  local client = {\r\n    request = function(method, params, callback, notify_reply_callback)\r\n      request_id = request_id + 1\r\n\r\n      local function response(result)\r\n        vim.schedule(function()\r\n          if notify_reply_callback then\r\n            notify_reply_callback(request_id)\r\n          end\r\n          callback(nil, result)\r\n        end)\r\n      end\r\n\r\n      -- Initialization\r\n      if method == vim.lsp.protocol.Methods.initialize then\r\n        ---@type lsp.InitializeResult\r\n        local result = { capabilities = { definitionProvider = true } }\r\n        response(result)\r\n\r\n      -- Goto Definition Request\r\n      elseif method == vim.lsp.protocol.Methods.textDocument_definition then\r\n        ---@cast params lsp.DefinitionParams\r\n        response(go_to_definition(params.textDocument.uri))\r\n      else\r\n        return false\r\n      end\r\n\r\n      return true, request_id\r\n    end,\r\n\r\n    notify = function(method, params)\r\n      return true\r\n    end,\r\n\r\n    is_closing = function()\r\n      return false\r\n    end,\r\n\r\n    terminate = function()\r\n      dispatchers.on_exit(0, 0)\r\n    end,\r\n  }\r\n  return client\r\nend\r\n\r\n-- Start LSP client\r\nvim.api.nvim_create_autocmd(\"BufEnter\", {\r\n  callback = function()\r\n    vim.lsp.start({\r\n      cmd = fake_server,\r\n    })\r\n  end,\r\n})\r\n\r\n-- Go to definition mapping\r\nvim.keymap.set(\"n\", \"gd\", vim.lsp.buf.definition)\r\n```\r\n\r\nIt uses dummy client, that always returns static go to definition responses. One is at zero document position, second with `character` parameter that is greater than line length.\r\n\r\nTo use it, run neovim: `nvim --clean --noplugin -u minimal_init.lua minimal_init.lua`, then run command `:lua vim.lsp.buf.definition()` or use `gd` mapping anywhere in a document. Instead of showing LSP locations it errors with `index out of range` issue:\r\n\r\n```\r\nError executing vim.schedule lua callback: ...nvim.a8t6Rav/usr/share/nvim/runtime/lua/vim/lsp/util.lua:1802: index out \r\nof range                                                                                                               \r\nstack traceback:                                                                                                       \r\n        [C]: in function '_str_byteindex_enc'                                                                          \r\n        ...nvim.a8t6Rav/usr/share/nvim/runtime/lua/vim/lsp/util.lua:1802: in function 'locations_to_items'             \r\n        ....a8t6Rav/usr/share/nvim/runtime/lua/vim/lsp/handlers.lua:436: in function 'handler'                         \r\n        ...im.a8t6Rav/usr/share/nvim/runtime/lua/vim/lsp/client.lua:687: in function 'callback'                        \r\n        /home/stas/other/reproducers/minimal_init.lua:37: in function </home/stas/other/reproducers/minimal_init.lua:33\r\n```",
+            "created_at": "2024-06-12T15:25:32Z",
+            "html_url": "https://github.com/neovim/neovim/issues/28281#issuecomment-2163321955",
+            "id": 2163321955,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/28281",
+            "node_id": "IC_kwDOAPphoM6A8axj",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2163321955/reactions"
+            },
+            "updated_at": "2024-06-12T15:25:32Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2163321955",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1353637?v=4",
+                "events_url": "https://api.github.com/users/stasjok/events{/privacy}",
+                "followers_url": "https://api.github.com/users/stasjok/followers",
+                "following_url": "https://api.github.com/users/stasjok/following{/other_user}",
+                "gists_url": "https://api.github.com/users/stasjok/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/stasjok",
+                "id": 1353637,
+                "login": "stasjok",
+                "node_id": "MDQ6VXNlcjEzNTM2Mzc=",
+                "organizations_url": "https://api.github.com/users/stasjok/orgs",
+                "received_events_url": "https://api.github.com/users/stasjok/received_events",
+                "repos_url": "https://api.github.com/users/stasjok/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/stasjok/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/stasjok/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/stasjok"
+            }
         }
     ],
-    "comments": 3,
+    "comments": 4,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/28281/comments",
     "created_at": "2024-04-11T18:15:29Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/28281/events",
@@ -165,6 +209,15 @@
             "url": "https://api.github.com/repos/neovim/neovim/labels/needs:repro"
         },
         {
+            "color": "BFDADC",
+            "default": false,
+            "description": "Low-risk, self-contained. Do NOT ask \"can I work on this\", just read CONTRIBUTING.md",
+            "id": 407246773,
+            "name": "complexity:low",
+            "node_id": "MDU6TGFiZWw0MDcyNDY3NzM=",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/complexity:low"
+        },
+        {
             "color": "c5def5",
             "default": false,
             "description": null,
@@ -178,8 +231,8 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 220,
-        "created_at": "2014-11-26T22:13:11Z",
+        "closed_issues": 624,
+        "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
             "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
@@ -200,18 +253,18 @@
             "type": "User",
             "url": "https://api.github.com/users/justinmk"
         },
-        "description": "Zero priority; no timeline. Promote an item from this state by taking ownership of it.",
+        "description": "Low priority. Not planned for the current target, may be reassigned.",
         "due_on": null,
-        "html_url": "https://github.com/neovim/neovim/milestone/9",
-        "id": 881978,
-        "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/9/labels",
-        "node_id": "MDk6TWlsZXN0b25lODgxOTc4",
-        "number": 9,
-        "open_issues": 242,
+        "html_url": "https://github.com/neovim/neovim/milestone/6",
+        "id": 655037,
+        "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
+        "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
+        "number": 6,
+        "open_issues": 545,
         "state": "open",
-        "title": "unplanned",
-        "updated_at": "2024-04-21T16:31:45Z",
-        "url": "https://api.github.com/repos/neovim/neovim/milestones/9"
+        "title": "backlog",
+        "updated_at": "2024-06-17T21:30:13Z",
+        "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM6FaalN",
     "number": 28281,
@@ -233,7 +286,7 @@
     "state_reason": "reopened",
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/28281/timeline",
     "title": "LSP: tolerate invalid paths in locations_to_items",
-    "updated_at": "2024-04-18T11:40:02Z",
+    "updated_at": "2024-06-12T15:54:05Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/28281",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/60933600?v=4",

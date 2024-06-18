@@ -2,12 +2,12 @@
     "active_lock_reason": null,
     "assignee": null,
     "assignees": [],
-    "author_association": "MEMBER",
+    "author_association": "CONTRIBUTOR",
     "body": "1. Libuv supports file notifications\n2. Working with files that are also changed by other editors in (n)vim is finnicky at best, unless of course I'm misconfiguring. In that case mea culpa.\n3. As mentioned by http://andre.arko.net/2013/09/11/vim-is-the-worst-editor/, if you have a lot of buffers open and some paranoid settings, things become quite wasteful.\n\nSince all our target OS'es support file notifications and even libuv does, perhaps we could use that?\n",
     "closed_at": null,
     "comment_data": [
         {
-            "author_association": "MEMBER",
+            "author_association": "NONE",
             "body": "I didn't know Windows had an inotify-like feature. I'd love this!\n",
             "created_at": "2014-11-03T18:10:16Z",
             "html_url": "https://github.com/neovim/neovim/issues/1380#issuecomment-61521143",
@@ -95,7 +95,7 @@
             }
         },
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "It would seem like I hit a sensitive point here :). Too bad I think this is too involved for an entry-level issue but it looks like a nice thing to get into for anyone with some experience in C and/or Neovim to get started with after they finish the feature they're currently working on (I'm not sure I'll get there first).\n",
             "created_at": "2014-11-08T09:26:50Z",
             "html_url": "https://github.com/neovim/neovim/issues/1380#issuecomment-62251554",
@@ -183,7 +183,7 @@
             }
         },
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "> At least for copying the error messages, the code is otherwise pretty awful.\n\nI'm sure this change is not trivial at all, but we won't know until we try. There are parts of the codebase that are still mostly uncharted territory. It usually takes separating a feature you think might use what you want to replace (autocommands might be a good start), and following the code up and down until you get a good picture. Stepping through it in a debugger sometimes helps a lot too :).\n",
             "created_at": "2014-11-18T20:17:27Z",
             "html_url": "https://github.com/neovim/neovim/issues/1380#issuecomment-63537334",
@@ -403,7 +403,7 @@
             }
         },
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "On November 24, 2014 2:06:51 AM EAT, Enrico Lumetti notifications@github.com wrote:\n\n> Some updates:\n> I've been investigating the best way to do this and this is what I've\n> come up so far:\n> - vim checks whether writing is going to conflict in a lot of different\n>   ways. Sometimes the check is done in place(like in\n>   `buf_check_timestamp()`), sometimes it's delegated to helper functions\n>   like `check_overwrite()`.\n>   Note that those two functions are not the same thing, but one could ask\n>   if all these checks scattered all over the place could be somehow\n>   simplified. I came to the conclusion that this is just too much work,\n>   and leaving them there for the time being would not conflict with a\n>   notification feature.\n> - Libuv provides file system events; the specific function is\n>   `uv_fs_event_start()`, but there could be some problems with this\n>   function: <br>\n>   1) On virtual filesystems, like virtualbox shared folders,\n>   `uv_fs_event_start()` doesn't work properly. There's an option to\n>   circumvent this and use stat informations instead of the OS\n>   notification system, but it's currently not implemented in libuv.<br>\n>   2) `uv_fs_event_start()` accepts the path to be watched as an argument;\n>   it could be a file(ideal in our case, as we would attach a watcher to a\n>   buffer as soon as it's opened) or a directory. \n>   Unfortunately, uv_fs_event_start doesn't work at all if the file being\n>   watched is edited by vim: see\n>   https://github.com/joyent/libuv/issues/1585<br>\n>   I discussed the issue with indutny after he had closed it, and while\n>   this behaviour makes sense from an implementation POV, because the\n>   inode descriptor watched is invalid, the function signature leads one\n>   to think that libuv is going to watch the path, independently of what\n>   happens to the file.\n\nIs not it solved by just creating a new event after notification about rename or remove and removing the old one?\n\n> Another sore point highlighted by the issue is that the vim mechanism\n> to save a file is overly complicated. If I edit the file with nano I\n> just get one edit notification as expected, with vim I get, besides the\n> edit notification, three(!) rename notification.\n> I wanted to figure out the reason for this before reopening the issue,\n> but the code that saves a buffer is tremendously complicated:\n> https://github.com/neovim/neovim/blob/master/src/nvim/fileio.c#L2247\n> `buf_write` are 1551 lines of totally unreadable and unmantainable\n> code. The backup mechanism badly needs a rewrite.\n> \n> If the issue with libuv cannot be solved, there are two possible\n> workarounds:\n> - listens for events coming from the path where the file is located;\n>   this always works, but filtering all the events is not very elegant and\n>   could turn out to be problematic in performance if the dir contains\n>   files that are written very frequentely.\n> - Use a code similar to that of `buf_check_timestamp()`, but run\n>   asynchronously in a loop. This is possibly even more inelegant than the\n>   previous solution, but would work on virtual filesystems as bonus.\n> \n> ---\n> \n> Reply to this email directly or view it on GitHub:\n> https://github.com/neovim/neovim/issues/1380#issuecomment-64139405\n",
             "created_at": "2014-11-24T11:56:27Z",
             "html_url": "https://github.com/neovim/neovim/issues/1380#issuecomment-64184368",
@@ -799,7 +799,7 @@
             }
         },
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "@teto It is much easier to determine what is going on with `strace`: after\n\n```\nstrace -f -o nvim.strace bin/nvim -u NONE -i NONE --cmd 'edit ../README.md' --cmd 'write' --cmd 'qa'\n```\n\nI got a rather lengthy strace which shows that Neovim\n1. Does some stats and reads `README.md`. I am not going into details because it is clear that this is not related to writing, but related to reading.\n2. Unlinks `README.md~`.\n3. Renames `README.md` to `README.md~`.\n4. Opens `README.md` for writing (O_WRONLY|O_CREAT|O_TRUNC|O_CLOEXEC).\n5. Writes to `README.md`.\n6. `fsync()`s `README.md`.\n7. Two stats on `README.md` (not sure why).\n8. `close()`s `README.md`.\n9. Changes `README.md`’s permissions.\n10. Writes message that `README.md` was written to stderr.\n11. Gets user ID, then opens and does something with `/etc/passwd`.\n12. Stats `README.md` again, but now using full path (all previous operations used relative path, like supplied on the command line).\n13. Finally unlinks `README.md~`, then closes and unlinks the swap file.\n\nOne of the problems is that exact behaviour is controlled by some options; and AFAIR there are some different code paths depending on the results of `stat()`ting the file.\n",
             "created_at": "2016-11-06T23:11:57Z",
             "html_url": "https://github.com/neovim/neovim/issues/1380#issuecomment-258718813",
@@ -887,7 +887,7 @@
             }
         },
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "@teto You need something in `fileio.c`. `memfile.c` contains in-memory representation.\n",
             "created_at": "2016-11-06T23:39:17Z",
             "html_url": "https://github.com/neovim/neovim/issues/1380#issuecomment-258720486",
@@ -1548,7 +1548,7 @@
         },
         {
             "author_association": "MEMBER",
-            "body": "# Status\r\n\r\n- Related:\r\n    - #1785\r\n- We have `_watchfiles.lua` for LSP.\r\n- `vim.loop.new_fs_event()` works well on macOS/Windows.\r\n    - But it's slow on Linux. So we fallback to `fswatch` on Linux: [#27347](https://github.com/neovim/neovim/pull/27347)\r\n    - [Documented](https://neovim.io/doc/user/lua.html#watch-file) at `:help watch-file`\r\n- [question (resolved)](https://github.com/neovim/neovim/issues/1380#issuecomment-64139405):\r\n  > If I edit the file with nano I just get one notification as expected, with vim I get, besides the edit notification, three(!) rename notifications.\r\n    - To address that [ZyX suggests](https://github.com/neovim/neovim/issues/1380#issuecomment-64184368):\r\n    > just created a new event after notification about rename or remove and removing the old one?\r\n    - That seems to work, and is mentioned at `:help watch-file` (essentially `watcher:stop()` followed by `watcher:start()`)\r\n- [open question](https://github.com/neovim/neovim/issues/1380#issuecomment-64139405): \r\n  > On virtual filesystems, like virtualbox shared folders, uv_fs_event_start() doesn't work properly. There's an option to circumvent this and use stat informations instead of the OS notification system, but it's currently not implemented in libuv.\r\n\r\n# TODO\r\n\r\n- Lift our LSP module `_watchfiles.lua` [#22405](https://github.com/neovim/neovim/pull/22405) [#27347](https://github.com/neovim/neovim/pull/27347) into a generic \"file-watcher\" interface.\r\n- Use it for 'autoread'.\r\n    - That would address https://github.com/neovim/neovim/issues/7959\r\n    - Previous: See also https://github.com/neovim/neovim/pull/5599\r\n- Alternative (simpler) 'autoread' implementation: [compare file hashes](https://github.com/neovim/neovim/issues/1380#issuecomment-873374249)\r\n    1. On file-load, store a digest/hash of the contents.\r\n    1. If the mtime has changed, recompute the digest to see if it changed.\r\n    1. If not, suppress the \"file changed\" notification.\r\n- 'autoread' UX improvements:\r\n    - [ ] Show a diff when we prompt the user for an update?\r\n    - [ ] Logging/visibility: https://github.com/neovim/neovim/pull/12503\r\n    - ~~New option to enable or disable filewatching itself.~~\r\n\r\n# Notes\r\n\r\n## File watching is tricky and expensive\r\n\r\n#23291 , #23500 are reminders that the edge-cases (recursive directory watching) of inotify and friends need to be wrapped in a higher layer. We probably should use (\"vend or depend\") a proven tool to deal with file-watcher edge cases.\r\n\r\n## Third-party tools\r\n\r\n- sunjon ([and lewis6991](https://github.com/neovim/neovim/issues/23291#issuecomment-1632855972)) mentioned https://github.com/emcrisostomo/fswatch which also works on Windows.\r\n- [entr](https://github.com/eradman/entr) (no Windows support)\r\n- https://facebook.github.io/watchman/\r\n- https://github.com/watchexec/watchexec\r\n\r\n## Edge cases (from the \"entr\" readme)\r\n\r\n<details>\r\n<summary>Scripting with inotify-tools is difficult because of many edge cases:</summary>\r\n\r\n> 1. Many applications attempt to make the file save operation atomic by writing a new file and then removing the original. entr deals with this by closing the old file descriptor and reopening it using the same pathname. Since there is a small delay while the new file is renamed, we must wait for the new file to appear before running the supplied command and attempting to watch the new file.\r\n> 2. File change events that occur while the utility is running need to be processed so as to ensure that files that have been replaced are monitored, but these events should not trigger an execution when the child process ends. entr allows you to safely edit files while tests are running without a repeated invocation of the utility.\r\n> 3. Typically version control software will often update a series of files in rapid succession. Ideally the build is launched when then entire operation is complete. To cope with this behavior entr repeatedly probes for subsequent events, and only executes the utility when the kernel returns with no results after a short timeout.\r\n> 4. The events reported when saving files on an NFS mount are different than those of a local file system. On Linux an inotify may report IN_MOVE_SELF|IN_DELETE_SELF instead of IN_MODIFY|IN_CLOSE_WRITE and on BSD kqueue may report NOTE_RENAME|NOTE_DELETE instead of NOTE_WRITE|NOTE_EXTEND.\r\n> 5. A race condition exists when executing a script that is also under watch since a script cannot be executed while another process has it open for write. Rather than allowing the enigmatic error “Text file busy”, entr retries the execution.\r\n> 6. On Linux editors that use the Gnome's GIO may write to a file and then subsequently delete it. To deal with this entr consolidates events over 50ms before responding.\r\n> 7. In some cases an editor will rename a file without removing it. This occurs the first time a file is saved in Vim if the backup option is set. To deal with this events must be explicitly unregistered to prevent the kernel from tracking changes to backup files.\r\n</details>\r\n",
+            "body": "# Status\r\n\r\n- Related:\r\n    - #1785\r\n- We have `_watchfiles.lua` for LSP.\r\n- `vim.loop.new_fs_event()` works well on macOS/Windows.\r\n    - But it's slow on Linux. So we fallback to ~~`fswatch` [#27347](https://github.com/neovim/neovim/pull/27347)~~ `inotify-tools` [#29374](https://github.com/neovim/neovim/pull/29374) on Linux\r\n    - [Documented](https://neovim.io/doc/user/lua.html#watch-file) at `:help watch-file`\r\n- [question (resolved)](https://github.com/neovim/neovim/issues/1380#issuecomment-64139405):\r\n  > If I edit the file with nano I just get one notification as expected, with vim I get, besides the edit notification, three(!) rename notifications.\r\n    - To address that [ZyX suggests](https://github.com/neovim/neovim/issues/1380#issuecomment-64184368):\r\n    > just created a new event after notification about rename or remove and removing the old one?\r\n    - That seems to work, and is mentioned at `:help watch-file` (essentially `watcher:stop()` followed by `watcher:start()`)\r\n- [open question](https://github.com/neovim/neovim/issues/1380#issuecomment-64139405): \r\n  > On virtual filesystems, like virtualbox shared folders, uv_fs_event_start() doesn't work properly. There's an option to circumvent this and use stat informations instead of the OS notification system, but it's currently not implemented in libuv.\r\n\r\n# TODO\r\n\r\n- Lift our LSP module `_watchfiles.lua` [#22405](https://github.com/neovim/neovim/pull/22405) [#27347](https://github.com/neovim/neovim/pull/27347) into a generic \"file-watcher\" interface.\r\n- Use it for 'autoread'.\r\n    - That would address https://github.com/neovim/neovim/issues/7959\r\n    - Previous: See also https://github.com/neovim/neovim/pull/5599\r\n- Alternative (simpler) 'autoread' implementation: [compare file hashes](https://github.com/neovim/neovim/issues/1380#issuecomment-873374249)\r\n    1. On file-load, store a digest/hash of the contents.\r\n    1. If the mtime has changed, recompute the digest to see if it changed.\r\n    1. If not, suppress the \"file changed\" notification.\r\n- 'autoread' UX improvements:\r\n    - [ ] Show a diff when we prompt the user for an update?\r\n    - [ ] Logging/visibility: https://github.com/neovim/neovim/pull/12503\r\n    - ~~New option to enable or disable filewatching itself.~~\r\n\r\n# Notes\r\n\r\n## File watching is tricky and expensive\r\n\r\n#23291 , #23500 are reminders that the edge-cases (recursive directory watching) of inotify and friends need to be wrapped in a higher layer. We probably should use (\"vend or depend\") a proven tool to deal with file-watcher edge cases.\r\n\r\n## Third-party tools\r\n\r\n- sunjon ([and lewis6991](https://github.com/neovim/neovim/issues/23291#issuecomment-1632855972)) mentioned https://github.com/emcrisostomo/fswatch which also works on Windows.\r\n- [entr](https://github.com/eradman/entr) (no Windows support)\r\n- https://facebook.github.io/watchman/\r\n- https://github.com/watchexec/watchexec\r\n\r\n## Edge cases (from the \"entr\" readme)\r\n\r\n<details>\r\n<summary>Scripting with inotify-tools is difficult because of many edge cases:</summary>\r\n\r\n> 1. Many applications attempt to make the file save operation atomic by writing a new file and then removing the original. entr deals with this by closing the old file descriptor and reopening it using the same pathname. Since there is a small delay while the new file is renamed, we must wait for the new file to appear before running the supplied command and attempting to watch the new file.\r\n> 2. File change events that occur while the utility is running need to be processed so as to ensure that files that have been replaced are monitored, but these events should not trigger an execution when the child process ends. entr allows you to safely edit files while tests are running without a repeated invocation of the utility.\r\n> 3. Typically version control software will often update a series of files in rapid succession. Ideally the build is launched when then entire operation is complete. To cope with this behavior entr repeatedly probes for subsequent events, and only executes the utility when the kernel returns with no results after a short timeout.\r\n> 4. The events reported when saving files on an NFS mount are different than those of a local file system. On Linux an inotify may report IN_MOVE_SELF|IN_DELETE_SELF instead of IN_MODIFY|IN_CLOSE_WRITE and on BSD kqueue may report NOTE_RENAME|NOTE_DELETE instead of NOTE_WRITE|NOTE_EXTEND.\r\n> 5. A race condition exists when executing a script that is also under watch since a script cannot be executed while another process has it open for write. Rather than allowing the enigmatic error “Text file busy”, entr retries the execution.\r\n> 6. On Linux editors that use the Gnome's GIO may write to a file and then subsequently delete it. To deal with this entr consolidates events over 50ms before responding.\r\n> 7. In some cases an editor will rename a file without removing it. This occurs the first time a file is saved in Vim if the backup option is set. To deal with this events must be explicitly unregistered to prevent the kernel from tracking changes to backup files.\r\n</details>\r\n",
             "created_at": "2024-02-15T13:39:02Z",
             "html_url": "https://github.com/neovim/neovim/issues/1380#issuecomment-1946115753",
             "id": 1946115753,
@@ -1560,14 +1560,14 @@
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
-                "heart": 4,
+                "heart": 6,
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 4,
+                "total_count": 6,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1946115753/reactions"
             },
-            "updated_at": "2024-02-15T13:39:02Z",
+            "updated_at": "2024-06-17T22:24:05Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1946115753",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -1619,7 +1619,7 @@
         {
             "color": "C5DEF5",
             "default": false,
-            "description": "filenames, path manipulation",
+            "description": "file metadata/attributes, filenames, path manipulation",
             "id": 3386070083,
             "name": "filesystem",
             "node_id": "LA_kwDOAPphoM7J01RD",
@@ -1628,7 +1628,7 @@
         {
             "color": "C5DEF5",
             "default": false,
-            "description": "",
+            "description": "configuration, settings",
             "id": 4242493821,
             "name": "options",
             "node_id": "LA_kwDOAPphoM7831F9",
@@ -1639,7 +1639,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 604,
+        "closed_issues": 624,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -1668,17 +1668,17 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 426,
+        "open_issues": 545,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2024-02-18T23:41:30Z",
+        "updated_at": "2024-06-17T21:30:13Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "MDU6SXNzdWU0NzU4MDQ5NQ==",
     "number": 1380,
     "performed_via_github_app": null,
     "reactions": {
-        "+1": 32,
+        "+1": 35,
         "-1": 0,
         "confused": 0,
         "eyes": 1,
@@ -1686,7 +1686,7 @@
         "hooray": 0,
         "laugh": 0,
         "rocket": 0,
-        "total_count": 33,
+        "total_count": 36,
         "url": "https://api.github.com/repos/neovim/neovim/issues/1380/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
@@ -1694,7 +1694,7 @@
     "state_reason": null,
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/1380/timeline",
     "title": "better 'autoread' (file-change detection)",
-    "updated_at": "2024-02-15T13:40:35Z",
+    "updated_at": "2024-06-17T22:24:05Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/1380",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/189413?v=4",
