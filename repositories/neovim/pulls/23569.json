@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/23569"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/471727efb0968f4c540f833e7261ec9ae5f791cf"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/4e0884a06cd6e77690fa68f82d5e83b80bc87d39"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 5467,
-            "forks_count": 5467,
+            "forks": 5476,
+            "forks_count": 5476,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1738,
-            "open_issues_count": 1738,
+            "open_issues": 1748,
+            "open_issues_count": 1748,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -118,11 +118,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2024-06-18T01:52:59Z",
+            "pushed_at": "2024-06-25T01:42:25Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 274862,
+            "size": 275422,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 79235,
+            "stargazers_count": 79409,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -140,11 +140,11 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2024-06-18T01:56:59Z",
+            "updated_at": "2024-06-25T01:38:54Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 79235,
-            "watchers_count": 79235,
+            "watchers": 79409,
+            "watchers_count": 79409,
             "web_commit_signoff_required": false
         },
         "sha": "0231265c8cf8c13f317bbddcfcbac2639e7022cd",
@@ -171,7 +171,144 @@
     },
     "body": "[Request for Comment]\r\n@lewis6991 \r\n@bfredl \r\n@sakhnik \r\n@zeertzjq \r\n\r\nFrom the author of the linematch alignment algorithm, I bring you charmatch!\r\n\r\nbefore:\r\n![before](https://github.com/neovim/neovim/assets/32371757/d8e32883-2457-4ec2-b4d1-ef62fe6f587f)\r\n\r\nafter:\r\n![after](https://github.com/neovim/neovim/assets/32371757/11030c41-5f1e-4f94-8738-455f39261acd)\r\n\r\ncharmatch leverages the existing linematch algorithm to perform a similar diff optimization for highlighting of modified characters between lines of buffers in diff mode.\r\n\r\nThe result of the charmatch algorithm is similarly a set of decisions represented by integers. these integers are then parsed to produce an array containing the highlighting information for a diff hunk.\r\n\r\nThe results are stored as so for a diff of these two files:\r\n```\r\n----------------\r\n| A    | AZBZC |\r\n| B    |       |\r\n| C    |       |\r\n----------------\r\n```\r\n![arrayexample](https://github.com/neovim/neovim/assets/32371757/cc88e775-7d9b-4a46-a816-7368a34b2c27)\r\n\r\nHere I represent \\n 'newline' as 'n' for the purposes of this diagram.\r\n\r\n```\r\ndiff_T->charmatchp\r\nbuf 0 start\r\n|     buf 1 start\r\n|     |\r\nAnBnCnAZBZCn\r\n000000010100\r\n```\r\n\r\nThe newline characters are used in calculation of the highlight grouping, as newlines will always break a highlight group\r\n\r\nThe grouping optimization will attempt to create a highlight solution with the smallest amount of groups (marked highlighted, marked not highlighted) possible, explained more further down.\r\n\r\nThe array stores '1's to indicate highlighted, and 0's to represent not highlighted.\r\n\r\nThis array is unique to each diff hunk (`diff_T`), and is stored in an added array pointer for `diff_T` struct\r\n\r\n```c\r\ntypedef struct diffblock_S diff_T;\r\nstruct diffblock_S {\r\n  ...\r\n  size_t n_charmatch;\r\n  int* charmatchp; // values for charmatch\r\n};\r\n```\r\n\r\nThe charmatch alignment algorithm is ran once a diff hunk is scrolled into view.\r\n\r\nthe diffoption chardiff is given with a number like so:\r\n```\r\nset diffopt+=chardiff:10\r\n```\r\nthe number specifies the summation of the length of the text to be diffed.\r\nit will first try to character wise diff all of the lines of the two (or more) diff blocks, if that exceeds the limit, it will then attempt to diff them matching line-wise. Pictures here illustrate:\r\n![10](https://github.com/neovim/neovim/assets/32371757/285b6b48-d04f-469a-9a1b-f19e639fb0db)\r\n![23](https://github.com/neovim/neovim/assets/32371757/670a1bb0-652e-443f-b7f0-37bf2b9ebbdc)\r\n![100](https://github.com/neovim/neovim/assets/32371757/9b541504-b9f4-441d-aa8f-017547a225c4)\r\n",
     "closed_at": null,
-    "comment_data": [],
+    "comment_data": [
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/23569#discussion_r1651875173"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/23569"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1651875173"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "Maybe we should free decisions after the loop?",
+            "commit_id": "4e0884a06cd6e77690fa68f82d5e83b80bc87d39",
+            "created_at": "2024-06-25T01:56:58Z",
+            "diff_hunk": "@@ -2076,28 +2105,166 @@ static void run_linematch_algorithm(diff_T *dp)\n       // we add it to the array of char*, diffbufs\n       diffbufs[ndiffs] = diffbufs_mm[ndiffs].ptr;\n \n-      // keep track of the length of this diff block to pass it to the linematch\n-      // algorithm\n-      diff_length[ndiffs] = dp->df_count[i];\n+      diff_lines[ndiffs] = dp->df_count[i];\n+      if (diff_allignment == CHARMATCH || diff_allignment == WORDMATCH) {\n+        // before removing whitespace for charmatch\n+        result_diff_start_pos[ndiffs] = total_chars_length;\n+        // get the length of each of the diffs\n+        int lines = dp->df_count[i];\n+        const char *p = diffbufs[ndiffs];\n+        while (lines) {\n+          total_chars_length++; // increment the total characters counter\n+          if (*p == '\\n') { lines--; }\n+          p++;\n+        }\n+      } else if (diff_allignment == LINEMATCH) {\n+        // LINEMATCH\n+        // keep track of the length of this diff block to pass it to the linematch\n+        // algorithm\n+        diff_length[ndiffs] = dp->df_count[i];\n+      }\n \n       // increment the amount of diff buffers we are passing to the algorithm\n       ndiffs++;\n     }\n   }\n \n+  if (iwhite && (diff_allignment == CHARMATCH || diff_allignment == WORDMATCH)) {\n+    // allocate array for index mapping of result array\n+    iwhite_index_offset = xmalloc(total_chars_length * sizeof(size_t));\n+    for (size_t i = 0; i < total_chars_length; i++) {\n+      iwhite_index_offset[i] = 99;\n+    }\n+  }\n+  if (diff_allignment == WORDMATCH) {\n+    for (size_t i = 0; i < ndiffs; i++) {\n+      word_offset[i] = xmalloc(total_chars_length * sizeof(size_t));\n+      word_offset_size[i] = xmalloc(total_chars_length * sizeof(size_t));\n+      for (size_t j = 0; j < total_chars_length; j++) {\n+        word_offset[i][j] = 99;\n+        word_offset_size[i][j] = 0;\n+      }\n+    }\n+  }\n+  for (size_t i = 0; i < ndiffs; i++) {\n+    int cls = INT_MIN;\n+    size_t j = 0, k = 0, lines = (size_t)diff_lines[i], w = result_diff_start_pos[i];\n+    while (lines > 0) {\n+      if (iwhite ? (diffbufs[i][j] != ' ' && diffbufs[i][j] != '\\t') : 1) {\n+        if (diff_allignment == CHARMATCH || diff_allignment == WORDMATCH) {\n+          // a character which is not a blank\n+          if (diff_allignment == WORDMATCH) {\n+            if (utf_class(diffbufs[i][j]) != cls || diffbufs[i][j] == '\\n') {\n+              word_offset[i][diff_length[i]] = k;\n+              diff_length[i]++;\n+              total_word_count++;\n+            }\n+            word_offset_size[i][diff_length[i] - 1]++;\n+            cls = utf_class(diffbufs[i][j]);\n+          } else {\n+            // we are matching characters, not words\n+            diff_length[i]++;\n+          }\n+          if (iwhite) {\n+            iwhite_index_offset[w++] = j - k;\n+          }\n+        }\n+        diffbufs[i][k++] = diffbufs[i][j];\n+      } else if (diff_allignment == WORDMATCH) {\n+        // we are ignoring whitespace and this is a whitespace ' ' or '\\t' reset the class definition\n+        cls = INT_MIN;\n+      }\n+      if (diffbufs[i][j++] == '\\n') { lines--; }\n+    }\n+  }\n+\n   // we will get the output of the linematch algorithm in the format of an array\n   // of integers (*decisions) and the length of that array (decisions_length)\n-  int *decisions = NULL;\n-  const bool iwhite = (diff_flags & (DIFF_IWHITEALL | DIFF_IWHITE)) > 0;\n-  size_t decisions_length = linematch_nbuffers(diffbufs, diff_length, ndiffs, &decisions, iwhite);\n+  if (diff_allignment == LINEMATCH) {\n+    int *decisions = NULL;\n+    size_t decisions_length = linematch_nbuffers((const char **)diffbufs, diff_length, ndiffs, &decisions, 0, NULL, NULL);\n+    apply_linematch_results(dp, decisions_length, decisions);\n+    xfree(decisions);\n+  } else if (diff_allignment == CHARMATCH || diff_allignment == WORDMATCH) {\n+    dp->charmatchp = xmalloc(total_chars_length * sizeof(int)); // will hold results\n+    dp->n_charmatch = total_chars_length;\n+\n+    bool lim_exceeded = false;\n+    if (diff_allignment == CHARMATCH && total_chars_length > (size_t)chardiff_chars) {\n+      lim_exceeded = true;\n+    } else if (diff_allignment == WORDMATCH && total_word_count > (size_t)worddiff_words) {\n+      lim_exceeded = true;\n+    }\n+\n+    if (lim_exceeded == true) {\n+      // do not run charmatch on the entire diff block\n+      // we will attempt to run charmatch on the individual lines later\n+      // for now, just initialize the result memory\n+      for (size_t i = 0; i < total_chars_length; i++) {\n+        dp->charmatchp[i] = -1; // -1 indicates that algorithm has not yet ran\n+      }\n+    } else {\n+      int *decisions = NULL;\n+      for (size_t i = 0; i < total_chars_length; i++) {\n+        dp->charmatchp[i] = 0; // default to not highlighted\n+      }\n+\n+      // check is this a line that does not exist in other buffers?\n+      // if so, highlight it as a 'newline', and we don't need to run the algorithm\n+      bool newline = true;\n+      for (size_t i = 0, c = 0; i < ndiffs; i++) {\n+        if (diff_length[i] > 0) {\n+          c++;\n+        }\n+        if (c > 1) {\n+          newline = false;\n+          break;\n+        }\n+      }\n+\n+      if (newline == true) {\n+        for (size_t i = 0; i < total_chars_length; i++) {\n+          dp->charmatchp[i] = 2;\n+        }\n+      } else {\n+        size_t decisions_length = linematch_nbuffers((const char **)diffbufs, diff_length, ndiffs, &decisions, 1, word_offset, word_offset_size);\n+        for (size_t i = 0; i < decisions_length; i++) {\n+          // write to result\n+          // is it a comparison\n+          // check for if this is a 'newline'\n+          if (decisions[i] == (pow(2, (double)ndiffs) - 1)) {\n+            // it's a comparison of all the buffers (don't highlight)\n+            for (size_t j = 0; j < ndiffs; j++) {\n+              for (size_t k = 0; k < (diff_allignment == WORDMATCH ? word_offset_size[j][word_offset_result_index[j]] : 1); k++) {\n+                size_t l = result_diff_start_pos[j]++;\n+                dp->charmatchp[iwhite_index_offset ? iwhite_index_offset[l] + l : l] = 0;\n+              }\n+              word_offset_result_index[j]++;\n+            }\n+          } else {\n+            // it's a skip in a single buffer (highlight as changed)\n+            for (size_t j = 0; j < ndiffs; j++) {\n+              if (decisions[i] & (1 << j)) {\n+                for (size_t k = 0; k < (diff_allignment == WORDMATCH ? word_offset_size[j][word_offset_result_index[j]] : 1); k++) {\n+                  size_t l = result_diff_start_pos[j]++;\n+                  dp->charmatchp[iwhite_index_offset ? iwhite_index_offset[l] + l : l] = 1;\n+                }\n+                word_offset_result_index[j]++;\n+                break;\n+              }\n+            }\n+          }",
+            "html_url": "https://github.com/neovim/neovim/pull/23569#discussion_r1651875173",
+            "id": 1651875173,
+            "line": 2256,
+            "node_id": "PRRC_kwDOAPphoM5idZ1l",
+            "original_commit_id": "4e0884a06cd6e77690fa68f82d5e83b80bc87d39",
+            "original_line": 2256,
+            "original_position": 252,
+            "original_start_line": null,
+            "path": "src/nvim/diff.c",
+            "position": 252,
+            "pull_request_review_id": 2137153290,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/23569",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1651875173/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-06-25T01:59:16Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1651875173",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1681295?v=4",
+                "events_url": "https://api.github.com/users/ray-x/events{/privacy}",
+                "followers_url": "https://api.github.com/users/ray-x/followers",
+                "following_url": "https://api.github.com/users/ray-x/following{/other_user}",
+                "gists_url": "https://api.github.com/users/ray-x/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/ray-x",
+                "id": 1681295,
+                "login": "ray-x",
+                "node_id": "MDQ6VXNlcjE2ODEyOTU=",
+                "organizations_url": "https://api.github.com/users/ray-x/orgs",
+                "received_events_url": "https://api.github.com/users/ray-x/received_events",
+                "repos_url": "https://api.github.com/users/ray-x/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/ray-x/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/ray-x/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/ray-x"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/23569#discussion_r1651875238"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/23569"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1651875238"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "should we free iwhite_index_offset after the block?",
+            "commit_id": "4e0884a06cd6e77690fa68f82d5e83b80bc87d39",
+            "created_at": "2024-06-25T01:57:07Z",
+            "diff_hunk": "@@ -2076,28 +2105,166 @@ static void run_linematch_algorithm(diff_T *dp)\n       // we add it to the array of char*, diffbufs\n       diffbufs[ndiffs] = diffbufs_mm[ndiffs].ptr;\n \n-      // keep track of the length of this diff block to pass it to the linematch\n-      // algorithm\n-      diff_length[ndiffs] = dp->df_count[i];\n+      diff_lines[ndiffs] = dp->df_count[i];\n+      if (diff_allignment == CHARMATCH || diff_allignment == WORDMATCH) {\n+        // before removing whitespace for charmatch\n+        result_diff_start_pos[ndiffs] = total_chars_length;\n+        // get the length of each of the diffs\n+        int lines = dp->df_count[i];\n+        const char *p = diffbufs[ndiffs];\n+        while (lines) {\n+          total_chars_length++; // increment the total characters counter\n+          if (*p == '\\n') { lines--; }\n+          p++;\n+        }\n+      } else if (diff_allignment == LINEMATCH) {\n+        // LINEMATCH\n+        // keep track of the length of this diff block to pass it to the linematch\n+        // algorithm\n+        diff_length[ndiffs] = dp->df_count[i];\n+      }\n \n       // increment the amount of diff buffers we are passing to the algorithm\n       ndiffs++;\n     }\n   }\n \n+  if (iwhite && (diff_allignment == CHARMATCH || diff_allignment == WORDMATCH)) {\n+    // allocate array for index mapping of result array\n+    iwhite_index_offset = xmalloc(total_chars_length * sizeof(size_t));\n+    for (size_t i = 0; i < total_chars_length; i++) {\n+      iwhite_index_offset[i] = 99;\n+    }\n+  }\n+  if (diff_allignment == WORDMATCH) {\n+    for (size_t i = 0; i < ndiffs; i++) {\n+      word_offset[i] = xmalloc(total_chars_length * sizeof(size_t));\n+      word_offset_size[i] = xmalloc(total_chars_length * sizeof(size_t));\n+      for (size_t j = 0; j < total_chars_length; j++) {\n+        word_offset[i][j] = 99;\n+        word_offset_size[i][j] = 0;\n+      }\n+    }\n+  }\n+  for (size_t i = 0; i < ndiffs; i++) {\n+    int cls = INT_MIN;\n+    size_t j = 0, k = 0, lines = (size_t)diff_lines[i], w = result_diff_start_pos[i];\n+    while (lines > 0) {\n+      if (iwhite ? (diffbufs[i][j] != ' ' && diffbufs[i][j] != '\\t') : 1) {\n+        if (diff_allignment == CHARMATCH || diff_allignment == WORDMATCH) {\n+          // a character which is not a blank\n+          if (diff_allignment == WORDMATCH) {\n+            if (utf_class(diffbufs[i][j]) != cls || diffbufs[i][j] == '\\n') {\n+              word_offset[i][diff_length[i]] = k;\n+              diff_length[i]++;\n+              total_word_count++;\n+            }\n+            word_offset_size[i][diff_length[i] - 1]++;\n+            cls = utf_class(diffbufs[i][j]);\n+          } else {\n+            // we are matching characters, not words\n+            diff_length[i]++;\n+          }\n+          if (iwhite) {\n+            iwhite_index_offset[w++] = j - k;\n+          }\n+        }\n+        diffbufs[i][k++] = diffbufs[i][j];\n+      } else if (diff_allignment == WORDMATCH) {\n+        // we are ignoring whitespace and this is a whitespace ' ' or '\\t' reset the class definition\n+        cls = INT_MIN;\n+      }\n+      if (diffbufs[i][j++] == '\\n') { lines--; }\n+    }\n+  }\n+\n   // we will get the output of the linematch algorithm in the format of an array\n   // of integers (*decisions) and the length of that array (decisions_length)\n-  int *decisions = NULL;\n-  const bool iwhite = (diff_flags & (DIFF_IWHITEALL | DIFF_IWHITE)) > 0;\n-  size_t decisions_length = linematch_nbuffers(diffbufs, diff_length, ndiffs, &decisions, iwhite);\n+  if (diff_allignment == LINEMATCH) {\n+    int *decisions = NULL;\n+    size_t decisions_length = linematch_nbuffers((const char **)diffbufs, diff_length, ndiffs, &decisions, 0, NULL, NULL);\n+    apply_linematch_results(dp, decisions_length, decisions);\n+    xfree(decisions);\n+  } else if (diff_allignment == CHARMATCH || diff_allignment == WORDMATCH) {\n+    dp->charmatchp = xmalloc(total_chars_length * sizeof(int)); // will hold results\n+    dp->n_charmatch = total_chars_length;\n+\n+    bool lim_exceeded = false;\n+    if (diff_allignment == CHARMATCH && total_chars_length > (size_t)chardiff_chars) {\n+      lim_exceeded = true;\n+    } else if (diff_allignment == WORDMATCH && total_word_count > (size_t)worddiff_words) {\n+      lim_exceeded = true;\n+    }\n+\n+    if (lim_exceeded == true) {\n+      // do not run charmatch on the entire diff block\n+      // we will attempt to run charmatch on the individual lines later\n+      // for now, just initialize the result memory\n+      for (size_t i = 0; i < total_chars_length; i++) {\n+        dp->charmatchp[i] = -1; // -1 indicates that algorithm has not yet ran\n+      }\n+    } else {\n+      int *decisions = NULL;\n+      for (size_t i = 0; i < total_chars_length; i++) {\n+        dp->charmatchp[i] = 0; // default to not highlighted\n+      }\n+\n+      // check is this a line that does not exist in other buffers?\n+      // if so, highlight it as a 'newline', and we don't need to run the algorithm\n+      bool newline = true;\n+      for (size_t i = 0, c = 0; i < ndiffs; i++) {\n+        if (diff_length[i] > 0) {\n+          c++;\n+        }\n+        if (c > 1) {\n+          newline = false;\n+          break;\n+        }\n+      }\n+\n+      if (newline == true) {\n+        for (size_t i = 0; i < total_chars_length; i++) {\n+          dp->charmatchp[i] = 2;\n+        }\n+      } else {\n+        size_t decisions_length = linematch_nbuffers((const char **)diffbufs, diff_length, ndiffs, &decisions, 1, word_offset, word_offset_size);\n+        for (size_t i = 0; i < decisions_length; i++) {\n+          // write to result\n+          // is it a comparison\n+          // check for if this is a 'newline'\n+          if (decisions[i] == (pow(2, (double)ndiffs) - 1)) {\n+            // it's a comparison of all the buffers (don't highlight)\n+            for (size_t j = 0; j < ndiffs; j++) {\n+              for (size_t k = 0; k < (diff_allignment == WORDMATCH ? word_offset_size[j][word_offset_result_index[j]] : 1); k++) {\n+                size_t l = result_diff_start_pos[j]++;\n+                dp->charmatchp[iwhite_index_offset ? iwhite_index_offset[l] + l : l] = 0;\n+              }\n+              word_offset_result_index[j]++;\n+            }\n+          } else {\n+            // it's a skip in a single buffer (highlight as changed)\n+            for (size_t j = 0; j < ndiffs; j++) {\n+              if (decisions[i] & (1 << j)) {\n+                for (size_t k = 0; k < (diff_allignment == WORDMATCH ? word_offset_size[j][word_offset_result_index[j]] : 1); k++) {\n+                  size_t l = result_diff_start_pos[j]++;\n+                  dp->charmatchp[iwhite_index_offset ? iwhite_index_offset[l] + l : l] = 1;\n+                }\n+                word_offset_result_index[j]++;\n+                break;\n+              }\n+            }\n+          }\n+        }\n+      }\n+    }\n+  }",
+            "html_url": "https://github.com/neovim/neovim/pull/23569#discussion_r1651875238",
+            "id": 1651875238,
+            "line": 2260,
+            "node_id": "PRRC_kwDOAPphoM5idZ2m",
+            "original_commit_id": "4e0884a06cd6e77690fa68f82d5e83b80bc87d39",
+            "original_line": 2260,
+            "original_position": 256,
+            "original_start_line": null,
+            "path": "src/nvim/diff.c",
+            "position": 256,
+            "pull_request_review_id": 2137153290,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/23569",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1651875238/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-06-25T01:59:16Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1651875238",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1681295?v=4",
+                "events_url": "https://api.github.com/users/ray-x/events{/privacy}",
+                "followers_url": "https://api.github.com/users/ray-x/followers",
+                "following_url": "https://api.github.com/users/ray-x/following{/other_user}",
+                "gists_url": "https://api.github.com/users/ray-x/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/ray-x",
+                "id": 1681295,
+                "login": "ray-x",
+                "node_id": "MDQ6VXNlcjE2ODEyOTU=",
+                "organizations_url": "https://api.github.com/users/ray-x/orgs",
+                "received_events_url": "https://api.github.com/users/ray-x/received_events",
+                "repos_url": "https://api.github.com/users/ray-x/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/ray-x/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/ray-x/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/ray-x"
+            }
+        }
+    ],
     "comment_regular_data": [
         {
             "author_association": "MEMBER",
@@ -707,9 +844,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/jwhite510/neovim/pulls{/number}",
-            "pushed_at": "2024-06-13T13:23:07Z",
+            "pushed_at": "2024-06-19T19:51:53Z",
             "releases_url": "https://api.github.com/repos/jwhite510/neovim/releases{/id}",
-            "size": 277239,
+            "size": 279590,
             "ssh_url": "git@github.com:jwhite510/neovim.git",
             "stargazers_count": 6,
             "stargazers_url": "https://api.github.com/repos/jwhite510/neovim/stargazers",
@@ -728,7 +865,7 @@
             "watchers_count": 6,
             "web_commit_signoff_required": false
         },
-        "sha": "471727efb0968f4c540f833e7261ec9ae5f791cf",
+        "sha": "4e0884a06cd6e77690fa68f82d5e83b80bc87d39",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/32371757?v=4",
             "events_url": "https://api.github.com/users/jwhite510/events{/privacy}",
@@ -765,7 +902,7 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "fd59007867c6fa5bcc22852c16e73b1395a615a7",
+    "merge_commit_sha": "35a4fa544f09583137e505b5ad13004342a7e3c2",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM5QLiSe",
@@ -776,9 +913,9 @@
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/23569/comments",
     "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/471727efb0968f4c540f833e7261ec9ae5f791cf",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/4e0884a06cd6e77690fa68f82d5e83b80bc87d39",
     "title": "charmatch / wordmatch - improved diff highlighting between adjacent lines",
-    "updated_at": "2024-06-14T13:23:14Z",
+    "updated_at": "2024-06-25T01:59:16Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/23569",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/32371757?v=4",
