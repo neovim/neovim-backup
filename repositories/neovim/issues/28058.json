@@ -720,7 +720,7 @@
             "node_id": "IC_kwDOAPphoM5-PtAG",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 1,
+                "+1": 2,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -728,7 +728,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 1,
+                "total_count": 2,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2118045702/reactions"
             },
             "updated_at": "2024-05-17T17:19:40Z",
@@ -808,7 +808,7 @@
             "node_id": "IC_kwDOAPphoM5-QAni",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 0,
+                "+1": 1,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -816,7 +816,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 6,
-                "total_count": 6,
+                "total_count": 7,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2118126050/reactions"
             },
             "updated_at": "2024-05-17T17:57:16Z",
@@ -1028,15 +1028,15 @@
             "node_id": "IC_kwDOAPphoM5-uotq",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 4,
+                "+1": 6,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
                 "heart": 0,
                 "hooray": 0,
                 "laugh": 0,
-                "rocket": 2,
-                "total_count": 6,
+                "rocket": 4,
+                "total_count": 10,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2126154602/reactions"
             },
             "updated_at": "2024-05-23T03:16:15Z",
@@ -1248,7 +1248,7 @@
             "node_id": "IC_kwDOAPphoM5_-Ek7",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 5,
+                "+1": 9,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -1256,7 +1256,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 5,
+                "total_count": 9,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2146978107/reactions"
             },
             "updated_at": "2024-06-04T09:37:17Z",
@@ -1281,9 +1281,53 @@
                 "type": "User",
                 "url": "https://api.github.com/users/tmillr"
             }
+        },
+        {
+            "author_association": "NONE",
+            "body": "I started hitting this issue today with `svelte-language-server` version 0.16.12 on macOS so I did some digging. In my current SvelteKit project, the LS is sending `client/registerCapability` with `workspace/didChangeWatchedFiles` with an array of watchers:\r\n\r\n```lua\r\n{\r\n  id = 1,\r\n  jsonrpc = \"2.0\",\r\n  method = \"client/registerCapability\",\r\n  params = {\r\n    registrations = { {\r\n        id = \"8e52a737-4ad1-40eb-87bb-bfb06f587686\",\r\n        method = \"workspace/didChangeWatchedFiles\",\r\n        registerOptions = {\r\n          watchers = { {\r\n              globPattern = {\r\n                baseUri = \"file:///Users/bryan/Projects/my-sveltekit-project/.svelte-kit/types\",\r\n                pattern = \"**/*.{ts,js,mts,mjs,cjs,cts,json,svelte}\"\r\n              }\r\n            }, {\r\n              globPattern = {\r\n                baseUri = \"file:///Users/bryan/Projects/my-sveltekit-project/src\",\r\n                pattern = \"**/*.{ts,js,mts,mjs,cjs,cts,json,svelte}\"\r\n              }\r\n            }, {\r\n              globPattern = {\r\n                baseUri = \"file:///Users/bryan/Projects/my-sveltekit-project/tests\",\r\n                pattern = \"**/*.{ts,js,mts,mjs,cjs,cts,json,svelte}\"\r\n              }\r\n            } }\r\n        }\r\n      } }\r\n  }\r\n}\r\n```\r\n\r\nThis causes `M.register()` in `runtime/lua/vim/lsp/_watchfiles.lua` to run:\r\n\r\nhttps://github.com/neovim/neovim/blob/v0.10.0/runtime/lua/vim/lsp/_watchfiles.lua#L133-L152\r\n\r\nWhen the loop gets to the third watcher object, it errors out because the `tests` directory does not exist (this is where the `ENOENT` error happens). It seems to me that either `M.watch()` in `runtime/lua/vim/_watch.lua` or `M.register()` should check if the directory exists before trying to create the watcher. I tried it out locally by changing lines 133-152 in `_watchfiles.lua` to the following:\r\n\r\n```lua\r\n  for base_dir, watches in pairs(watch_regs) do\r\n    if vim.fn.isdirectory(base_dir) == 1 then\r\n      local include_pattern = vim.iter(watches):fold(lpeg.P(false), function(acc, w)\r\n        return acc + w.pattern\r\n      end)\r\n\r\n      table.insert(\r\n        cancels[client_id][reg.id],\r\n        M._watchfunc(base_dir, {\r\n          uvflags = {\r\n            recursive = true,\r\n          },\r\n          -- include_pattern will ensure the pattern from *any* watcher definition for the\r\n          -- base_dir matches. This first pass prevents polling for changes to files that\r\n          -- will never be sent to the LSP server. A second pass in the callback is still necessary to\r\n          -- match a *particular* pattern+kind pair.\r\n          include_pattern = include_pattern,\r\n          exclude_pattern = M._poll_exclude_pattern,\r\n        }, callback(base_dir))\r\n      )\r\n    end\r\n  end\r\n``` ",
+            "created_at": "2024-06-25T20:41:05Z",
+            "html_url": "https://github.com/neovim/neovim/issues/28058#issuecomment-2189929424",
+            "id": 2189929424,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/28058",
+            "node_id": "IC_kwDOAPphoM6Ch6vQ",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2189929424/reactions"
+            },
+            "updated_at": "2024-06-25T20:41:05Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2189929424",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/204106?v=4",
+                "events_url": "https://api.github.com/users/bryanforbes/events{/privacy}",
+                "followers_url": "https://api.github.com/users/bryanforbes/followers",
+                "following_url": "https://api.github.com/users/bryanforbes/following{/other_user}",
+                "gists_url": "https://api.github.com/users/bryanforbes/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/bryanforbes",
+                "id": 204106,
+                "login": "bryanforbes",
+                "node_id": "MDQ6VXNlcjIwNDEwNg==",
+                "organizations_url": "https://api.github.com/users/bryanforbes/orgs",
+                "received_events_url": "https://api.github.com/users/bryanforbes/received_events",
+                "repos_url": "https://api.github.com/users/bryanforbes/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/bryanforbes/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/bryanforbes/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/bryanforbes"
+            }
         }
     ],
-    "comments": 29,
+    "comments": 30,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/28058/comments",
     "created_at": "2024-03-27T11:18:22Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/28058/events",
@@ -1313,7 +1357,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 28,
+        "closed_issues": 36,
         "created_at": "2023-12-07T23:09:35Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -1342,17 +1386,17 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/41/labels",
         "node_id": "MI_kwDOAPphoM4AnOjk",
         "number": 41,
-        "open_issues": 51,
+        "open_issues": 49,
         "state": "open",
         "title": "0.11",
-        "updated_at": "2024-06-10T11:23:34Z",
+        "updated_at": "2024-06-28T17:47:40Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/41"
     },
     "node_id": "I_kwDOAPphoM6Dwgsj",
     "number": 28058,
     "performed_via_github_app": null,
     "reactions": {
-        "+1": 16,
+        "+1": 21,
         "-1": 0,
         "confused": 0,
         "eyes": 0,
@@ -1360,7 +1404,7 @@
         "hooray": 0,
         "laugh": 0,
         "rocket": 0,
-        "total_count": 16,
+        "total_count": 21,
         "url": "https://api.github.com/repos/neovim/neovim/issues/28058/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
@@ -1368,7 +1412,7 @@
     "state_reason": "reopened",
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/28058/timeline",
     "title": "runtime/lua/vim/_watch.lua:99: ENOENT: no such file or directory",
-    "updated_at": "2024-06-04T09:37:17Z",
+    "updated_at": "2024-06-25T23:12:20Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/28058",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/360983?v=4",
