@@ -4,7 +4,7 @@
     "assignees": [],
     "author_association": "NONE",
     "body": "### Problem\r\n\r\nReally strange error, and I just could not find anything online for solving that.\r\nIf I'm into a pretty large codebase (Angular monorepo) and try to save a file after editing, sometimes the following error occures and I'm unable to save:\r\n\r\n```bash\r\nError detected while processing BufWritePre Autocommands for \"*\":\r\nError executing lua callback: ...vim-macos/share/nvim/runtime/lua/vim/lsp/_watchfiles.lua:85: subcapture nesting too deep\r\n```\r\n\r\n<img width=\"1515\" alt=\"image\" src=\"https://github.com/neovim/neovim/assets/4125222/a46f5c5a-4820-4b8a-a53b-4c62a8f787f7\">\r\n\r\nIf I understand it correctly the autoformatter cannot do its stuff, but I'm not sure. I'm not a neovim ninja, therefore any help is highly appreciated.\r\n\r\n\r\n### Steps to reproduce using \"nvim -u minimal_init.lua\"\r\n\r\n```lua\r\n--- CHANGE THESE\r\nlocal pattern = 'the-filetype'\r\nlocal cmd = {'name-of-language-server-executable'}\r\n-- Add files/folders here that indicate the root of a project\r\nlocal root_markers = {'.git', '.editorconfig'}\r\n-- Change to table with settings if required\r\nlocal settings = vim.empty_dict()\r\n\r\nvim.api.nvim_create_autocmd('FileType', {\r\n  pattern = pattern,\r\n  callback = function(args)\r\n    local match = vim.fs.find(root_markers, { path = args.file, upward = true })[1]\r\n    local root_dir = match and vim.fn.fnamemodify(match, ':p:h') or nil\r\n    vim.lsp.start({\r\n      name = 'bugged-ls',\r\n      cmd = cmd,\r\n      root_dir = root_dir,\r\n      settings = settings\r\n    })\r\n  end\r\n})\r\n```\r\n\r\n### Expected behavior\r\n\r\nthe file should be saved and formatted as usual\r\n\r\n### Neovim version (nvim -v)\r\n\r\nv0.10.0-dev-1801+g2ebd328a7\r\n\r\n### Language server name/version\r\n\r\ntypescript\r\n\r\n### Operating system/version\r\n\r\nMacOS 14.0\r\n\r\n### Log file\r\n\r\n_No response_",
-    "closed_at": null,
+    "closed_at": "2024-07-06T09:40:09Z",
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -711,7 +711,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "I've created a reproduction:\r\n```lua\r\nlocal cap = {\r\n  textDocumentSync = {\r\n    openClose = true,\r\n  },\r\n  textDocument = {\r\n    formatting = { dynamicRegistration = true },\r\n  },\r\n}\r\n\r\nlocal start = function(disp)\r\n  local msg = 1\r\n  local function request(mth, p, cb)\r\n    msg = msg + 1\r\n    if mth == \"initialize\" then\r\n      cb(nil, { capabilities = cap })\r\n    end\r\n    return true, msg\r\n  end\r\n\r\n  local function notify(mth, p)\r\n    if mth == \"textDocument/didOpen\" then\r\n      disp.server_request(\"client/registerCapability\", {\r\n        registrations = {\r\n          {\r\n            id = \"reg1\",\r\n            method = \"textDocument/formatting\",\r\n            registerOptions = {\r\n              documentSelector = {\r\n                {\r\n                  pattern = vim.fn[\"repeat\"](\"a\", 201),\r\n                },\r\n              },\r\n            },\r\n          },\r\n        },\r\n      })\r\n    end\r\n  end\r\n\r\n  return {\r\n    request = request,\r\n    notify = notify,\r\n    is_closing = function()\r\n      return false\r\n    end,\r\n    terminate = function() end,\r\n  }\r\nend\r\n\r\nvim.api.nvim_create_autocmd(\"FileType\", {\r\n  pattern = \"javascript\",\r\n  callback = function(args)\r\n    vim.lsp.start({\r\n      name = \"bugged-ls\",\r\n      cmd = start,\r\n    })\r\n  end,\r\n})\r\n\r\n```\r\nTo trigger the bug just open a `.js` file and call `vim.lsp.buf.format()`.\r\n\r\nThe problem is that `to_lpeg` cannot handle long patterns, every character causes an additional recursion level, and eslint for example uses `client/registerCapability` to add itself as a formatter constrained to a \"pattern\" of the whole file path which can easily exceed 200 characters in bigger projects.\r\n\r\nI've tried to debug `to_lpeg`, so far without success. The glob grammar can be reduced to this and it still fails on bigger patterns:\r\n```lua\r\nlocal p = P({\r\n  \"Pattern\",\r\n  Pattern = V(\"Elem\") ^ -1 * V(\"End\"),\r\n  Elem = Cf(V(\"Literal\") * (V(\"Elem\") + V(\"End\")), mul),\r\n  Literal = P(1) / P,\r\n  End = P(-1) * Cc(P(-1)),\r\n})\r\n```\r\nThe issue is most likely the definition of `Elem` and `Literal`, repeating `P(1) / P` is what causes the recursion to grow. The fix would be to rewrite the grammar to match all the consecutive literal characters and then transform into a pattern instead of doing it character by character, but I don't know how to do that.",
             "created_at": "2024-06-29T22:07:16Z",
             "html_url": "https://github.com/neovim/neovim/issues/26520#issuecomment-2198358610",
@@ -755,7 +755,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "Wrapping up the captures containing `Literal` in a `Cmt` calls solves the issue but I don't know if there are downsides to using it.",
             "created_at": "2024-06-30T11:58:11Z",
             "html_url": "https://github.com/neovim/neovim/issues/26520#issuecomment-2198537368",
@@ -853,11 +853,11 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/26520/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/26520/timeline",
     "title": "LSP: big workspace causes \"subcapture nesting too deep\" error in Lpeg.P:match",
-    "updated_at": "2024-06-30T11:58:12Z",
+    "updated_at": "2024-07-06T09:40:09Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/26520",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/4125222?v=4",
