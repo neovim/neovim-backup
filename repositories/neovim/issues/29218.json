@@ -4,7 +4,7 @@
     "assignees": [],
     "author_association": "CONTRIBUTOR",
     "body": "### Problem\n\nI'm testing new built-in lsp completion, and I ran into some issues with `vtsls` language server. I thought issue is on their side and I opened up an issue (https://github.com/yioneko/vtsls/issues/164) but it looks like that the issue is on the Neovim side. \r\nIt seems that `vim.empty_dict()` somehow gets converted to an object that is not JSON serializable\n\n### Steps to reproduce\n\n1. Create this minimal.lua file:\r\n```lua\r\nlocal function trigger()\r\n  local item = {\r\n    word = \"a\",\r\n    abbr = \"a\",\r\n    kind = \"v\",\r\n    user_data = {\r\n      some_field = vim.empty_dict(),\r\n    },\r\n  }\r\n  vim.fn.complete(1, { item })\r\nend\r\n\r\nvim.opt.completeopt = 'menu,menuone'\r\nvim.keymap.set(\"i\", \"<C-a>\", trigger, { nowait = true, noremap = true, silent = false })\r\n\r\nvim.api.nvim_create_autocmd(\"CompleteDone\", {\r\n  callback = function()\r\n    local reason = vim.api.nvim_get_vvar(\"event\").reason --- @type string\r\n    if reason == \"accept\" then\r\n      local completed_item = vim.api.nvim_get_vvar(\"completed_item\")\r\n      print(vim.inspect(completed_item))\r\n      print(vim.json.encode(completed_item))\r\n    end\r\n  end,\r\n})\r\n```\r\n2. Start nvim with minimal init: `nvim --clean -u minimal.lua`\r\n3. Enter insert mode, press `<C-A>`, and then accept the completion with `<C-y>`\r\n4. See the error\r\n```\r\nError detected while processing CompleteDone Autocommands for \"*\":                                                                                                                                                                              \r\nError executing lua callback: /home/kristijan/neovim-config/test.lua:22: Cannot serialise boolean: table key must be a number or string                                                                                                         \r\nstack traceback:                                                                                                                                                                                                                                \r\n        [C]: in function 'encode'                                                                                                                                                                                                               \r\n        /home/kristijan/neovim-config/test.lua:22: in function </home/kristijan/neovim-config/test.lua:17> \r\n```\n\n### Expected behavior\n\nExpecting to not get an error and have the object JSON serializable.\n\n### Neovim version (nvim -v)\n\nNVIM v0.11.0-dev-189+g78d3f4742\n\n### Vim (not Nvim) behaves the same?\n\nN/A\n\n### Operating system/version\n\nArch Linux\n\n### Terminal name/version\n\nKitty\n\n### $TERM environment variable\n\nxterm-kitty\n\n### Installation\n\nBob (https://github.com/MordechaiHadad/bob)",
-    "closed_at": null,
+    "closed_at": "2024-07-13T12:55:37Z",
     "comment_data": [
         {
             "author_association": "NONE",
@@ -49,9 +49,53 @@
                 "type": "User",
                 "url": "https://api.github.com/users/AlejandroSuero"
             }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "Did an RCA for the issue and the issue is arising from [converter.c#L706-L708](https://github.com/neovim/neovim/blob/master/src/nvim/lua/converter.c#L706-L708). From what I could gather during my initial analysis, the flags that are being set (used for some backward-compatible behaviour - [source](https://github.com/neovim/neovim/pull/10389#issue-462814459)), are making it so that it gets treated similar to how specialized float values are treated during certain API calls. I tried a few variations of possible solution but they are breaking existing tests.\r\n\r\nSince this is my first time contributing to Neovim, I'm unsure what would be the right approach to take here. Would you be able to provide some guidance, @zeertzjq (tagging you since you made the last set of changes specific to these lines)?",
+            "created_at": "2024-07-11T11:39:30Z",
+            "html_url": "https://github.com/neovim/neovim/issues/29218#issuecomment-2222704984",
+            "id": 2222704984,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/29218",
+            "node_id": "IC_kwDOAPphoM6Ee8lY",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2222704984/reactions"
+            },
+            "updated_at": "2024-07-11T11:39:30Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2222704984",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/29333147?v=4",
+                "events_url": "https://api.github.com/users/amitds1997/events{/privacy}",
+                "followers_url": "https://api.github.com/users/amitds1997/followers",
+                "following_url": "https://api.github.com/users/amitds1997/following{/other_user}",
+                "gists_url": "https://api.github.com/users/amitds1997/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/amitds1997",
+                "id": 29333147,
+                "login": "amitds1997",
+                "node_id": "MDQ6VXNlcjI5MzMzMTQ3",
+                "organizations_url": "https://api.github.com/users/amitds1997/orgs",
+                "received_events_url": "https://api.github.com/users/amitds1997/received_events",
+                "repos_url": "https://api.github.com/users/amitds1997/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/amitds1997/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/amitds1997/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/amitds1997"
+            }
         }
     ],
-    "comments": 1,
+    "comments": 2,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/29218/comments",
     "created_at": "2024-06-06T08:44:56Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/29218/events",
@@ -99,7 +143,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 28,
+        "closed_issues": 38,
         "created_at": "2023-12-07T23:09:35Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -128,10 +172,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/41/labels",
         "node_id": "MI_kwDOAPphoM4AnOjk",
         "number": 41,
-        "open_issues": 51,
+        "open_issues": 48,
         "state": "open",
         "title": "0.11",
-        "updated_at": "2024-06-10T11:23:34Z",
+        "updated_at": "2024-07-13T12:55:37Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/41"
     },
     "node_id": "I_kwDOAPphoM6LVl7o",
@@ -150,11 +194,11 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/29218/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/29218/timeline",
     "title": "Error with built-in lsp completion",
-    "updated_at": "2024-06-10T12:42:42Z",
+    "updated_at": "2024-07-13T12:55:37Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/29218",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1782860?v=4",
