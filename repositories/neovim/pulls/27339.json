@@ -25,7 +25,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/statuses/e6cfcaed184d4ecdc8a8638429e1bd9e1b3251dc"
         }
     },
-    "active_lock_reason": null,
+    "active_lock_reason": "resolved",
     "assignee": null,
     "assignees": [],
     "author_association": "MEMBER",
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 5495,
-            "forks_count": 5495,
+            "forks": 5503,
+            "forks_count": 5503,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1766,
-            "open_issues_count": 1766,
+            "open_issues": 1768,
+            "open_issues_count": 1768,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -118,11 +118,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2024-07-08T22:41:26Z",
+            "pushed_at": "2024-07-22T23:20:44Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 277808,
+            "size": 279528,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 79943,
+            "stargazers_count": 80265,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -140,11 +140,11 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2024-07-09T01:46:42Z",
+            "updated_at": "2024-07-23T01:47:00Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 79943,
-            "watchers_count": 79943,
+            "watchers": 80265,
+            "watchers_count": 80265,
             "web_commit_signoff_required": false
         },
         "sha": "8ba73f0e4cc6c82032a348a1d6c8d794ed150fd7",
@@ -4700,6 +4700,75 @@
                 "type": "User",
                 "url": "https://api.github.com/users/tomtomjhj"
             }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/27339#discussion_r1681004717"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/27339"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1681004717"
+                }
+            },
+            "author_association": "NONE",
+            "body": "Rely on TextChangedI will be a better idea",
+            "commit_id": "e6cfcaed184d4ecdc8a8638429e1bd9e1b3251dc",
+            "created_at": "2024-07-17T12:57:03Z",
+            "diff_hunk": "@@ -0,0 +1,734 @@\n+local M = {}\n+\n+local api = vim.api\n+local lsp = vim.lsp\n+local protocol = lsp.protocol\n+local ms = protocol.Methods\n+\n+local rtt_ms = 50\n+local ns_to_ms = 0.000001\n+\n+--- @alias vim.lsp.CompletionResult lsp.CompletionList | lsp.CompletionItem[]\n+\n+-- TODO(mariasolos): Remove this declaration once we figure out a better way to handle\n+-- literal/anonymous types (see https://github.com/neovim/neovim/pull/27542/files#r1495259331).\n+--- @nodoc\n+--- @class lsp.ItemDefaults\n+--- @field editRange lsp.Range | { insert: lsp.Range, replace: lsp.Range } | nil\n+--- @field insertTextFormat lsp.InsertTextFormat?\n+--- @field insertTextMode lsp.InsertTextMode?\n+--- @field data any\n+\n+--- @nodoc\n+--- @class vim.lsp.completion.BufHandle\n+--- @field clients table<integer, vim.lsp.Client>\n+--- @field triggers table<string, vim.lsp.Client[]>\n+\n+--- @type table<integer, vim.lsp.completion.BufHandle>\n+local buf_handles = {}\n+\n+--- @nodoc\n+--- @class vim.lsp.completion.Context\n+local Context = {\n+  cursor = nil, --- @type { [1]: integer, [2]: integer }?\n+  last_request_time = nil, --- @type integer?\n+  pending_requests = {}, --- @type function[]\n+  isIncomplete = false,\n+}\n+\n+--- @nodoc\n+function Context:cancel_pending()\n+  for _, cancel in ipairs(self.pending_requests) do\n+    cancel()\n+  end\n+\n+  self.pending_requests = {}\n+end\n+\n+--- @nodoc\n+function Context:reset()\n+  -- Note that the cursor isn't reset here, it needs to survive a `CompleteDone` event.\n+  self.isIncomplete = false\n+  self.last_request_time = nil\n+  self:cancel_pending()\n+end\n+\n+--- @type uv.uv_timer_t?\n+local completion_timer = nil\n+\n+--- @return uv.uv_timer_t\n+local function new_timer()\n+  return assert(vim.uv.new_timer())\n+end\n+\n+local function reset_timer()\n+  if completion_timer then\n+    completion_timer:stop()\n+    completion_timer:close()\n+  end\n+\n+  completion_timer = nil\n+end\n+\n+--- @param window integer\n+--- @param warmup integer\n+--- @return fun(sample: number): number\n+local function exp_avg(window, warmup)\n+  local count = 0\n+  local sum = 0\n+  local value = 0\n+\n+  return function(sample)\n+    if count < warmup then\n+      count = count + 1\n+      sum = sum + sample\n+      value = sum / count\n+    else\n+      local factor = 2.0 / (window + 1)\n+      value = value * (1 - factor) + sample * factor\n+    end\n+    return value\n+  end\n+end\n+local compute_new_average = exp_avg(10, 10)\n+\n+--- @return number\n+local function next_debounce()\n+  if not Context.last_request_time then\n+    return rtt_ms\n+  end\n+\n+  local ms_since_request = (vim.uv.hrtime() - Context.last_request_time) * ns_to_ms\n+  return math.max((ms_since_request - rtt_ms) * -1, 0)\n+end\n+\n+--- @param input string Unparsed snippet\n+--- @return string # Parsed snippet if successful, else returns its input\n+local function parse_snippet(input)\n+  local ok, parsed = pcall(function()\n+    return lsp._snippet_grammar.parse(input)\n+  end)\n+  return ok and tostring(parsed) or input\n+end\n+\n+--- @param item lsp.CompletionItem\n+--- @param suffix? string\n+local function apply_snippet(item, suffix)\n+  if item.textEdit then\n+    vim.snippet.expand(item.textEdit.newText .. suffix)\n+  elseif item.insertText then\n+    vim.snippet.expand(item.insertText .. suffix)\n+  end\n+end\n+\n+--- Returns text that should be inserted when a selecting completion item. The\n+--- precedence is as follows: textEdit.newText > insertText > label\n+---\n+--- See https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_completion\n+---\n+--- @param item lsp.CompletionItem\n+--- @return string\n+local function get_completion_word(item)\n+  if item.textEdit ~= nil and item.textEdit.newText ~= nil and item.textEdit.newText ~= '' then\n+    if item.insertTextFormat == protocol.InsertTextFormat.PlainText then\n+      return item.textEdit.newText\n+    else\n+      return parse_snippet(item.textEdit.newText)\n+    end\n+  elseif item.insertText ~= nil and item.insertText ~= '' then\n+    if item.insertTextFormat == protocol.InsertTextFormat.PlainText then\n+      return item.insertText\n+    else\n+      return parse_snippet(item.insertText)\n+    end\n+  end\n+  return item.label\n+end\n+\n+--- Applies the given defaults to the completion item, modifying it in place.\n+---\n+--- @param item lsp.CompletionItem\n+--- @param defaults lsp.ItemDefaults?\n+local function apply_defaults(item, defaults)\n+  if not defaults then\n+    return\n+  end\n+\n+  item.insertTextFormat = item.insertTextFormat or defaults.insertTextFormat\n+  item.insertTextMode = item.insertTextMode or defaults.insertTextMode\n+  item.data = item.data or defaults.data\n+  if defaults.editRange then\n+    local textEdit = item.textEdit or {}\n+    item.textEdit = textEdit\n+    textEdit.newText = textEdit.newText or item.textEditText or item.insertText\n+    if defaults.editRange.start then\n+      textEdit.range = textEdit.range or defaults.editRange\n+    elseif defaults.editRange.insert then\n+      textEdit.insert = defaults.editRange.insert\n+      textEdit.replace = defaults.editRange.replace\n+    end\n+  end\n+end\n+\n+--- @param result vim.lsp.CompletionResult\n+--- @return lsp.CompletionItem[]\n+local function get_items(result)\n+  if result.items then\n+    -- When we have a list, apply the defaults and return an array of items.\n+    for _, item in ipairs(result.items) do\n+      ---@diagnostic disable-next-line: param-type-mismatch\n+      apply_defaults(item, result.itemDefaults)\n+    end\n+    return result.items\n+  else\n+    -- Else just return the items as they are.\n+    return result\n+  end\n+end\n+\n+--- Turns the result of a `textDocument/completion` request into vim-compatible\n+--- |complete-items|.\n+---\n+--- @private\n+--- @param result vim.lsp.CompletionResult Result of `textDocument/completion`\n+--- @param prefix string prefix to filter the completion items\n+--- @param client_id integer? Client ID\n+--- @return table[]\n+--- @see complete-items\n+function M._lsp_to_complete_items(result, prefix, client_id)\n+  local items = get_items(result)\n+  if vim.tbl_isempty(items) then\n+    return {}\n+  end\n+\n+  local function matches_prefix(item)\n+    return vim.startswith(get_completion_word(item), prefix)\n+  end\n+\n+  items = vim.tbl_filter(matches_prefix, items) --[[@as lsp.CompletionItem[]|]]\n+  table.sort(items, function(a, b)\n+    return (a.sortText or a.label) < (b.sortText or b.label)\n+  end)\n+\n+  local matches = {}\n+  for _, item in ipairs(items) do\n+    local info = ''\n+    local documentation = item.documentation\n+    if documentation then\n+      if type(documentation) == 'string' and documentation ~= '' then\n+        info = documentation\n+      elseif type(documentation) == 'table' and type(documentation.value) == 'string' then\n+        info = documentation.value\n+      else\n+        vim.notify(\n+          ('invalid documentation value %s'):format(vim.inspect(documentation)),\n+          vim.log.levels.WARN\n+        )\n+      end\n+    end\n+    local word = get_completion_word(item)\n+    table.insert(matches, {\n+      word = word,\n+      abbr = item.label,\n+      kind = protocol.CompletionItemKind[item.kind] or 'Unknown',\n+      menu = item.detail or '',\n+      info = #info > 0 and info or '',\n+      icase = 1,\n+      dup = 1,\n+      empty = 1,\n+      user_data = {\n+        nvim = {\n+          lsp = {\n+            completion_item = item,\n+            client_id = client_id,\n+          },\n+        },\n+      },\n+    })\n+  end\n+  return matches\n+end\n+\n+--- @param lnum integer 0-indexed\n+--- @param line string\n+--- @param items lsp.CompletionItem[]\n+--- @param encoding string\n+--- @return integer?\n+local function adjust_start_col(lnum, line, items, encoding)\n+  local min_start_char = nil\n+  for _, item in pairs(items) do\n+    if item.textEdit and item.textEdit.range.start.line == lnum then\n+      if min_start_char and min_start_char ~= item.textEdit.range.start.character then\n+        return nil\n+      end\n+      min_start_char = item.textEdit.range.start.character\n+    end\n+  end\n+  if min_start_char then\n+    return lsp.util._str_byteindex_enc(line, min_start_char, encoding)\n+  else\n+    return nil\n+  end\n+end\n+\n+--- @private\n+--- @param line string line content\n+--- @param lnum integer 0-indexed line number\n+--- @param cursor_col integer\n+--- @param client_id integer client ID\n+--- @param client_start_boundary integer 0-indexed word boundary\n+--- @param server_start_boundary? integer 0-indexed word boundary, based on textEdit.range.start.character\n+--- @param result vim.lsp.CompletionResult\n+--- @param encoding string\n+--- @return table[] matches\n+--- @return integer? server_start_boundary\n+function M._convert_results(\n+  line,\n+  lnum,\n+  cursor_col,\n+  client_id,\n+  client_start_boundary,\n+  server_start_boundary,\n+  result,\n+  encoding\n+)\n+  -- Completion response items may be relative to a position different than `client_start_boundary`.\n+  -- Concrete example, with lua-language-server:\n+  --\n+  -- require('plenary.asy|\n+  --         ▲       ▲   ▲\n+  --         │       │   └── cursor_pos:                     20\n+  --         │       └────── client_start_boundary:          17\n+  --         └────────────── textEdit.range.start.character: 9\n+  --                                 .newText = 'plenary.async'\n+  --                  ^^^\n+  --                  prefix (We'd remove everything not starting with `asy`,\n+  --                  so we'd eliminate the `plenary.async` result\n+  --\n+  -- `adjust_start_col` is used to prefer the language server boundary.\n+  --\n+  local candidates = get_items(result)\n+  local curstartbyte = adjust_start_col(lnum, line, candidates, encoding)\n+  if server_start_boundary == nil then\n+    server_start_boundary = curstartbyte\n+  elseif curstartbyte ~= nil and curstartbyte ~= server_start_boundary then\n+    server_start_boundary = client_start_boundary\n+  end\n+  local prefix = line:sub((server_start_boundary or client_start_boundary) + 1, cursor_col)\n+  local matches = M._lsp_to_complete_items(result, prefix, client_id)\n+  return matches, server_start_boundary\n+end\n+\n+--- Implements 'omnifunc' compatible LSP completion.\n+---\n+--- @see |complete-functions|\n+--- @see |complete-items|\n+--- @see |CompleteDone|\n+---\n+--- @param findstart integer 0 or 1, decides behavior\n+--- @param base integer findstart=0, text to match against\n+---\n+--- @return integer|table Decided by {findstart}:\n+--- - findstart=0: column where the completion starts, or -2 or -3\n+--- - findstart=1: list of matches (actually just calls |complete()|)\n+function M._omnifunc(findstart, base)\n+  vim.lsp.log.debug('omnifunc.findstart', { findstart = findstart, base = base })\n+  assert(base) -- silence luals\n+  local bufnr = api.nvim_get_current_buf()\n+  local clients = lsp.get_clients({ bufnr = bufnr, method = ms.textDocument_completion })\n+  local remaining = #clients\n+  if remaining == 0 then\n+    return findstart == 1 and -1 or {}\n+  end\n+\n+  local win = api.nvim_get_current_win()\n+  local cursor = api.nvim_win_get_cursor(win)\n+  local lnum = cursor[1] - 1\n+  local cursor_col = cursor[2]\n+  local line = api.nvim_get_current_line()\n+  local line_to_cursor = line:sub(1, cursor_col)\n+  local client_start_boundary = vim.fn.match(line_to_cursor, '\\\\k*$') --[[@as integer]]\n+  local server_start_boundary = nil\n+  local items = {}\n+\n+  local function on_done()\n+    local mode = api.nvim_get_mode()['mode']\n+    if mode == 'i' or mode == 'ic' then\n+      vim.fn.complete((server_start_boundary or client_start_boundary) + 1, items)\n+    end\n+  end\n+\n+  local util = vim.lsp.util\n+  for _, client in ipairs(clients) do\n+    local params = util.make_position_params(win, client.offset_encoding)\n+    client.request(ms.textDocument_completion, params, function(err, result)\n+      if err then\n+        lsp.log.warn(err.message)\n+      end\n+      if result and vim.fn.mode() == 'i' then\n+        local matches\n+        matches, server_start_boundary = M._convert_results(\n+          line,\n+          lnum,\n+          cursor_col,\n+          client.id,\n+          client_start_boundary,\n+          server_start_boundary,\n+          result,\n+          client.offset_encoding\n+        )\n+        vim.list_extend(items, matches)\n+      end\n+      remaining = remaining - 1\n+      if remaining == 0 then\n+        vim.schedule(on_done)\n+      end\n+    end, bufnr)\n+  end\n+\n+  -- Return -2 to signal that we should continue completion so that we can\n+  -- async complete.\n+  return -2\n+end\n+\n+--- @param clients table<integer, vim.lsp.Client>\n+--- @param bufnr integer\n+--- @param win integer\n+--- @param callback fun(responses: table<integer, { err: lsp.ResponseError, result: vim.lsp.CompletionResult }>)\n+--- @return function # Cancellation function\n+local function request(clients, bufnr, win, callback)\n+  local responses = {} --- @type table<integer, { err: lsp.ResponseError, result: any }>\n+  local request_ids = {} --- @type table<integer, integer>\n+  local remaining_requests = vim.tbl_count(clients)\n+\n+  for client_id, client in pairs(clients) do\n+    local params = lsp.util.make_position_params(win, client.offset_encoding)\n+    local ok, request_id = client.request(ms.textDocument_completion, params, function(err, result)\n+      responses[client_id] = { err = err, result = result }\n+      remaining_requests = remaining_requests - 1\n+      if remaining_requests == 0 then\n+        callback(responses)\n+      end\n+    end, bufnr)\n+\n+    if ok then\n+      request_ids[client_id] = request_id\n+    end\n+  end\n+\n+  return function()\n+    for client_id, request_id in pairs(request_ids) do\n+      local client = lsp.get_client_by_id(client_id)\n+      if client then\n+        client.cancel_request(request_id)\n+      end\n+    end\n+  end\n+end\n+\n+--- @param handle vim.lsp.completion.BufHandle\n+local function on_insert_char_pre(handle)\n+  if tonumber(vim.fn.pumvisible()) == 1 then\n+    if Context.isIncomplete then\n+      reset_timer()\n+\n+      local debounce_ms = next_debounce()\n+      if debounce_ms == 0 then\n+        vim.schedule(M.trigger)\n+      else\n+        completion_timer = new_timer()\n+        completion_timer:start(debounce_ms, 0, vim.schedule_wrap(M.trigger))\n+      end\n+    end\n+\n+    return\n+  end\n+\n+  local char = api.nvim_get_vvar('char')\n+  if not completion_timer and handle.triggers[char] then\n+    completion_timer = assert(vim.uv.new_timer())\n+    completion_timer:start(25, 0, function()\n+      reset_timer()\n+      vim.schedule(M.trigger)\n+    end)\n+  end\n+end\n+\n+local function on_insert_leave()\n+  reset_timer()\n+  Context.cursor = nil\n+  Context:reset()\n+end\n+\n+local function on_complete_done()\n+  local completed_item = api.nvim_get_vvar('completed_item')\n+  if not completed_item or not completed_item.user_data or not completed_item.user_data.nvim then\n+    Context:reset()\n+    return\n+  end\n+\n+  local cursor_row, cursor_col = unpack(api.nvim_win_get_cursor(0)) --- @type integer, integer\n+  cursor_row = cursor_row - 1\n+  local completion_item = completed_item.user_data.nvim.lsp.completion_item --- @type lsp.CompletionItem\n+  local client_id = completed_item.user_data.nvim.lsp.client_id --- @type integer\n+  if not completion_item or not client_id then\n+    Context:reset()\n+    return\n+  end\n+\n+  local bufnr = api.nvim_get_current_buf()\n+  local expand_snippet = completion_item.insertTextFormat == protocol.InsertTextFormat.Snippet\n+    and (completion_item.textEdit ~= nil or completion_item.insertText ~= nil)\n+\n+  Context:reset()\n+\n+  local client = lsp.get_client_by_id(client_id)\n+  if not client then\n+    return\n+  end\n+\n+  local offset_encoding = client.offset_encoding or 'utf-16'\n+  local resolve_provider = (client.server_capabilities.completionProvider or {}).resolveProvider\n+\n+  local function clear_word()\n+    if not expand_snippet then\n+      return nil\n+    end\n+\n+    -- Remove the already inserted word.\n+    local start_char = cursor_col - #completed_item.word\n+    local line = api.nvim_buf_get_lines(bufnr, cursor_row, cursor_row + 1, true)[1]\n+    api.nvim_buf_set_text(bufnr, cursor_row, start_char, cursor_row, #line, { '' })\n+    return line:sub(cursor_col + 1)\n+  end\n+\n+  --- @param suffix? string\n+  local function apply_snippet_and_command(suffix)\n+    if expand_snippet then\n+      apply_snippet(completion_item, suffix)\n+    end\n+\n+    local command = completion_item.command\n+    if command then\n+      client:_exec_cmd(command, { bufnr = bufnr }, nil, function()\n+        vim.lsp.log.warn(\n+          string.format(\n+            'Language server `%s` does not support command `%s`. This command may require a client extension.',\n+            client.name,\n+            command.command\n+          )\n+        )\n+      end)\n+    end\n+  end\n+\n+  if completion_item.additionalTextEdits and next(completion_item.additionalTextEdits) then\n+    local suffix = clear_word()\n+    lsp.util.apply_text_edits(completion_item.additionalTextEdits, bufnr, offset_encoding)\n+    apply_snippet_and_command(suffix)\n+  elseif resolve_provider and type(completion_item) == 'table' then\n+    local changedtick = vim.b[bufnr].changedtick\n+\n+    --- @param result lsp.CompletionItem\n+    client.request(ms.completionItem_resolve, completion_item, function(err, result)\n+      if changedtick ~= vim.b[bufnr].changedtick then\n+        return\n+      end\n+\n+      local suffix = clear_word()\n+      if err then\n+        vim.notify_once(err.message, vim.log.levels.WARN)\n+      elseif result and result.additionalTextEdits then\n+        lsp.util.apply_text_edits(result.additionalTextEdits, bufnr, offset_encoding)\n+        if result.command then\n+          completion_item.command = result.command\n+        end\n+      end\n+\n+      apply_snippet_and_command(suffix)\n+    end, bufnr)\n+  else\n+    local suffix = clear_word()\n+    apply_snippet_and_command(suffix)\n+  end\n+end\n+\n+--- @class vim.lsp.completion.BufferOpts\n+--- @field autotrigger? boolean Whether to trigger completion automatically. Default: false\n+\n+--- @param client_id integer\n+---@param bufnr integer\n+---@param opts vim.lsp.completion.BufferOpts\n+local function enable_completions(client_id, bufnr, opts)\n+  if not buf_handles[bufnr] then\n+    buf_handles[bufnr] = { clients = {}, triggers = {} }\n+\n+    -- Attach to buffer events.\n+    api.nvim_buf_attach(bufnr, false, {\n+      on_detach = function(_, buf)\n+        buf_handles[buf] = nil\n+      end,\n+      on_reload = function(_, buf)\n+        M.enable(true, client_id, buf, opts)\n+      end,\n+    })\n+\n+    -- Set up autocommands.\n+    local group =\n+      api.nvim_create_augroup(string.format('vim/lsp/completion-%d', bufnr), { clear = true })\n+    api.nvim_create_autocmd('CompleteDone', {\n+      group = group,\n+      buffer = bufnr,\n+      callback = function()\n+        local reason = api.nvim_get_vvar('event').reason --- @type string\n+        if reason == 'accept' then\n+          on_complete_done()\n+        end\n+      end,\n+    })\n+    if opts.autotrigger then\n+      api.nvim_create_autocmd('InsertCharPre', {\n+        group = group,\n+        buffer = bufnr,\n+        callback = function()\n+          on_insert_char_pre(buf_handles[bufnr])\n+        end,\n+      })\n+      api.nvim_create_autocmd('InsertLeave', {",
+            "html_url": "https://github.com/neovim/neovim/pull/27339#discussion_r1681004717",
+            "id": 1681004717,
+            "in_reply_to_id": 1667319611,
+            "line": 597,
+            "node_id": "PRRC_kwDOAPphoM5kMhit",
+            "original_commit_id": "e6cfcaed184d4ecdc8a8638429e1bd9e1b3251dc",
+            "original_line": 597,
+            "original_position": 597,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/lsp/completion.lua",
+            "position": 597,
+            "pull_request_review_id": 2182846895,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27339",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1681004717/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-07-17T12:57:03Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1681004717",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/32812994?v=4",
+                "events_url": "https://api.github.com/users/6Seeks/events{/privacy}",
+                "followers_url": "https://api.github.com/users/6Seeks/followers",
+                "following_url": "https://api.github.com/users/6Seeks/following{/other_user}",
+                "gists_url": "https://api.github.com/users/6Seeks/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/6Seeks",
+                "id": 32812994,
+                "login": "6Seeks",
+                "node_id": "MDQ6VXNlcjMyODEyOTk0",
+                "organizations_url": "https://api.github.com/users/6Seeks/orgs",
+                "received_events_url": "https://api.github.com/users/6Seeks/received_events",
+                "repos_url": "https://api.github.com/users/6Seeks/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/6Seeks/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/6Seeks/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/6Seeks"
+            }
         }
     ],
     "comment_regular_data": [
@@ -5105,9 +5174,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/MariaSolOs/neovim/pulls{/number}",
-            "pushed_at": "2024-06-26T21:38:00Z",
+            "pushed_at": "2024-07-15T20:18:01Z",
             "releases_url": "https://api.github.com/repos/MariaSolOs/neovim/releases{/id}",
-            "size": 269889,
+            "size": 272928,
             "ssh_url": "git@github.com:MariaSolOs/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/MariaSolOs/neovim/stargazers",
@@ -5119,7 +5188,7 @@
             "teams_url": "https://api.github.com/repos/MariaSolOs/neovim/teams",
             "topics": [],
             "trees_url": "https://api.github.com/repos/MariaSolOs/neovim/git/trees{/sha}",
-            "updated_at": "2024-06-26T21:38:17Z",
+            "updated_at": "2024-07-14T20:07:48Z",
             "url": "https://api.github.com/repos/MariaSolOs/neovim",
             "visibility": "public",
             "watchers": 0,
@@ -5180,12 +5249,12 @@
             "url": "https://api.github.com/repos/neovim/neovim/labels/snippet"
         }
     ],
-    "locked": false,
+    "locked": true,
     "merge_commit_sha": "0bdd602bf974fdefc348f47bb7b9057521eb0407",
     "merged_at": "2024-05-28T17:39:30Z",
     "milestone": {
         "closed_at": null,
-        "closed_issues": 36,
+        "closed_issues": 38,
         "created_at": "2023-12-07T23:09:35Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -5214,10 +5283,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/41/labels",
         "node_id": "MI_kwDOAPphoM4AnOjk",
         "number": 41,
-        "open_issues": 49,
+        "open_issues": 50,
         "state": "open",
         "title": "0.11",
-        "updated_at": "2024-06-28T17:47:40Z",
+        "updated_at": "2024-07-21T10:27:24Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/41"
     },
     "node_id": "PR_kwDOAPphoM5l9W_k",
@@ -5230,7 +5299,7 @@
     "state": "closed",
     "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/e6cfcaed184d4ecdc8a8638429e1bd9e1b3251dc",
     "title": "feat(lsp): completion side effects",
-    "updated_at": "2024-07-06T07:05:44Z",
+    "updated_at": "2024-07-17T14:45:27Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/27339",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/62502207?v=4",
