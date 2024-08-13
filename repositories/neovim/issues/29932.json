@@ -2,12 +2,12 @@
     "active_lock_reason": null,
     "assignee": null,
     "assignees": [],
-    "author_association": "NONE",
+    "author_association": "CONTRIBUTOR",
     "body": "### Problem\r\n\r\nWhen running `xdg-open https://google.com` via `vim.system` nothing seems to happen. But the command outside of nvim and in either zsh or bash seems to work. A summary:\r\n1. (in nvim) `:lua vim.system({'xdg-open', 'https://google.com'}, {text = true, detach = true})` doesn't work - no errors reported, etc.\r\n2. (in nvim) `:! xdg-open https://google.com` doesn't work - no errors\r\n3. (in nvim) `:! xdg-open https://google.com 1>/dev/null 2>&1` *does* work\r\n4. (in nvim) ~`:lua vim.system({'xdg-open', 'https://google.com', '1>/dev/null', '2>&1'}, {text = true, detach = true})` doesn't work, and when examining the output via `...vim.system(...):wait().stderr` it shows \"xdg-open: unexpected argument '1>/dev/null' Try 'xdg-open --help' for more information.\", which I imagine means I'm not passing `1>/dev/null` etc. to the shell/process correctly?~\r\n**update:** `:lua vim.system({'bash', '-c', 'xdg-open https://google.com 1>/dev/null 2>&1'}, {text = true, detach = true})` does work, albeit with no output\r\n6. (outside of vim) `$ xdg-open https://google.com` works, but notably shows a bunch of \"Gtk-WARNING\"s etc. in stderr\r\n7. (outside of vim) `$ firefox https://google.com` works, and shows the exact same \"Gtk-WARNING\"s\r\n8. (in nvim) `:lua vim.system({'firefox', 'https://google.com'}, {text = true, detach = true})` does work, and when examining the output via `...vim.system(...):wait().stderr` it shows the same \"Gtk-WARNING\"s\r\n\r\nI don't quite understand all the internals, but I'm guessing xdg-open returns an exit code before the spawned process writes to stderr, whereas firefox returns an exit code after - and given my naiive understanding about `vim.system` it closes the stdout/stderr pipes once it gets a successful exit code, which causes xdg-open's spawn'ed process to not work?\r\n\r\nOddly enough I put `xdg-open $@ 1>/dev/null 2>&1` in test.sh, and running the following works `:lua vim.system({'bash', 'test.sh', 'https://google.com'}, {text = true, detach = true})` albeit with no output of any kind.\r\n\r\n### Steps to reproduce\r\n\r\n(in nvim) `:lua vim.system({'xdg-open', 'https://google.com'}, {text = true, detach = true})`\r\n\r\n### Expected behavior\r\n\r\nExpect browser to open, but nothing happens.\r\n\r\n### Neovim version (nvim -v)\r\n\r\nv0.11.0-dev\r\n\r\n### Vim (not Nvim) behaves the same?\r\n\r\nYes\r\n\r\n### Operating system/version\r\n\r\nUbuntu 24.04\r\n\r\n### Terminal name/version\r\n\r\nkitty 0.32.2\r\n\r\n### $TERM environment variable\r\n\r\nxterm-kitty\r\n\r\n### Installation\r\n\r\nsudo apt install neovim",
-    "closed_at": null,
+    "closed_at": "2024-08-12T07:03:49Z",
     "comment_data": [
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "Oh and `:call jobstart('xdg-open http://github.com')` works, and so does `:terminal ...`",
             "created_at": "2024-07-31T21:12:45Z",
             "html_url": "https://github.com/neovim/neovim/issues/29932#issuecomment-2261471748",
@@ -51,7 +51,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "Another detail: figured out how to pass `bash -c \"...\"` to vim.system correctly, so the following works:\r\n`:lua vim.system({'bash', '-c', 'xdg-open https://google.com 1>/dev/null 2>&1'}, {text = true, detach = true})`\r\n\r\nIs there a way to arm wrestle `vim.system` to spawn the process with stdout and stderr set to /dev/null? It seems libuv would need to see the flag `UV_IGNORE` on one (or all?) of the stdios, which it looks like is already happening here: https://github.com/neovim/neovim/blob/e1d48d5cf295293598144c351ace5f1e07c0cb7c/src/nvim/event/libuv_process.c#L47-L49 just unsure if that's what `vim.system` is using?",
             "created_at": "2024-07-31T22:23:53Z",
             "html_url": "https://github.com/neovim/neovim/issues/29932#issuecomment-2261559601",
@@ -139,7 +139,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "> To do this in `vim.system()` you can set `stdout` and `stderr` to `false`:\r\n> \r\n> ```lua\r\n> vim.system({'xdg-open', 'https://google.com/'}, {text = true, detach = true, stdout = false, stderr = false})\r\n> ```\r\n> \r\n> Does this work?\r\n\r\nAwesome - yes that worked. I was running in to this problem while using `vim.ui.open` via `gx` - would a PR to change that here-ish be well received? https://github.com/neovim/neovim/blob/e820474cde09273608be5f57e1032aab21e3c97d/runtime/lua/vim/ui.lua#L156-L157 I don't know if it's the right solution, and I'm happy to remap `gx` in my config, but I can imagine others might run in to this as well.",
             "created_at": "2024-07-31T23:31:40Z",
             "html_url": "https://github.com/neovim/neovim/issues/29932#issuecomment-2261656227",
@@ -228,11 +228,11 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/29932/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/29932/timeline",
     "title": "xdg-open doesn't like being run by vim.system",
-    "updated_at": "2024-07-31T23:31:41Z",
+    "updated_at": "2024-08-12T07:03:49Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/29932",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/4608714?v=4",
