@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/30029"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/41bae74b68379dbf0bf6843cdf3305c469727c9e"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/421a84dfe2163dd849f71a6bab7ae3eea4664c67"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 5523,
-            "forks_count": 5523,
+            "forks": 5531,
+            "forks_count": 5531,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1775,
-            "open_issues_count": 1775,
+            "open_issues": 1778,
+            "open_issues_count": 1778,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -118,11 +118,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2024-08-13T01:54:54Z",
+            "pushed_at": "2024-08-20T01:30:37Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 282602,
+            "size": 282327,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 80732,
+            "stargazers_count": 80980,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -140,14 +140,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2024-08-13T01:58:29Z",
+            "updated_at": "2024-08-20T00:20:26Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 80732,
-            "watchers_count": 80732,
+            "watchers": 80980,
+            "watchers_count": 80980,
             "web_commit_signoff_required": false
         },
-        "sha": "65a703e06063c85c3dd5fdb3ad4e1207a622ef30",
+        "sha": "33464189bc02b2555e26dc4e9f7b3fbbcdd02490",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -171,7 +171,76 @@
     },
     "body": null,
     "closed_at": null,
-    "comment_data": [],
+    "comment_data": [
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/30029#discussion_r1716711542"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/30029"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1716711542"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "```suggestion\r\n    ['userdata'] = true,\r\n```",
+            "commit_id": "421a84dfe2163dd849f71a6bab7ae3eea4664c67",
+            "created_at": "2024-08-14T10:48:46Z",
+            "diff_hunk": "@@ -835,19 +835,126 @@ function M.exec_capture(code)\n   return M.api.nvim_exec2(code, { output = true }).output\n end\n \n---- @param code string|function\n---- @return any\n+--- @param f function\n+--- @return table<string,any>\n+local function get_upvalues(f)\n+  local i = 1\n+  local upvalues = {} --- @type table<string,any>\n+  while true do\n+    local n, v = debug.getupvalue(f, i)\n+    if not n then\n+      break\n+    end\n+    upvalues[n] = v\n+    i = i + 1\n+  end\n+  return upvalues\n+end\n+\n+--- @param f function\n+--- @param upvalues table<string,any>\n+local function set_upvalues(f, upvalues)\n+  local i = 1\n+  while true do\n+    local n = debug.getupvalue(f, i)\n+    if not n then\n+      break\n+    end\n+    if upvalues[n] then\n+      debug.setupvalue(f, i, upvalues[n])\n+    end\n+    i = i + 1\n+  end\n+end\n+\n+--- @param upvalues table<string,any>\n+--- @param bytecode string\n+--- @param ... any[]\n+--- @return table<string,any>\n+--- @return any[]\n+local exec_lua_handler = string.dump(function(upvalues, bytecode, ...)\n+  local f = assert(loadstring(bytecode))\n+\n+  -- Copy in upvalues\n+  local i = 1\n+  while true do\n+    local n = debug.getupvalue(f, i)\n+    if not n then\n+      break\n+    end\n+    local u = upvalues[n]\n+    if u then\n+      debug.setupvalue(f, i, u)\n+    end\n+    i = i + 1\n+  end\n+\n+  local ret = { f(...) }\n+\n+  -- Copy out upvalues\n+  i = 1\n+  while true do\n+    local n, v = debug.getupvalue(f, i)\n+    if not n then\n+      break\n+    end\n+    upvalues[n] = v\n+    i = i + 1\n+  end\n+\n+  local invalid_types = {\n+    ['thread'] = true,\n+    ['function'] = true,\n+    ['userdaya'] = true,",
+            "html_url": "https://github.com/neovim/neovim/pull/30029#discussion_r1716711542",
+            "id": 1716711542,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5mUvB2",
+            "original_commit_id": "41bae74b68379dbf0bf6843cdf3305c469727c9e",
+            "original_line": 908,
+            "original_position": 76,
+            "original_start_line": null,
+            "path": "test/functional/testnvim.lua",
+            "position": null,
+            "pull_request_review_id": 2237804681,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/30029",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1716711542/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-08-14T10:48:47Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1716711542",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/19489738?v=4",
+                "events_url": "https://api.github.com/users/tomtomjhj/events{/privacy}",
+                "followers_url": "https://api.github.com/users/tomtomjhj/followers",
+                "following_url": "https://api.github.com/users/tomtomjhj/following{/other_user}",
+                "gists_url": "https://api.github.com/users/tomtomjhj/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/tomtomjhj",
+                "id": 19489738,
+                "login": "tomtomjhj",
+                "node_id": "MDQ6VXNlcjE5NDg5NzM4",
+                "organizations_url": "https://api.github.com/users/tomtomjhj/orgs",
+                "received_events_url": "https://api.github.com/users/tomtomjhj/received_events",
+                "repos_url": "https://api.github.com/users/tomtomjhj/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/tomtomjhj/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/tomtomjhj/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/tomtomjhj"
+            }
+        }
+    ],
     "comment_regular_data": [],
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/30029/comments",
     "commits_url": "https://api.github.com/repos/neovim/neovim/pulls/30029/commits",
@@ -266,9 +335,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/lewis6991/neovim/pulls{/number}",
-            "pushed_at": "2024-08-12T15:42:45Z",
+            "pushed_at": "2024-08-18T18:41:43Z",
             "releases_url": "https://api.github.com/repos/lewis6991/neovim/releases{/id}",
-            "size": 277360,
+            "size": 277528,
             "ssh_url": "git@github.com:lewis6991/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/lewis6991/neovim/stargazers",
@@ -287,7 +356,7 @@
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "41bae74b68379dbf0bf6843cdf3305c469727c9e",
+        "sha": "421a84dfe2163dd849f71a6bab7ae3eea4664c67",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",
             "events_url": "https://api.github.com/users/lewis6991/events{/privacy}",
@@ -324,7 +393,7 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "7457f48b438ce31572b26a72f71cf4360d6c18b8",
+    "merge_commit_sha": "33eafc9d47c1a05a68299db1689c742cb848fbcc",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM54HBcw",
@@ -335,9 +404,9 @@
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/30029/comments",
     "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/41bae74b68379dbf0bf6843cdf3305c469727c9e",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/421a84dfe2163dd849f71a6bab7ae3eea4664c67",
     "title": "test: support upvalues in exec_lua",
-    "updated_at": "2024-08-12T15:42:47Z",
+    "updated_at": "2024-08-18T18:41:44Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/30029",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",
