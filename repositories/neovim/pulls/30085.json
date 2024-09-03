@@ -22,13 +22,13 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/30085"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/b9f7dba4a12ed675ea49b359475950471064f054"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/bad7896a4eb33c21c38e62e38b36d3cd692f5902"
         }
     },
     "active_lock_reason": null,
     "assignee": null,
     "assignees": [],
-    "author_association": "CONTRIBUTOR",
+    "author_association": "MEMBER",
     "auto_merge": null,
     "base": {
         "label": "neovim:master",
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 5547,
-            "forks_count": 5547,
+            "forks": 5554,
+            "forks_count": 5554,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1778,
-            "open_issues_count": 1778,
+            "open_issues": 1776,
+            "open_issues_count": 1776,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -118,11 +118,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2024-08-26T16:19:41Z",
+            "pushed_at": "2024-09-02T22:52:19Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 283014,
+            "size": 283521,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 81139,
+            "stargazers_count": 81367,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -140,14 +140,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2024-08-27T01:46:59Z",
+            "updated_at": "2024-09-03T02:01:19Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 81139,
-            "watchers_count": 81139,
+            "watchers": 81367,
+            "watchers_count": 81367,
             "web_commit_signoff_required": false
         },
-        "sha": "33464189bc02b2555e26dc4e9f7b3fbbcdd02490",
+        "sha": "53af02adbad049f5fc24540cc0f38fa4f9aadf58",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -171,7 +171,967 @@
     },
     "body": "This commit also implements more generic trimming, acting on all\r\nwhitespace (charwise) rather than just empty lines.\r\n\r\nIt will unblock\r\nhttps://github.com/nvim-treesitter/nvim-treesitter/pull/3442 and allow\r\nfor properly concealing markdown bullet markers regardless of indent\r\nwidth, e.g.",
     "closed_at": null,
-    "comment_data": [],
+    "comment_data": [
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/30085#discussion_r1739141856"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/30085"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739141856"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\r\n    it('trims only empty lines by default (backwards compatible)', function()\r\n```",
+            "commit_id": "bad7896a4eb33c21c38e62e38b36d3cd692f5902",
+            "created_at": "2024-08-30T17:03:05Z",
+            "diff_hunk": "@@ -649,6 +649,109 @@ print()\n     end)\n   end)\n \n+  describe('when using the trim! directive', function()\n+    it('trims all whitespace from both sides of the node', function()\n+      -- luacheck: push ignore 611\n+      insert([=[\n+        print([[\n+\n+                  f\n+           helllo\n+        there\n+        asdf\n+        asdfassd\n+\n+\n+\n+        ]])\n+        print([[\n+              \n+              \n+              \n+        ]])\n+\n+        print([[]])\n+\n+        print([[\n+        ]])\n+\n+        print([[     hello 😃    ]])\n+      ]=])\n+      -- luacheck: pop\n+\n+      local query_text = [[\n+        ; query\n+        ((string_content) @str\n+          (#trim! @str 1))\n+      ]]\n+\n+      exec_lua(function()\n+        vim.treesitter.start(0, 'lua')\n+      end)\n+\n+      local function run_query()\n+        return exec_lua(function(query_str)\n+          local query = vim.treesitter.query.parse('lua', query_str)\n+          local parser = vim.treesitter.get_parser()\n+          local tree = parser:parse()[1]\n+          local res = {}\n+          for id, _, metadata in query:iter_captures(tree:root(), 0) do\n+            table.insert(res, { query.captures[id], metadata[id].range })\n+          end\n+          return res\n+        end, query_text)\n+      end\n+\n+      eq({\n+        { 'str', { 2, 12, 6, 10 } },\n+        { 'str', { 11, 10, 11, 10 } },\n+        { 'str', { 17, 10, 17, 10 } },\n+        { 'str', { 19, 10, 19, 10 } },\n+        { 'str', { 22, 15, 22, 25 } },\n+      }, run_query())\n+    end)\n+\n+    it('retains backward compatibility', function()",
+            "html_url": "https://github.com/neovim/neovim/pull/30085#discussion_r1739141856",
+            "id": 1739141856,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5nqTLg",
+            "original_commit_id": "b9f7dba4a12ed675ea49b359475950471064f054",
+            "original_line": 714,
+            "original_position": 66,
+            "original_start_line": null,
+            "path": "test/functional/treesitter/parser_spec.lua",
+            "position": null,
+            "pull_request_review_id": 2273088490,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/30085",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739141856/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-08-30T17:03:06Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739141856",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/30085#discussion_r1739142497"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/30085"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739142497"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "duplicate code w/ the other test, worth factoring into a local function?",
+            "commit_id": "bad7896a4eb33c21c38e62e38b36d3cd692f5902",
+            "created_at": "2024-08-30T17:03:28Z",
+            "diff_hunk": "@@ -649,6 +649,109 @@ print()\n     end)\n   end)\n \n+  describe('when using the trim! directive', function()\n+    it('trims all whitespace from both sides of the node', function()\n+      -- luacheck: push ignore 611\n+      insert([=[\n+        print([[\n+\n+                  f\n+           helllo\n+        there\n+        asdf\n+        asdfassd\n+\n+\n+\n+        ]])\n+        print([[\n+              \n+              \n+              \n+        ]])\n+\n+        print([[]])\n+\n+        print([[\n+        ]])\n+\n+        print([[     hello 😃    ]])\n+      ]=])\n+      -- luacheck: pop\n+\n+      local query_text = [[\n+        ; query\n+        ((string_content) @str\n+          (#trim! @str 1))\n+      ]]\n+\n+      exec_lua(function()\n+        vim.treesitter.start(0, 'lua')\n+      end)\n+\n+      local function run_query()\n+        return exec_lua(function(query_str)\n+          local query = vim.treesitter.query.parse('lua', query_str)\n+          local parser = vim.treesitter.get_parser()\n+          local tree = parser:parse()[1]\n+          local res = {}\n+          for id, _, metadata in query:iter_captures(tree:root(), 0) do\n+            table.insert(res, { query.captures[id], metadata[id].range })\n+          end\n+          return res\n+        end, query_text)\n+      end\n+\n+      eq({\n+        { 'str', { 2, 12, 6, 10 } },\n+        { 'str', { 11, 10, 11, 10 } },\n+        { 'str', { 17, 10, 17, 10 } },\n+        { 'str', { 19, 10, 19, 10 } },\n+        { 'str', { 22, 15, 22, 25 } },\n+      }, run_query())\n+    end)\n+\n+    it('retains backward compatibility', function()\n+      insert [[\n+        ## Heading\n+\n+        With some text\n+\n+        ## And another\n+\n+        With some more\n+      ]]\n+\n+      local query_text = [[\n+        ; query\n+        ((section) @fold\n+          (#trim! @fold))\n+      ]]\n+\n+      exec_lua(function()\n+        vim.treesitter.start(0, 'markdown')\n+      end)\n+\n+      local function run_query()\n+        return exec_lua(function(query_str)\n+          local query = vim.treesitter.query.parse('markdown', query_str)\n+          local parser = vim.treesitter.get_parser()\n+          local tree = parser:parse()[1]\n+          local res = {}\n+          for id, _, metadata in query:iter_captures(tree:root(), 0) do\n+            table.insert(res, { query.captures[id], metadata[id].range })\n+          end\n+          return res\n+        end, query_text)\n+      end",
+            "html_url": "https://github.com/neovim/neovim/pull/30085#discussion_r1739142497",
+            "id": 1739142497,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5nqTVh",
+            "original_commit_id": "b9f7dba4a12ed675ea49b359475950471064f054",
+            "original_line": 746,
+            "original_position": 98,
+            "original_start_line": 735,
+            "path": "test/functional/treesitter/parser_spec.lua",
+            "position": null,
+            "pull_request_review_id": 2273089424,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/30085",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739142497/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2024-08-30T17:03:28Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739142497",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/30085#discussion_r1739143982"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/30085"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739143982"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\r\n    it('trims all whitespace if arg is given', function()\r\n```",
+            "commit_id": "bad7896a4eb33c21c38e62e38b36d3cd692f5902",
+            "created_at": "2024-08-30T17:04:33Z",
+            "diff_hunk": "@@ -649,6 +649,109 @@ print()\n     end)\n   end)\n \n+  describe('when using the trim! directive', function()\n+    it('trims all whitespace from both sides of the node', function()",
+            "html_url": "https://github.com/neovim/neovim/pull/30085#discussion_r1739143982",
+            "id": 1739143982,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5nqTsu",
+            "original_commit_id": "b9f7dba4a12ed675ea49b359475950471064f054",
+            "original_line": 653,
+            "original_position": 5,
+            "original_start_line": null,
+            "path": "test/functional/treesitter/parser_spec.lua",
+            "position": null,
+            "pull_request_review_id": 2273091730,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/30085",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739143982/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-08-30T17:04:48Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739143982",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/30085#discussion_r1739147164"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/30085"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739147164"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "ternary avoids the need for a `---@type` annotation and is less verbose\r\n```suggestion\r\n    local start_row, start_col, end_row, end_col = full_trim\r\n        and node_trim_all_whitespace(node, bufnr)\r\n        or node_trim_trailing_blank_lines(node, bufnr)\r\n```\r\n\r\n",
+            "commit_id": "bad7896a4eb33c21c38e62e38b36d3cd692f5902",
+            "created_at": "2024-08-30T17:07:20Z",
+            "diff_hunk": "@@ -587,22 +657,11 @@ local directive_handlers = {\n     assert(#nodes == 1, '#trim! does not support captures on multiple nodes')\n     local node = nodes[1]\n \n-    local start_row, start_col, end_row, end_col = node:range()\n-\n-    -- Don't trim if region ends in middle of a line\n-    if end_col ~= 0 then\n-      return\n-    end\n-\n-    while end_row >= start_row do\n-      -- As we only care when end_col == 0, always inspect one line above end_row.\n-      local end_line = api.nvim_buf_get_lines(bufnr, end_row - 1, end_row, true)[1]\n-\n-      if end_line ~= '' then\n-        break\n-      end\n-\n-      end_row = end_row - 1\n+    local start_row, start_col, end_row, end_col ---@type integer, integer, integer, integer\n+    if full_trim then\n+      start_row, start_col, end_row, end_col = node_trim_all_whitespace(node, bufnr)\n+    else\n+      start_row, start_col, end_row, end_col = node_trim_trailing_blank_lines(node, bufnr)",
+            "html_url": "https://github.com/neovim/neovim/pull/30085#discussion_r1739147164",
+            "id": 1739147164,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5nqUec",
+            "original_commit_id": "b9f7dba4a12ed675ea49b359475950471064f054",
+            "original_line": 664,
+            "original_position": 115,
+            "original_start_line": 660,
+            "path": "runtime/lua/vim/treesitter/query.lua",
+            "position": null,
+            "pull_request_review_id": 2273097168,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/30085",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739147164/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2024-08-30T17:08:12Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739147164",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/30085#discussion_r1739151066"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/30085"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739151066"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "can we generalize this? would using `vim.fn.trim()` reduce the code?\r\n\r\n```suggestion\r\n---@param lines_only boolean\r\nlocal function node_trim(node, bufnr, lines_only)\r\n```\r\n",
+            "commit_id": "bad7896a4eb33c21c38e62e38b36d3cd692f5902",
+            "created_at": "2024-08-30T17:11:27Z",
+            "diff_hunk": "@@ -184,6 +184,76 @@ local function read_query_files(filenames)\n   return table.concat(contents, '')\n end\n \n+---@param node TSNode\n+---@param bufnr integer\n+---@return integer, integer, integer, integer\n+local function node_trim_trailing_blank_lines(node, bufnr)\n+  local start_row, start_col, end_row, end_col = node:range()\n+\n+  -- Don't trim if region ends in middle of a line\n+  if end_col == 0 then\n+    while end_row >= start_row do\n+      -- As we only care when end_col == 0, always inspect one line above end_row.\n+      local end_line = api.nvim_buf_get_lines(bufnr, end_row - 1, end_row, true)[1]\n+\n+      if end_line ~= '' then\n+        break\n+      end\n+\n+      end_row = end_row - 1\n+    end\n+  end\n+\n+  return start_row, start_col, end_row, end_col\n+end\n+\n+---@param node TSNode\n+---@param bufnr integer\n+---@return integer, integer, integer, integer\n+local function node_trim_all_whitespace(node, bufnr)",
+            "html_url": "https://github.com/neovim/neovim/pull/30085#discussion_r1739151066",
+            "id": 1739151066,
+            "line": 213,
+            "node_id": "PRRC_kwDOAPphoM5nqVba",
+            "original_commit_id": "b9f7dba4a12ed675ea49b359475950471064f054",
+            "original_line": 213,
+            "original_position": 30,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/treesitter/query.lua",
+            "position": 30,
+            "pull_request_review_id": 2273104786,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/30085",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739151066/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-08-30T17:11:27Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739151066",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/30085#discussion_r1739189701"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/30085"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739189701"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\r\n        `metadata[capture_id].range`. Trims blank lines from the end of the node\r\n        by default (for backwards compatibility). Trims all whitespace from both\r\n        sides of the node if the optional parameter \"1\" is given.\r\n```",
+            "commit_id": "bad7896a4eb33c21c38e62e38b36d3cd692f5902",
+            "created_at": "2024-08-30T17:42:10Z",
+            "diff_hunk": "@@ -385,14 +385,19 @@ The following directives are built in:\n             (#gsub! @_node \".*%.(.*)\" \"%1\")\n <\n     `trim!`                                          *treesitter-directive-trim!*\n-        Trim blank lines from the end of the node. This will set a new\n-        `metadata[capture_id].range`.\n+        Trim whitespace from the node. This will set a new\n+        `metadata[capture_id].range`. The directive takes an optional\n+        parameter following the capture group to determine whether to trim all\n+        whitespace from both sides of the node (when set to `1`), or to only\n+        trim blank lines from the end of the node (this is the default, for\n+        backwards compatibility).",
+            "html_url": "https://github.com/neovim/neovim/pull/30085#discussion_r1739189701",
+            "id": 1739189701,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5nqe3F",
+            "original_commit_id": "b9f7dba4a12ed675ea49b359475950471064f054",
+            "original_line": 393,
+            "original_position": 11,
+            "original_start_line": 389,
+            "path": "runtime/doc/treesitter.txt",
+            "position": null,
+            "pull_request_review_id": 2273170746,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/30085",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739189701/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2024-08-30T17:42:10Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739189701",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/30085#discussion_r1739190326"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/30085"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739190326"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\r\n• |treesitter-directive-trim!| can trim all whitespace (not just empty lines)\r\n```",
+            "commit_id": "bad7896a4eb33c21c38e62e38b36d3cd692f5902",
+            "created_at": "2024-08-30T17:42:50Z",
+            "diff_hunk": "@@ -174,6 +174,8 @@ TREESITTER\n • |LanguageTree:node_for_range()| gets anonymous and named nodes for a range\n • |vim.treesitter.get_node()| now takes an option `include_anonymous`, default\n   false, which allows it to return anonymous nodes as well as named nodes.\n+• |treesitter-directive-trim!| now trims all whitespace (not just empty lines)",
+            "html_url": "https://github.com/neovim/neovim/pull/30085#discussion_r1739190326",
+            "id": 1739190326,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5nqfA2",
+            "original_commit_id": "b9f7dba4a12ed675ea49b359475950471064f054",
+            "original_line": 177,
+            "original_position": 4,
+            "original_start_line": null,
+            "path": "runtime/doc/news.txt",
+            "position": null,
+            "pull_request_review_id": 2273171611,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/30085",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739190326/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-08-30T17:42:50Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739190326",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/30085#discussion_r1739563011"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/30085"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739563011"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "nice!",
+            "commit_id": "bad7896a4eb33c21c38e62e38b36d3cd692f5902",
+            "created_at": "2024-08-31T01:08:45Z",
+            "diff_hunk": "@@ -587,22 +657,11 @@ local directive_handlers = {\n     assert(#nodes == 1, '#trim! does not support captures on multiple nodes')\n     local node = nodes[1]\n \n-    local start_row, start_col, end_row, end_col = node:range()\n-\n-    -- Don't trim if region ends in middle of a line\n-    if end_col ~= 0 then\n-      return\n-    end\n-\n-    while end_row >= start_row do\n-      -- As we only care when end_col == 0, always inspect one line above end_row.\n-      local end_line = api.nvim_buf_get_lines(bufnr, end_row - 1, end_row, true)[1]\n-\n-      if end_line ~= '' then\n-        break\n-      end\n-\n-      end_row = end_row - 1\n+    local start_row, start_col, end_row, end_col ---@type integer, integer, integer, integer\n+    if full_trim then\n+      start_row, start_col, end_row, end_col = node_trim_all_whitespace(node, bufnr)\n+    else\n+      start_row, start_col, end_row, end_col = node_trim_trailing_blank_lines(node, bufnr)",
+            "html_url": "https://github.com/neovim/neovim/pull/30085#discussion_r1739563011",
+            "id": 1739563011,
+            "in_reply_to_id": 1739147164,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5nr6AD",
+            "original_commit_id": "b9f7dba4a12ed675ea49b359475950471064f054",
+            "original_line": 664,
+            "original_position": 115,
+            "original_start_line": 660,
+            "path": "runtime/lua/vim/treesitter/query.lua",
+            "position": null,
+            "pull_request_review_id": 2273697820,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/30085",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739563011/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2024-08-31T01:08:45Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739563011",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/55766287?v=4",
+                "events_url": "https://api.github.com/users/ribru17/events{/privacy}",
+                "followers_url": "https://api.github.com/users/ribru17/followers",
+                "following_url": "https://api.github.com/users/ribru17/following{/other_user}",
+                "gists_url": "https://api.github.com/users/ribru17/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/ribru17",
+                "id": 55766287,
+                "login": "ribru17",
+                "node_id": "MDQ6VXNlcjU1NzY2Mjg3",
+                "organizations_url": "https://api.github.com/users/ribru17/orgs",
+                "received_events_url": "https://api.github.com/users/ribru17/received_events",
+                "repos_url": "https://api.github.com/users/ribru17/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/ribru17/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/ribru17/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/ribru17"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/30085#discussion_r1739563592"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/30085"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739563592"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "sure",
+            "commit_id": "bad7896a4eb33c21c38e62e38b36d3cd692f5902",
+            "created_at": "2024-08-31T01:11:48Z",
+            "diff_hunk": "@@ -649,6 +649,109 @@ print()\n     end)\n   end)\n \n+  describe('when using the trim! directive', function()\n+    it('trims all whitespace from both sides of the node', function()\n+      -- luacheck: push ignore 611\n+      insert([=[\n+        print([[\n+\n+                  f\n+           helllo\n+        there\n+        asdf\n+        asdfassd\n+\n+\n+\n+        ]])\n+        print([[\n+              \n+              \n+              \n+        ]])\n+\n+        print([[]])\n+\n+        print([[\n+        ]])\n+\n+        print([[     hello 😃    ]])\n+      ]=])\n+      -- luacheck: pop\n+\n+      local query_text = [[\n+        ; query\n+        ((string_content) @str\n+          (#trim! @str 1))\n+      ]]\n+\n+      exec_lua(function()\n+        vim.treesitter.start(0, 'lua')\n+      end)\n+\n+      local function run_query()\n+        return exec_lua(function(query_str)\n+          local query = vim.treesitter.query.parse('lua', query_str)\n+          local parser = vim.treesitter.get_parser()\n+          local tree = parser:parse()[1]\n+          local res = {}\n+          for id, _, metadata in query:iter_captures(tree:root(), 0) do\n+            table.insert(res, { query.captures[id], metadata[id].range })\n+          end\n+          return res\n+        end, query_text)\n+      end\n+\n+      eq({\n+        { 'str', { 2, 12, 6, 10 } },\n+        { 'str', { 11, 10, 11, 10 } },\n+        { 'str', { 17, 10, 17, 10 } },\n+        { 'str', { 19, 10, 19, 10 } },\n+        { 'str', { 22, 15, 22, 25 } },\n+      }, run_query())\n+    end)\n+\n+    it('retains backward compatibility', function()\n+      insert [[\n+        ## Heading\n+\n+        With some text\n+\n+        ## And another\n+\n+        With some more\n+      ]]\n+\n+      local query_text = [[\n+        ; query\n+        ((section) @fold\n+          (#trim! @fold))\n+      ]]\n+\n+      exec_lua(function()\n+        vim.treesitter.start(0, 'markdown')\n+      end)\n+\n+      local function run_query()\n+        return exec_lua(function(query_str)\n+          local query = vim.treesitter.query.parse('markdown', query_str)\n+          local parser = vim.treesitter.get_parser()\n+          local tree = parser:parse()[1]\n+          local res = {}\n+          for id, _, metadata in query:iter_captures(tree:root(), 0) do\n+            table.insert(res, { query.captures[id], metadata[id].range })\n+          end\n+          return res\n+        end, query_text)\n+      end",
+            "html_url": "https://github.com/neovim/neovim/pull/30085#discussion_r1739563592",
+            "id": 1739563592,
+            "in_reply_to_id": 1739142497,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5nr6JI",
+            "original_commit_id": "b9f7dba4a12ed675ea49b359475950471064f054",
+            "original_line": 746,
+            "original_position": 98,
+            "original_start_line": 735,
+            "path": "test/functional/treesitter/parser_spec.lua",
+            "position": null,
+            "pull_request_review_id": 2273698255,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/30085",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739563592/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2024-08-31T01:11:48Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739563592",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/55766287?v=4",
+                "events_url": "https://api.github.com/users/ribru17/events{/privacy}",
+                "followers_url": "https://api.github.com/users/ribru17/followers",
+                "following_url": "https://api.github.com/users/ribru17/following{/other_user}",
+                "gists_url": "https://api.github.com/users/ribru17/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/ribru17",
+                "id": 55766287,
+                "login": "ribru17",
+                "node_id": "MDQ6VXNlcjU1NzY2Mjg3",
+                "organizations_url": "https://api.github.com/users/ribru17/orgs",
+                "received_events_url": "https://api.github.com/users/ribru17/received_events",
+                "repos_url": "https://api.github.com/users/ribru17/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/ribru17/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/ribru17/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/ribru17"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/30085#discussion_r1739586917"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/30085"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739586917"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Hmm, how do you think this should work? I can see the trimming itself being helpful but the main logic we need is the \"trimming\" of the range values, and I don't know how `vim(.fn).trim` would be able to help with that",
+            "commit_id": "bad7896a4eb33c21c38e62e38b36d3cd692f5902",
+            "created_at": "2024-08-31T02:29:45Z",
+            "diff_hunk": "@@ -184,6 +184,76 @@ local function read_query_files(filenames)\n   return table.concat(contents, '')\n end\n \n+---@param node TSNode\n+---@param bufnr integer\n+---@return integer, integer, integer, integer\n+local function node_trim_trailing_blank_lines(node, bufnr)\n+  local start_row, start_col, end_row, end_col = node:range()\n+\n+  -- Don't trim if region ends in middle of a line\n+  if end_col == 0 then\n+    while end_row >= start_row do\n+      -- As we only care when end_col == 0, always inspect one line above end_row.\n+      local end_line = api.nvim_buf_get_lines(bufnr, end_row - 1, end_row, true)[1]\n+\n+      if end_line ~= '' then\n+        break\n+      end\n+\n+      end_row = end_row - 1\n+    end\n+  end\n+\n+  return start_row, start_col, end_row, end_col\n+end\n+\n+---@param node TSNode\n+---@param bufnr integer\n+---@return integer, integer, integer, integer\n+local function node_trim_all_whitespace(node, bufnr)",
+            "html_url": "https://github.com/neovim/neovim/pull/30085#discussion_r1739586917",
+            "id": 1739586917,
+            "in_reply_to_id": 1739151066,
+            "line": 213,
+            "node_id": "PRRC_kwDOAPphoM5nr_1l",
+            "original_commit_id": "b9f7dba4a12ed675ea49b359475950471064f054",
+            "original_line": 213,
+            "original_position": 30,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/treesitter/query.lua",
+            "position": 30,
+            "pull_request_review_id": 2273726552,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/30085",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739586917/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-08-31T02:29:45Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739586917",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/55766287?v=4",
+                "events_url": "https://api.github.com/users/ribru17/events{/privacy}",
+                "followers_url": "https://api.github.com/users/ribru17/followers",
+                "following_url": "https://api.github.com/users/ribru17/following{/other_user}",
+                "gists_url": "https://api.github.com/users/ribru17/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/ribru17",
+                "id": 55766287,
+                "login": "ribru17",
+                "node_id": "MDQ6VXNlcjU1NzY2Mjg3",
+                "organizations_url": "https://api.github.com/users/ribru17/orgs",
+                "received_events_url": "https://api.github.com/users/ribru17/received_events",
+                "repos_url": "https://api.github.com/users/ribru17/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/ribru17/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/ribru17/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/ribru17"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/30085#discussion_r1739587125"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/30085"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739587125"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "As for the generalization, I did that initially but the two code paths are pretty different, I couldn't really reuse much code so to me it just felt like separating them completely was easier on the eyes",
+            "commit_id": "bad7896a4eb33c21c38e62e38b36d3cd692f5902",
+            "created_at": "2024-08-31T02:31:34Z",
+            "diff_hunk": "@@ -184,6 +184,76 @@ local function read_query_files(filenames)\n   return table.concat(contents, '')\n end\n \n+---@param node TSNode\n+---@param bufnr integer\n+---@return integer, integer, integer, integer\n+local function node_trim_trailing_blank_lines(node, bufnr)\n+  local start_row, start_col, end_row, end_col = node:range()\n+\n+  -- Don't trim if region ends in middle of a line\n+  if end_col == 0 then\n+    while end_row >= start_row do\n+      -- As we only care when end_col == 0, always inspect one line above end_row.\n+      local end_line = api.nvim_buf_get_lines(bufnr, end_row - 1, end_row, true)[1]\n+\n+      if end_line ~= '' then\n+        break\n+      end\n+\n+      end_row = end_row - 1\n+    end\n+  end\n+\n+  return start_row, start_col, end_row, end_col\n+end\n+\n+---@param node TSNode\n+---@param bufnr integer\n+---@return integer, integer, integer, integer\n+local function node_trim_all_whitespace(node, bufnr)",
+            "html_url": "https://github.com/neovim/neovim/pull/30085#discussion_r1739587125",
+            "id": 1739587125,
+            "in_reply_to_id": 1739151066,
+            "line": 213,
+            "node_id": "PRRC_kwDOAPphoM5nr_41",
+            "original_commit_id": "b9f7dba4a12ed675ea49b359475950471064f054",
+            "original_line": 213,
+            "original_position": 30,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/treesitter/query.lua",
+            "position": 30,
+            "pull_request_review_id": 2273726711,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/30085",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739587125/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-08-31T02:31:34Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739587125",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/55766287?v=4",
+                "events_url": "https://api.github.com/users/ribru17/events{/privacy}",
+                "followers_url": "https://api.github.com/users/ribru17/followers",
+                "following_url": "https://api.github.com/users/ribru17/following{/other_user}",
+                "gists_url": "https://api.github.com/users/ribru17/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/ribru17",
+                "id": 55766287,
+                "login": "ribru17",
+                "node_id": "MDQ6VXNlcjU1NzY2Mjg3",
+                "organizations_url": "https://api.github.com/users/ribru17/orgs",
+                "received_events_url": "https://api.github.com/users/ribru17/received_events",
+                "repos_url": "https://api.github.com/users/ribru17/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/ribru17/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/ribru17/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/ribru17"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/30085#discussion_r1739632146"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/30085"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739632146"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Keep in mind vim.fn.* functions that work with strings have problems with the vimscript bridge and are less efficient since the string gets copied multiple times. Both of those could be a problem here.",
+            "commit_id": "bad7896a4eb33c21c38e62e38b36d3cd692f5902",
+            "created_at": "2024-08-31T07:39:05Z",
+            "diff_hunk": "@@ -184,6 +184,76 @@ local function read_query_files(filenames)\n   return table.concat(contents, '')\n end\n \n+---@param node TSNode\n+---@param bufnr integer\n+---@return integer, integer, integer, integer\n+local function node_trim_trailing_blank_lines(node, bufnr)\n+  local start_row, start_col, end_row, end_col = node:range()\n+\n+  -- Don't trim if region ends in middle of a line\n+  if end_col == 0 then\n+    while end_row >= start_row do\n+      -- As we only care when end_col == 0, always inspect one line above end_row.\n+      local end_line = api.nvim_buf_get_lines(bufnr, end_row - 1, end_row, true)[1]\n+\n+      if end_line ~= '' then\n+        break\n+      end\n+\n+      end_row = end_row - 1\n+    end\n+  end\n+\n+  return start_row, start_col, end_row, end_col\n+end\n+\n+---@param node TSNode\n+---@param bufnr integer\n+---@return integer, integer, integer, integer\n+local function node_trim_all_whitespace(node, bufnr)",
+            "html_url": "https://github.com/neovim/neovim/pull/30085#discussion_r1739632146",
+            "id": 1739632146,
+            "in_reply_to_id": 1739151066,
+            "line": 213,
+            "node_id": "PRRC_kwDOAPphoM5nsK4S",
+            "original_commit_id": "b9f7dba4a12ed675ea49b359475950471064f054",
+            "original_line": 213,
+            "original_position": 30,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/treesitter/query.lua",
+            "position": 30,
+            "pull_request_review_id": 2273782873,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/30085",
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739632146/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-08-31T07:39:05Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739632146",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",
+                "events_url": "https://api.github.com/users/lewis6991/events{/privacy}",
+                "followers_url": "https://api.github.com/users/lewis6991/followers",
+                "following_url": "https://api.github.com/users/lewis6991/following{/other_user}",
+                "gists_url": "https://api.github.com/users/lewis6991/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/lewis6991",
+                "id": 7904185,
+                "login": "lewis6991",
+                "node_id": "MDQ6VXNlcjc5MDQxODU=",
+                "organizations_url": "https://api.github.com/users/lewis6991/orgs",
+                "received_events_url": "https://api.github.com/users/lewis6991/received_events",
+                "repos_url": "https://api.github.com/users/lewis6991/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/lewis6991"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/30085#discussion_r1739745031"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/30085"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739745031"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "I'm just surprised this requires so much code. Can it be simplified",
+            "commit_id": "bad7896a4eb33c21c38e62e38b36d3cd692f5902",
+            "created_at": "2024-08-31T15:13:03Z",
+            "diff_hunk": "@@ -184,6 +184,76 @@ local function read_query_files(filenames)\n   return table.concat(contents, '')\n end\n \n+---@param node TSNode\n+---@param bufnr integer\n+---@return integer, integer, integer, integer\n+local function node_trim_trailing_blank_lines(node, bufnr)\n+  local start_row, start_col, end_row, end_col = node:range()\n+\n+  -- Don't trim if region ends in middle of a line\n+  if end_col == 0 then\n+    while end_row >= start_row do\n+      -- As we only care when end_col == 0, always inspect one line above end_row.\n+      local end_line = api.nvim_buf_get_lines(bufnr, end_row - 1, end_row, true)[1]\n+\n+      if end_line ~= '' then\n+        break\n+      end\n+\n+      end_row = end_row - 1\n+    end\n+  end\n+\n+  return start_row, start_col, end_row, end_col\n+end\n+\n+---@param node TSNode\n+---@param bufnr integer\n+---@return integer, integer, integer, integer\n+local function node_trim_all_whitespace(node, bufnr)",
+            "html_url": "https://github.com/neovim/neovim/pull/30085#discussion_r1739745031",
+            "id": 1739745031,
+            "in_reply_to_id": 1739151066,
+            "line": 213,
+            "node_id": "PRRC_kwDOAPphoM5nsmcH",
+            "original_commit_id": "b9f7dba4a12ed675ea49b359475950471064f054",
+            "original_line": 213,
+            "original_position": 30,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/treesitter/query.lua",
+            "position": 30,
+            "pull_request_review_id": 2273882932,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/30085",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739745031/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-08-31T15:13:03Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739745031",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/30085#discussion_r1739745483"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/30085"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739745483"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Ideally yeah... I tried some variations but sadly one reason it's difficult is the old behavior doesn't even trim whitespace lines, it trims specifically empty (zero text on them) lines. So I couldn't even reuse one of the conditional branches in the \"full trim\" code. I think the only other generalized code that could be abstracted (since it is shared between the two) is `local start_row, start_col, end_row, end_col = node:range()`, but one line seems trivial at that point",
+            "commit_id": "bad7896a4eb33c21c38e62e38b36d3cd692f5902",
+            "created_at": "2024-08-31T15:16:28Z",
+            "diff_hunk": "@@ -184,6 +184,76 @@ local function read_query_files(filenames)\n   return table.concat(contents, '')\n end\n \n+---@param node TSNode\n+---@param bufnr integer\n+---@return integer, integer, integer, integer\n+local function node_trim_trailing_blank_lines(node, bufnr)\n+  local start_row, start_col, end_row, end_col = node:range()\n+\n+  -- Don't trim if region ends in middle of a line\n+  if end_col == 0 then\n+    while end_row >= start_row do\n+      -- As we only care when end_col == 0, always inspect one line above end_row.\n+      local end_line = api.nvim_buf_get_lines(bufnr, end_row - 1, end_row, true)[1]\n+\n+      if end_line ~= '' then\n+        break\n+      end\n+\n+      end_row = end_row - 1\n+    end\n+  end\n+\n+  return start_row, start_col, end_row, end_col\n+end\n+\n+---@param node TSNode\n+---@param bufnr integer\n+---@return integer, integer, integer, integer\n+local function node_trim_all_whitespace(node, bufnr)",
+            "html_url": "https://github.com/neovim/neovim/pull/30085#discussion_r1739745483",
+            "id": 1739745483,
+            "in_reply_to_id": 1739151066,
+            "line": 213,
+            "node_id": "PRRC_kwDOAPphoM5nsmjL",
+            "original_commit_id": "b9f7dba4a12ed675ea49b359475950471064f054",
+            "original_line": 213,
+            "original_position": 30,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/treesitter/query.lua",
+            "position": 30,
+            "pull_request_review_id": 2273883327,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/30085",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739745483/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-08-31T15:16:45Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1739745483",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/55766287?v=4",
+                "events_url": "https://api.github.com/users/ribru17/events{/privacy}",
+                "followers_url": "https://api.github.com/users/ribru17/followers",
+                "following_url": "https://api.github.com/users/ribru17/following{/other_user}",
+                "gists_url": "https://api.github.com/users/ribru17/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/ribru17",
+                "id": 55766287,
+                "login": "ribru17",
+                "node_id": "MDQ6VXNlcjU1NzY2Mjg3",
+                "organizations_url": "https://api.github.com/users/ribru17/orgs",
+                "received_events_url": "https://api.github.com/users/ribru17/received_events",
+                "repos_url": "https://api.github.com/users/ribru17/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/ribru17/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/ribru17/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/ribru17"
+            }
+        }
+    ],
     "comment_regular_data": [
         {
             "author_association": "MEMBER",
@@ -218,7 +1178,7 @@
             }
         },
         {
-            "author_association": "CONTRIBUTOR",
+            "author_association": "MEMBER",
             "body": "sure I can do that. Also is there a way to ignore linter errors for lines containing only whitespace? with a comment or something",
             "created_at": "2024-08-18T16:04:53Z",
             "html_url": "https://github.com/neovim/neovim/pull/30085#issuecomment-2295311573",
@@ -306,7 +1266,7 @@
             }
         },
         {
-            "author_association": "CONTRIBUTOR",
+            "author_association": "MEMBER",
             "body": "Is the backwards compatibility option a dealbreaker here? Seems like there aren't [too many](https://github.com/search?q=lang%3Ascheme+%23trim%21&type=code&p=2) instances of this (at least on github) and having two different trim functions / options might make maintenance more difficult ",
             "created_at": "2024-08-18T16:29:40Z",
             "html_url": "https://github.com/neovim/neovim/pull/30085#issuecomment-2295318422",
@@ -315,7 +1275,7 @@
             "node_id": "IC_kwDOAPphoM6Iz8eW",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 0,
+                "+1": 1,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -323,7 +1283,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 0,
+                "total_count": 1,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2295318422/reactions"
             },
             "updated_at": "2024-08-18T16:29:40Z",
@@ -394,7 +1354,7 @@
             }
         },
         {
-            "author_association": "CONTRIBUTOR",
+            "author_association": "MEMBER",
             "body": "For anything that requires proper charwise trimming, e.g. it would fix https://github.com/nvim-treesitter/nvim-treesitter/pull/3442 and would allow for properly concealing markdown bullet markers regardless of indent width, e.g.",
             "created_at": "2024-08-18T16:33:39Z",
             "html_url": "https://github.com/neovim/neovim/pull/30085#issuecomment-2295319566",
@@ -526,7 +1486,7 @@
             }
         },
         {
-            "author_association": "CONTRIBUTOR",
+            "author_association": "MEMBER",
             "body": "Done",
             "created_at": "2024-08-21T02:30:03Z",
             "html_url": "https://github.com/neovim/neovim/pull/30085#issuecomment-2300323171",
@@ -548,6 +1508,50 @@
             },
             "updated_at": "2024-08-21T02:30:03Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2300323171",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/55766287?v=4",
+                "events_url": "https://api.github.com/users/ribru17/events{/privacy}",
+                "followers_url": "https://api.github.com/users/ribru17/followers",
+                "following_url": "https://api.github.com/users/ribru17/following{/other_user}",
+                "gists_url": "https://api.github.com/users/ribru17/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/ribru17",
+                "id": 55766287,
+                "login": "ribru17",
+                "node_id": "MDQ6VXNlcjU1NzY2Mjg3",
+                "organizations_url": "https://api.github.com/users/ribru17/orgs",
+                "received_events_url": "https://api.github.com/users/ribru17/received_events",
+                "repos_url": "https://api.github.com/users/ribru17/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/ribru17/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/ribru17/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/ribru17"
+            }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "Should I add a `TODO` for myself to remove the old trimming functionality after a future release?",
+            "created_at": "2024-08-31T15:18:26Z",
+            "html_url": "https://github.com/neovim/neovim/pull/30085#issuecomment-2322929655",
+            "id": 2322929655,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/30085",
+            "node_id": "IC_kwDOAPphoM6KdRf3",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2322929655/reactions"
+            },
+            "updated_at": "2024-08-31T15:18:26Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2322929655",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/55766287?v=4",
                 "events_url": "https://api.github.com/users/ribru17/events{/privacy}",
@@ -639,8 +1643,8 @@
             "name": "neovim",
             "node_id": "R_kgDOK_SsSw",
             "notifications_url": "https://api.github.com/repos/ribru17/neovim/notifications{?since,all,participating}",
-            "open_issues": 0,
-            "open_issues_count": 0,
+            "open_issues": 1,
+            "open_issues_count": 1,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/55766287?v=4",
                 "events_url": "https://api.github.com/users/ribru17/events{/privacy}",
@@ -663,9 +1667,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/ribru17/neovim/pulls{/number}",
-            "pushed_at": "2024-08-26T05:29:14Z",
+            "pushed_at": "2024-09-02T15:28:01Z",
             "releases_url": "https://api.github.com/repos/ribru17/neovim/releases{/id}",
-            "size": 275960,
+            "size": 276771,
             "ssh_url": "git@github.com:ribru17/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/ribru17/neovim/stargazers",
@@ -677,14 +1681,14 @@
             "teams_url": "https://api.github.com/repos/ribru17/neovim/teams",
             "topics": [],
             "trees_url": "https://api.github.com/repos/ribru17/neovim/git/trees{/sha}",
-            "updated_at": "2024-08-18T02:58:58Z",
+            "updated_at": "2024-09-01T18:52:14Z",
             "url": "https://api.github.com/repos/ribru17/neovim",
             "visibility": "public",
             "watchers": 0,
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "b9f7dba4a12ed675ea49b359475950471064f054",
+        "sha": "bad7896a4eb33c21c38e62e38b36d3cd692f5902",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/55766287?v=4",
             "events_url": "https://api.github.com/users/ribru17/events{/privacy}",
@@ -721,7 +1725,7 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "c190d2886446ecad36926974d2c9208d0be44ca6",
+    "merge_commit_sha": "e088ee70db43f7c5f70d317fed8dff297d857d0a",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM54qoEE",
@@ -813,9 +1817,9 @@
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/30085/comments",
     "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/b9f7dba4a12ed675ea49b359475950471064f054",
-    "title": "feat(treesitter): remove whitespace on both sides with #trim!",
-    "updated_at": "2024-08-21T02:30:04Z",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/bad7896a4eb33c21c38e62e38b36d3cd692f5902",
+    "title": "feat(treesitter): #trim! can trim all whitespace",
+    "updated_at": "2024-08-31T15:18:27Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/30085",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/55766287?v=4",
