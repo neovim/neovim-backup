@@ -3,8 +3,9 @@
     "assignee": null,
     "assignees": [],
     "author_association": "MEMBER",
-    "body": "# Problem\r\n\r\nCurrent situation: Nvim ships a few parsers (C, Lua, vimdoc, vimscript) in its runtime. If user wants more parsers they must build the parser and put it on their 'runtimepath' , or use a project like https://github.com/nvim-treesitter which tries to automatically build parsers on the user's machine.\r\n\r\nNvim can't ship hundreds of parsers in its runtime because \r\n\r\n1. the total file size approaches gigabytes (GB) \r\n    - partially because of a known treesitter issue for some parsers: https://github.com/tree-sitter/tree-sitter/issues/1799\r\n    - partially because of the sheer number of parsers (hundreds)\r\n2. undue burden on package maintainers\r\n2. updating parsers should not require updating Nvim itself?\r\n\r\n### Ideal case\r\n\r\nIdeally, tree-sitter upstream would solve some problems for all tree-sitter consumers by:\r\n\r\n- provide makefiles\r\n- introspectible parser version that is set through `tree-sitter generate`\r\n- parser authors maintaining their own queries and bumping said version every time a parser update requires changes to them\r\n\r\n# Potential Solutions\r\n\r\n## Do nothing\r\n\r\n- Do nothing, except \"Guidance\": User should install per-language plugins. Plugin authors should build them.\r\n- Continue to outsource the problem to https://github.com/nvim-treesitter\r\n    - Similar to https://github.com/neovim/nvim-lspconfig\r\n    - **Problem:** maintenance burden, doesn't scale?\r\n\r\n## Distribute queries\r\n\r\nThe _main_ problem is lack of query and parser versioning.\r\n\r\n- Ship queries, but not parsers. Queries are relatively tiny text files.\r\n    - **Problem:** parsers and queries are tightly coupled, so a new parser version could break an existing query.\r\n        - tree-sitter upstream does not provide tools that could help us (like parser introspection, query introspection (version or metadata))\r\n- Enforce versioned parser names\r\n    - Problem: how?\r\n    - Right now, we only have the commit hash => can't reason about version _range_.\r\n\r\n## Distribute parsers (.so/.dll)\r\n\r\n- Develop CI that builds .so/.dll files for every OS. Then Nvim can fetch those on-demand.\r\n    - Benefit: useful for all text editors, not just Nvim.\r\n    - Problem: Where to put (200 * 3) build artifacts? Could use [Github packages](https://docs.github.com/en/packages/learn-github-packages/introduction-to-github-packages) like homebrew? \r\n    - **Problem:** similar maintenance burden as nvim-treesitter.\r\n        - Mitigation: strictly refuse to support parsers that don't easily build.\r\n            - Users to nudge the parser maintainer to \"fix\" their build steps.\r\n- Develop CI that builds \"universal\" libs via [cosmopolitan c](https://github.com/jart/cosmopolitan)\r\n    - Problem: \"fat\" libraries are costly: TS `.so` files are 90%+ data and 10% actual code (just the scanner part). Converting that 10% to WASM is less invasive.\r\n- Integrate nvim-treesitter's logic for \"build the parser locally and put it into rtp\"\r\n    - Benefit: gives us a \"happy path\" answer for users to avoid needing nvim-treesitter.\r\n    - **Problem:** Nvim becomes a package manager, which is a slippery slope.\r\n        - Mitigation: strictly refuse to support anything but the happy path.\r\n            - Don't try to find compilers in weird places.\r\n            - Don't support configuration.\r\n    - **Problem:** maintenance burden: many parsers have quirky build steps! May require C++ compiler.\r\n        - Mitigation: strictly refuse to support parsers that don't easily build.\r\n            - Users to nudge the parser maintainer to \"fix\" their build steps.\r\n        - Alternative: distribute [zig](https://ziglang.org/) binary as a compiler and use that as the toolchain to build on the user's machine.\r\n- Outsource the problem to installers like [mason](https://github.com/williamboman/mason.nvim).\r\n- Wait for upstream to [support WASM parsers](https://github.com/tree-sitter/tree-sitter/pull/1864)",
+    "body": "# Problem\r\n\r\nCurrent situation: Nvim ships a few parsers (C, Lua, vimdoc, vimscript) in its runtime. If user wants more parsers they must build the parser and put it on their 'runtimepath' , or use a project like https://github.com/nvim-treesitter which tries to automatically build parsers on the user's machine.\r\n\r\nNvim can't ship hundreds of parsers in its runtime because \r\n\r\n1. the total file size approaches gigabytes (GB) \r\n    - partially because of a known treesitter issue for some parsers: https://github.com/tree-sitter/tree-sitter/issues/1799\r\n    - partially because of the sheer number of parsers (hundreds)\r\n2. undue burden on package maintainers\r\n2. updating parsers should not require updating Nvim itself?\r\n\r\n### Ideal case\r\n\r\nIdeally, tree-sitter upstream would solve some problems for all tree-sitter consumers by:\r\n\r\n- provide makefiles\r\n- introspectible parser version that is set through `tree-sitter generate`\r\n- parser authors maintaining their own queries and bumping said version every time a parser update requires changes to them\r\n\r\n# Potential Solutions\r\n\r\n## Do nothing\r\n\r\n- Do nothing, except \"Guidance\": User should install per-language plugins. Plugin authors should build them.\r\n- Continue to outsource the problem to https://github.com/nvim-treesitter\r\n    - Similar to https://github.com/neovim/nvim-lspconfig\r\n    - **Problem:** maintenance burden, doesn't scale?\r\n\r\n## Distribute queries\r\n\r\nThe _main_ problem is lack of query and parser versioning.\r\n\r\n- Ship queries, but not parsers. Queries are relatively tiny text files.\r\n    - **Problem:** parsers and queries are tightly coupled, so a new parser version could break an existing query.\r\n        - tree-sitter upstream does not provide tools that could help us (like parser introspection, query introspection (version or metadata))\r\n- Enforce versioned parser names\r\n    - Problem: how?\r\n    - Right now, we only have the commit hash => can't reason about version _range_.\r\n\r\n## Distribute parsers (.so/.dll)\r\n\r\n- Develop CI that builds .so/.dll files for every OS. Then Nvim can fetch those on-demand.\r\n    - Benefit: useful for all text editors, not just Nvim.\r\n    - Problem: Where to put (200 * 3) build artifacts? Could use [Github packages](https://docs.github.com/en/packages/learn-github-packages/introduction-to-github-packages) like homebrew? \r\n    - **Problem:** similar maintenance burden as nvim-treesitter.\r\n        - Mitigation: strictly refuse to support parsers that don't easily build.\r\n            - Users to nudge the parser maintainer to \"fix\" their build steps.\r\n- Develop CI that builds \"universal\" libs via [cosmopolitan c](https://github.com/jart/cosmopolitan)\r\n    - Problem: \"fat\" libraries are costly: TS `.so` files are 90%+ data and 10% actual code (just the scanner part). Converting that 10% to WASM is less invasive.\r\n- Integrate nvim-treesitter's logic for \"build the parser locally and put it into rtp\"\r\n    - Benefit: gives us a \"happy path\" answer for users to avoid needing nvim-treesitter.\r\n    - **Problem:** Nvim becomes a package manager, which is a slippery slope.\r\n        - Mitigation: strictly refuse to support anything but the happy path.\r\n            - Don't try to find compilers in weird places.\r\n            - Don't support configuration.\r\n    - **Problem:** maintenance burden: many parsers have quirky build steps! May require C++ compiler.\r\n        - Mitigation: strictly refuse to support parsers that don't easily build.\r\n            - Users to nudge the parser maintainer to \"fix\" their build steps.\r\n        - Alternative: distribute [zig](https://ziglang.org/) binary as a compiler and use that as the toolchain to build on the user's machine.\r\n- Outsource the problem to installers like [mason](https://github.com/williamboman/mason.nvim).\r\n- ✅ Wait for upstream to [support WASM parsers](https://github.com/tree-sitter/tree-sitter/pull/1864)\r\n    - https://github.com/neovim/neovim/pull/28415",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -16,7 +17,7 @@
             "node_id": "IC_kwDOAPphoM5Vkug3",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 4,
+                "+1": 6,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -24,7 +25,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 4,
+                "total_count": 6,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1435691063/reactions"
             },
             "updated_at": "2023-02-19T14:13:38Z",
@@ -60,7 +61,7 @@
             "node_id": "IC_kwDOAPphoM5VkxjB",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 4,
+                "+1": 5,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -68,7 +69,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 4,
+                "total_count": 5,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1435703489/reactions"
             },
             "updated_at": "2023-02-18T15:49:01Z",
@@ -202,7 +203,7 @@
         {
             "color": "e6e6e6",
             "default": false,
-            "description": "distributing Nvim to users",
+            "description": "packaging and distributing Nvim to users",
             "id": 124686703,
             "name": "distribution",
             "node_id": "MDU6TGFiZWwxMjQ2ODY3MDM=",
@@ -211,7 +212,7 @@
         {
             "color": "FBCA04",
             "default": false,
-            "description": "For PRs that propose significant changes to some part of the architecture or API",
+            "description": "issue needs attention from an expert, or PR proposes significant changes to architecture or API",
             "id": 212680983,
             "name": "needs:discussion",
             "node_id": "MDU6TGFiZWwyMTI2ODA5ODM=",
@@ -231,7 +232,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 590,
+        "closed_issues": 645,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -253,17 +254,17 @@
             "type": "User",
             "url": "https://api.github.com/users/justinmk"
         },
-        "description": "Low priority. Not planned for the current target, may be reassigned.",
+        "description": "Low priority items. We plan to work on this but don't have a target date.",
         "due_on": null,
         "html_url": "https://github.com/neovim/neovim/milestone/6",
         "id": 655037,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 419,
+        "open_issues": 566,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2023-11-23T13:10:58Z",
+        "updated_at": "2024-09-09T18:06:19Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM5eypk0",
@@ -286,7 +287,7 @@
     "state_reason": null,
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/22313/timeline",
     "title": "treesitter distribution strategy (tree-sitter)",
-    "updated_at": "2023-11-25T14:28:36Z",
+    "updated_at": "2024-09-03T10:19:00Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/22313",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",

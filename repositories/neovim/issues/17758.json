@@ -5,6 +5,7 @@
     "author_association": "NONE",
     "body": "### Feature already in Vim?\r\n\r\nNo\r\n\r\n### Feature description\r\n\r\nI found this new API amazing, specially the possibility to use a lua callback instead of a vim command, but by using this it restricts the ability to call it silently. I would like to be able to make the callback be called silently instead of having to define the vim command instead. \r\n\r\nInstead of doing this:\r\n\r\n```lua\r\nautocmd(\"BufEnter,InsertLeave\", {\r\n            description = \"Auto show code lens\",\r\n            pattern = \"<buffer>\",\r\n            command = \"silent! lua vim.lsp.codelens.refresh()\"\r\n})\r\n```\r\n\r\nI'd like something like this for example\r\n\r\n```lua\r\nautocmd(\"BufEnter,InsertLeave\", {\r\n            description = \"Auto show code lens\",\r\n            pattern = \"<buffer>\",\r\n            callback = vim.lsp.codelens.refresh,\r\n            silent = true\r\n})\r\n```\r\n\r\nIf this is already supported, I'm sorry, but I couldn't find it in the docs.",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -599,7 +600,7 @@
                 "total_count": 1,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1455673649/reactions"
             },
-            "updated_at": "2023-03-06T08:12:33Z",
+            "updated_at": "2024-09-09T08:34:10Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1455673649",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/3683599?v=4",
@@ -667,7 +668,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "Has anyone been able to silence the `No code actions available` message that @champly mentioned? I tried wrapping it using (something like) @rorystephenson's suggestion, but no joy. (Either `goimports` wasn't called or if it was, then the message is still output.)  ",
             "created_at": "2023-09-03T11:45:38Z",
             "html_url": "https://github.com/neovim/neovim/issues/17758#issuecomment-1704257803",
@@ -711,51 +712,7 @@
             }
         },
         {
-            "author_association": "NONE",
-            "body": "@telemachus, No, I am also fighting the same issue.",
-            "created_at": "2023-09-03T14:02:58Z",
-            "html_url": "https://github.com/neovim/neovim/issues/17758#issuecomment-1704314841",
-            "id": 1704314841,
-            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/17758",
-            "node_id": "IC_kwDOAPphoM5llcfZ",
-            "performed_via_github_app": null,
-            "reactions": {
-                "+1": 0,
-                "-1": 0,
-                "confused": 0,
-                "eyes": 0,
-                "heart": 0,
-                "hooray": 0,
-                "laugh": 0,
-                "rocket": 0,
-                "total_count": 0,
-                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1704314841/reactions"
-            },
-            "updated_at": "2023-09-03T14:02:58Z",
-            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1704314841",
-            "user": {
-                "avatar_url": "https://avatars.githubusercontent.com/u/815816?v=4",
-                "events_url": "https://api.github.com/users/brunsgaard/events{/privacy}",
-                "followers_url": "https://api.github.com/users/brunsgaard/followers",
-                "following_url": "https://api.github.com/users/brunsgaard/following{/other_user}",
-                "gists_url": "https://api.github.com/users/brunsgaard/gists{/gist_id}",
-                "gravatar_id": "",
-                "html_url": "https://github.com/brunsgaard",
-                "id": 815816,
-                "login": "brunsgaard",
-                "node_id": "MDQ6VXNlcjgxNTgxNg==",
-                "organizations_url": "https://api.github.com/users/brunsgaard/orgs",
-                "received_events_url": "https://api.github.com/users/brunsgaard/received_events",
-                "repos_url": "https://api.github.com/users/brunsgaard/repos",
-                "site_admin": false,
-                "starred_url": "https://api.github.com/users/brunsgaard/starred{/owner}{/repo}",
-                "subscriptions_url": "https://api.github.com/users/brunsgaard/subscriptions",
-                "type": "User",
-                "url": "https://api.github.com/users/brunsgaard"
-            }
-        },
-        {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "@brunsgaard Thanks for weighing in. I'm glad to know that I'm not alone. After talking with someone on the Go slack and looking at [the diff of the issue that champly linked](https://github.com/golang/tools/pull/418/files), I went back to a version of an older recommendation from `gopls`:\r\n\r\n```lua\r\nlocal goimports = function(wait_ms)\r\n    wait_ms = wait_ms or 1000\r\n    local params = vim.lsp.util.make_range_params()\r\n    params.context = { only = { 'source.organizeImports' } }\r\n    local result = vim.lsp.buf_request_sync(0, 'textDocument/codeAction', params, wait_ms)\r\n    for _, res in pairs(result or {}) do\r\n        for _, r in pairs(res.result or {}) do\r\n            if r.edit then\r\n                vim.lsp.util.apply_workspace_edit(r.edit, 'UTF-8')\r\n            else\r\n                vim.lsp.buf.execute_command(r.command)\r\n            end\r\n        end\r\n    end\r\nend\r\n\r\nautocmd('BufWritePre', {\r\n    pattern = '*.go',\r\n    callback = function()\r\n        goimports()\r\n        lsp.buf.format()\r\n    end,\r\n    group = telemachus_augroup,\r\n})\r\n```\r\n\r\nThis works, and there's no message about code actions. I'm not sure if there's an advantage to the new suggestion from `gopls`, but for now I'll stick with the old method and stay subscribed to this issue.",
             "created_at": "2023-09-03T16:12:30Z",
             "html_url": "https://github.com/neovim/neovim/issues/17758#issuecomment-1704344182",
@@ -843,7 +800,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "> you could just ovrwrite vim.notify for disable show no code action.\r\n\r\nThanks for the suggestion, but that led to other issues for me—maybe because I also call `vim.lsp.buf.format` in the same autocommand? (The other issues for anyone who cares: (1) after the autocommand, the changes were sometimes left unwritten (i.e., I'd have to do `:w` twice to get everything saved), and (2) when reformatting, the LSP sometimes removes the first character of imports (e.g., `import \"fmt\"` became `mport \"fmt\"`). I have no idea where (2) is coming from, but it only began after I messed with `vim.notify`, and it stops if I use the other method.)\r\n\r\nIn any case, for the moment, I'm sticking with the old method as I showed above.",
             "created_at": "2023-09-04T11:59:14Z",
             "html_url": "https://github.com/neovim/neovim/issues/17758#issuecomment-1705144470",
@@ -931,7 +888,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "@glepnir Here's a gist with a minimal init.lua and a minimal file to edit that shows the problem.\r\n\r\nhttps://gist.github.com/telemachus/4d19dfb2cb32633342adeb4e5e61bb7e\r\n\r\n**Edit**: Someone brought up the issue in the Go slack (on the vim channel), so I know I'm not the only person seeing chopped off characters. Here's a quote: \"Has anybody (got) format/imports on save working with the recommended method yet? I can get it sort of working with the below but it has some weirdness (like chopping off random characters).\"\r\n\r\nAlso during the discussion someone mentioned [this issue from another board](https://neovim.discourse.group/t/lsp-formatting-deletes-characters-when-set-expandtab/2465).\r\n\r\nI'll open a separate issue because this is now off topic here.",
             "created_at": "2023-09-04T13:00:03Z",
             "html_url": "https://github.com/neovim/neovim/issues/17758#issuecomment-1705233679",
@@ -973,6 +930,50 @@
                 "type": "User",
                 "url": "https://api.github.com/users/telemachus"
             }
+        },
+        {
+            "author_association": "NONE",
+            "body": "I found a decent solution for my work, which doesn't require modifying vim.notify or print or silencing potential errors: https://github.com/JohnStarich/dotfiles/commit/0ec1eaa718caa20a1c2e2cee2c9afa1f1b370887\r\n```lua\r\nvim.api.nvim_create_autocmd(\"BufWritePre\", {\r\n    pattern = { \"*.go\" },\r\n    callback = function()\r\n        vim.lsp.buf.format()\r\n\r\n        local params = vim.lsp.util.make_range_params()\r\n        params.context = {only = {\"source.organizeImports\"}}\r\n        vim.lsp.buf_request_all(0, \"textDocument/codeAction\", params, function(responses)\r\n            for client_id, response in pairs(responses) do\r\n                if response.result then\r\n                    for _, result in pairs(response.result) do\r\n                        if result.edit then\r\n                            vim.lsp.util.apply_workspace_edit(result.edit, vim.lsp.get_client_by_id(client_id).offset_encoding)\r\n                        else\r\n                            vim.lsp.buf.execute_command(result.command)\r\n                        end\r\n                    end\r\n                    -- This routine is async, which I like because it doesn't lock up.\r\n                    -- However, it doesn't complete before the write, so it needs another write.\r\n                    -- The below write() *can* trigger an infinite loop of BufWritePre if the language server acts up.\r\n                    -- See the nvim-lspconfig issue for alternatives: https://github.com/neovim/nvim-lspconfig/issues/115\r\n                    vim.cmd.write()\r\n                end\r\n            end\r\n        end)\r\n    end,\r\n})\r\n```\r\nI took some inspiration from the discussion in nvim-lspconfig: https://github.com/neovim/nvim-lspconfig/issues/115\r\n\r\n(Commented here since https://github.com/neovim/neovim/pull/22651 is closed)",
+            "created_at": "2024-09-09T04:50:45Z",
+            "html_url": "https://github.com/neovim/neovim/issues/17758#issuecomment-2337109283",
+            "id": 2337109283,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/17758",
+            "node_id": "IC_kwDOAPphoM6LTXUj",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2337109283/reactions"
+            },
+            "updated_at": "2024-09-09T04:50:45Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2337109283",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1009441?v=4",
+                "events_url": "https://api.github.com/users/JohnStarich/events{/privacy}",
+                "followers_url": "https://api.github.com/users/JohnStarich/followers",
+                "following_url": "https://api.github.com/users/JohnStarich/following{/other_user}",
+                "gists_url": "https://api.github.com/users/JohnStarich/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/JohnStarich",
+                "id": 1009441,
+                "login": "JohnStarich",
+                "node_id": "MDQ6VXNlcjEwMDk0NDE=",
+                "organizations_url": "https://api.github.com/users/JohnStarich/orgs",
+                "received_events_url": "https://api.github.com/users/JohnStarich/received_events",
+                "repos_url": "https://api.github.com/users/JohnStarich/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/JohnStarich/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/JohnStarich/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/JohnStarich"
+            }
         }
     ],
     "comments": 22,
@@ -1012,7 +1013,7 @@
         {
             "color": "c5def5",
             "default": false,
-            "description": null,
+            "description": "stdlib",
             "id": 573222693,
             "name": "lua",
             "node_id": "MDU6TGFiZWw1NzMyMjI2OTM=",
@@ -1032,7 +1033,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 579,
+        "closed_issues": 645,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -1054,24 +1055,24 @@
             "type": "User",
             "url": "https://api.github.com/users/justinmk"
         },
-        "description": "Low priority. Not planned for the current target, may be reassigned.",
+        "description": "Low priority items. We plan to work on this but don't have a target date.",
         "due_on": null,
         "html_url": "https://github.com/neovim/neovim/milestone/6",
         "id": 655037,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 414,
+        "open_issues": 566,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2023-09-12T14:02:19Z",
+        "updated_at": "2024-09-09T18:06:19Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM5F7_RO",
     "number": 17758,
     "performed_via_github_app": null,
     "reactions": {
-        "+1": 6,
+        "+1": 8,
         "-1": 0,
         "confused": 0,
         "eyes": 0,
@@ -1079,7 +1080,7 @@
         "hooray": 0,
         "laugh": 0,
         "rocket": 0,
-        "total_count": 6,
+        "total_count": 8,
         "url": "https://api.github.com/repos/neovim/neovim/issues/17758/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
@@ -1087,7 +1088,7 @@
     "state_reason": null,
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/17758/timeline",
     "title": "nvim_create_autocmd: silent! Lua callback (silence errors)",
-    "updated_at": "2023-09-12T12:45:27Z",
+    "updated_at": "2024-09-09T08:34:10Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/17758",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1080789?v=4",

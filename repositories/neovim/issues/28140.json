@@ -5,10 +5,11 @@
     "author_association": "NONE",
     "body": "### Problem\n\nAs far as I am aware, there is not a straightforward way to attach hook into lsp hover windows. Autocmds don't provide enough information to reliably extend hover doc functionality and I am unaware of a reliable strategy to get the window or buffer ids of hover floats.\r\n\r\nIt is possible to hook into them by overriding the `vim.lsp.handlers[vim.lsp.protocol.Methods.textDocument_hover]` function, but overriding built-in functions is a hack way of solving this problem.\n\n### Expected behavior\n\nUsers should be able to hook into the creation of lsp hover windows to attach keymaps, modify buffer contents, apply custom functions, etc.\r\n\r\nFor example, adding a keymap to scroll the hover docs window without entering the window should be straightforward and not require overriding built-in functions (see #27288).\r\n\r\nI could be totally ignorant to some strategy for doing this, but I cannot find anything useful after hours of research.\r\nI am also unfamiliar with Neovim's source, so the suggested solutions could be terrible ideas.\r\n\r\nI would love to implement these solutions myself, but I'm curious if this is even wanted/needed before working on it.\r\n\r\n### Possible Solutions\r\n\r\n#### Give Hover Doc Buffers a Unique Filetype\r\n\r\nThis is the most simple solution. This allows users to hook into the window creation via the `FileType` auevent.\r\nOne downside of this solution is that you have to discover the window id via the buffer id, which isn't ideal.\r\n\r\n```lua\r\nvim.api.nvim_create_autocmd('Filetype', {\r\n    pattern = 'LspDocFloat',\r\n    callback = function(args)\r\n        vim.keymap.set('n', 'T', function() userFunction() end, { buffer = args.buf })\r\n    end\r\n})\r\n```\r\n\r\n#### Add an auevent for hover window creation\r\n\r\nMore complicated that adding a filetype, but potentially more useful. Would need to expose `args.win` and `args.buf`.\r\n\r\n```lua\r\nvim.api.nvim_create_autocmd('HoverNew', {\r\n    callback = function(args)\r\n        vim.keymap.set('n', 'T', function() userFunction(args.win) end, { buffer = args.buf })\r\n    end\r\n})\r\n```\r\n\r\n#### Expose the buffer and window ids via `vim.lsp.buf.hover()`\r\n\r\nProbably not even possible since the handler that creates the float seems to only be invoked on server response.\r\nUsers could then wrap their own function and call it in a keymap.\r\n\r\n```lua\r\nfunction M.hover()\r\n    local winnr, bufnr = vim.lsp.buf.hover()\r\n    -- do whatever you want that requires the winnr/bufnr\r\nend\r\n\r\nvim.keymap.set('n', 'K', function() M.hover() end)\r\n```\r\n",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "MEMBER",
-            "body": "> It is possible to hook into them by overriding the `vim.lsp.handlers[vim.lsp.protocol.Methods.textDocument_hover]` function, but overriding built-in functions is a hack way of solving this problem.\r\n\r\nsee\r\n\r\n- https://github.com/neovim/neovim/issues/24229\r\n- https://github.com/neovim/neovim/pull/22598#issuecomment-1463367606",
+            "body": "The LSP hover function could set a `b:lsp` variable on the hover window, then autocmds can check that.\r\n\r\n> It is possible to hook into them by overriding the `vim.lsp.handlers[vim.lsp.protocol.Methods.textDocument_hover]` function, but overriding built-in functions is a hack way of solving this problem.\r\n\r\nsee\r\n\r\n- https://github.com/neovim/neovim/issues/24229\r\n- https://github.com/neovim/neovim/pull/22598#issuecomment-1463367606",
             "created_at": "2024-04-09T20:31:41Z",
             "html_url": "https://github.com/neovim/neovim/issues/28140#issuecomment-2046000698",
             "id": 2046000698,
@@ -27,7 +28,7 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2046000698/reactions"
             },
-            "updated_at": "2024-04-09T20:31:41Z",
+            "updated_at": "2024-09-07T10:54:15Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2046000698",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -118,7 +119,7 @@
     "state_reason": null,
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/28140/timeline",
     "title": "LSP: hook into hover doc floating windows",
-    "updated_at": "2024-04-09T20:32:21Z",
+    "updated_at": "2024-09-07T10:54:15Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/28140",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/54562558?v=4",

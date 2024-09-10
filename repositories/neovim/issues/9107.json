@@ -2,12 +2,13 @@
     "active_lock_reason": null,
     "assignee": null,
     "assignees": [],
-    "author_association": "MEMBER",
+    "author_association": "CONTRIBUTOR",
     "body": "```vim\r\nfunction! F(...) dict\r\n  echom string(a:000).', '.string(self)\r\n  echom string(s:opts)\r\nendfunction\r\n\r\nlet opts = {}\r\nlet opts.stdout_buffered = 1\r\nlet opts.stderr_buffered = 1\r\nlet opts.on_exit = function('F')\r\n\" let opts.on_stdout = function('F')\r\n\" let opts.on_stderr = function('F')\r\nlet opts.pty = 1\r\n\r\nlet s:opts = opts\r\n\r\nlet job = jobstart(['cat', '/dev/stdin'], opts)\r\n\" let job = jobstart(['echo', '/dev/stdin'], s:opts)\r\ncall jobsend(job, ['foo'])\r\ncall jobclose(job, 'stdin')\r\n```\r\n\r\nRunning this with `nvim -u t-dev-stdin-buffered.vim` will cause the job to not being closed/stopped.\r\n\r\nThe log says:\r\n\r\n> INFO  2018-10-11T15:56:16.756 28066 channel_create_event:208: new channel 3 (…/t-dev-stdin-buffered.vim:16) : {\"id\": 3, \"mode\": \"bytes\", \"stream\": \"job\", \"pty\": \"/dev/pts/25\"}\r\n> INFO  2018-10-11T15:56:16.824 28066 main:590: starting main loop\r\n\r\nCalling `jobstop(job)` then says:\r\n> INFO  2018-10-11T15:56:57.007 28066 on_process_exit:385: exited: pid=28067 status=1 stoptime=0\r\n\r\nNVIM v0.3.2-671-g384770556",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "This happens without buffered output also already:\r\n```vim\r\nfunction! F(...) dict\r\n  echom string(a:000).', '.string(self)\r\n  echom string(s:opts)\r\nendfunction\r\n\r\nlet opts = {}\r\nlet opts.pty = 1\r\nlet opts.on_exit = function('F')\r\n\r\nlet s:opts = opts\r\n\r\nlet job = jobstart(['cat', '/dev/stdin'], opts)\r\ncall jobclose(job, 'stdin')\r\n```\r\n",
             "created_at": "2018-10-11T14:05:23Z",
             "html_url": "https://github.com/neovim/neovim/issues/9107#issuecomment-428968330",
@@ -51,7 +52,7 @@
             }
         },
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "Ah, it seems to be caused by not connecting `stdout` (not using `let opts.on_stdout = function('F')`), and not handling/reading `stdout` with buffered output correctly.",
             "created_at": "2018-10-11T14:10:19Z",
             "html_url": "https://github.com/neovim/neovim/issues/9107#issuecomment-428970112",
@@ -95,7 +96,7 @@
             }
         },
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "Manually sending SIGHUP makes it work, but the exit code will be 1 then:\r\n\r\n```vim\r\nfunction! F(...) dict\r\n  echom string(a:000).', '.string(self)\r\n  echom string(s:opts)\r\nendfunction\r\n\r\nlet opts = {}\r\nlet opts.stdout_buffered = 1\r\nlet opts.stderr_buffered = 1\r\nlet opts.on_exit = function('F')\r\n\" let opts.on_stdout = function('F')\r\n\" let opts.on_stderr = function('F')\r\nlet opts.pty = 1\r\n\r\nlet s:opts = opts\r\n\r\nlet job = jobstart(['cat', '/dev/stdin'], opts)\r\n\" let job = jobstart(['echo', '/dev/stdin'], s:opts)\r\ncall jobsend(job, ['foo'])\r\ncall jobclose(job, 'stdin')\r\n\r\ncall system('kill -SIGHUP '.jobpid(job))\r\n```\r\n\r\nLog:\r\n```\r\nINFO  2018-10-11T16:11:46.964 32436 channel_create_event:208: new channel 3 (…/t-dev-stdin-buffered.vim:16) : {\"id\": 3, \"mode\": \"bytes\", \"stream\": \"job\", \"pty\": \"/dev/pts/25\"}\r\nINFO  2018-10-11T16:11:46.967 32436 on_process_exit:385: exited: pid=32437 status=1 stoptime=0\r\nINFO  2018-10-11T16:11:46.967 32436 on_process_exit:385: exited: pid=32438 status=0 stoptime=0\r\nINFO  2018-10-11T16:11:47.009 32436 main:590: starting main loop\r\n```\r\n\r\n`:mess`:\r\n```\r\n[3, 1, 'exit'], {'stdout_buffered': 1, 'on_exit': function('F'), 'stderr_buffered': 1, 'stdou\r\nt': ['foo'], 'pty': 1}\r\n```\r\n",
             "created_at": "2018-10-11T14:13:32Z",
             "html_url": "https://github.com/neovim/neovim/issues/9107#issuecomment-428971205",
@@ -139,7 +140,7 @@
             }
         },
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "And with `pty=1` it appears to get `stdin` on `stdout`?!\r\n\r\nThe following will have \"foo\" on \"stdout\", but not \"sbb\"?!\r\n\r\n```vim\r\nfunction! F(...) dict\r\n  echom string(a:000).', '.string(self)\r\nendfunction\r\n\r\nlet opts = {}\r\nlet opts.on_exit = function('F')\r\nlet opts.on_stdout = function('F')\r\nlet opts.on_stderr = function('F')\r\nlet opts.pty = 1\r\n\r\nlet job = jobstart(['rot13'], opts)\r\ncall jobsend(job, ['foo'])\r\ncall jobclose(job, 'stdin')\r\n```\r\n\r\n`:mess`:\r\n```\r\n[3, ['foo'], 'stdout'], {'on_exit': function('F'), 'on_stdout': function('F'), 'on_stderr': f\r\nunction('F'), 'pty': 1}\r\n```\r\n\r\nBisected this one to fee367a74 - /cc @bfredl",
             "created_at": "2018-10-11T14:32:39Z",
             "html_url": "https://github.com/neovim/neovim/issues/9107#issuecomment-428978241",
@@ -227,7 +228,7 @@
             }
         },
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "Ah.\r\n\r\n> Use ctrl-d \\x04 to signal end of input to the child process.\r\n\r\nWouldn't that be what `jobclose(job, 'stdin')` should do then?\r\n\r\nAs for the previous comment.. using `jobsend(job, nr2char(4))` then makes it stop, but it will have both \"foo\" and \"sbb\" on stdout then.\r\nBut that reflects the \"stdin and stdout is the same fd\" then.\r\n\r\nIt looks like \"pty\" and \"stdin\" cannot be used then together, right?",
             "created_at": "2018-10-11T15:11:36Z",
             "html_url": "https://github.com/neovim/neovim/issues/9107#issuecomment-428993190",
@@ -271,7 +272,7 @@
             }
         },
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "What I wanted to achieve is having `/dev/stdin` (for hadolint) available, which appears to only be available with `pty=1`.",
             "created_at": "2018-10-11T15:13:10Z",
             "html_url": "https://github.com/neovim/neovim/issues/9107#issuecomment-428993801",
@@ -359,7 +360,7 @@
             }
         },
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "Ok, thanks for the explanation!\r\n\r\nUsing `let maker = {'exe': 'sh', 'args': ['-s', '-c', \"stty -echo; tr o 0\"]}` and `sleep 1` before `jobsend()` (for stdin) will not echo it.",
             "created_at": "2018-10-11T15:24:19Z",
             "html_url": "https://github.com/neovim/neovim/issues/9107#issuecomment-428998091",
@@ -447,7 +448,7 @@
             }
         },
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "This will turn off echo by default, which appears to be sensible, isn't it?\r\n\r\n```diff\r\ndiff --git i/src/nvim/os/pty_process_unix.c w/src/nvim/os/pty_process_unix.c\r\nindex bafbfe1e4..a55f1e59d 100644\r\n--- i/src/nvim/os/pty_process_unix.c\r\n+++ w/src/nvim/os/pty_process_unix.c\r\n@@ -57,6 +57,7 @@ int pty_process_spawn(PtyProcess *ptyproc)\r\n   if (!termios_default.c_cflag) {\r\n     // TODO(jkeyes): We could pass NULL to forkpty() instead ...\r\n     init_termios(&termios_default);\r\n+    termios_default.c_lflag &= ~(ECHO);\r\n   }\r\n \r\n   int status = 0;  // zero or negative error code (libuv convention)\r\n```\r\n\r\nHow is \"not wait for NL or CTRL-D\" configured?  (appear to be related to `ICANON`, but without this the job never finishes then)\r\nAlso some generic function like `cfmakeraw` might be sensible?",
             "created_at": "2018-10-11T16:15:01Z",
             "html_url": "https://github.com/neovim/neovim/issues/9107#issuecomment-429018513",
@@ -535,7 +536,7 @@
             }
         },
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "Yeah, that was only meant as some \"this works in this case\" patch - likely it would also affect `:term` in this case?!\r\n\r\nAnyway, isn't `init_termios` biased anyway already?\r\nhttps://github.com/neovim/neovim/blob/384770556ba02433904baf78f499b9bb48010040/src/nvim/os/pty_process_unix.c#L186-L239",
             "created_at": "2018-10-11T17:49:01Z",
             "html_url": "https://github.com/neovim/neovim/issues/9107#issuecomment-429053664",
@@ -667,7 +668,7 @@
             }
         },
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": ">> What I wanted to achieve is having /dev/stdin (for hadolint) available, which appears to only be available with pty=1.\r\n\r\n> This is an unfortunate limitation. Only a subset of linux IPC is reified as \"real\" filenames that /dev/stdin can link to.\r\n\r\nWhere is this done?\r\nHow can this be simulated, e.g. to test `hadolint` outside of Neovim with this? (https://github.com/hadolint/hadolint/issues/273)",
             "created_at": "2018-10-11T23:11:37Z",
             "html_url": "https://github.com/neovim/neovim/issues/9107#issuecomment-429152041",
@@ -755,7 +756,7 @@
             }
         },
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "Thanks again!\r\n\r\n> `cat filename| hadolint ...`\r\n\r\nThat unfortunately does not work (directly) when using a wrapper script to run hadolint in a Docker image (`exec /usr/bin/docker run --rm -i hadolint/hadolint hadolint \"${@:--}\"`).",
             "created_at": "2018-10-12T11:29:09Z",
             "html_url": "https://github.com/neovim/neovim/issues/9107#issuecomment-429294778",
@@ -843,7 +844,7 @@
             }
         },
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "The file to be linted is outside of Docker.\r\nWhat appears to work though is using a mount to get the file into the container instead of using stdin:\r\n`/usr/bin/docker run --rm -i -v $PWD:/mnt hadolint/hadolint hadolint /mnt/Dockerfile`\r\nBut I think fixing hadolint itself to not require the pseudo file would be the best.",
             "created_at": "2018-10-12T12:24:17Z",
             "html_url": "https://github.com/neovim/neovim/issues/9107#issuecomment-429307809",
@@ -931,7 +932,7 @@
             }
         },
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "Ah.. with `cat Dockerfile | hadolint -` `/dev/stdin` is available though.  I've thought that it would be related to how Neovim spawns the job, and could be simluated by some terminal option etc.\r\nI think it is fine for now, and I'll wait to feedback on the hadolint issue to use the fd directly.",
             "created_at": "2018-10-12T12:53:46Z",
             "html_url": "https://github.com/neovim/neovim/issues/9107#issuecomment-429315347",
@@ -975,7 +976,7 @@
             }
         },
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "Gave it a shot in https://github.com/neovim/neovim/pull/10557.",
             "created_at": "2019-07-20T23:15:30Z",
             "html_url": "https://github.com/neovim/neovim/issues/9107#issuecomment-513505858",
@@ -1089,18 +1090,18 @@
             "url": "https://api.github.com/repos/neovim/neovim/labels/terminal"
         },
         {
-            "color": "c5def5",
+            "color": "c7def8",
             "default": false,
-            "description": null,
-            "id": 694783760,
-            "name": "channel",
-            "node_id": "MDU6TGFiZWw2OTQ3ODM3NjA=",
-            "url": "https://api.github.com/repos/neovim/neovim/labels/channel"
+            "description": "channels, RPC, msgpack",
+            "id": 242522707,
+            "name": "channels-rpc",
+            "node_id": "MDU6TGFiZWwyNDI1MjI3MDc=",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/channels-rpc"
         },
         {
             "color": "c5def5",
             "default": false,
-            "description": null,
+            "description": "OS resources, pipes, streams",
             "id": 713599092,
             "name": "system",
             "node_id": "MDU6TGFiZWw3MTM1OTkwOTI=",
@@ -1111,7 +1112,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 601,
+        "closed_issues": 645,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -1133,17 +1134,17 @@
             "type": "User",
             "url": "https://api.github.com/users/justinmk"
         },
-        "description": "Low priority. Not planned for the current target, may be reassigned.",
+        "description": "Low priority items. We plan to work on this but don't have a target date.",
         "due_on": null,
         "html_url": "https://github.com/neovim/neovim/milestone/6",
         "id": 655037,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 515,
+        "open_issues": 566,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2024-04-01T02:46:11Z",
+        "updated_at": "2024-09-09T18:06:19Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "MDU6SXNzdWUzNjkxMzY2ODc=",
@@ -1166,7 +1167,7 @@
     "state_reason": null,
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/9107/timeline",
     "title": "pty: add options to control input buffering and echo",
-    "updated_at": "2024-03-30T13:12:11Z",
+    "updated_at": "2024-09-09T10:41:04Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/9107",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/9766?v=4",

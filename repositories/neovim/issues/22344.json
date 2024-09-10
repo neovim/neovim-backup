@@ -5,6 +5,7 @@
     "author_association": "NONE",
     "body": "### Describe the bug\r\n\r\nRelated to https://github.com/folke/noice.nvim/issues/17, https://github.com/neovide/neovide/issues/1751, and maybe #21265\r\nNeovide version (patched for debugging): https://github.com/ryo33/neovide/commit/db6ba6d783e098614521b3b0e7299fcc22209a50\r\nNoice.nvim version: https://github.com/folke/noice.nvim/commit/d8a1f3056ad713b5d471048f8d029264828e22c0\r\nnvim-notify version: https://github.com/rcarriga/nvim-notify/commit/bdd647f61a05c9b8a57c83b78341a0690e9c29d7\r\nnui.nvim version: https://github.com/MunifTanjim/nui.nvim/commit/d147222a1300901656f3ebd5b95f91732785a329\r\n\r\n## Abstract\r\n\r\nUsing Neovide GUI with noice.nvim suddenly crashes occasionally. I've found that, in most cases, it's caused by Neovim emitting an Ill-formed redraw event and subsequent rpc messages are broken (see Appendix 2.) Some people report the sudden crash in the same case, and [one reported the almost same backtrace as mine](https://github.com/neovide/neovide/issues/1751#issuecomment-1435671936).\r\n\r\nThe event from `neovide_backtrace.log` with printing in [ron format](https://github.com/ron-rs/ron) at: `(File: src/bridge/handler.rs; Line: 77, Column: 25)`\r\n```ron\r\n[\r\n    \"msg_show\",\r\n    [\r\n        [],\r\n        [\r\n            true,\r\n        ],\r\n        [\r\n            \"msg_showcmd\",\r\n            [\r\n                [],\r\n            ],\r\n        ],\r\n    ],\r\n]\r\n```\r\n\r\n## The situation\r\n\r\n- Neovide call `ui_attach` with `ext_linegrid` and `rgb`.\r\n- noice.nvim call `ui_attach` with `ext_messages`, `ext_cmdline`, and `ext_popupmenu`.\r\n- noice.nvim sometimes trigger redraw while handling events.\r\n  - https://github.com/neovide/neovide/issues/1751#issuecomment-1435915499\r\n  - https://github.com/neovide/neovide/issues/1751#issuecomment-1436498838\r\n\r\n## Appendix 1.\r\n\r\nStarting Neovim with `nvim -u NONE` and running the following lua code without `--` in front of `print(\"hello\")` crashes neovim silently. This might be related to this issue. If someone tells me that this is an unexpected behavior, I'll open another issue.\r\n\r\n```lua\r\nlocal first = true\r\nlocal ns = vim.api.nvim_create_namespace \"test\"\r\nvim.ui_attach(ns, {\r\n  ext_messages = true,\r\n}, function(event, kind, content, replace_last)\r\n  if first then\r\n    -- print(\"hello\")\r\n    first = false\r\n  end\r\nend)\r\n```\r\n\r\nEdited: I noticed there is #21265\r\n\r\n## Appendix 2.\r\n\r\nTo ensure that the MessagePack and RPC implementation Neovide uses isn't doing wrong, I write the following Python script:\r\n\r\n```python\r\nimport sys\r\nimport pprint\r\nfrom pynvim import attach\r\npath = sys.argv[1]\r\nnvim = attach(\"socket\", path = path)\r\nnvim.ui_attach(1000, 1000, True, ext_linegrid = True)\r\npp = pprint.PrettyPrinter(indent=2, width=40)\r\ndef on_notify(name, args):\r\n    if name != \"redraw\":\r\n        return\r\n    str = pp.pformat(args)\r\n    if \"'msg_show'\" not in str:\r\n        return\r\n    print(str)\r\n\r\ndef on_request(name, args):\r\n    pass\r\n\r\nnvim.run_loop(on_request, on_notify)\r\n```\r\n\r\nIt prints:\r\n\r\n<details>\r\n  <summary>Click me</summary>\r\n\r\n```\r\n[ ['cmdline_hide', [1]],\r\n  [ 'msg_show',\r\n    [ 'emsg',\r\n      [[4, 'E32: No file name']],\r\n      False]],\r\n  ['mode_change', ['normal', 0]],\r\n  ['mouse_on', []],\r\n  ['flush', []]]\r\n[ [ 'win_viewport',\r\n    [ 2,\r\n      <Window(handle=1000)>,\r\n      0,\r\n      10,\r\n      1,\r\n      0,\r\n      6]],\r\n  [ 'grid_line',\r\n    [1, 2, 0, [[' ', 0]]],\r\n    [1, 3, 0, [[' ', 0]]],\r\n    [1, 5, 0, [['a', 0]]],\r\n    [1, 6, 0, [['~', 7], [' ', 7, 71]]],\r\n    [1, 7, 0, [['~', 7], [' ', 7, 71]]],\r\n    [1, 8, 0, [['~', 7], [' ', 7, 71]]],\r\n    [1, 26, 54, [['2', 9]]]],\r\n  [ 'hl_attr_define',\r\n    [ 383,\r\n      { 'background': 16711935,\r\n        'foreground': 11140968},\r\n      { 'background': 13,\r\n        'foreground': 0},\r\n      []],\r\n    [ 384,\r\n      { 'background': 16711935,\r\n        'foreground': 5203794},\r\n      { 'background': 13,\r\n        'foreground': 0},\r\n      []]],\r\n  [ 'grid_line',\r\n    [ 1,\r\n      0,\r\n      20,\r\n      [ ['╭', 65],\r\n        ['─', 65, 50],\r\n        ['╮']]],\r\n    [1, 1, 20, [['│', 65]]],\r\n    [1, 1, 71, [['│', 65]]],\r\n    [1, 2, 20, [['│', 65]]],\r\n    [1, 2, 71, [['│', 65]]],\r\n    [1, 3, 20, [['│', 65]]],\r\n    [1, 3, 71, [['│', 65]]],\r\n    [ 1,\r\n      4,\r\n      20,\r\n      [ ['╰', 65],\r\n        ['─', 65, 50],\r\n        ['╯']]],\r\n    [ 1,\r\n      1,\r\n      21,\r\n      [ [' ', 41],\r\n        ['\\uf057', 343],\r\n        [' '],\r\n        ['E'],\r\n        ['r', 343, 2],\r\n        ['o'],\r\n        ['r'],\r\n        [' ', 343, 5],\r\n        [' ', 41, 31],\r\n        ['2', 343, 2],\r\n        [':'],\r\n        ['4'],\r\n        ['3'],\r\n        [' ', 41]]],\r\n    [1, 2, 21, [['━', 342, 50]]],\r\n    [ 1,\r\n      3,\r\n      21,\r\n      [ ['E', 382],\r\n        ['3'],\r\n        ['2'],\r\n        [':'],\r\n        [' '],\r\n        ['N'],\r\n        ['o'],\r\n        [' '],\r\n        ['f'],\r\n        ['i'],\r\n        ['l'],\r\n        ['e'],\r\n        [' '],\r\n        ['n'],\r\n        ['a'],\r\n        ['m'],\r\n        ['e'],\r\n        [' ', 41, 33]]]],\r\n  [ 'msg_show',\r\n    ['', [[0, '3 fewer lines']], True]],\r\n  ['msg_showmode', [[]]],\r\n  [ 'win_viewport',\r\n    [ 2,\r\n      <Window(handle=1000)>,\r\n      0,\r\n      7,\r\n      1,\r\n      0,\r\n      6]],\r\n  [ 'grid_line',\r\n    [ 1,\r\n      5,\r\n      20,\r\n      [ ['╭', 67],\r\n        ['─', 67, 50],\r\n        ['╮']]],\r\n    [ 1,\r\n      6,\r\n      20,\r\n      [ ['│', 67],\r\n        [' ', 41],\r\n        ['\\uf05a', 383],\r\n        [' '],\r\n        ['M'],\r\n        ['e'],\r\n        ['s', 383, 2],\r\n        ['a'],\r\n        ['g'],\r\n        ['e'],\r\n        ['s'],\r\n        [' ', 41, 33],\r\n        ['2', 383, 2],\r\n        [':'],\r\n        ['4'],\r\n        ['3'],\r\n        [' ', 41],\r\n        ['│', 67]]],\r\n    [ 1,\r\n      7,\r\n      20,\r\n      [ ['│', 67],\r\n        ['━', 384, 50],\r\n        ['│', 67]]],\r\n    [ 1,\r\n      8,\r\n      20,\r\n      [ ['│', 67],\r\n        ['3', 41],\r\n        [' '],\r\n        ['f'],\r\n        ['e'],\r\n        ['w'],\r\n        ['e'],\r\n        ['r'],\r\n        [' '],\r\n        ['l'],\r\n        ['i'],\r\n        ['n'],\r\n        ['e'],\r\n        ['s'],\r\n        [' ', 41, 37],\r\n        ['│', 67]]],\r\n    [ 1,\r\n      9,\r\n      20,\r\n      [ ['╰', 67],\r\n        ['─', 67, 50],\r\n        ['╯']]]],\r\n  ['grid_cursor_goto', [1, 26, 55]],\r\n  ['flush', []]]\r\n[ [ 'msg_show',\r\n    [ [],\r\n      [True],\r\n      ['msg_showcmd', [[]]]]],\r\n  ['grid_cursor_goto', [1, 1, 0]],\r\n  ['mode_change', ['normal', 0]],\r\n  ['flush', []],\r\n  [ 2,\r\n    'redraw',\r\n    [ [ 'grid_line',\r\n        [ 1,\r\n          5,\r\n          20,\r\n          [ ['╭', 67],\r\n            ['─', 67, 50],\r\n            ['╮']]],\r\n        [1, 6, 20, [['│', 67]]],\r\n        [1, 6, 71, [['│', 67]]],\r\n        [1, 7, 20, [['│', 67]]],\r\n        [1, 7, 71, [['│', 67]]],\r\n        [1, 8, 20, [['│', 67]]],\r\n        [1, 8, 71, [['│', 67]]],\r\n        [ 1,\r\n          9,\r\n          20,\r\n          [ ['╰', 67],\r\n            ['─', 67, 50],\r\n            ['╯']]],\r\n        [ 1,\r\n          6,\r\n          21,\r\n          [ [' ', 41],\r\n            ['\\uf05a', 383],\r\n            [' '],\r\n            ['M'],\r\n            ['e'],\r\n            ['s', 383, 2],\r\n            ['a'],\r\n            ['g'],\r\n            ['e'],\r\n            ['s'],\r\n            [' ', 41, 33],\r\n            ['2', 383, 2],\r\n            [':'],\r\n            ['4'],\r\n            ['3'],\r\n            [' ', 41]]],\r\n        [1, 7, 21, [['━', 384, 50]]],\r\n        [ 1,\r\n          8,\r\n          21,\r\n          [ ['3', 41],\r\n            [' '],\r\n            ['f'],\r\n            ['e'],\r\n            ['w'],\r\n            ['e'],\r\n            ['r'],\r\n            [' '],\r\n            ['l'],\r\n            ['i'],\r\n            ['n'],\r\n            ['e'],\r\n            ['s'],\r\n            [' ', 41, 37]]],\r\n        [ 1,\r\n          0,\r\n          20,\r\n          [ ['╭', 65],\r\n            ['─', 65, 50],\r\n            ['╮']]],\r\n        [1, 1, 20, [['│', 65]]],\r\n        [1, 1, 71, [['│', 65]]],\r\n        [1, 2, 20, [['│', 65]]],\r\n        [1, 2, 71, [['│', 65]]],\r\n        [1, 3, 20, [['│', 65]]],\r\n        [1, 3, 71, [['│', 65]]],\r\n        [ 1,\r\n          4,\r\n          20,\r\n          [ ['╰', 65],\r\n            ['─', 65, 50],\r\n            ['╯']]],\r\n        [ 1,\r\n          1,\r\n          21,\r\n          [ [' ', 41],\r\n            ['\\uf057', 343],\r\n            [' '],\r\n            ['E'],\r\n            ['r', 343, 2],\r\n            ['o'],\r\n            ['r'],\r\n            [' ', 343, 5],\r\n            [' ', 41, 31],\r\n            ['2', 343, 2],\r\n            [':'],\r\n            ['4'],\r\n            ['3'],\r\n            [' ', 41]]],\r\n        [1, 2, 21, [['━', 342, 50]]],\r\n        [ 1,\r\n          3,\r\n          21,\r\n          [ ['E', 382],\r\n            ['3'],\r\n            ['2'],\r\n            [':'],\r\n            [' '],\r\n            ['N'],\r\n            ['o'],\r\n            [' '],\r\n            ['f'],\r\n            ['i'],\r\n            ['l'],\r\n            ['e'],\r\n            [' '],\r\n            ['n'],\r\n            ['a'],\r\n            ['m'],\r\n            ['e'],\r\n            [' ', 41, 33]]]],\r\n      ['msg_showmode', [[]]],\r\n      [ 'win_viewport',\r\n        [ 2,\r\n          <Window(handle=1000)>,\r\n          0,\r\n          7,\r\n          1,\r\n          0,\r\n          6]],\r\n      ['flush', []]]]]\r\n```\r\n\r\n</details>\r\n\r\n### Steps to reproduce\r\n\r\nneovide -- -u NONE\r\n:packadd nvim-notify\r\n:packadd nui.nvim\r\n:packadd noice.nvim\r\n:lua require(\"noice\").setup {}\r\n\" 1. input several lines\r\n\" 2. type 'd2k' in normal mode\r\n\" repeat 1 and 2 a few times \r\n\r\n### Expected behavior\r\n\r\nNeovim emits a well-formed redraw event.\r\n\r\n### Neovim version (nvim -v)\r\n\r\nNVIM v0.9.0-dev-1004+gbfe6b4944-dirty\r\n\r\n### Vim (not Nvim) behaves the same?\r\n\r\nno\r\n\r\n### Operating system/version\r\n\r\nUbuntu 22.04.1 LTS\r\n\r\n### Terminal name/version\r\n\r\nGNOME Terminal Version 3.44.0 for GNOME 42\r\n\r\n### $TERM environment variable\r\n\r\nxterm-256color\r\n\r\n### Installation\r\n\r\nhomebrew (linuxbrew)",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "NONE",
@@ -16,7 +17,7 @@
             "node_id": "IC_kwDOAPphoM5VsvWF",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 4,
+                "+1": 5,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -24,7 +25,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 4,
+                "total_count": 5,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1437791621/reactions"
             },
             "updated_at": "2023-02-21T02:58:55Z",
@@ -334,7 +335,25 @@
         {
             "color": "c5def5",
             "default": false,
-            "description": null,
+            "description": "libnvim, Nvim RPC API",
+            "id": 103819671,
+            "name": "api",
+            "node_id": "MDU6TGFiZWwxMDM4MTk2NzE=",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/api"
+        },
+        {
+            "color": "c5def5",
+            "default": false,
+            "description": "",
+            "id": 113026979,
+            "name": "ui",
+            "node_id": "MDU6TGFiZWwxMTMwMjY5Nzk=",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/ui"
+        },
+        {
+            "color": "c5def5",
+            "default": false,
+            "description": "stdlib",
             "id": 573222693,
             "name": "lua",
             "node_id": "MDU6TGFiZWw1NzMyMjI2OTM=",
@@ -345,14 +364,50 @@
             "default": false,
             "description": "UI extensibility, events, protocol",
             "id": 640132777,
-            "name": "ui-ext",
+            "name": "ui-extensibility",
             "node_id": "MDU6TGFiZWw2NDAxMzI3Nzc=",
-            "url": "https://api.github.com/repos/neovim/neovim/labels/ui-ext"
+            "url": "https://api.github.com/repos/neovim/neovim/labels/ui-extensibility"
         }
     ],
     "labels_url": "https://api.github.com/repos/neovim/neovim/issues/22344/labels{/name}",
     "locked": false,
-    "milestone": null,
+    "milestone": {
+        "closed_at": null,
+        "closed_issues": 645,
+        "created_at": "2014-05-10T20:43:04Z",
+        "creator": {
+            "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+            "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+            "followers_url": "https://api.github.com/users/justinmk/followers",
+            "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+            "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+            "gravatar_id": "",
+            "html_url": "https://github.com/justinmk",
+            "id": 1359421,
+            "login": "justinmk",
+            "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+            "organizations_url": "https://api.github.com/users/justinmk/orgs",
+            "received_events_url": "https://api.github.com/users/justinmk/received_events",
+            "repos_url": "https://api.github.com/users/justinmk/repos",
+            "site_admin": false,
+            "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+            "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+            "type": "User",
+            "url": "https://api.github.com/users/justinmk"
+        },
+        "description": "Low priority items. We plan to work on this but don't have a target date.",
+        "due_on": null,
+        "html_url": "https://github.com/neovim/neovim/milestone/6",
+        "id": 655037,
+        "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
+        "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
+        "number": 6,
+        "open_issues": 566,
+        "state": "open",
+        "title": "backlog",
+        "updated_at": "2024-09-09T18:06:19Z",
+        "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
+    },
     "node_id": "I_kwDOAPphoM5e5At6",
     "number": 22344,
     "performed_via_github_app": null,
@@ -372,8 +427,8 @@
     "state": "open",
     "state_reason": null,
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/22344/timeline",
-    "title": "Neovim emits an ill-formed redraw event with Neovide and noice.nvim",
-    "updated_at": "2023-07-25T03:42:01Z",
+    "title": "ui_attach: ill-formed redraw event with Neovide and noice.nvim",
+    "updated_at": "2024-09-04T13:19:31Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/22344",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/8780513?v=4",
