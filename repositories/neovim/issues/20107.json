@@ -45,6 +45,7 @@
     "author_association": "MEMBER",
     "body": "### Background\r\n\r\nThe `vim.{o,bo,wo,go}` metamethods allow getting and setting Neovim options from Lua and are full replacements for the `:set` ~~and `:setlocal`~~ commands. (The drawback of `vim.bo` and `vim.wo` over `:set` is that users need to know whether a local option is buffer-local or window-local, but 1. that information is easily looked up via `:h '<option>'` and 2. this is more than made up for by being able to target specific buffers or windows via `vim.bo[bufnr]` or `vim.wo[winid]`, respectively.)\r\n\r\nHowever, Vim has a number of string options that are actually lists (either \"commalists\" like `runtimepath` or \"flaglists\" like `formatoptions`) or dictionaries (like `listchars`), which are cumbersome to manipulate as strings from Lua. For this, `vim.opt` offers a convenient special (object-oriented) table-based interface:\r\n\r\nFor dictionaries:\r\n* `vim.opt.listchars = { space = '_', tab = '>-'}`\r\n* `vim.opt.listchars:append({tab = '>-'})` (same as `set listchars+=tab:>-`)\r\n* `vim.opt.listchars:remove('tab')` (same as `set listchars-=tab:>-`)\r\n* `vim.opt.listchars:get()` (returns a table, e.g. `{ space = '_', tab = '>-'}`)\r\n\r\nSimilarly for flaglists (which are represented by a \"set\" (`table<string,boolean>`), e.g.\r\n* `vim.opt.formatoptions = { j = true, c = true}`\r\n\r\nAnd for commalists, which can be ordered (in particular `runtimepath`) additionally\r\n* `vim.opt.runtimepath:append('/tmp')` (same as `set runtimepath+=/tmp`)\r\n* `vim.opt.runtimepath:prepend('/tmp')` (same as `set runtimepath^=/tmp`)\r\n* `vim.opt.runtimepath:remove('/tmp')` (same as `set runtimepath-=/tmp`)\r\n\r\n\r\nBut the existence of two different interfaces is confusing, especially since `vim.opt` can work with number and boolean options as well.\r\n\r\n### Proposal\r\n\r\nTo unify these two interfaces, make `vim.{o,bo,wo,go}` return **tables** for such list- and map-style options (other options are unaffected). This information should be scraped from the metadata in `src/nvim/options.lua`.\r\nOne difficulty is that we cannot put too much \"metamagic\" into these tables without losing the possibility to nicely print or otherwise work with them (hence the need for `:get()` in `vim.opt`). The proposal would be to keep the metamagic in the `vim.o` accessors so that users would only see normal tables. The flip side is that the option keys cannot be manipulated individually (that would require adding an `__index` on the `vim.o.listchars` table), so the option has to be copied to a local table, which can be edited and then reassigned to the option. (The exact same situation occurs when [accessing vimscript dictionaries via `vim.g`](https://github.com/nanotee/nvim-lua-guide#caveats-3).)\r\n\r\nThe proposal is therefore to add new convenience functions to allow a one-line replacement of the statements above:\r\n\r\n* `vim.dict_set_key(table, key, value)` with `value = true` as default\r\n* `vim.dict_del_key(table, key)`\r\n* `vim.list_set_key(table, key, position)` with `position = #table+1` as default\r\n* `vim.list_del_key(table, key)`\r\n* `vim.tbl_del(table, key)`\r\n\r\nThe first two functions would also be useful for working with `vim.g.dict`; the last function is used to implement the other `del` functions and is of general usefulness.\r\n\r\n\r\nOne can then do for dictionary options (matching the first list above, item by item):\r\n* `vim.o.listchars = { space = '_', tab = '>-'}` (or `= 'space:_,tab:>-'`; the metamethod could dispatch on the argument type)\r\n* `vim.o.listchars = vim.dict_set_key(vim.o.listchars, 'tab', '>-'`)`\r\n* `vim.o.listchars = vim.dict_del_key(vim.o.listchars, 'tab')`\r\n* `vim.o.listchars`\r\n\r\nFor flaglists:\r\n* `vim.o.formatoptions = { j = true, c = true }` (or `= 'jc'`)\r\n* `vim.o.formatoptions = vim.dict_set_key(vim.o.formatoptions, 'l')`\r\n* `vim.o.formatoptions = vim.dict_del_key(vim.o.formatoptions, 'c')`\r\n* `vim.o.formatoptions`\r\n\r\nFor commalists:\r\n* `vim.o.runtimepath = vim.list_set_key(vim.o.runtimepath, '/tmp')`\r\n* `vim.o.runtimepath = vim.list_set_key(vim.o.runtimepath, '/tmp', 1)`\r\n* `vim.o.runtimepath = vim.list_del_key(vim.o.runtimepath, '/tmp')`\r\n\r\nThis would be a breaking change since, e.g., `vim.o.listchars` would now return a table instead of a string;\r\nbut it still remains possible to use `vim.api.nvim_get_option_value('listchars', {})` directly to get the raw string.\r\n\r\n### Outlook\r\n\r\nFurther on, the conversion to and from tables could be handled by `vim.api.nvim_{get,set}_option_value` via a new key to `opts` (which should not affect the user interface of `vim.o` and friends).  Even further, it could be useful to change the internal representation of these list- and dict-style options to actual tables and convert to string only when necessary, e.g. for access from Vimscript.",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -375,7 +376,7 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1282518327/reactions"
             },
-            "updated_at": "2022-10-18T14:49:08Z",
+            "updated_at": "2024-09-15T19:52:09Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1282518327",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",
@@ -419,7 +420,7 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1282527459/reactions"
             },
-            "updated_at": "2022-10-18T14:55:04Z",
+            "updated_at": "2024-09-15T19:52:03Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1282527459",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/26169924?v=4",
@@ -463,7 +464,7 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1282528871/reactions"
             },
-            "updated_at": "2022-10-18T14:55:56Z",
+            "updated_at": "2024-09-15T19:51:56Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1282528871",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",
@@ -755,7 +756,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 616,
+        "closed_issues": 647,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -777,17 +778,17 @@
             "type": "User",
             "url": "https://api.github.com/users/justinmk"
         },
-        "description": "Low priority. Not planned for the current target, may be reassigned.",
+        "description": "Low priority items. We plan to work on this but don't have a target date.",
         "due_on": null,
         "html_url": "https://github.com/neovim/neovim/milestone/6",
         "id": 655037,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 536,
+        "open_issues": 571,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2024-05-13T02:16:08Z",
+        "updated_at": "2024-09-15T19:16:56Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM5RVdih",
@@ -809,8 +810,8 @@
     "state": "open",
     "state_reason": null,
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/20107/timeline",
-    "title": "vim.o (bo/wo/go) works with tables (meta accessors)",
-    "updated_at": "2024-05-12T09:15:55Z",
+    "title": "vim.o (bo/wo/go) works with tables (meta accessors), deprecate vim.opt",
+    "updated_at": "2024-09-15T19:52:09Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/20107",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/2361214?v=4",

@@ -45,6 +45,7 @@
     "author_association": "MEMBER",
     "body": "<!-- Before reporting: search existing issues and check the FAQ. -->\r\n\r\n- `nvim --version`: NVIM v0.5.0-690-g4d3ef578e\r\n\r\n### Steps to reproduce using `nvim -u NORC`\r\n\r\nWith a UI that has the `ext_linegrid` and `rgb` extensions, use `:hi Normal gui=strikethrough`. Here's a reproducer:\r\n\r\n```python\r\nimport time\r\nfrom pynvim import attach\r\nfrom threading import Thread\r\n\r\ninteresting_events = []\r\n\r\nclass UIThread(Thread):\r\n    def __init__(self, nvim):\r\n        Thread.__init__(self)\r\n        self.nvim = nvim\r\n        self.do_print = False\r\n    def run(self):\r\n        self.nvim.run_loop(self.callback, self.callback)\r\n    def callback(self, event_name, events):\r\n        [print(event) for event in events if (event[0] in interesting_events)]\r\n\r\nnvim = attach('child', argv=[\"/home/me/bin/nvim\", \"--embed\", \"-u\", \"NORC\", \"-i\", \"NONE\", \"-c\", \"set laststatus=0\"])\r\nui = UIThread(nvim)\r\nui.start()\r\n\r\n# Create UI\r\nnvim.async_call(nvim.ui_attach, 12, 2, ext_linegrid = True, rgb = True)\r\n\r\n# Wait for setup information to arrive\r\ntime.sleep(1)\r\n\r\n# Now start logging \"hl_attr_define\" and \"default_colors_set\"\r\ninteresting_events = interesting_events + [\"hl_attr_define\", \"default_colors_set\"]\r\n\r\n# Change Normal highlight. This creates a new highlight id\r\nnvim.async_call(nvim.input, \":hi Normal ctermfg=white ctermbg=black cterm=strikethrough guifg=white guibg=black gui=strikethrough\")\r\nnvim.async_call(nvim.input, \"<Enter>\")\r\n\r\n# Enter insert mode\r\nnvim.async_call(nvim.input, \"a\")\r\n\r\n# Wait a bit for changes to settle\r\ntime.sleep(1)\r\n\r\n# Now start logging grid_line too\r\ninteresting_events = interesting_events + [\"grid_line\"]\r\n\r\n# Insert character, not striked through!\r\nnvim.async_call(nvim.input, \"a\")\r\n\r\n#Quit\r\ntime.sleep(1)\r\ninteresting_events = []\r\nnvim.async_call(nvim.input, \"<Esc>:qa!<Enter>\")\r\ntime.sleep(1)\r\n```\r\n\r\n### Actual behaviour\r\n\r\nUI is not told to strike text through:\r\n```\r\n['hl_attr_define', [58, {'foreground': 0, 'background': 16777215}, {}, []], [59, {'strikethrough': True, 'foreground': 16777215, 'background': 0}, {'strikethrough': True}, []], [60, {'foreground': 0}, {'foreground': 0}, []]]\r\n['default_colors_set', [16777215, 0, 16711680, 16, 1]]\r\n['grid_line', [1, 0, 0, [['a', 0]]], [1, 2, 6, [['1', 1], [','], ['2']]]]\r\n```\r\n\r\n### Expected behaviour\r\n\r\nUI is told to strike through. This could be implemented in three ways:\r\n1) Grid_lines are sent with the real highlight id instead of \"default one\".\r\n2) A separate \"default_strikethrough_set\" event is set to tell the UI that default hl should be striked through.\r\n3) Instead of sending \"default_colors_set\", nvim sends a \"set_default_hl_id\" event that tells the UI what hl id should be used to paint when hl ID 0 is found.\r\n\r\n@bfredl what solution do you think is best? I think I prefer 1) as it's a simplification but maybe this would cause performance issues by making the rpc messages bigger?",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -159,13 +160,31 @@
             "name": "ui-extensibility",
             "node_id": "MDU6TGFiZWw2NDAxMzI3Nzc=",
             "url": "https://api.github.com/repos/neovim/neovim/labels/ui-extensibility"
+        },
+        {
+            "color": "c5def5",
+            "default": false,
+            "description": "",
+            "id": 1786207367,
+            "name": "highlight",
+            "node_id": "MDU6TGFiZWwxNzg2MjA3MzY3",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/highlight"
+        },
+        {
+            "color": "C5DEF5",
+            "default": false,
+            "description": "configuration, settings",
+            "id": 4242493821,
+            "name": "options",
+            "node_id": "LA_kwDOAPphoM7831F9",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/options"
         }
     ],
     "labels_url": "https://api.github.com/repos/neovim/neovim/issues/13044/labels{/name}",
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 601,
+        "closed_issues": 647,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -187,17 +206,17 @@
             "type": "User",
             "url": "https://api.github.com/users/justinmk"
         },
-        "description": "Low priority. Not planned for the current target, may be reassigned.",
+        "description": "Low priority items. We plan to work on this but don't have a target date.",
         "due_on": null,
         "html_url": "https://github.com/neovim/neovim/milestone/6",
         "id": 655037,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 515,
+        "open_issues": 571,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2024-04-01T02:46:11Z",
+        "updated_at": "2024-09-15T19:16:56Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "MDU6SXNzdWU3MTQzMjQ5OTI=",
@@ -220,7 +239,7 @@
     "state_reason": null,
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/13044/timeline",
     "title": "UI: set_default_colors is missing gui=... attributes",
-    "updated_at": "2024-03-30T13:14:58Z",
+    "updated_at": "2024-09-11T12:11:57Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/13044",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/11534587?v=4",
