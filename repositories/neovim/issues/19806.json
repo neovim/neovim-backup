@@ -5,6 +5,7 @@
     "author_association": "NONE",
     "body": "### Neovim version (nvim -v)\r\n\r\nNVIM v0.8.0-dev+141-g55187de11\r\n\r\n### Vim (not Nvim) behaves the same?\r\n\r\nN/A\r\n\r\n### Operating system/version\r\n\r\nN/A\r\n\r\n### Terminal name/version\r\n\r\nN/A\r\n\r\n### $TERM environment variable\r\n\r\nN/A\r\n\r\n### Installation\r\n\r\nN/A\r\n\r\n### How to reproduce the issue\r\n\r\nGiven the following steps in lua:\r\n\r\n```lua\r\nvim.api.nvim_buf_set_text(0, 0, 0, 0, 0, {'one'})\r\nvim.api.nvim_input('ciw')\r\nvim.api.nvim_buf_set_text(0, 0, 0, 0, 0, {'two'})\r\nvim.api.nvim_input('<Esc>u')\r\nvim.api.nvim_input('.')\r\n```\r\n\r\n### Expected behavior\r\n\r\nThe buffer contains \"two\".\r\n\r\n\r\n\r\n\r\n### Actual behavior\r\n\r\nThe buffer is empty (the ciw was repeated, but not the insertion).\r\n\r\n`nvim_buf_set_text` should only update dot repeat if the change is in one continuous region (someone typing or deleting). The changes should be accumulated until there is a discontunity.\r\n\r\nEssentially, if `start == end` (insertion), or `replacement == [\"\"]` (deletion), dot-repeat should accumulate just like `nvim_input` in insert mode. \r\n\r\n## Background\r\nThis is very important for vscode-neovim to improve reliablility and remove significant workarounds and bloat. \r\nhttps://github.com/vscode-neovim/vscode-neovim/pull/992\r\n\r\nVscode handles typing in insert mode, and then sends document changes to nvim via `nvim_buf_set_text` or `nvim_buf_set_lines`. However, because neovim does not properly record dot repeat, a workaround is currently needed that opens a scratch buffer, replays the changes by typing, and then returns to the original buffer. ",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "CONTRIBUTOR",
@@ -93,9 +94,53 @@
                 "type": "User",
                 "url": "https://api.github.com/users/theol0403"
             }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "The current interface for any script/client that wants to dot-repeat text input is to use `nvim_paste`. However, `nvim_paste` doesn't have a way to \"replace\" text (unlik `nvim_buf_set_text`).\r\n\r\nhttps://github.com/neovim/neovim/pull/30438 implements a reliable (internal) framework for setting up dot repeat. That opens the door for potentially enabling dot-repeat for things like `nvim_buf_set_text`.\r\n\r\nI think we should probably replace all of these functions with 2 APIs: https://github.com/neovim/neovim/issues/30450\r\n\r\n- `nvim_text_put`\r\n- `nvim_text_set`\r\n\r\nAnd this time, include an `opts` parameter so that we don't need to keep adding new APIs....",
+            "created_at": "2024-09-21T11:06:55Z",
+            "html_url": "https://github.com/neovim/neovim/issues/19806#issuecomment-2365146298",
+            "id": 2365146298,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/19806",
+            "node_id": "IC_kwDOAPphoM6M-US6",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 2,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 2,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2365146298/reactions"
+            },
+            "updated_at": "2024-09-21T11:39:38Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2365146298",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk"
+            }
         }
     ],
-    "comments": 2,
+    "comments": 3,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/19806/comments",
     "created_at": "2022-08-16T19:34:22Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/19806/events",
@@ -123,7 +168,7 @@
         {
             "color": "FBCA04",
             "default": false,
-            "description": "For PRs that propose significant changes to some part of the architecture or API",
+            "description": "issue needs attention from an expert, or PR proposes significant changes to architecture or API",
             "id": 212680983,
             "name": "needs:discussion",
             "node_id": "MDU6TGFiZWwyMTI2ODA5ODM=",
@@ -146,7 +191,7 @@
     "number": 19806,
     "performed_via_github_app": null,
     "reactions": {
-        "+1": 2,
+        "+1": 3,
         "-1": 0,
         "confused": 0,
         "eyes": 0,
@@ -154,7 +199,7 @@
         "hooray": 0,
         "laugh": 0,
         "rocket": 0,
-        "total_count": 2,
+        "total_count": 3,
         "url": "https://api.github.com/repos/neovim/neovim/issues/19806/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
@@ -162,7 +207,7 @@
     "state_reason": null,
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/19806/timeline",
     "title": "nvim_buf_set_text in insert mode should update dot repeat",
-    "updated_at": "2024-02-04T00:27:03Z",
+    "updated_at": "2024-09-21T11:39:38Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/19806",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/16546293?v=4",

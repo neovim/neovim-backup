@@ -5,6 +5,7 @@
     "author_association": "NONE",
     "body": "### Description\n\nHi there, I've noticed the kotlin_language_server crashes if you cd before opening a kotlin project, so for example, start neovim at `~`, do `:cd KotlinProject`, so `~/KotlinProject` open any KT file (I've only tested on gradle projects tho), proceeds to give an error. It works fine if you don't do that.\r\n\r\nDoesn't happen to any other LSP that I've used, it turns pretty annoying specially if you use a sessions plugin or something similar.\r\n\r\nI've fixed it by changing the default `init_options.storagePath` to\r\n```lua\r\n  init_options = {\r\n    storagePath = fn.resolve(fn.stdpath(\"cache\") .. \"/kotlin_language_server\")\r\n  }\r\n  ```\r\nBut I'm unsure why this happens, or if it's a good fix.\r\n\r\nLsp Log:\r\n```log\r\n[START][2024-07-18 00:41:18] LSP logging initiated\r\n[ERROR][2024-07-18 00:41:18] .../vim/lsp/rpc.lua:734\t\"rpc\"\t\"/nix/store/f3ca6sj3jyr97axdvs04i10blndi9jic-kotlin-language-server-1.3.9/bin/kotlin-language-server\"\t\"stderr\"\t'SLF4J: Failed to load class \"org.slf4j.impl.StaticLoggerBinder\".\\n'\r\n[ERROR][2024-07-18 00:41:18] .../vim/lsp/rpc.lua:734\t\"rpc\"\t\"/nix/store/f3ca6sj3jyr97axdvs04i10blndi9jic-kotlin-language-server-1.3.9/bin/kotlin-language-server\"\t\"stderr\"\t\"SLF4J: Defaulting to no-operation (NOP) logger implementation\\nSLF4J: See http://www.slf4j.org/codes.html#StaticLoggerBinder for further details.\\n\"\r\n[ERROR][2024-07-18 00:41:19] .../vim/lsp/rpc.lua:734\t\"rpc\"\t\"/nix/store/f3ca6sj3jyr97axdvs04i10blndi9jic-kotlin-language-server-1.3.9/bin/kotlin-language-server\"\t\"stderr\"\t\"Jul 18, 2024 12:41:19 AM org.eclipse.lsp4j.jsonrpc.services.GenericEndpoint lambda$recursiveFindRpcMethods$2\\nSEVERE: A delegate object is null, jsonrpc methods of 'public default org.eclipse.lsp4j.services.NotebookDocumentService org.eclipse.lsp4j.services.LanguageServer.getNotebookDocumentService()' are ignored\\n\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"main      A delegate object is null, jsonrpc methods of 'public default org.eclipse.lsp4j.services.NotebookDocumentService org.eclipse.lsp4j.services.LanguageServer.getNotebookDocumentService()' are ignored\"\r\n[ERROR][2024-07-18 00:41:19] .../vim/lsp/rpc.lua:734\t\"rpc\"\t\"/nix/store/f3ca6sj3jyr97axdvs04i10blndi9jic-kotlin-language-server-1.3.9/bin/kotlin-language-server\"\t\"stderr\"\t\"Jul 18, 2024 12:41:19 AM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint fallbackResponseError\\nSEVERE: Internal error: com.google.gson.JsonSyntaxException: java.lang.IllegalStateException: Expected BEGIN_OBJECT but was BEGIN_ARRAY at path $\\njava.util.concurrent.CompletionException: com.google.gson.JsonSyntaxException: java.lang.IllegalStateException: Expected BEGIN_OBJECT but was BEGIN_ARRAY at path $\\n\\tat java.base/java.util.concurrent.CompletableFuture.encodeThrowable(CompletableFuture.java:315)\\n\\tat java.base/java.util.concurrent.CompletableFuture.completeThrowable(CompletableFuture.java:320)\\n\\tat java.base/java.util.concurrent.CompletableFuture$AsyncSupply.run(CompletableFuture.java:1770)\\n\\tat java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)\\n\\tat java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)\\n\\tat java.base/java.lang.Thread.run(Thread.java:1583)\\nCaused by: com.google.gson.JsonSyntaxException: java.lang.IllegalStateException: Expected BEGIN_OBJECT but was BEGIN_ARRAY at path $\\n\\tat com.google.gson.internal.bind.ReflectiveTypeAdapterFactory$Adapter.read(ReflectiveTypeAdapterFactory.java:270)\\n\\tat com.google.gson.Gson.fromJson(Gson.java:1058)\\n\\tat com.google.gson.Gson.fromJson(Gson.java:1129)\\n\\tat com.google.gson.Gson.fromJson(Gson.java:1101)\\n\\tat org.javacs.kt.ConfigurationKt.getStoragePath(Configuration.kt:64)\\n\\tat org.javacs.kt.KotlinLanguageServer$initialize$1.invoke(KotlinLanguageServer.kt:97)\\n\\tat org.javacs.kt.KotlinLanguageServer$initialize$1.invoke(KotlinLanguageServer.kt:74)\\n\\tat org.javacs.kt.util.AsyncExecutor.compute$lambda$2(AsyncExecutor.kt:19)\\n\\tat java.base/java.util.concurrent.CompletableFuture$AsyncSupply.run(CompletableFuture.java:1768)\\n\\t... 3 more\\nCaused by: java.lang.IllegalStateException: Expected BEGIN_OBJECT but was BEGIN_ARRAY at path $\\n\\tat com.google.gson.internal.bind.JsonTreeReader.expect(JsonTreeReader.java:163)\\n\\tat com.google.gson.internal.bind.JsonTreeReader.beginObject(JsonTreeReader.java:88)\\n\\tat com.google.gson.internal.bind.ReflectiveTypeAdapterFactory$Adapter.read(ReflectiveTypeAdapterFactory.java:259)\\n\\t... 11 more\\n\\n\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"async0    Internal error: com.google.gson.JsonSyntaxException: java.lang.IllegalStateException: Expected BEGIN_OBJECT but was BEGIN_ARRAY at path $\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"java.util.concurrent.CompletionException: com.google.gson.JsonSyntaxException: java.lang.IllegalStateException: Expected BEGIN_OBJECT but was BEGIN_ARRAY at path $\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"\\tat java.base/java.util.concurrent.CompletableFuture.encodeThrowable(CompletableFuture.java:315)\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"\\tat java.base/java.util.concurrent.CompletableFuture.completeThrowable(CompletableFuture.java:320)\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"\\tat java.base/java.util.concurrent.CompletableFuture$AsyncSupply.run(CompletableFuture.java:1770)\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"\\tat java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"\\tat java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"\\tat java.base/java.lang.Thread.run(Thread.java:1583)\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"Caused by: com.google.gson.JsonSyntaxException: java.lang.IllegalStateException: Expected BEGIN_OBJECT but was BEGIN_ARRAY at path $\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"\\tat com.google.gson.internal.bind.ReflectiveTypeAdapterFactory$Adapter.read(ReflectiveTypeAdapterFactory.java:270)\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"\\tat com.google.gson.Gson.fromJson(Gson.java:1058)\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"\\tat com.google.gson.Gson.fromJson(Gson.java:1129)\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"\\tat com.google.gson.Gson.fromJson(Gson.java:1101)\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"\\tat org.javacs.kt.ConfigurationKt.getStoragePath(Configuration.kt:64)\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"\\tat org.javacs.kt.KotlinLanguageServer$initialize$1.invoke(KotlinLanguageServer.kt:97)\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"\\tat org.javacs.kt.KotlinLanguageServer$initialize$1.invoke(KotlinLanguageServer.kt:74)\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"\\tat org.javacs.kt.util.AsyncExecutor.compute$lambda$2(AsyncExecutor.kt:19)\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"\\tat java.base/java.util.concurrent.CompletableFuture$AsyncSupply.run(CompletableFuture.java:1768)\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"\\t... 3 more\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"Caused by: java.lang.IllegalStateException: Expected BEGIN_OBJECT but was BEGIN_ARRAY at path $\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"\\tat com.google.gson.internal.bind.JsonTreeReader.expect(JsonTreeReader.java:163)\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"\\tat com.google.gson.internal.bind.JsonTreeReader.beginObject(JsonTreeReader.java:88)\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"\\tat com.google.gson.internal.bind.ReflectiveTypeAdapterFactory$Adapter.read(ReflectiveTypeAdapterFactory.java:259)\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"\\t... 11 more\"\r\n```",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "NONE",
@@ -49,9 +50,97 @@
                 "type": "User",
                 "url": "https://api.github.com/users/tacascer"
             }
+        },
+        {
+            "author_association": "NONE",
+            "body": "I had the same issue, but the solution was quite obvious.\r\nWhen I was opening a dir rather then a file i did not had the gradle file in the CWD, opening the file itself or the project root director fixes the problem.\r\n\r\nIn may case it was a React Native project which has gradle files in the android/ subdirectory.\r\n\r\nI'm sure that there is a nice way to set root_dir configuration to detect the proper root with gradle or other build system",
+            "created_at": "2024-09-17T03:43:07Z",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/issues/3239#issuecomment-2354444380",
+            "id": 2354444380,
+            "issue_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/3239",
+            "node_id": "IC_kwDODTQC186MVfhc",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/comments/2354444380/reactions"
+            },
+            "updated_at": "2024-09-17T03:43:07Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/comments/2354444380",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1734309?v=4",
+                "events_url": "https://api.github.com/users/przybylski/events{/privacy}",
+                "followers_url": "https://api.github.com/users/przybylski/followers",
+                "following_url": "https://api.github.com/users/przybylski/following{/other_user}",
+                "gists_url": "https://api.github.com/users/przybylski/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/przybylski",
+                "id": 1734309,
+                "login": "przybylski",
+                "node_id": "MDQ6VXNlcjE3MzQzMDk=",
+                "organizations_url": "https://api.github.com/users/przybylski/orgs",
+                "received_events_url": "https://api.github.com/users/przybylski/received_events",
+                "repos_url": "https://api.github.com/users/przybylski/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/przybylski/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/przybylski/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/przybylski"
+            }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "Surely this is a bug in the kotlin server? What is needed from nvim-lspconfig, which is just a collection of data?",
+            "created_at": "2024-09-17T10:06:34Z",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/issues/3239#issuecomment-2355159940",
+            "id": 2355159940,
+            "issue_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/3239",
+            "node_id": "IC_kwDODTQC186MYOOE",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/comments/2355159940/reactions"
+            },
+            "updated_at": "2024-09-17T10:06:34Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/comments/2355159940",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk"
+            }
         }
     ],
-    "comments": 1,
+    "comments": 3,
     "comments_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/3239/comments",
     "created_at": "2024-07-17T22:43:18Z",
     "events_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/3239/events",
@@ -59,13 +148,13 @@
     "id": 2414745034,
     "labels": [
         {
-            "color": "f9d0c4",
+            "color": "e6e6e6",
             "default": true,
-            "description": "Something isn't working",
-            "id": 1674892761,
-            "name": "bug",
-            "node_id": "MDU6TGFiZWwxNjc0ODkyNzYx",
-            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/labels/bug"
+            "description": "Further information is requested",
+            "id": 1674892775,
+            "name": "question",
+            "node_id": "MDU6TGFiZWwxNjc0ODkyNzc1",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/labels/question"
         }
     ],
     "labels_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/3239/labels{/name}",
@@ -91,7 +180,7 @@
     "state_reason": null,
     "timeline_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/3239/timeline",
     "title": "Kotlin LSP crashes if you cd before it starts",
-    "updated_at": "2024-08-04T02:53:16Z",
+    "updated_at": "2024-09-17T10:06:36Z",
     "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/3239",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/77858854?v=4",

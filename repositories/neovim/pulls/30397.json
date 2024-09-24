@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/30397"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/9a9364c593970bf96c8b51246f09c1f24485dc72"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/029f41f7e91a18cd26c78444725e5a30bcdef221"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 5599,
-            "forks_count": 5599,
+            "forks": 5602,
+            "forks_count": 5602,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1777,
-            "open_issues_count": 1777,
+            "open_issues": 1781,
+            "open_issues_count": 1781,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -118,11 +118,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2024-09-16T10:33:35Z",
+            "pushed_at": "2024-09-23T23:14:14Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 285944,
+            "size": 286529,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 81723,
+            "stargazers_count": 81930,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -140,14 +140,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2024-09-17T01:51:52Z",
+            "updated_at": "2024-09-24T02:10:57Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 81723,
-            "watchers_count": 81723,
+            "watchers": 81930,
+            "watchers_count": 81930,
             "web_commit_signoff_required": false
         },
-        "sha": "a0d8c2b86e788ce4273f0b8df258cd9e8e432d38",
+        "sha": "22553e1f38addd867ad659b2944d00129141a499",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -170,7 +170,7 @@
         }
     },
     "body": "(Extracted from https://github.com/neovim/neovim/pull/30319)\r\n\r\n## Problem:\r\nThe default builtin UI client does not declare its client info. This reduces discoverability and makes it difficult for plugins to identify the UI.\r\n\r\n## Solution:\r\n- Call nvim_set_client_info after attaching, as recommended by `:help dev-ui`.\r\n- Also set the \"pid\" field.\r\n- Also change `ui_active()` to return a count. Not directly relevant to this commit, but will be useful later.",
-    "closed_at": null,
+    "closed_at": "2024-09-18T11:14:06Z",
     "comment_data": [
         {
             "_links": {
@@ -186,7 +186,7 @@
             },
             "author_association": "MEMBER",
             "body": "`--startuptime` message",
-            "commit_id": "9a9364c593970bf96c8b51246f09c1f24485dc72",
+            "commit_id": "029f41f7e91a18cd26c78444725e5a30bcdef221",
             "created_at": "2024-09-16T13:35:43Z",
             "diff_hunk": "@@ -108,6 +111,40 @@ void ui_client_attach(int width, int height, char *term, bool rgb)\n \n   rpc_send_event(ui_client_channel_id, \"nvim_ui_attach\", args);\n   ui_client_attached = true;\n+\n+  TIME_MSG(\"nvim_ui_attach\");\n+\n+  //\n+  // nvim_set_client_info\n+  //\n+  MAXSIZE_TEMP_ARRAY(args2, 5);\n+  ADD_C(args2, CSTR_AS_OBJ(\"nvim-tui\"));            // name\n+  Object m = api_metadata();\n+  Dictionary version = { 0 };\n+  assert(m.data.dictionary.size > 0);\n+  for (size_t i = 0; i < m.data.dictionary.size; i++) {\n+    if (strequal(m.data.dictionary.items[i].key.data, \"version\")) {\n+      version = m.data.dictionary.items[i].value.data.dictionary;\n+      break;\n+    } else if (i + 1 == m.data.dictionary.size) {\n+      abort();\n+    }\n+  }\n+  ADD_C(args2, DICTIONARY_OBJ(version));            // version\n+  ADD_C(args2, CSTR_AS_OBJ(\"ui\"));                  // type\n+  // We don't send api_metadata.functions as the \"methods\" because:\n+  // 1. it consumes memory.\n+  // 2. it is unlikely to be useful, since the peer can just call `nvim_get_api`.\n+  // 3. nvim_set_client_info expects a dict instead of an array.\n+  ADD_C(args2, ARRAY_OBJ((Array)ARRAY_DICT_INIT));  // methods\n+  MAXSIZE_TEMP_DICT(info, 9);                       // attributes\n+  PUT_C(info, \"website\", CSTR_AS_OBJ(\"https://neovim.io\"));\n+  PUT_C(info, \"license\", CSTR_AS_OBJ(\"Apache 2\"));\n+  PUT_C(info, \"pid\", INTEGER_OBJ(os_get_pid()));\n+  ADD_C(args2, DICTIONARY_OBJ(info));               // attributes\n+  rpc_send_event(ui_client_channel_id, \"nvim_set_client_info\", args2);\n+\n+  TIME_MSG(\"nvim_set_client_info\");",
             "html_url": "https://github.com/neovim/neovim/pull/30397#discussion_r1761174002",
@@ -219,6 +219,74 @@
             "subject_type": "line",
             "updated_at": "2024-09-16T13:35:43Z",
             "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1761174002",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/30397#discussion_r1764845098"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/30397"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1764845098"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Some long-needed updates to `:help gui`",
+            "commit_id": "029f41f7e91a18cd26c78444725e5a30bcdef221",
+            "created_at": "2024-09-18T10:56:02Z",
+            "diff_hunk": "@@ -6,14 +6,38 @@\n \n Nvim Graphical User Interface\t\t\t\t*gui* *GUI*\n \n+Any client that supports the Nvim |ui-protocol| can be used as a UI for Nvim.\n+And multiple UIs can connect to the same Nvim instance! The terms \"UI\" and\n+\"GUI\" are often used interchangeably because all Nvim UI clients have the same\n+potential capabilities; the \"TUI\" refers to a UI client that outputs to your\n+terminal, whereas a \"GUI\" outputs directly to the OS graphics system.",
+            "html_url": "https://github.com/neovim/neovim/pull/30397#discussion_r1764845098",
+            "id": 1764845098,
+            "line": 13,
+            "node_id": "PRRC_kwDOAPphoM5pMWYq",
+            "original_commit_id": "029f41f7e91a18cd26c78444725e5a30bcdef221",
+            "original_line": 13,
+            "original_position": 8,
+            "original_start_line": null,
+            "path": "runtime/doc/gui.txt",
+            "position": 8,
+            "pull_request_review_id": 2312342572,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/30397",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1764845098/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-09-18T10:56:03Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1764845098",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
                 "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
@@ -335,9 +403,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/justinmk/neovim/pulls{/number}",
-            "pushed_at": "2024-09-16T22:54:53Z",
+            "pushed_at": "2024-09-23T21:18:25Z",
             "releases_url": "https://api.github.com/repos/justinmk/neovim/releases{/id}",
-            "size": 280129,
+            "size": 280650,
             "ssh_url": "git@github.com:justinmk/neovim.git",
             "stargazers_count": 1,
             "stargazers_url": "https://api.github.com/repos/justinmk/neovim/stargazers",
@@ -356,7 +424,7 @@
             "watchers_count": 1,
             "web_commit_signoff_required": false
         },
-        "sha": "9a9364c593970bf96c8b51246f09c1f24485dc72",
+        "sha": "029f41f7e91a18cd26c78444725e5a30bcdef221",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
             "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
@@ -393,41 +461,20 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "3267b56600d857f7110fd07c421309537c7dc53f",
-    "merged_at": null,
+    "merge_commit_sha": "ff85e54939b0aca34a779a2b6381d09db1858b29",
+    "merged_at": "2024-09-18T11:14:06Z",
     "milestone": null,
     "node_id": "PR_kwDOAPphoM57nwhZ",
     "number": 30397,
     "patch_url": "https://github.com/neovim/neovim/pull/30397.patch",
-    "requested_reviewers": [
-        {
-            "avatar_url": "https://avatars.githubusercontent.com/u/8965202?v=4",
-            "events_url": "https://api.github.com/users/gpanders/events{/privacy}",
-            "followers_url": "https://api.github.com/users/gpanders/followers",
-            "following_url": "https://api.github.com/users/gpanders/following{/other_user}",
-            "gists_url": "https://api.github.com/users/gpanders/gists{/gist_id}",
-            "gravatar_id": "",
-            "html_url": "https://github.com/gpanders",
-            "id": 8965202,
-            "login": "gpanders",
-            "node_id": "MDQ6VXNlcjg5NjUyMDI=",
-            "organizations_url": "https://api.github.com/users/gpanders/orgs",
-            "received_events_url": "https://api.github.com/users/gpanders/received_events",
-            "repos_url": "https://api.github.com/users/gpanders/repos",
-            "site_admin": false,
-            "starred_url": "https://api.github.com/users/gpanders/starred{/owner}{/repo}",
-            "subscriptions_url": "https://api.github.com/users/gpanders/subscriptions",
-            "type": "User",
-            "url": "https://api.github.com/users/gpanders"
-        }
-    ],
+    "requested_reviewers": [],
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/30397/comments",
-    "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/9a9364c593970bf96c8b51246f09c1f24485dc72",
+    "state": "closed",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/029f41f7e91a18cd26c78444725e5a30bcdef221",
     "title": "feat(tui): builtin UI (TUI) sets client info",
-    "updated_at": "2024-09-16T13:35:43Z",
+    "updated_at": "2024-09-18T11:14:22Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/30397",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",

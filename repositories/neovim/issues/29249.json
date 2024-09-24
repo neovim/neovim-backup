@@ -5,6 +5,7 @@
     "author_association": "NONE",
     "body": "## Problem\r\n\r\n**TL;DR**: soft wrap (`vim.g.man_hardwrap = 0`) breaks the formatting of wide tables.\r\n\r\nMy use case is to read man pages in Neovim with its great navigation.\r\n\r\nIt is common to resize the buffer displaying the man page. Either from Neovims great buffer resizing capabilities itself or from outside, e. g. terminal emulator or tiling window manager. While all code is properly wrapped on any resize, man pages often end up strangely formatted.\r\n\r\n\r\n### Problem with Hard Wrap\r\n\r\nWhen using hard wrap (`vim.g.man_hardwrap = 1`) the man page ends up badly formatted even by the smallest resizings.See following example, I opened neovim in a vertical split and opened a man page with `:hide Man systemd.unit`.\r\n\r\nIt was nicely formatted at first:\r\n![hardwrap_pre-resize](https://github.com/neovim/neovim/assets/121407246/ede2b942-7841-4b91-8073-40ec119e6f21)\r\n\r\nBut after a resize of 4 fields (`<C-w>4<`) many sentences broke for one word and created a bad formatting.\r\n![hardwrap_post-resize-4](https://github.com/neovim/neovim/assets/121407246/20132676-ab1a-426e-a4fb-cd00f8c77d08)\r\n\r\n\r\n### Problem with Soft Wrap\r\n\r\nThe solution is to use soft wrap (`vim.g.man_hardwrap = 0`). Man pages with soft wrap work great, but the tables are poorly formatted.\r\n\r\nView of `systemd.unit` in a narrow window:\r\n![softwrap_splitcreen](https://github.com/neovim/neovim/assets/121407246/c86fa618-d4cc-467c-8067-97e0141e0f83)\r\n\r\nWhen having a wider window it is correctly formatted:\r\n![softwrap_fullscren](https://github.com/neovim/neovim/assets/121407246/c4e94325-efbe-41aa-b836-423b86837c47)\r\n\r\n**I assume that Neovim want to write a table row always in one visible row, when using soft wrap (`vim.g.man_hardwrap = 0`), which leads to this strange formatting.**\r\n\r\n## Steps to reproduce\r\n\r\n1. open a window in your terminal emulator with under 180 columns.\r\n2. Open a man page in neovim with soft wrap, e. g.: `nvim --clean \"+lua vim.g.man_hardwrap = 0\" \"+hide Man systemd.unit\"`. The behavior is the same then opening the man page inside of Neovim (`:hide Man systemd.unit`).\r\n3. Scroll down to chapter _UNIT FILE LOAD PATH_ and look at _Table 2.  Load path when running in user mode (--user)._\r\n\r\n## Expected behavior\r\n\r\n**TL;DR**: I'd expect that Neovim in soft wrap mode also creates multi line cells.\r\n\r\nWhen using hard wrap Neovim does format the table into multiple rows. So Neovim seem to have this capability somewhere and it should be possible that tables in soft wrap mode also get multi line cells.\r\n\r\nInitial open with hard wrap in a narrow window:\r\n![hardwrap_splitscreen](https://github.com/neovim/neovim/assets/121407246/7dcc09bc-53fe-4d9d-9619-34f91a5fd370)\r\n\r\nInitial open with hard wrap in a wide window:\r\n![hardwrap_fullscren](https://github.com/neovim/neovim/assets/121407246/6439f582-1486-41b9-9e23-a0e1ef46f2cb)\r\n\r\n\r\n### Related Issues and Differentiation\r\n\r\nThis was previously discussed in other issues:\r\n\r\n- https://github.com/neovim/neovim/issues/10748  \r\n- https://github.com/neovim/neovim/issues/11436\r\n\r\nThose issues where about setting the default behavior back to hard wrap. In contrast to these issues I'd expect Neovim to correctly format wide tables into multi line cells, also in soft wrap mode.\r\n\r\n\r\n### Possible Solutions\r\n\r\nAs described in the _Problem_ section hard wrap is no good solution for a window, which regularly resized.\r\n\r\n- In hard wrap mode the tables are much smaller than the available lines. Maybe it would be a solution to format the tables like in hard wrap mode also in soft wrap mode. This wouldn't erase the problem in its whole, but could minimize it.\r\n- Also enable multi line cells when using soft wrap. I assume that this needs to regenerate the complete table at a resize event.\r\n\r\n\r\n## Environment\r\n\r\n### Neovim version (nvim -v)\r\n\r\n`NVIM v0.10.0` and confirmed in `NVIM v0.11.0-dev-200+g9afa1fd35`\r\n\r\n### Vim (not Nvim) behaves the same?\r\n\r\ndoes not have this feature.\r\n\r\n### Operating system/version\r\n\r\nArch Linux\r\n\r\n### Terminal name/version\r\n\r\nkitty 0.35.1\r\n\r\n### $TERM environment variable\r\n\r\nxterm-kitty\r\n\r\n### Installation\r\n\r\nsystem package manager (`pacman -S neovim`)",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -16,7 +17,7 @@
             "node_id": "IC_kwDOAPphoM6AkA-u",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 0,
+                "+1": 1,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -24,7 +25,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 0,
+                "total_count": 1,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2156924846/reactions"
             },
             "updated_at": "2024-06-10T00:27:09Z",
@@ -49,9 +50,53 @@
                 "type": "User",
                 "url": "https://api.github.com/users/justinmk"
             }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "> When using hard wrap Neovim does format the table into multiple rows. So Neovim seem to have this capability somewhere and it should be possible that tables in soft wrap mode also get multi line cells.\r\n\r\nWrong. Neovim does not do any formatting itself. It simply tells `man` to format the pages for one of the following widths, before displaying that output as-is (minus highlighting):\r\n\r\n`999` if `g:man_hardwrap = 0`. This breaks the table formatting with soft-wrap. Neovim has no way to fix this other than to re-parse the tables itself somehow. \r\n\r\n`MANWIDTH` if `MANWIDTH` is already set in vim's environment.\r\n\r\n`window_width - wrapmargin` otherwise.\r\n\r\nPersonally, I set `vim.env.MANWIDTH=80` and use an autocmd which always resizes `:Man` windows to 80 columns on open (so using hardwrap), which works pretty well for reading and doesn't have issues with wrapping, though this also means I basically never resize the buffer.\r\n\r\n```lua\r\nlocal augroup = vim.api.nvim_create_augroup\r\nlocal autocmd = vim.api.nvim_create_autocmd\r\n\r\nvim.env.MANWIDTH = 80\r\n\r\nautocmd('BufWinEnter', {\r\n    group = augroup('vsplit-docs', { clear = true }),\r\n    callback = function()\r\n        if vim.v.vim_did_enter == 0 then return end\r\n        if vim.o.buftype == 'help' or vim.o.filetype == 'man' then\r\n            vim.lo.colorcolumn = ''\r\n            vim.lo.cursorlineopt = 'line'\r\n            vim.cmd('wincmd H | wincmd 80 |')\r\n        end\r\n    end,\r\n    desc = 'Open documentation windows to the left in 80-column vertical split'\r\n})\r\n```\r\n\r\nIt also formats the tables quite well this way, using the full width of the window: \r\n![image](https://github.com/user-attachments/assets/3691d862-ecc3-4209-8e32-a1cb596752c0)\r\n\r\nI believe the maximum table width is either up to the manpage author, or the formatter (i.e. `groff`/`troff`/etc. ?). The widest table in `systemd.unit` seems to cap at 207 columns.\r\n\r\nMaybe one could experiment with something like `WinResized` autocmds and dynamically toggling the `wrap` option based on some threshold, + setting `MANWIDTH` to some fixed threshold. Or even just adding a mapping to `:setlocal wrap!` to toggle wrap on and off, in combination with soft-wrapping.\r\n\r\nUltimately, manpages are designed to be a fixed width medium, there isn't really a good way to make them dynamic the way say responsive web pages can be (unless we converted manpages to html and then implemented some sort of responsive HTML-rendering in Neovim... :sweat_smile:)",
+            "created_at": "2024-09-23T15:25:07Z",
+            "html_url": "https://github.com/neovim/neovim/issues/29249#issuecomment-2368633797",
+            "id": 2368633797,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/29249",
+            "node_id": "IC_kwDOAPphoM6NLnvF",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2368633797/reactions"
+            },
+            "updated_at": "2024-09-23T15:26:24Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2368633797",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/38919842?v=4",
+                "events_url": "https://api.github.com/users/LunarLambda/events{/privacy}",
+                "followers_url": "https://api.github.com/users/LunarLambda/followers",
+                "following_url": "https://api.github.com/users/LunarLambda/following{/other_user}",
+                "gists_url": "https://api.github.com/users/LunarLambda/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/LunarLambda",
+                "id": 38919842,
+                "login": "LunarLambda",
+                "node_id": "MDQ6VXNlcjM4OTE5ODQy",
+                "organizations_url": "https://api.github.com/users/LunarLambda/orgs",
+                "received_events_url": "https://api.github.com/users/LunarLambda/received_events",
+                "repos_url": "https://api.github.com/users/LunarLambda/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/LunarLambda/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/LunarLambda/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/LunarLambda"
+            }
         }
     ],
-    "comments": 1,
+    "comments": 2,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/29249/comments",
     "created_at": "2024-06-09T10:55:50Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/29249/events",
@@ -90,7 +135,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 222,
+        "closed_issues": 240,
         "created_at": "2014-11-26T22:13:11Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -112,17 +157,17 @@
             "type": "User",
             "url": "https://api.github.com/users/justinmk"
         },
-        "description": "Zero priority; no timeline. Promote an item from this state by taking ownership of it.",
+        "description": "We don't plan to work on this, but will accept high quality contributions from someone who will own the feature and follow up on bug reports.",
         "due_on": null,
         "html_url": "https://github.com/neovim/neovim/milestone/9",
         "id": 881978,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/9/labels",
         "node_id": "MDk6TWlsZXN0b25lODgxOTc4",
         "number": 9,
-        "open_issues": 257,
+        "open_issues": 259,
         "state": "open",
-        "title": "unplanned",
-        "updated_at": "2024-06-10T00:27:15Z",
+        "title": "needs-owner",
+        "updated_at": "2024-09-22T10:17:50Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/9"
     },
     "node_id": "I_kwDOAPphoM6LmoYs",
@@ -145,7 +190,7 @@
     "state_reason": null,
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/29249/timeline",
     "title": ":Man softwrap (vim.g.man_hardwrap = 0) breaks table formatting",
-    "updated_at": "2024-06-10T00:28:10Z",
+    "updated_at": "2024-09-23T15:26:24Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/29249",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/121407246?v=4",
