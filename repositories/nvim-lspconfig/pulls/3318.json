@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/nvim-lspconfig/statuses/c7a145f6ae50389caf1a9a72aa22cf98e7945f66"
+            "href": "https://api.github.com/repos/neovim/nvim-lspconfig/statuses/e19e6aef701288ee13935f73b2f54a1c31193612"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/nvim-lspconfig/downloads",
             "events_url": "https://api.github.com/repos/neovim/nvim-lspconfig/events",
             "fork": false,
-            "forks": 2057,
-            "forks_count": 2057,
+            "forks": 2063,
+            "forks_count": 2063,
             "forks_url": "https://api.github.com/repos/neovim/nvim-lspconfig/forks",
             "full_name": "neovim/nvim-lspconfig",
             "git_commits_url": "https://api.github.com/repos/neovim/nvim-lspconfig/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "nvim-lspconfig",
             "node_id": "MDEwOlJlcG9zaXRvcnkyMjE1MTI0MDc=",
             "notifications_url": "https://api.github.com/repos/neovim/nvim-lspconfig/notifications{?since,all,participating}",
-            "open_issues": 54,
-            "open_issues_count": 54,
+            "open_issues": 56,
+            "open_issues_count": 56,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -118,11 +118,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls{/number}",
-            "pushed_at": "2024-09-23T09:57:50Z",
+            "pushed_at": "2024-09-29T21:43:58Z",
             "releases_url": "https://api.github.com/repos/neovim/nvim-lspconfig/releases{/id}",
-            "size": 3992,
+            "size": 4072,
             "ssh_url": "git@github.com:neovim/nvim-lspconfig.git",
-            "stargazers_count": 10385,
+            "stargazers_count": 10431,
             "stargazers_url": "https://api.github.com/repos/neovim/nvim-lspconfig/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/nvim-lspconfig/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/nvim-lspconfig/subscribers",
@@ -140,14 +140,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/nvim-lspconfig/git/trees{/sha}",
-            "updated_at": "2024-09-24T00:50:49Z",
+            "updated_at": "2024-10-01T00:29:02Z",
             "url": "https://api.github.com/repos/neovim/nvim-lspconfig",
             "visibility": "public",
-            "watchers": 10385,
-            "watchers_count": 10385,
+            "watchers": 10431,
+            "watchers_count": 10431,
             "web_commit_signoff_required": false
         },
-        "sha": "dd329912c8d446240584a2dbcd3802af3a19105a",
+        "sha": "0678aa439b82965daf03679cd146e84f10e299c3",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -171,7 +171,2688 @@
     },
     "body": "This adds a command for the additional `julials` API for activating an environment. This is based on how extra functionality is added into the `texlab` configuration",
     "closed_at": null,
-    "comment_data": [],
+    "comment_data": [
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1772619539"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1772619539"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "You can first check whether\r\n```lua\r\nif not julia_client then\r\n      return vim.notify\r\nend\r\n```",
+            "commit_id": "e19e6aef701288ee13935f73b2f54a1c31193612",
+            "created_at": "2024-09-24T05:20:08Z",
+            "diff_hunk": "@@ -1,5 +1,34 @@\n local util = require 'lspconfig.util'\n \n+local function activate_env()\n+  local bufnr = vim.api.nvim_get_current_buf()\n+  local julials_client = util.get_active_client_by_name(bufnr, 'julials')\n+  if julials_client then\n+    local julia_project_files = { 'Project.toml', 'JuliaProject.toml' }\n+    local depot_envs = vim.fs.normalize(vim.env.JULIA_DEPOT_PATH or vim.fn.expand '~/.julia') .. '/environments'\n+    local environments = {}\n+    vim.list_extend(environments, vim.fs.find(julia_project_files, { type = 'file', upward = true, limit = math.huge }))\n+    vim.list_extend(\n+      environments,\n+      vim.fs.find(function(name, path)\n+        return vim.tbl_contains(julia_project_files, name) and string.sub(path, #depot_envs + 1):match '^/[^/]*$'\n+      end, { path = depot_envs, type = 'file', limit = math.huge })\n+    )\n+    environments = vim.tbl_map(util.path.dirname, environments)\n+    vim.ui.select(environments, { prompt = 'Select a Julia environment' }, function(environment)\n+      if environment then\n+        julials_client.notify('julia/activateenvironment', { envPath = environment })\n+        vim.notify('Julia environment activated: \\n`' .. environment .. '`', vim.log.levels.INFO)\n+      end\n+    end)\n+  else\n+    vim.notify(\n+      'method julia/activateenvironment is not supported by any servers active on the current buffer',\n+      vim.log.levels.WARN\n+    )\n+  end\n+end",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1772619539",
+            "id": 1772619539,
+            "line": null,
+            "node_id": "PRRC_kwDODTQC185pqAcT",
+            "original_commit_id": "c7a145f6ae50389caf1a9a72aa22cf98e7945f66",
+            "original_line": 54,
+            "original_position": 30,
+            "original_start_line": 24,
+            "path": "lua/lspconfig/server_configurations/julials.lua",
+            "position": null,
+            "pull_request_review_id": 2324065671,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1772619539/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2024-09-24T05:20:20Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1772619539",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",
+                "events_url": "https://api.github.com/users/glepnir/events{/privacy}",
+                "followers_url": "https://api.github.com/users/glepnir/followers",
+                "following_url": "https://api.github.com/users/glepnir/following{/other_user}",
+                "gists_url": "https://api.github.com/users/glepnir/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/glepnir",
+                "id": 41671631,
+                "login": "glepnir",
+                "node_id": "MDQ6VXNlcjQxNjcxNjMx",
+                "organizations_url": "https://api.github.com/users/glepnir/orgs",
+                "received_events_url": "https://api.github.com/users/glepnir/received_events",
+                "repos_url": "https://api.github.com/users/glepnir/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/glepnir/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/glepnir/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/glepnir"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1772967844"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1772967844"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "Revised the commit to follow this pattern. Thanks for the suggestion",
+            "commit_id": "e19e6aef701288ee13935f73b2f54a1c31193612",
+            "created_at": "2024-09-24T09:13:23Z",
+            "diff_hunk": "@@ -1,5 +1,34 @@\n local util = require 'lspconfig.util'\n \n+local function activate_env()\n+  local bufnr = vim.api.nvim_get_current_buf()\n+  local julials_client = util.get_active_client_by_name(bufnr, 'julials')\n+  if julials_client then\n+    local julia_project_files = { 'Project.toml', 'JuliaProject.toml' }\n+    local depot_envs = vim.fs.normalize(vim.env.JULIA_DEPOT_PATH or vim.fn.expand '~/.julia') .. '/environments'\n+    local environments = {}\n+    vim.list_extend(environments, vim.fs.find(julia_project_files, { type = 'file', upward = true, limit = math.huge }))\n+    vim.list_extend(\n+      environments,\n+      vim.fs.find(function(name, path)\n+        return vim.tbl_contains(julia_project_files, name) and string.sub(path, #depot_envs + 1):match '^/[^/]*$'\n+      end, { path = depot_envs, type = 'file', limit = math.huge })\n+    )\n+    environments = vim.tbl_map(util.path.dirname, environments)\n+    vim.ui.select(environments, { prompt = 'Select a Julia environment' }, function(environment)\n+      if environment then\n+        julials_client.notify('julia/activateenvironment', { envPath = environment })\n+        vim.notify('Julia environment activated: \\n`' .. environment .. '`', vim.log.levels.INFO)\n+      end\n+    end)\n+  else\n+    vim.notify(\n+      'method julia/activateenvironment is not supported by any servers active on the current buffer',\n+      vim.log.levels.WARN\n+    )\n+  end\n+end",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1772967844",
+            "id": 1772967844,
+            "in_reply_to_id": 1772619539,
+            "line": null,
+            "node_id": "PRRC_kwDODTQC185prVek",
+            "original_commit_id": "c7a145f6ae50389caf1a9a72aa22cf98e7945f66",
+            "original_line": 54,
+            "original_position": 30,
+            "original_start_line": 24,
+            "path": "lua/lspconfig/server_configurations/julials.lua",
+            "position": null,
+            "pull_request_review_id": 2324624577,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1772967844/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2024-09-24T09:13:23Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1772967844",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1591837?v=4",
+                "events_url": "https://api.github.com/users/mehalter/events{/privacy}",
+                "followers_url": "https://api.github.com/users/mehalter/followers",
+                "following_url": "https://api.github.com/users/mehalter/following{/other_user}",
+                "gists_url": "https://api.github.com/users/mehalter/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/mehalter",
+                "id": 1591837,
+                "login": "mehalter",
+                "node_id": "MDQ6VXNlcjE1OTE4Mzc=",
+                "organizations_url": "https://api.github.com/users/mehalter/orgs",
+                "received_events_url": "https://api.github.com/users/mehalter/received_events",
+                "repos_url": "https://api.github.com/users/mehalter/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/mehalter/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/mehalter/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/mehalter"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1772971423"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1772971423"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "This kind of stuff (reading env var JULIA_DEPOT_PATH) is a bad sign. How are users going to know about that? That's a hidden assumption in the impl of this command. Should be documented at least, in the `docs` field below.",
+            "commit_id": "e19e6aef701288ee13935f73b2f54a1c31193612",
+            "created_at": "2024-09-24T09:15:51Z",
+            "diff_hunk": "@@ -1,5 +1,34 @@\n local util = require 'lspconfig.util'\n \n+local function activate_env()\n+  local bufnr = vim.api.nvim_get_current_buf()\n+  local julials_client = util.get_active_client_by_name(bufnr, 'julials')\n+  if not julials_client then\n+    vim.notify(\n+      'method julia/activateenvironment is not supported by any servers active on the current buffer',\n+      vim.log.levels.WARN\n+    )\n+    return\n+  end\n+  local julia_project_files = { 'Project.toml', 'JuliaProject.toml' }\n+  local depot_envs = vim.fs.normalize(vim.env.JULIA_DEPOT_PATH or vim.fn.expand '~/.julia') .. '/environments'",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1772971423",
+            "id": 1772971423,
+            "line": null,
+            "node_id": "PRRC_kwDODTQC185prWWf",
+            "original_commit_id": "5899b5ba29aa20e83e4d2c7715fd2fe7349daf30",
+            "original_line": 14,
+            "original_position": 14,
+            "original_start_line": null,
+            "path": "lua/lspconfig/server_configurations/julials.lua",
+            "position": null,
+            "pull_request_review_id": 2324630457,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1772971423/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-09-24T09:15:51Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1772971423",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1772972393"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1772972393"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "use `vim.lsp.get_clients()`. This `util.get_active_client_by_name` function should be removed @glepnir (at least in all of our configs, and deprecated if we're worried about breaking consumers).",
+            "commit_id": "e19e6aef701288ee13935f73b2f54a1c31193612",
+            "created_at": "2024-09-24T09:16:34Z",
+            "diff_hunk": "@@ -1,5 +1,34 @@\n local util = require 'lspconfig.util'\n \n+local function activate_env()\n+  local bufnr = vim.api.nvim_get_current_buf()\n+  local julials_client = util.get_active_client_by_name(bufnr, 'julials')",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1772972393",
+            "id": 1772972393,
+            "line": null,
+            "node_id": "PRRC_kwDODTQC185prWlp",
+            "original_commit_id": "5899b5ba29aa20e83e4d2c7715fd2fe7349daf30",
+            "original_line": 5,
+            "original_position": 5,
+            "original_start_line": null,
+            "path": "lua/lspconfig/server_configurations/julials.lua",
+            "position": null,
+            "pull_request_review_id": 2324632151,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1772972393/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-09-24T09:16:59Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1772972393",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1772975227"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1772975227"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Probably just assert()? The command shouldn't normally be available if there are no julia clients in the buffer, right?",
+            "commit_id": "e19e6aef701288ee13935f73b2f54a1c31193612",
+            "created_at": "2024-09-24T09:18:29Z",
+            "diff_hunk": "@@ -1,5 +1,34 @@\n local util = require 'lspconfig.util'\n \n+local function activate_env()\n+  local bufnr = vim.api.nvim_get_current_buf()\n+  local julials_client = util.get_active_client_by_name(bufnr, 'julials')\n+  if not julials_client then\n+    vim.notify(\n+      'method julia/activateenvironment is not supported by any servers active on the current buffer',\n+      vim.log.levels.WARN",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1772975227",
+            "id": 1772975227,
+            "line": null,
+            "node_id": "PRRC_kwDODTQC185prXR7",
+            "original_commit_id": "5899b5ba29aa20e83e4d2c7715fd2fe7349daf30",
+            "original_line": 9,
+            "original_position": 9,
+            "original_start_line": null,
+            "path": "lua/lspconfig/server_configurations/julials.lua",
+            "position": null,
+            "pull_request_review_id": 2324636694,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1772975227/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-09-24T09:18:29Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1772975227",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1772977327"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1772977327"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Here we are reinventing the root_dir on line 77--which also doesn't have JuliaProject.toml, which means this command has different expectations than the `root_dir` ...? Not good.",
+            "commit_id": "e19e6aef701288ee13935f73b2f54a1c31193612",
+            "created_at": "2024-09-24T09:19:55Z",
+            "diff_hunk": "@@ -1,5 +1,34 @@\n local util = require 'lspconfig.util'\n \n+local function activate_env()\n+  local bufnr = vim.api.nvim_get_current_buf()\n+  local julials_client = util.get_active_client_by_name(bufnr, 'julials')\n+  if not julials_client then\n+    vim.notify(\n+      'method julia/activateenvironment is not supported by any servers active on the current buffer',\n+      vim.log.levels.WARN\n+    )\n+    return\n+  end\n+  local julia_project_files = { 'Project.toml', 'JuliaProject.toml' }",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1772977327",
+            "id": 1772977327,
+            "line": null,
+            "node_id": "PRRC_kwDODTQC185prXyv",
+            "original_commit_id": "5899b5ba29aa20e83e4d2c7715fd2fe7349daf30",
+            "original_line": 13,
+            "original_position": 13,
+            "original_start_line": null,
+            "path": "lua/lspconfig/server_configurations/julials.lua",
+            "position": null,
+            "pull_request_review_id": 2324640093,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1772977327/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-09-24T09:19:55Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1772977327",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1772978878"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1772978878"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\r\n      activate_env\r\n```",
+            "commit_id": "e19e6aef701288ee13935f73b2f54a1c31193612",
+            "created_at": "2024-09-24T09:21:01Z",
+            "diff_hunk": "@@ -49,6 +78,14 @@ return {\n     end,\n     single_file_support = true,\n   },\n+  commands = {\n+    JuliaActivateEnv = {\n+      function()\n+        activate_env()\n+      end,",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1772978878",
+            "id": 1772978878,
+            "line": null,
+            "node_id": "PRRC_kwDODTQC185prYK-",
+            "original_commit_id": "5899b5ba29aa20e83e4d2c7715fd2fe7349daf30",
+            "original_line": 85,
+            "original_position": 43,
+            "original_start_line": 83,
+            "path": "lua/lspconfig/server_configurations/julials.lua",
+            "position": null,
+            "pull_request_review_id": 2324642814,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1772978878/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2024-09-24T09:21:01Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1772978878",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773000034"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773000034"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "Ok, I can document it in the description. The environment variable `JULIA_DEPOT_PATH` is a special environment variable dictated by the programming language itself.\r\n\r\nhttps://docs.julialang.org/en/v1/manual/environment-variables/#JULIA_DEPOT_PATH",
+            "commit_id": "e19e6aef701288ee13935f73b2f54a1c31193612",
+            "created_at": "2024-09-24T09:34:43Z",
+            "diff_hunk": "@@ -1,5 +1,34 @@\n local util = require 'lspconfig.util'\n \n+local function activate_env()\n+  local bufnr = vim.api.nvim_get_current_buf()\n+  local julials_client = util.get_active_client_by_name(bufnr, 'julials')\n+  if not julials_client then\n+    vim.notify(\n+      'method julia/activateenvironment is not supported by any servers active on the current buffer',\n+      vim.log.levels.WARN\n+    )\n+    return\n+  end\n+  local julia_project_files = { 'Project.toml', 'JuliaProject.toml' }\n+  local depot_envs = vim.fs.normalize(vim.env.JULIA_DEPOT_PATH or vim.fn.expand '~/.julia') .. '/environments'",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773000034",
+            "id": 1773000034,
+            "in_reply_to_id": 1772971423,
+            "line": null,
+            "node_id": "PRRC_kwDODTQC185prdVi",
+            "original_commit_id": "5899b5ba29aa20e83e4d2c7715fd2fe7349daf30",
+            "original_line": 14,
+            "original_position": 14,
+            "original_start_line": null,
+            "path": "lua/lspconfig/server_configurations/julials.lua",
+            "position": null,
+            "pull_request_review_id": 2324678504,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773000034/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-09-24T09:34:43Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773000034",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1591837?v=4",
+                "events_url": "https://api.github.com/users/mehalter/events{/privacy}",
+                "followers_url": "https://api.github.com/users/mehalter/followers",
+                "following_url": "https://api.github.com/users/mehalter/following{/other_user}",
+                "gists_url": "https://api.github.com/users/mehalter/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/mehalter",
+                "id": 1591837,
+                "login": "mehalter",
+                "node_id": "MDQ6VXNlcjE1OTE4Mzc=",
+                "organizations_url": "https://api.github.com/users/mehalter/orgs",
+                "received_events_url": "https://api.github.com/users/mehalter/received_events",
+                "repos_url": "https://api.github.com/users/mehalter/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/mehalter/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/mehalter/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/mehalter"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773001181"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773001181"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "`vim.notify` is a normal vim command that is available separately from the LSP client",
+            "commit_id": "e19e6aef701288ee13935f73b2f54a1c31193612",
+            "created_at": "2024-09-24T09:35:31Z",
+            "diff_hunk": "@@ -1,5 +1,34 @@\n local util = require 'lspconfig.util'\n \n+local function activate_env()\n+  local bufnr = vim.api.nvim_get_current_buf()\n+  local julials_client = util.get_active_client_by_name(bufnr, 'julials')\n+  if not julials_client then\n+    vim.notify(\n+      'method julia/activateenvironment is not supported by any servers active on the current buffer',\n+      vim.log.levels.WARN",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773001181",
+            "id": 1773001181,
+            "in_reply_to_id": 1772975227,
+            "line": null,
+            "node_id": "PRRC_kwDODTQC185prdnd",
+            "original_commit_id": "5899b5ba29aa20e83e4d2c7715fd2fe7349daf30",
+            "original_line": 9,
+            "original_position": 9,
+            "original_start_line": null,
+            "path": "lua/lspconfig/server_configurations/julials.lua",
+            "position": null,
+            "pull_request_review_id": 2324680235,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773001181/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-09-24T09:35:31Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773001181",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1591837?v=4",
+                "events_url": "https://api.github.com/users/mehalter/events{/privacy}",
+                "followers_url": "https://api.github.com/users/mehalter/followers",
+                "following_url": "https://api.github.com/users/mehalter/following{/other_user}",
+                "gists_url": "https://api.github.com/users/mehalter/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/mehalter",
+                "id": 1591837,
+                "login": "mehalter",
+                "node_id": "MDQ6VXNlcjE1OTE4Mzc=",
+                "organizations_url": "https://api.github.com/users/mehalter/orgs",
+                "received_events_url": "https://api.github.com/users/mehalter/received_events",
+                "repos_url": "https://api.github.com/users/mehalter/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/mehalter/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/mehalter/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/mehalter"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773002822"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773002822"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "Yeah, we can modify the `root_dir`. This is not necessarily the same as the root directory detection because it's not detecting a project root but an environment definition",
+            "commit_id": "e19e6aef701288ee13935f73b2f54a1c31193612",
+            "created_at": "2024-09-24T09:36:37Z",
+            "diff_hunk": "@@ -1,5 +1,34 @@\n local util = require 'lspconfig.util'\n \n+local function activate_env()\n+  local bufnr = vim.api.nvim_get_current_buf()\n+  local julials_client = util.get_active_client_by_name(bufnr, 'julials')\n+  if not julials_client then\n+    vim.notify(\n+      'method julia/activateenvironment is not supported by any servers active on the current buffer',\n+      vim.log.levels.WARN\n+    )\n+    return\n+  end\n+  local julia_project_files = { 'Project.toml', 'JuliaProject.toml' }",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773002822",
+            "id": 1773002822,
+            "in_reply_to_id": 1772977327,
+            "line": null,
+            "node_id": "PRRC_kwDODTQC185preBG",
+            "original_commit_id": "5899b5ba29aa20e83e4d2c7715fd2fe7349daf30",
+            "original_line": 13,
+            "original_position": 13,
+            "original_start_line": null,
+            "path": "lua/lspconfig/server_configurations/julials.lua",
+            "position": null,
+            "pull_request_review_id": 2324682740,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773002822/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-09-24T09:36:37Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773002822",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1591837?v=4",
+                "events_url": "https://api.github.com/users/mehalter/events{/privacy}",
+                "followers_url": "https://api.github.com/users/mehalter/followers",
+                "following_url": "https://api.github.com/users/mehalter/following{/other_user}",
+                "gists_url": "https://api.github.com/users/mehalter/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/mehalter",
+                "id": 1591837,
+                "login": "mehalter",
+                "node_id": "MDQ6VXNlcjE1OTE4Mzc=",
+                "organizations_url": "https://api.github.com/users/mehalter/orgs",
+                "received_events_url": "https://api.github.com/users/mehalter/received_events",
+                "repos_url": "https://api.github.com/users/mehalter/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/mehalter/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/mehalter/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/mehalter"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773003163"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773003163"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "Resolved in latest commit revision",
+            "commit_id": "e19e6aef701288ee13935f73b2f54a1c31193612",
+            "created_at": "2024-09-24T09:36:52Z",
+            "diff_hunk": "@@ -49,6 +78,14 @@ return {\n     end,\n     single_file_support = true,\n   },\n+  commands = {\n+    JuliaActivateEnv = {\n+      function()\n+        activate_env()\n+      end,",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773003163",
+            "id": 1773003163,
+            "in_reply_to_id": 1772978878,
+            "line": null,
+            "node_id": "PRRC_kwDODTQC185preGb",
+            "original_commit_id": "5899b5ba29aa20e83e4d2c7715fd2fe7349daf30",
+            "original_line": 85,
+            "original_position": 43,
+            "original_start_line": 83,
+            "path": "lua/lspconfig/server_configurations/julials.lua",
+            "position": null,
+            "pull_request_review_id": 2324683338,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773003163/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2024-09-24T09:36:52Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773003163",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1591837?v=4",
+                "events_url": "https://api.github.com/users/mehalter/events{/privacy}",
+                "followers_url": "https://api.github.com/users/mehalter/followers",
+                "following_url": "https://api.github.com/users/mehalter/following{/other_user}",
+                "gists_url": "https://api.github.com/users/mehalter/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/mehalter",
+                "id": 1591837,
+                "login": "mehalter",
+                "node_id": "MDQ6VXNlcjE1OTE4Mzc=",
+                "organizations_url": "https://api.github.com/users/mehalter/orgs",
+                "received_events_url": "https://api.github.com/users/mehalter/received_events",
+                "repos_url": "https://api.github.com/users/mehalter/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/mehalter/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/mehalter/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/mehalter"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773005736"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773005736"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "In order to facilitate the transition of 0.9 users, which version will completely stop supporting 0.9x? 0.10.2 or 0.11.  then i can clean up utils including using vim.fs.",
+            "commit_id": "e19e6aef701288ee13935f73b2f54a1c31193612",
+            "created_at": "2024-09-24T09:38:24Z",
+            "diff_hunk": "@@ -1,5 +1,34 @@\n local util = require 'lspconfig.util'\n \n+local function activate_env()\n+  local bufnr = vim.api.nvim_get_current_buf()\n+  local julials_client = util.get_active_client_by_name(bufnr, 'julials')",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773005736",
+            "id": 1773005736,
+            "in_reply_to_id": 1772972393,
+            "line": null,
+            "node_id": "PRRC_kwDODTQC185preuo",
+            "original_commit_id": "5899b5ba29aa20e83e4d2c7715fd2fe7349daf30",
+            "original_line": 5,
+            "original_position": 5,
+            "original_start_line": null,
+            "path": "lua/lspconfig/server_configurations/julials.lua",
+            "position": null,
+            "pull_request_review_id": 2324687668,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773005736/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-09-24T09:38:25Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773005736",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",
+                "events_url": "https://api.github.com/users/glepnir/events{/privacy}",
+                "followers_url": "https://api.github.com/users/glepnir/followers",
+                "following_url": "https://api.github.com/users/glepnir/following{/other_user}",
+                "gists_url": "https://api.github.com/users/glepnir/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/glepnir",
+                "id": 41671631,
+                "login": "glepnir",
+                "node_id": "MDQ6VXNlcjQxNjcxNjMx",
+                "organizations_url": "https://api.github.com/users/glepnir/orgs",
+                "received_events_url": "https://api.github.com/users/glepnir/received_events",
+                "repos_url": "https://api.github.com/users/glepnir/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/glepnir/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/glepnir/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/glepnir"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773007623"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773007623"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Yes, but when would `julials_client` ever be undefined? Commands defined in `commands` (I think?) are not defined unless their associated config is active for a buffer.\r\n\r\nIf that's correct, then only an `assert` should be needed since this is an unexpected situation.",
+            "commit_id": "e19e6aef701288ee13935f73b2f54a1c31193612",
+            "created_at": "2024-09-24T09:39:41Z",
+            "diff_hunk": "@@ -1,5 +1,34 @@\n local util = require 'lspconfig.util'\n \n+local function activate_env()\n+  local bufnr = vim.api.nvim_get_current_buf()\n+  local julials_client = util.get_active_client_by_name(bufnr, 'julials')\n+  if not julials_client then\n+    vim.notify(\n+      'method julia/activateenvironment is not supported by any servers active on the current buffer',\n+      vim.log.levels.WARN",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773007623",
+            "id": 1773007623,
+            "in_reply_to_id": 1772975227,
+            "line": null,
+            "node_id": "PRRC_kwDODTQC185prfMH",
+            "original_commit_id": "5899b5ba29aa20e83e4d2c7715fd2fe7349daf30",
+            "original_line": 9,
+            "original_position": 9,
+            "original_start_line": null,
+            "path": "lua/lspconfig/server_configurations/julials.lua",
+            "position": null,
+            "pull_request_review_id": 2324690720,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773007623/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-09-24T09:40:04Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773007623",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773012746"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773012746"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "Updated in latest commit revision",
+            "commit_id": "e19e6aef701288ee13935f73b2f54a1c31193612",
+            "created_at": "2024-09-24T09:42:55Z",
+            "diff_hunk": "@@ -1,5 +1,34 @@\n local util = require 'lspconfig.util'\n \n+local function activate_env()\n+  local bufnr = vim.api.nvim_get_current_buf()\n+  local julials_client = util.get_active_client_by_name(bufnr, 'julials')",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773012746",
+            "id": 1773012746,
+            "in_reply_to_id": 1772972393,
+            "line": null,
+            "node_id": "PRRC_kwDODTQC185prgcK",
+            "original_commit_id": "5899b5ba29aa20e83e4d2c7715fd2fe7349daf30",
+            "original_line": 5,
+            "original_position": 5,
+            "original_start_line": null,
+            "path": "lua/lspconfig/server_configurations/julials.lua",
+            "position": null,
+            "pull_request_review_id": 2324698632,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773012746/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-09-24T09:42:55Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773012746",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1591837?v=4",
+                "events_url": "https://api.github.com/users/mehalter/events{/privacy}",
+                "followers_url": "https://api.github.com/users/mehalter/followers",
+                "following_url": "https://api.github.com/users/mehalter/following{/other_user}",
+                "gists_url": "https://api.github.com/users/mehalter/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/mehalter",
+                "id": 1591837,
+                "login": "mehalter",
+                "node_id": "MDQ6VXNlcjE1OTE4Mzc=",
+                "organizations_url": "https://api.github.com/users/mehalter/orgs",
+                "received_events_url": "https://api.github.com/users/mehalter/received_events",
+                "repos_url": "https://api.github.com/users/mehalter/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/mehalter/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/mehalter/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/mehalter"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773023235"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773023235"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "> which version will completely stop supporting 0.9x?\r\n\r\nWe can drop 0.9 support now, if we want. But that's separate from the first step, which is to all usages of vim.util (where possible) *in the configs in this repo* :)",
+            "commit_id": "e19e6aef701288ee13935f73b2f54a1c31193612",
+            "created_at": "2024-09-24T09:50:29Z",
+            "diff_hunk": "@@ -1,5 +1,34 @@\n local util = require 'lspconfig.util'\n \n+local function activate_env()\n+  local bufnr = vim.api.nvim_get_current_buf()\n+  local julials_client = util.get_active_client_by_name(bufnr, 'julials')",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773023235",
+            "id": 1773023235,
+            "in_reply_to_id": 1772972393,
+            "line": null,
+            "node_id": "PRRC_kwDODTQC185prjAD",
+            "original_commit_id": "5899b5ba29aa20e83e4d2c7715fd2fe7349daf30",
+            "original_line": 5,
+            "original_position": 5,
+            "original_start_line": null,
+            "path": "lua/lspconfig/server_configurations/julials.lua",
+            "position": null,
+            "pull_request_review_id": 2324715746,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773023235/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-09-24T09:50:53Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773023235",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773036912"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773036912"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "Ok, I added this documentation in the latest commit revision. Let me know if it sounds alright.",
+            "commit_id": "e19e6aef701288ee13935f73b2f54a1c31193612",
+            "created_at": "2024-09-24T09:58:18Z",
+            "diff_hunk": "@@ -1,5 +1,34 @@\n local util = require 'lspconfig.util'\n \n+local function activate_env()\n+  local bufnr = vim.api.nvim_get_current_buf()\n+  local julials_client = util.get_active_client_by_name(bufnr, 'julials')\n+  if not julials_client then\n+    vim.notify(\n+      'method julia/activateenvironment is not supported by any servers active on the current buffer',\n+      vim.log.levels.WARN\n+    )\n+    return\n+  end\n+  local julia_project_files = { 'Project.toml', 'JuliaProject.toml' }\n+  local depot_envs = vim.fs.normalize(vim.env.JULIA_DEPOT_PATH or vim.fn.expand '~/.julia') .. '/environments'",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773036912",
+            "id": 1773036912,
+            "in_reply_to_id": 1772971423,
+            "line": null,
+            "node_id": "PRRC_kwDODTQC185prmVw",
+            "original_commit_id": "5899b5ba29aa20e83e4d2c7715fd2fe7349daf30",
+            "original_line": 14,
+            "original_position": 14,
+            "original_start_line": null,
+            "path": "lua/lspconfig/server_configurations/julials.lua",
+            "position": null,
+            "pull_request_review_id": 2324739789,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773036912/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-09-24T09:58:18Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773036912",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1591837?v=4",
+                "events_url": "https://api.github.com/users/mehalter/events{/privacy}",
+                "followers_url": "https://api.github.com/users/mehalter/followers",
+                "following_url": "https://api.github.com/users/mehalter/following{/other_user}",
+                "gists_url": "https://api.github.com/users/mehalter/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/mehalter",
+                "id": 1591837,
+                "login": "mehalter",
+                "node_id": "MDQ6VXNlcjE1OTE4Mzc=",
+                "organizations_url": "https://api.github.com/users/mehalter/orgs",
+                "received_events_url": "https://api.github.com/users/mehalter/received_events",
+                "repos_url": "https://api.github.com/users/mehalter/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/mehalter/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/mehalter/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/mehalter"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773038041"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773038041"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "Oh I see, sounds good!",
+            "commit_id": "e19e6aef701288ee13935f73b2f54a1c31193612",
+            "created_at": "2024-09-24T09:59:09Z",
+            "diff_hunk": "@@ -1,5 +1,34 @@\n local util = require 'lspconfig.util'\n \n+local function activate_env()\n+  local bufnr = vim.api.nvim_get_current_buf()\n+  local julials_client = util.get_active_client_by_name(bufnr, 'julials')\n+  if not julials_client then\n+    vim.notify(\n+      'method julia/activateenvironment is not supported by any servers active on the current buffer',\n+      vim.log.levels.WARN",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773038041",
+            "id": 1773038041,
+            "in_reply_to_id": 1772975227,
+            "line": null,
+            "node_id": "PRRC_kwDODTQC185prmnZ",
+            "original_commit_id": "5899b5ba29aa20e83e4d2c7715fd2fe7349daf30",
+            "original_line": 9,
+            "original_position": 9,
+            "original_start_line": null,
+            "path": "lua/lspconfig/server_configurations/julials.lua",
+            "position": null,
+            "pull_request_review_id": 2324741610,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773038041/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-09-24T09:59:09Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773038041",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1591837?v=4",
+                "events_url": "https://api.github.com/users/mehalter/events{/privacy}",
+                "followers_url": "https://api.github.com/users/mehalter/followers",
+                "following_url": "https://api.github.com/users/mehalter/following{/other_user}",
+                "gists_url": "https://api.github.com/users/mehalter/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/mehalter",
+                "id": 1591837,
+                "login": "mehalter",
+                "node_id": "MDQ6VXNlcjE1OTE4Mzc=",
+                "organizations_url": "https://api.github.com/users/mehalter/orgs",
+                "received_events_url": "https://api.github.com/users/mehalter/received_events",
+                "repos_url": "https://api.github.com/users/mehalter/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/mehalter/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/mehalter/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/mehalter"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773040019"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773040019"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "Revised to being an `assert` ",
+            "commit_id": "e19e6aef701288ee13935f73b2f54a1c31193612",
+            "created_at": "2024-09-24T10:00:36Z",
+            "diff_hunk": "@@ -1,5 +1,34 @@\n local util = require 'lspconfig.util'\n \n+local function activate_env()\n+  local bufnr = vim.api.nvim_get_current_buf()\n+  local julials_client = util.get_active_client_by_name(bufnr, 'julials')\n+  if not julials_client then\n+    vim.notify(\n+      'method julia/activateenvironment is not supported by any servers active on the current buffer',\n+      vim.log.levels.WARN",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773040019",
+            "id": 1773040019,
+            "in_reply_to_id": 1772975227,
+            "line": null,
+            "node_id": "PRRC_kwDODTQC185prnGT",
+            "original_commit_id": "5899b5ba29aa20e83e4d2c7715fd2fe7349daf30",
+            "original_line": 9,
+            "original_position": 9,
+            "original_start_line": null,
+            "path": "lua/lspconfig/server_configurations/julials.lua",
+            "position": null,
+            "pull_request_review_id": 2324744996,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773040019/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-09-24T10:00:36Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773040019",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1591837?v=4",
+                "events_url": "https://api.github.com/users/mehalter/events{/privacy}",
+                "followers_url": "https://api.github.com/users/mehalter/followers",
+                "following_url": "https://api.github.com/users/mehalter/following{/other_user}",
+                "gists_url": "https://api.github.com/users/mehalter/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/mehalter",
+                "id": 1591837,
+                "login": "mehalter",
+                "node_id": "MDQ6VXNlcjE1OTE4Mzc=",
+                "organizations_url": "https://api.github.com/users/mehalter/orgs",
+                "received_events_url": "https://api.github.com/users/mehalter/received_events",
+                "repos_url": "https://api.github.com/users/mehalter/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/mehalter/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/mehalter/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/mehalter"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773045620"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773045620"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "It might be a good idea to keep the 0.9 support for now simply because the debian packages are currently at 0.9 so it would be good to have such a core plugin support the versions that are widely available. Moving forward it could be a good idea to make some sort of development practice such as \"will support the latest 2 Neovim stable releases at all time or something just so people have an idea what is valid and enable a bit more stability in configuration management, but this is a separate discussion",
+            "commit_id": "e19e6aef701288ee13935f73b2f54a1c31193612",
+            "created_at": "2024-09-24T10:04:50Z",
+            "diff_hunk": "@@ -1,5 +1,34 @@\n local util = require 'lspconfig.util'\n \n+local function activate_env()\n+  local bufnr = vim.api.nvim_get_current_buf()\n+  local julials_client = util.get_active_client_by_name(bufnr, 'julials')",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773045620",
+            "id": 1773045620,
+            "in_reply_to_id": 1772972393,
+            "line": null,
+            "node_id": "PRRC_kwDODTQC185prod0",
+            "original_commit_id": "5899b5ba29aa20e83e4d2c7715fd2fe7349daf30",
+            "original_line": 5,
+            "original_position": 5,
+            "original_start_line": null,
+            "path": "lua/lspconfig/server_configurations/julials.lua",
+            "position": null,
+            "pull_request_review_id": 2324754254,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773045620/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-09-24T10:04:50Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773045620",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1591837?v=4",
+                "events_url": "https://api.github.com/users/mehalter/events{/privacy}",
+                "followers_url": "https://api.github.com/users/mehalter/followers",
+                "following_url": "https://api.github.com/users/mehalter/following{/other_user}",
+                "gists_url": "https://api.github.com/users/mehalter/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/mehalter",
+                "id": 1591837,
+                "login": "mehalter",
+                "node_id": "MDQ6VXNlcjE1OTE4Mzc=",
+                "organizations_url": "https://api.github.com/users/mehalter/orgs",
+                "received_events_url": "https://api.github.com/users/mehalter/received_events",
+                "repos_url": "https://api.github.com/users/mehalter/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/mehalter/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/mehalter/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/mehalter"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773090496"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773090496"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "> It might be a good idea to keep the 0.9 support\r\n\r\nIrrelevant for this PR. `vim.lsp.get_clients()` exists in 0.9",
+            "commit_id": "e19e6aef701288ee13935f73b2f54a1c31193612",
+            "created_at": "2024-09-24T10:37:56Z",
+            "diff_hunk": "@@ -1,5 +1,34 @@\n local util = require 'lspconfig.util'\n \n+local function activate_env()\n+  local bufnr = vim.api.nvim_get_current_buf()\n+  local julials_client = util.get_active_client_by_name(bufnr, 'julials')",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773090496",
+            "id": 1773090496,
+            "in_reply_to_id": 1772972393,
+            "line": null,
+            "node_id": "PRRC_kwDODTQC185przbA",
+            "original_commit_id": "5899b5ba29aa20e83e4d2c7715fd2fe7349daf30",
+            "original_line": 5,
+            "original_position": 5,
+            "original_start_line": null,
+            "path": "lua/lspconfig/server_configurations/julials.lua",
+            "position": null,
+            "pull_request_review_id": 2324827389,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773090496/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-09-24T10:37:56Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773090496",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773091102"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773091102"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "`vim.lsp.get_clients()`",
+            "commit_id": "e19e6aef701288ee13935f73b2f54a1c31193612",
+            "created_at": "2024-09-24T10:38:18Z",
+            "diff_hunk": "@@ -1,5 +1,54 @@\n local util = require 'lspconfig.util'\n \n+local function activate_env(path)\n+  local bufnr = vim.api.nvim_get_current_buf()\n+  local julials_clients = util.get_lsp_clients { bufnr = bufnr, name = 'julials' }",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773091102",
+            "id": 1773091102,
+            "line": null,
+            "node_id": "PRRC_kwDODTQC185przke",
+            "original_commit_id": "6a87db556a5c724621de42eed8d0f28ae8a6f6ad",
+            "original_line": 5,
+            "original_position": 5,
+            "original_start_line": null,
+            "path": "lua/lspconfig/server_configurations/julials.lua",
+            "position": null,
+            "pull_request_review_id": 2324828089,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773091102/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-09-24T10:38:18Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773091102",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773095212"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773095212"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Nope. it only in 0.10.",
+            "commit_id": "e19e6aef701288ee13935f73b2f54a1c31193612",
+            "created_at": "2024-09-24T10:41:09Z",
+            "diff_hunk": "@@ -1,5 +1,34 @@\n local util = require 'lspconfig.util'\n \n+local function activate_env()\n+  local bufnr = vim.api.nvim_get_current_buf()\n+  local julials_client = util.get_active_client_by_name(bufnr, 'julials')",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773095212",
+            "id": 1773095212,
+            "in_reply_to_id": 1772972393,
+            "line": null,
+            "node_id": "PRRC_kwDODTQC185pr0ks",
+            "original_commit_id": "5899b5ba29aa20e83e4d2c7715fd2fe7349daf30",
+            "original_line": 5,
+            "original_position": 5,
+            "original_start_line": null,
+            "path": "lua/lspconfig/server_configurations/julials.lua",
+            "position": null,
+            "pull_request_review_id": 2324833817,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773095212/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-09-24T10:41:09Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773095212",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",
+                "events_url": "https://api.github.com/users/glepnir/events{/privacy}",
+                "followers_url": "https://api.github.com/users/glepnir/followers",
+                "following_url": "https://api.github.com/users/glepnir/following{/other_user}",
+                "gists_url": "https://api.github.com/users/glepnir/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/glepnir",
+                "id": 41671631,
+                "login": "glepnir",
+                "node_id": "MDQ6VXNlcjQxNjcxNjMx",
+                "organizations_url": "https://api.github.com/users/glepnir/orgs",
+                "received_events_url": "https://api.github.com/users/glepnir/received_events",
+                "repos_url": "https://api.github.com/users/glepnir/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/glepnir/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/glepnir/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/glepnir"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773095238"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773095238"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Is \":\" the path separator that Julia uses on Windows?\r\n\r\nThis is why I'm so reluctant to merge these non-trivial command wrappers. They hide numerous subtle decisions that lead to bug reports later.\r\n\r\nAnd it looks like the amount of code doubled in the last hour. (It's good to be robust, but also need to find ways to re-use code)",
+            "commit_id": "e19e6aef701288ee13935f73b2f54a1c31193612",
+            "created_at": "2024-09-24T10:41:10Z",
+            "diff_hunk": "@@ -1,5 +1,54 @@\n local util = require 'lspconfig.util'\n \n+local function activate_env(path)\n+  local bufnr = vim.api.nvim_get_current_buf()\n+  local julials_clients = util.get_lsp_clients { bufnr = bufnr, name = 'julials' }\n+  assert(\n+    #julials_clients > 0,\n+    'method julia/activateenvironment is not supported by any servers active on the current buffer'\n+  )\n+  local julia_project_files = { 'Project.toml', 'JuliaProject.toml' }\n+  local function _activate_env(environment)\n+    if environment then\n+      for _, julials_client in ipairs(julials_clients) do\n+        julials_client.notify('julia/activateenvironment', { envPath = environment })\n+      end\n+      vim.notify('Julia environment activated: \\n`' .. environment .. '`', vim.log.levels.INFO)\n+    end\n+  end\n+  if path then\n+    path = vim.fs.normalize(path)\n+    local found_env = false\n+    for _, project_file in ipairs(julia_project_files) do\n+      if util.path.exists(util.path.join(path, project_file)) then\n+        found_env = true\n+        break\n+      end\n+    end\n+    if not found_env then\n+      vim.notify('Path is not a julia environment: \\n`' .. path .. '`', vim.log.levels.WARN)\n+      return\n+    end\n+    _activate_env(path)\n+  else\n+    local depot_paths = vim.env.JULIA_DEPOT_PATH and vim.split(vim.env.JULIA_DEPOT_PATH, ':')",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773095238",
+            "id": 1773095238,
+            "line": null,
+            "node_id": "PRRC_kwDODTQC185pr0lG",
+            "original_commit_id": "6a87db556a5c724621de42eed8d0f28ae8a6f6ad",
+            "original_line": 35,
+            "original_position": 34,
+            "original_start_line": null,
+            "path": "lua/lspconfig/server_configurations/julials.lua",
+            "position": null,
+            "pull_request_review_id": 2324833864,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773095238/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-09-24T10:42:16Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773095238",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773097943"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773097943"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Use `vim.fs.joinpath`.",
+            "commit_id": "e19e6aef701288ee13935f73b2f54a1c31193612",
+            "created_at": "2024-09-24T10:43:16Z",
+            "diff_hunk": "@@ -1,5 +1,54 @@\n local util = require 'lspconfig.util'\n \n+local function activate_env(path)\n+  local bufnr = vim.api.nvim_get_current_buf()\n+  local julials_clients = util.get_lsp_clients { bufnr = bufnr, name = 'julials' }\n+  assert(\n+    #julials_clients > 0,\n+    'method julia/activateenvironment is not supported by any servers active on the current buffer'\n+  )\n+  local julia_project_files = { 'Project.toml', 'JuliaProject.toml' }\n+  local function _activate_env(environment)\n+    if environment then\n+      for _, julials_client in ipairs(julials_clients) do\n+        julials_client.notify('julia/activateenvironment', { envPath = environment })\n+      end\n+      vim.notify('Julia environment activated: \\n`' .. environment .. '`', vim.log.levels.INFO)\n+    end\n+  end\n+  if path then\n+    path = vim.fs.normalize(path)\n+    local found_env = false\n+    for _, project_file in ipairs(julia_project_files) do\n+      if util.path.exists(util.path.join(path, project_file)) then\n+        found_env = true\n+        break\n+      end\n+    end\n+    if not found_env then\n+      vim.notify('Path is not a julia environment: \\n`' .. path .. '`', vim.log.levels.WARN)\n+      return\n+    end\n+    _activate_env(path)\n+  else\n+    local depot_paths = vim.env.JULIA_DEPOT_PATH and vim.split(vim.env.JULIA_DEPOT_PATH, ':')\n+      or { vim.fn.expand '~/.julia' }\n+    local environments = {}\n+    vim.list_extend(environments, vim.fs.find(julia_project_files, { type = 'file', upward = true, limit = math.huge }))\n+    for _, depot_path in ipairs(depot_paths) do\n+      local depot_env = util.path.join(vim.fs.normalize(depot_path), 'environments')",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773097943",
+            "id": 1773097943,
+            "line": null,
+            "node_id": "PRRC_kwDODTQC185pr1PX",
+            "original_commit_id": "6a87db556a5c724621de42eed8d0f28ae8a6f6ad",
+            "original_line": 39,
+            "original_position": 39,
+            "original_start_line": null,
+            "path": "lua/lspconfig/server_configurations/julials.lua",
+            "position": null,
+            "pull_request_review_id": 2324838201,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773097943/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-09-24T10:43:16Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773097943",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773121835"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773121835"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "Ah, I misunderstood the previous discussion. I thought it should still use the `get_clients` utility since the rest of the codebase supports neovim 0.9 and then the 0.9 support would be dropped in a later PR",
+            "commit_id": "e19e6aef701288ee13935f73b2f54a1c31193612",
+            "created_at": "2024-09-24T11:01:59Z",
+            "diff_hunk": "@@ -1,5 +1,54 @@\n local util = require 'lspconfig.util'\n \n+local function activate_env(path)\n+  local bufnr = vim.api.nvim_get_current_buf()\n+  local julials_clients = util.get_lsp_clients { bufnr = bufnr, name = 'julials' }",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773121835",
+            "id": 1773121835,
+            "in_reply_to_id": 1773091102,
+            "line": null,
+            "node_id": "PRRC_kwDODTQC185pr7Er",
+            "original_commit_id": "6a87db556a5c724621de42eed8d0f28ae8a6f6ad",
+            "original_line": 5,
+            "original_position": 5,
+            "original_start_line": null,
+            "path": "lua/lspconfig/server_configurations/julials.lua",
+            "position": null,
+            "pull_request_review_id": 2324876408,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773121835/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-09-24T11:01:59Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773121835",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1591837?v=4",
+                "events_url": "https://api.github.com/users/mehalter/events{/privacy}",
+                "followers_url": "https://api.github.com/users/mehalter/followers",
+                "following_url": "https://api.github.com/users/mehalter/following{/other_user}",
+                "gists_url": "https://api.github.com/users/mehalter/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/mehalter",
+                "id": 1591837,
+                "login": "mehalter",
+                "node_id": "MDQ6VXNlcjE1OTE4Mzc=",
+                "organizations_url": "https://api.github.com/users/mehalter/orgs",
+                "received_events_url": "https://api.github.com/users/mehalter/received_events",
+                "repos_url": "https://api.github.com/users/mehalter/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/mehalter/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/mehalter/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/mehalter"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773122948"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773122948"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "Windows uses `;` path separating. I apologize for the code doubling, it was me incorrectly implementing things the first time as well as adding the ability to manually specifying a path directly.",
+            "commit_id": "e19e6aef701288ee13935f73b2f54a1c31193612",
+            "created_at": "2024-09-24T11:02:49Z",
+            "diff_hunk": "@@ -1,5 +1,54 @@\n local util = require 'lspconfig.util'\n \n+local function activate_env(path)\n+  local bufnr = vim.api.nvim_get_current_buf()\n+  local julials_clients = util.get_lsp_clients { bufnr = bufnr, name = 'julials' }\n+  assert(\n+    #julials_clients > 0,\n+    'method julia/activateenvironment is not supported by any servers active on the current buffer'\n+  )\n+  local julia_project_files = { 'Project.toml', 'JuliaProject.toml' }\n+  local function _activate_env(environment)\n+    if environment then\n+      for _, julials_client in ipairs(julials_clients) do\n+        julials_client.notify('julia/activateenvironment', { envPath = environment })\n+      end\n+      vim.notify('Julia environment activated: \\n`' .. environment .. '`', vim.log.levels.INFO)\n+    end\n+  end\n+  if path then\n+    path = vim.fs.normalize(path)\n+    local found_env = false\n+    for _, project_file in ipairs(julia_project_files) do\n+      if util.path.exists(util.path.join(path, project_file)) then\n+        found_env = true\n+        break\n+      end\n+    end\n+    if not found_env then\n+      vim.notify('Path is not a julia environment: \\n`' .. path .. '`', vim.log.levels.WARN)\n+      return\n+    end\n+    _activate_env(path)\n+  else\n+    local depot_paths = vim.env.JULIA_DEPOT_PATH and vim.split(vim.env.JULIA_DEPOT_PATH, ':')",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773122948",
+            "id": 1773122948,
+            "in_reply_to_id": 1773095238,
+            "line": null,
+            "node_id": "PRRC_kwDODTQC185pr7WE",
+            "original_commit_id": "6a87db556a5c724621de42eed8d0f28ae8a6f6ad",
+            "original_line": 35,
+            "original_position": 34,
+            "original_start_line": null,
+            "path": "lua/lspconfig/server_configurations/julials.lua",
+            "position": null,
+            "pull_request_review_id": 2324878207,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318",
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773122948/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-09-24T13:05:38Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773122948",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1591837?v=4",
+                "events_url": "https://api.github.com/users/mehalter/events{/privacy}",
+                "followers_url": "https://api.github.com/users/mehalter/followers",
+                "following_url": "https://api.github.com/users/mehalter/following{/other_user}",
+                "gists_url": "https://api.github.com/users/mehalter/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/mehalter",
+                "id": 1591837,
+                "login": "mehalter",
+                "node_id": "MDQ6VXNlcjE1OTE4Mzc=",
+                "organizations_url": "https://api.github.com/users/mehalter/orgs",
+                "received_events_url": "https://api.github.com/users/mehalter/received_events",
+                "repos_url": "https://api.github.com/users/mehalter/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/mehalter/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/mehalter/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/mehalter"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773128297"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773128297"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "resolved in latest commit",
+            "commit_id": "e19e6aef701288ee13935f73b2f54a1c31193612",
+            "created_at": "2024-09-24T11:06:37Z",
+            "diff_hunk": "@@ -1,5 +1,54 @@\n local util = require 'lspconfig.util'\n \n+local function activate_env(path)\n+  local bufnr = vim.api.nvim_get_current_buf()\n+  local julials_clients = util.get_lsp_clients { bufnr = bufnr, name = 'julials' }\n+  assert(\n+    #julials_clients > 0,\n+    'method julia/activateenvironment is not supported by any servers active on the current buffer'\n+  )\n+  local julia_project_files = { 'Project.toml', 'JuliaProject.toml' }\n+  local function _activate_env(environment)\n+    if environment then\n+      for _, julials_client in ipairs(julials_clients) do\n+        julials_client.notify('julia/activateenvironment', { envPath = environment })\n+      end\n+      vim.notify('Julia environment activated: \\n`' .. environment .. '`', vim.log.levels.INFO)\n+    end\n+  end\n+  if path then\n+    path = vim.fs.normalize(path)\n+    local found_env = false\n+    for _, project_file in ipairs(julia_project_files) do\n+      if util.path.exists(util.path.join(path, project_file)) then\n+        found_env = true\n+        break\n+      end\n+    end\n+    if not found_env then\n+      vim.notify('Path is not a julia environment: \\n`' .. path .. '`', vim.log.levels.WARN)\n+      return\n+    end\n+    _activate_env(path)\n+  else\n+    local depot_paths = vim.env.JULIA_DEPOT_PATH and vim.split(vim.env.JULIA_DEPOT_PATH, ':')\n+      or { vim.fn.expand '~/.julia' }\n+    local environments = {}\n+    vim.list_extend(environments, vim.fs.find(julia_project_files, { type = 'file', upward = true, limit = math.huge }))\n+    for _, depot_path in ipairs(depot_paths) do\n+      local depot_env = util.path.join(vim.fs.normalize(depot_path), 'environments')",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773128297",
+            "id": 1773128297,
+            "in_reply_to_id": 1773097943,
+            "line": null,
+            "node_id": "PRRC_kwDODTQC185pr8pp",
+            "original_commit_id": "6a87db556a5c724621de42eed8d0f28ae8a6f6ad",
+            "original_line": 39,
+            "original_position": 39,
+            "original_start_line": null,
+            "path": "lua/lspconfig/server_configurations/julials.lua",
+            "position": null,
+            "pull_request_review_id": 2324886953,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773128297/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-09-24T11:06:37Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773128297",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1591837?v=4",
+                "events_url": "https://api.github.com/users/mehalter/events{/privacy}",
+                "followers_url": "https://api.github.com/users/mehalter/followers",
+                "following_url": "https://api.github.com/users/mehalter/following{/other_user}",
+                "gists_url": "https://api.github.com/users/mehalter/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/mehalter",
+                "id": 1591837,
+                "login": "mehalter",
+                "node_id": "MDQ6VXNlcjE1OTE4Mzc=",
+                "organizations_url": "https://api.github.com/users/mehalter/orgs",
+                "received_events_url": "https://api.github.com/users/mehalter/received_events",
+                "repos_url": "https://api.github.com/users/mehalter/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/mehalter/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/mehalter/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/mehalter"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773128550"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773128550"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "resolved in latest commit",
+            "commit_id": "e19e6aef701288ee13935f73b2f54a1c31193612",
+            "created_at": "2024-09-24T11:06:49Z",
+            "diff_hunk": "@@ -1,5 +1,54 @@\n local util = require 'lspconfig.util'\n \n+local function activate_env(path)\n+  local bufnr = vim.api.nvim_get_current_buf()\n+  local julials_clients = util.get_lsp_clients { bufnr = bufnr, name = 'julials' }",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773128550",
+            "id": 1773128550,
+            "in_reply_to_id": 1773091102,
+            "line": null,
+            "node_id": "PRRC_kwDODTQC185pr8tm",
+            "original_commit_id": "6a87db556a5c724621de42eed8d0f28ae8a6f6ad",
+            "original_line": 5,
+            "original_position": 5,
+            "original_start_line": null,
+            "path": "lua/lspconfig/server_configurations/julials.lua",
+            "position": null,
+            "pull_request_review_id": 2324887344,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773128550/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-09-24T11:06:49Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773128550",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1591837?v=4",
+                "events_url": "https://api.github.com/users/mehalter/events{/privacy}",
+                "followers_url": "https://api.github.com/users/mehalter/followers",
+                "following_url": "https://api.github.com/users/mehalter/following{/other_user}",
+                "gists_url": "https://api.github.com/users/mehalter/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/mehalter",
+                "id": 1591837,
+                "login": "mehalter",
+                "node_id": "MDQ6VXNlcjE1OTE4Mzc=",
+                "organizations_url": "https://api.github.com/users/mehalter/orgs",
+                "received_events_url": "https://api.github.com/users/mehalter/received_events",
+                "repos_url": "https://api.github.com/users/mehalter/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/mehalter/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/mehalter/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/mehalter"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773132456"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773132456"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "> Irrelevant for this PR. `vim.lsp.get_clients()` exists in 0.9\r\n\r\nI figured adding code that doesn't not match the current Neovim version support of the plugin would be irrelevant for this PR and a followup would make the blanket decision of which Neovim version to support. For now, I have removed the 0.9 support as requested",
+            "commit_id": "e19e6aef701288ee13935f73b2f54a1c31193612",
+            "created_at": "2024-09-24T11:10:00Z",
+            "diff_hunk": "@@ -1,5 +1,34 @@\n local util = require 'lspconfig.util'\n \n+local function activate_env()\n+  local bufnr = vim.api.nvim_get_current_buf()\n+  local julials_client = util.get_active_client_by_name(bufnr, 'julials')",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773132456",
+            "id": 1773132456,
+            "in_reply_to_id": 1772972393,
+            "line": null,
+            "node_id": "PRRC_kwDODTQC185pr9qo",
+            "original_commit_id": "5899b5ba29aa20e83e4d2c7715fd2fe7349daf30",
+            "original_line": 5,
+            "original_position": 5,
+            "original_start_line": null,
+            "path": "lua/lspconfig/server_configurations/julials.lua",
+            "position": null,
+            "pull_request_review_id": 2324894082,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773132456/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-09-24T11:10:01Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773132456",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1591837?v=4",
+                "events_url": "https://api.github.com/users/mehalter/events{/privacy}",
+                "followers_url": "https://api.github.com/users/mehalter/followers",
+                "following_url": "https://api.github.com/users/mehalter/following{/other_user}",
+                "gists_url": "https://api.github.com/users/mehalter/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/mehalter",
+                "id": 1591837,
+                "login": "mehalter",
+                "node_id": "MDQ6VXNlcjE1OTE4Mzc=",
+                "organizations_url": "https://api.github.com/users/mehalter/orgs",
+                "received_events_url": "https://api.github.com/users/mehalter/received_events",
+                "repos_url": "https://api.github.com/users/mehalter/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/mehalter/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/mehalter/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/mehalter"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773134191"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773134191"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "If the idea is to remove all usages of `util` in the configuration. For now, should I include 0.9 support by checking for the old, deprecated function name?",
+            "commit_id": "e19e6aef701288ee13935f73b2f54a1c31193612",
+            "created_at": "2024-09-24T11:11:22Z",
+            "diff_hunk": "@@ -1,5 +1,34 @@\n local util = require 'lspconfig.util'\n \n+local function activate_env()\n+  local bufnr = vim.api.nvim_get_current_buf()\n+  local julials_client = util.get_active_client_by_name(bufnr, 'julials')",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773134191",
+            "id": 1773134191,
+            "in_reply_to_id": 1772972393,
+            "line": null,
+            "node_id": "PRRC_kwDODTQC185pr-Fv",
+            "original_commit_id": "5899b5ba29aa20e83e4d2c7715fd2fe7349daf30",
+            "original_line": 5,
+            "original_position": 5,
+            "original_start_line": null,
+            "path": "lua/lspconfig/server_configurations/julials.lua",
+            "position": null,
+            "pull_request_review_id": 2324896766,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773134191/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-09-24T11:11:22Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773134191",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1591837?v=4",
+                "events_url": "https://api.github.com/users/mehalter/events{/privacy}",
+                "followers_url": "https://api.github.com/users/mehalter/followers",
+                "following_url": "https://api.github.com/users/mehalter/following{/other_user}",
+                "gists_url": "https://api.github.com/users/mehalter/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/mehalter",
+                "id": 1591837,
+                "login": "mehalter",
+                "node_id": "MDQ6VXNlcjE1OTE4Mzc=",
+                "organizations_url": "https://api.github.com/users/mehalter/orgs",
+                "received_events_url": "https://api.github.com/users/mehalter/received_events",
+                "repos_url": "https://api.github.com/users/mehalter/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/mehalter/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/mehalter/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/mehalter"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773138628"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773138628"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "For now it seems like this PR shouldn't change the required neovim version since that is out of scope of what I am doing here. I have removed all reliance of the lspconfig util and also support neovim 0.8+ since that is listed in the README requirements",
+            "commit_id": "e19e6aef701288ee13935f73b2f54a1c31193612",
+            "created_at": "2024-09-24T11:14:57Z",
+            "diff_hunk": "@@ -1,5 +1,34 @@\n local util = require 'lspconfig.util'\n \n+local function activate_env()\n+  local bufnr = vim.api.nvim_get_current_buf()\n+  local julials_client = util.get_active_client_by_name(bufnr, 'julials')",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773138628",
+            "id": 1773138628,
+            "in_reply_to_id": 1772972393,
+            "line": null,
+            "node_id": "PRRC_kwDODTQC185pr_LE",
+            "original_commit_id": "5899b5ba29aa20e83e4d2c7715fd2fe7349daf30",
+            "original_line": 5,
+            "original_position": 5,
+            "original_start_line": null,
+            "path": "lua/lspconfig/server_configurations/julials.lua",
+            "position": null,
+            "pull_request_review_id": 2324904863,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773138628/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-09-24T11:15:42Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773138628",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1591837?v=4",
+                "events_url": "https://api.github.com/users/mehalter/events{/privacy}",
+                "followers_url": "https://api.github.com/users/mehalter/followers",
+                "following_url": "https://api.github.com/users/mehalter/following{/other_user}",
+                "gists_url": "https://api.github.com/users/mehalter/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/mehalter",
+                "id": 1591837,
+                "login": "mehalter",
+                "node_id": "MDQ6VXNlcjE1OTE4Mzc=",
+                "organizations_url": "https://api.github.com/users/mehalter/orgs",
+                "received_events_url": "https://api.github.com/users/mehalter/received_events",
+                "repos_url": "https://api.github.com/users/mehalter/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/mehalter/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/mehalter/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/mehalter"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773316360"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773316360"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "@justinmk is this `assert` correct? It seems like if the language server is stopped for any reason then this command doesn't automatically delete itself so it's not really an assertion and should probably just be a nice notification check. The command existing only means that the language server has been attached to the buffer previously. I think this is probably why the other similar commands in `nvim-lspconfig` do a notification rather than an assertion",
+            "commit_id": "e19e6aef701288ee13935f73b2f54a1c31193612",
+            "created_at": "2024-09-24T13:10:22Z",
+            "diff_hunk": "@@ -1,5 +1,34 @@\n local util = require 'lspconfig.util'\n \n+local function activate_env()\n+  local bufnr = vim.api.nvim_get_current_buf()\n+  local julials_client = util.get_active_client_by_name(bufnr, 'julials')\n+  if not julials_client then\n+    vim.notify(\n+      'method julia/activateenvironment is not supported by any servers active on the current buffer',\n+      vim.log.levels.WARN",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773316360",
+            "id": 1773316360,
+            "in_reply_to_id": 1772975227,
+            "line": null,
+            "node_id": "PRRC_kwDODTQC185psqkI",
+            "original_commit_id": "5899b5ba29aa20e83e4d2c7715fd2fe7349daf30",
+            "original_line": 9,
+            "original_position": 9,
+            "original_start_line": null,
+            "path": "lua/lspconfig/server_configurations/julials.lua",
+            "position": null,
+            "pull_request_review_id": 2325209773,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773316360/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-09-24T13:11:07Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773316360",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1591837?v=4",
+                "events_url": "https://api.github.com/users/mehalter/events{/privacy}",
+                "followers_url": "https://api.github.com/users/mehalter/followers",
+                "following_url": "https://api.github.com/users/mehalter/following{/other_user}",
+                "gists_url": "https://api.github.com/users/mehalter/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/mehalter",
+                "id": 1591837,
+                "login": "mehalter",
+                "node_id": "MDQ6VXNlcjE1OTE4Mzc=",
+                "organizations_url": "https://api.github.com/users/mehalter/orgs",
+                "received_events_url": "https://api.github.com/users/mehalter/received_events",
+                "repos_url": "https://api.github.com/users/mehalter/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/mehalter/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/mehalter/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/mehalter"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773352521"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773352521"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "I am going to go ahead and revert the use of `assert` because the original comment regarding the commands only being available when the language server is active is incorrect. I can revise it back to an `assert` if this is desired.",
+            "commit_id": "e19e6aef701288ee13935f73b2f54a1c31193612",
+            "created_at": "2024-09-24T13:28:58Z",
+            "diff_hunk": "@@ -1,5 +1,34 @@\n local util = require 'lspconfig.util'\n \n+local function activate_env()\n+  local bufnr = vim.api.nvim_get_current_buf()\n+  local julials_client = util.get_active_client_by_name(bufnr, 'julials')\n+  if not julials_client then\n+    vim.notify(\n+      'method julia/activateenvironment is not supported by any servers active on the current buffer',\n+      vim.log.levels.WARN",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1773352521",
+            "id": 1773352521,
+            "in_reply_to_id": 1772975227,
+            "line": null,
+            "node_id": "PRRC_kwDODTQC185pszZJ",
+            "original_commit_id": "5899b5ba29aa20e83e4d2c7715fd2fe7349daf30",
+            "original_line": 9,
+            "original_position": 9,
+            "original_start_line": null,
+            "path": "lua/lspconfig/server_configurations/julials.lua",
+            "position": null,
+            "pull_request_review_id": 2325275096,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773352521/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-09-24T13:28:58Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1773352521",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1591837?v=4",
+                "events_url": "https://api.github.com/users/mehalter/events{/privacy}",
+                "followers_url": "https://api.github.com/users/mehalter/followers",
+                "following_url": "https://api.github.com/users/mehalter/following{/other_user}",
+                "gists_url": "https://api.github.com/users/mehalter/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/mehalter",
+                "id": 1591837,
+                "login": "mehalter",
+                "node_id": "MDQ6VXNlcjE1OTE4Mzc=",
+                "organizations_url": "https://api.github.com/users/mehalter/orgs",
+                "received_events_url": "https://api.github.com/users/mehalter/received_events",
+                "repos_url": "https://api.github.com/users/mehalter/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/mehalter/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/mehalter/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/mehalter"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1780814404"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1780814404"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "can this loop be replaced by `vim.fs.find` ? Nvim versions before 0.10 are not supported (especially for commands)",
+            "commit_id": "e19e6aef701288ee13935f73b2f54a1c31193612",
+            "created_at": "2024-09-30T10:16:09Z",
+            "diff_hunk": "@@ -1,5 +1,59 @@\n local util = require 'lspconfig.util'\n \n+local function activate_env(path)\n+  local bufnr = vim.api.nvim_get_current_buf()\n+  local julials_clients = (vim.lsp.get_clients or vim.lsp.get_active_clients) { bufnr = bufnr, name = 'julials' }\n+  if #julials_clients == 0 then\n+    vim.notify(\n+      'method julia/activateenvironment is not supported by any servers active on the current buffer',\n+      vim.log.levels.WARN\n+    )\n+    return\n+  end\n+  local julia_project_files = { 'Project.toml', 'JuliaProject.toml' }\n+  local function _activate_env(environment)\n+    if environment then\n+      for _, julials_client in ipairs(julials_clients) do\n+        julials_client.notify('julia/activateenvironment', { envPath = environment })\n+      end\n+      vim.notify('Julia environment activated: \\n`' .. environment .. '`', vim.log.levels.INFO)\n+    end\n+  end\n+  if path then\n+    path = vim.fs.normalize(path)\n+    local found_env = false\n+    for _, project_file in ipairs(julia_project_files) do\n+      local file = (vim.uv or vim.loop).fs_stat(vim.fs.joinpath(path, project_file))\n+      if file and file.type then\n+        found_env = true\n+        break\n+      end\n+    end",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1780814404",
+            "id": 1780814404,
+            "line": null,
+            "node_id": "PRRC_kwDODTQC185qJRJE",
+            "original_commit_id": "edb1ae6e3a4ff95e6d46f03f2ffefbe30ed86348",
+            "original_line": 30,
+            "original_position": 31,
+            "original_start_line": 25,
+            "path": "lua/lspconfig/server_configurations/julials.lua",
+            "position": null,
+            "pull_request_review_id": 2337005466,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1780814404/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2024-09-30T10:16:09Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1780814404",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1780821052"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1780821052"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "there is no reason that commands need to support older Nvim versions.\r\n\r\n```suggestion\r\nlocal function activate_env(path)\r\n  assert(vim.fn.has('nvim-0.10') == 1, 'requires Nvim 0.10 or newer')\r\n```\r\n\r\nthen, remove the `vim.loop` usages below, `get_active_clients`, and any other outdated apis.",
+            "commit_id": "e19e6aef701288ee13935f73b2f54a1c31193612",
+            "created_at": "2024-09-30T10:21:17Z",
+            "diff_hunk": "@@ -1,5 +1,59 @@\n local util = require 'lspconfig.util'\n \n+local function activate_env(path)",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1780821052",
+            "id": 1780821052,
+            "line": 5,
+            "node_id": "PRRC_kwDODTQC185qJSw8",
+            "original_commit_id": "edb1ae6e3a4ff95e6d46f03f2ffefbe30ed86348",
+            "original_line": 5,
+            "original_position": 3,
+            "original_start_line": null,
+            "path": "lua/lspconfig/server_configurations/julials.lua",
+            "position": 5,
+            "pull_request_review_id": 2337016310,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1780821052/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-09-30T10:21:34Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1780821052",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1780822477"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1780822477"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "an assert() is sufficient. ",
+            "commit_id": "e19e6aef701288ee13935f73b2f54a1c31193612",
+            "created_at": "2024-09-30T10:22:31Z",
+            "diff_hunk": "@@ -1,5 +1,34 @@\n local util = require 'lspconfig.util'\n \n+local function activate_env()\n+  local bufnr = vim.api.nvim_get_current_buf()\n+  local julials_client = util.get_active_client_by_name(bufnr, 'julials')\n+  if not julials_client then\n+    vim.notify(\n+      'method julia/activateenvironment is not supported by any servers active on the current buffer',\n+      vim.log.levels.WARN",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1780822477",
+            "id": 1780822477,
+            "in_reply_to_id": 1772975227,
+            "line": null,
+            "node_id": "PRRC_kwDODTQC185qJTHN",
+            "original_commit_id": "5899b5ba29aa20e83e4d2c7715fd2fe7349daf30",
+            "original_line": 9,
+            "original_position": 9,
+            "original_start_line": null,
+            "path": "lua/lspconfig/server_configurations/julials.lua",
+            "position": null,
+            "pull_request_review_id": 2337018841,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1780822477/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-09-30T10:22:32Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1780822477",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1781183790"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1781183790"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "I don't think so because `vim.fs.find` doesn't have a maximum depth. It has a `stop` parameter which stops when a given directory is reached but this really is only applicable doing an upwards search and there is no way to limit the depth it searches. Here we need to find project files just inside the directory that is passed in and not looking for them infinitely recursing down.",
+            "commit_id": "e19e6aef701288ee13935f73b2f54a1c31193612",
+            "created_at": "2024-09-30T13:54:55Z",
+            "diff_hunk": "@@ -1,5 +1,59 @@\n local util = require 'lspconfig.util'\n \n+local function activate_env(path)\n+  local bufnr = vim.api.nvim_get_current_buf()\n+  local julials_clients = (vim.lsp.get_clients or vim.lsp.get_active_clients) { bufnr = bufnr, name = 'julials' }\n+  if #julials_clients == 0 then\n+    vim.notify(\n+      'method julia/activateenvironment is not supported by any servers active on the current buffer',\n+      vim.log.levels.WARN\n+    )\n+    return\n+  end\n+  local julia_project_files = { 'Project.toml', 'JuliaProject.toml' }\n+  local function _activate_env(environment)\n+    if environment then\n+      for _, julials_client in ipairs(julials_clients) do\n+        julials_client.notify('julia/activateenvironment', { envPath = environment })\n+      end\n+      vim.notify('Julia environment activated: \\n`' .. environment .. '`', vim.log.levels.INFO)\n+    end\n+  end\n+  if path then\n+    path = vim.fs.normalize(path)\n+    local found_env = false\n+    for _, project_file in ipairs(julia_project_files) do\n+      local file = (vim.uv or vim.loop).fs_stat(vim.fs.joinpath(path, project_file))\n+      if file and file.type then\n+        found_env = true\n+        break\n+      end\n+    end",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1781183790",
+            "id": 1781183790,
+            "in_reply_to_id": 1780814404,
+            "line": null,
+            "node_id": "PRRC_kwDODTQC185qKrUu",
+            "original_commit_id": "edb1ae6e3a4ff95e6d46f03f2ffefbe30ed86348",
+            "original_line": 30,
+            "original_position": 31,
+            "original_start_line": 25,
+            "path": "lua/lspconfig/server_configurations/julials.lua",
+            "position": null,
+            "pull_request_review_id": 2337642389,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1781183790/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2024-09-30T13:54:55Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1781183790",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1591837?v=4",
+                "events_url": "https://api.github.com/users/mehalter/events{/privacy}",
+                "followers_url": "https://api.github.com/users/mehalter/followers",
+                "following_url": "https://api.github.com/users/mehalter/following{/other_user}",
+                "gists_url": "https://api.github.com/users/mehalter/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/mehalter",
+                "id": 1591837,
+                "login": "mehalter",
+                "node_id": "MDQ6VXNlcjE1OTE4Mzc=",
+                "organizations_url": "https://api.github.com/users/mehalter/orgs",
+                "received_events_url": "https://api.github.com/users/mehalter/received_events",
+                "repos_url": "https://api.github.com/users/mehalter/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/mehalter/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/mehalter/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/mehalter"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1781210854"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1781210854"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "Removed support for <Neovim v0.10 in the command",
+            "commit_id": "e19e6aef701288ee13935f73b2f54a1c31193612",
+            "created_at": "2024-09-30T14:09:15Z",
+            "diff_hunk": "@@ -1,5 +1,59 @@\n local util = require 'lspconfig.util'\n \n+local function activate_env(path)",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1781210854",
+            "id": 1781210854,
+            "in_reply_to_id": 1780821052,
+            "line": 5,
+            "node_id": "PRRC_kwDODTQC185qKx7m",
+            "original_commit_id": "edb1ae6e3a4ff95e6d46f03f2ffefbe30ed86348",
+            "original_line": 5,
+            "original_position": 3,
+            "original_start_line": null,
+            "path": "lua/lspconfig/server_configurations/julials.lua",
+            "position": 5,
+            "pull_request_review_id": 2337689340,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1781210854/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-09-30T14:09:15Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1781210854",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1591837?v=4",
+                "events_url": "https://api.github.com/users/mehalter/events{/privacy}",
+                "followers_url": "https://api.github.com/users/mehalter/followers",
+                "following_url": "https://api.github.com/users/mehalter/following{/other_user}",
+                "gists_url": "https://api.github.com/users/mehalter/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/mehalter",
+                "id": 1591837,
+                "login": "mehalter",
+                "node_id": "MDQ6VXNlcjE1OTE4Mzc=",
+                "organizations_url": "https://api.github.com/users/mehalter/orgs",
+                "received_events_url": "https://api.github.com/users/mehalter/received_events",
+                "repos_url": "https://api.github.com/users/mehalter/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/mehalter/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/mehalter/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/mehalter"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1781211673"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1781211673"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "Moved it to being just an `assert`",
+            "commit_id": "e19e6aef701288ee13935f73b2f54a1c31193612",
+            "created_at": "2024-09-30T14:09:44Z",
+            "diff_hunk": "@@ -1,5 +1,34 @@\n local util = require 'lspconfig.util'\n \n+local function activate_env()\n+  local bufnr = vim.api.nvim_get_current_buf()\n+  local julials_client = util.get_active_client_by_name(bufnr, 'julials')\n+  if not julials_client then\n+    vim.notify(\n+      'method julia/activateenvironment is not supported by any servers active on the current buffer',\n+      vim.log.levels.WARN",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/3318#discussion_r1781211673",
+            "id": 1781211673,
+            "in_reply_to_id": 1772975227,
+            "line": null,
+            "node_id": "PRRC_kwDODTQC185qKyIZ",
+            "original_commit_id": "5899b5ba29aa20e83e4d2c7715fd2fe7349daf30",
+            "original_line": 9,
+            "original_position": 9,
+            "original_start_line": null,
+            "path": "lua/lspconfig/server_configurations/julials.lua",
+            "position": null,
+            "pull_request_review_id": 2337690657,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1781211673/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-09-30T14:09:44Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/1781211673",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1591837?v=4",
+                "events_url": "https://api.github.com/users/mehalter/events{/privacy}",
+                "followers_url": "https://api.github.com/users/mehalter/followers",
+                "following_url": "https://api.github.com/users/mehalter/following{/other_user}",
+                "gists_url": "https://api.github.com/users/mehalter/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/mehalter",
+                "id": 1591837,
+                "login": "mehalter",
+                "node_id": "MDQ6VXNlcjE1OTE4Mzc=",
+                "organizations_url": "https://api.github.com/users/mehalter/orgs",
+                "received_events_url": "https://api.github.com/users/mehalter/received_events",
+                "repos_url": "https://api.github.com/users/mehalter/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/mehalter/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/mehalter/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/mehalter"
+            }
+        }
+    ],
     "comment_regular_data": [
         {
             "author_association": "CONTRIBUTOR",
@@ -311,9 +2992,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/mehalter/nvim-lspconfig/pulls{/number}",
-            "pushed_at": "2024-09-23T16:36:21Z",
+            "pushed_at": "2024-09-30T14:08:47Z",
             "releases_url": "https://api.github.com/repos/mehalter/nvim-lspconfig/releases{/id}",
-            "size": 3996,
+            "size": 4064,
             "ssh_url": "git@github.com:mehalter/nvim-lspconfig.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/mehalter/nvim-lspconfig/stargazers",
@@ -332,7 +3013,7 @@
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "c7a145f6ae50389caf1a9a72aa22cf98e7945f66",
+        "sha": "e19e6aef701288ee13935f73b2f54a1c31193612",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1591837?v=4",
             "events_url": "https://api.github.com/users/mehalter/events{/privacy}",
@@ -359,13 +3040,33 @@
     "issue_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/3318",
     "labels": [],
     "locked": false,
-    "merge_commit_sha": "40fad76600c4c3c556ba4ce1d2242d8ad6319843",
+    "merge_commit_sha": "06be3c27a646e7bcd6cdf170269105175855dcc3",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDODTQC1858ZY-U",
     "number": 3318,
     "patch_url": "https://github.com/neovim/nvim-lspconfig/pull/3318.patch",
     "requested_reviewers": [
+        {
+            "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+            "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+            "followers_url": "https://api.github.com/users/justinmk/followers",
+            "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+            "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+            "gravatar_id": "",
+            "html_url": "https://github.com/justinmk",
+            "id": 1359421,
+            "login": "justinmk",
+            "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+            "organizations_url": "https://api.github.com/users/justinmk/orgs",
+            "received_events_url": "https://api.github.com/users/justinmk/received_events",
+            "repos_url": "https://api.github.com/users/justinmk/repos",
+            "site_admin": false,
+            "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+            "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+            "type": "User",
+            "url": "https://api.github.com/users/justinmk"
+        },
         {
             "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",
             "events_url": "https://api.github.com/users/glepnir/events{/privacy}",
@@ -391,9 +3092,9 @@
     "review_comment_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318/comments",
     "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/nvim-lspconfig/statuses/c7a145f6ae50389caf1a9a72aa22cf98e7945f66",
+    "statuses_url": "https://api.github.com/repos/neovim/nvim-lspconfig/statuses/e19e6aef701288ee13935f73b2f54a1c31193612",
     "title": "feat(julials): add `JuliaActivateEnv` to activate a julia environment",
-    "updated_at": "2024-09-23T16:37:40Z",
+    "updated_at": "2024-09-30T14:10:00Z",
     "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/3318",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1591837?v=4",

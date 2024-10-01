@@ -5,6 +5,7 @@
     "author_association": "MEMBER",
     "body": "### Problem\r\n\r\n`vim.lsp.util` is a dumpster that needs to be cleaned up. This process has already been started in #25073. But the pruning must continue.\r\n\r\nThis is a tracking issue for _substantially_ reducing the size and scope of `vim.lsp.util`. Ideally, it will be removed completely (deprecated first, of course, and removed in a future release).\r\n\r\nIn particular, new homes should be found for:\r\n\r\n- [ ] `_normalize_markdown`\r\n  - This should be made public, but not under `vim.lsp.util`. TBD on the correct namespace for this\r\n- [ ] `open_floating_preview`\r\n  - This is a useful utility function for easily creating floats, but it tries to do too much and has become over engineered. Move this to `vim.ui.open_win`. (#25514)\r\n- [ ] `make_floating_popup_options`\r\n  - This should just be part of `vim.ui.open_float`. Deprecate.\r\n- [ ] `_make_floating_popup_size`\r\n  - Same as above.\r\n- [ ] `_str_utfindex_enc` and `_str_byteindex_enc`\r\n  - These are advertised as \"convenience wrappers\" around `vim.str_utfindex` and `vim.str_byteindex`, respectively. Consider updating those functions to accept an encoding instead.\r\n- [x] `set_lines`\r\n  - I don't see any usages of this in our own code. This should be deprecated and deleted. Plugins can do this themselves, it is not that hard, and we don't need to provide little utility functions for every possible thing that can be done.\r\n  - Deprecated in https://github.com/neovim/neovim/pull/26742, will be removed in 0.12.\r\n- [ ] `apply_text_edits`\r\n  - Can this be moved to e.g. `vim.lsp.buf`? @mfussenegger \r\n- [x] `_get_completion_item_kind_name`\r\n  - This is a one line function. Why is this needed? Can it be inlined/deleted? @mfussenegger \r\n  - Removed in https://github.com/neovim/neovim/pull/25733\r\n- [x] `text_document_completion_list_to_complete_items`\r\n  - The name alone suggests this is a special purpose function and doesn't belong in \"util\". Is there a more appropriate location?\r\n  - Removed in https://github.com/neovim/neovim/pull/28774\r\n- [ ] `stylize_markdown`\r\n  - Deprecate once `normalize_markdown` is public and `vim.ui.open_float` exists. At that point this is no longer needed or necessary.\r\n\r\nThe list above is non-exhaustive, it may be updated with new items as the effort progresses.",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -96,7 +97,7 @@
         },
         {
             "author_association": "MEMBER",
-            "body": "> `_normalize_markdown` should be made public, but not under `vim.lsp.util`. TBD on the correct namespace\r\n\r\n- We need a `vim.text` module for various text manipulation things (like `vim.text.indent()`, `vim.text.dedent()`).\r\n    - Counterpoint: `normalize_markdown` is markdown specific so it should live in `vim.filetype.markdown` ?\r\n        - But markdown is common enough that I'd be ok with cramming it into `vim.text`. The door is still open for filetype-specific utils in `vim.filetype.xx` in the future.\r\n\r\n> Another potential alternative would be to mix this into some kind of position or range abstraction.\r\n\r\nReference: https://github.com/neovim/neovim/issues/25509\r\n\r\n💯  for the other suggestions in this issue, with these comments:\r\n\r\n- Should the `open_float` features be owned by `nvim_open_win` instead of adding `vim.ui.open_float` ?\r\n- Are both `vim.ui.open_win` + `vim.ui.open_float` needed, or could `vim.ui.open_win` ergonimically cover both (float and non-float) use-cases?",
+            "body": "> `_normalize_markdown` should be made public, but not under `vim.lsp.util`. TBD on the correct namespace\r\n\r\n- We need a [`vim.text` module](https://github.com/neovim/neovim/pull/26069) for various text manipulation things (like `vim.text.indent()`, `vim.text.dedent()`).\r\n    - Counterpoint: `normalize_markdown` is markdown specific so it should live in `vim.filetype.markdown` ?\r\n        - But markdown is common enough that I'd be ok with cramming it into `vim.text`. The door is still open for filetype-specific utils in `vim.filetype.xx` in the future.\r\n\r\n> Another potential alternative would be to mix this into some kind of position or range abstraction.\r\n\r\nReference: https://github.com/neovim/neovim/issues/25509\r\n\r\n💯  for the other suggestions in this issue, with these comments:\r\n\r\n- ✅  Should the `open_float` features be owned by `nvim_open_win` instead of adding `vim.ui.open_float` ?\r\n    - done: https://github.com/neovim/neovim/pull/25550\r\n- Are both `vim.ui.open_win` + `vim.ui.open_float` needed, or could `vim.ui.open_win` ergonimically cover both (float and non-float) use-cases?",
             "created_at": "2023-09-21T10:28:21Z",
             "html_url": "https://github.com/neovim/neovim/issues/25272#issuecomment-1729294143",
             "id": 1729294143,
@@ -115,7 +116,7 @@
                 "total_count": 1,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1729294143/reactions"
             },
-            "updated_at": "2023-10-05T09:43:56Z",
+            "updated_at": "2024-09-28T19:44:31Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1729294143",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -378,6 +379,15 @@
         {
             "color": "c5def5",
             "default": false,
+            "description": "stdlib",
+            "id": 573222693,
+            "name": "lua",
+            "node_id": "MDU6TGFiZWw1NzMyMjI2OTM=",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/lua"
+        },
+        {
+            "color": "c5def5",
+            "default": false,
             "description": null,
             "id": 662566370,
             "name": "lsp",
@@ -389,7 +399,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 623,
+        "closed_issues": 649,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -411,17 +421,17 @@
             "type": "User",
             "url": "https://api.github.com/users/justinmk"
         },
-        "description": "Low priority. Not planned for the current target, may be reassigned.",
+        "description": "Low priority items. We plan to work on this but don't have a target date.",
         "due_on": null,
         "html_url": "https://github.com/neovim/neovim/milestone/6",
         "id": 655037,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 543,
+        "open_issues": 589,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2024-06-10T11:17:36Z",
+        "updated_at": "2024-09-30T17:10:20Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM5xlpsT",
@@ -444,7 +454,7 @@
     "state_reason": null,
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/25272/timeline",
     "title": "The culling of vim.lsp.util",
-    "updated_at": "2024-06-07T11:21:03Z",
+    "updated_at": "2024-09-28T19:44:31Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/25272",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/8965202?v=4",

@@ -5,6 +5,7 @@
     "author_association": "MEMBER",
     "body": "### Describe the bug\n\nThe `screenstring()` executed inside child Neovim process through RPC returns incorrect results for Command line area (omits its content while working correctly for `showcmd` area).\r\n\r\nJudging by my GitHub Actions, it worked on commit 6134c1e8a but stopped working on f6929ea51.\r\n\r\nFrom my work on #19020 I remember that this Command line area is treated somewhat differently from the rest of the window. This is based on [these lines](https://github.com/neovim/neovim/blob/8a4285d5637c146a0ae606918a8e77063c6a5f0d/src/nvim/eval.c#L5354-L5357) but I am not sure how it could have gotten affected in the previous couple of days.\r\n\r\n@bfredl, sorry to mention you here to get your attention, but it seems you might have an idea of what is going on here. This breaks screenshot tests so it would be bad for this issue to get lost among others.\n\n### Steps to reproduce\n\n- Create 'init-child-screenstring.lua' with the following content:\r\n\r\n    <details>\r\n    <summary>init-child-screenstring.lua</summary>\r\n\r\n    ```lua\r\n    _G.new_child = function(nvim_executable)\r\n      -- Create new child process\r\n      local stdin = vim.loop.new_pipe()\r\n      local stdout = vim.loop.new_pipe()\r\n      local stderr = vim.loop.new_pipe()\r\n\r\n      local address = vim.fn.tempname()\r\n\r\n      vim.loop.spawn(nvim_executable or 'nvim', {\r\n        stdio = { stdin, stdout, stderr },\r\n        args = { '--clean', '--listen', address },\r\n      }, function() end)\r\n\r\n      -- Wait for Neovim to open\r\n      vim.loop.sleep(200)\r\n\r\n      -- Connect\r\n      local channel = vim.fn.sockconnect('pipe', address, { rpc = true })\r\n\r\n      -- Follow advice from https://github.com/neovim/neovim/issues/21630\r\n      stdin:close()\r\n      stdout:close()\r\n      stderr:close()\r\n\r\n      -- Create helper methods for easier demonstration\r\n      local child = { channel = channel }\r\n\r\n      -- Type keys (for initializing Visual mode)\r\n      child.type_keys = function(keys) vim.rpcrequest(channel, 'nvim_input', keys) end\r\n\r\n      -- Echo message in Command line area\r\n      child.echo = function(msg) vim.rpcrequest(channel, 'nvim_echo', { { msg } }, false, {}) end\r\n\r\n      -- Call `screenstring()` inside child process\r\n      child.screenstring = function(row, col)\r\n        return vim.rpcrequest(channel, 'nvim_exec_lua', 'return vim.fn.screenstring(...)', { row, col })\r\n      end\r\n\r\n      -- Main demo: print child process's last line (Command line with defaults)\r\n      child.print_last_line = function()\r\n        local n_lines = vim.rpcrequest(channel, 'nvim_get_option', 'lines')\r\n        local n_cols = vim.rpcrequest(channel, 'nvim_get_option', 'columns')\r\n        local last_line = {}\r\n        for i = 1, n_cols do\r\n          table.insert(last_line, child.screenstring(n_lines, i))\r\n        end\r\n\r\n        print(vim.inspect(table.concat(last_line)))\r\n      end\r\n\r\n      return child\r\n    end\r\n    ```\r\n\r\n    </details>\r\n\r\n    It is basically a creation-connection to full child process (following advice from #21630) and then a couple helper wrappers to get information from child process through RPC requests.\r\n\r\n- Assuming `nvim_nightly_g737` is the executable for latest nightly, run `nvim_nightly_g737 -u init-child-screenstring.lua`.\r\n- `:lua child = new_child('nvim_nightly_g737')`. This should create and connect to child process running latest nightly.\r\n- Execute one of the following:\r\n    - `:lua child.type_keys('V')` - this should initialize Visual linewise mode. When executed in non-child process it is followed by showing `-- VISUAL LINE --` in Command line.\r\n    - `:lua child.echo('Hello world!')` - this should show the message in Command line.\r\n- Execute `:lua child.print_last_line()`. For both of versions of previous step it prints content of Command line but **without messages at the start**.\n\n### Expected behavior\n\nPrints actual content of Command line:\r\n\r\n- The one starting with `-- VISUAL LINE --` if `child.type_keys('V')` was executed.\r\n- The one starting with `Hello world!` if `child.echo('Hello world!')` was executed.\r\n\r\nTo check the expected content, initiate child process with `:lua child = new_child('nvim')` (assuming `nvim` is an executable for commit earlier than 6134c1e8a (like 0.8.2).\n\n### Neovim version (nvim -v)\n\nNVIM v0.9.0-dev-737+g0aae7f386\n\n### Vim (not Nvim) behaves the same?\n\nNo (doesn't have this functionality)\n\n### Operating system/version\n\nEndeavourOS Linux x86_64 (6.1.6-arch1-1)\n\n### Terminal name/version\n\nst-0.9\n\n### $TERM environment variable\n\nst-256color\n\n### Installation\n\nappimage",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -475,7 +476,7 @@
         {
             "color": "C5DEF5",
             "default": false,
-            "description": "UI messages, log messages",
+            "description": "UI messages, log messages, errors, warnings, feedback",
             "id": 5637083595,
             "name": "messages",
             "node_id": "LA_kwDOAPphoM8AAAABT_8Ryw",
@@ -486,8 +487,8 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 1,
-        "created_at": "2023-12-07T23:09:35Z",
+        "closed_issues": 0,
+        "created_at": "2024-05-16T14:11:54Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
             "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
@@ -509,17 +510,17 @@
             "url": "https://api.github.com/users/justinmk"
         },
         "description": "",
-        "due_on": "2024-10-31T07:00:00Z",
-        "html_url": "https://github.com/neovim/neovim/milestone/41",
-        "id": 10283236,
-        "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/41/labels",
-        "node_id": "MI_kwDOAPphoM4AnOjk",
-        "number": 41,
-        "open_issues": 19,
+        "due_on": null,
+        "html_url": "https://github.com/neovim/neovim/milestone/43",
+        "id": 11063573,
+        "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/43/labels",
+        "node_id": "MI_kwDOAPphoM4AqNEV",
+        "number": 43,
+        "open_issues": 4,
         "state": "open",
-        "title": "0.11",
-        "updated_at": "2024-03-22T08:09:09Z",
-        "url": "https://api.github.com/repos/neovim/neovim/milestones/41"
+        "title": "0.12",
+        "updated_at": "2024-09-30T11:52:29Z",
+        "url": "https://api.github.com/repos/neovim/neovim/milestones/43"
     },
     "node_id": "I_kwDOAPphoM5bscGh",
     "number": 21886,
@@ -541,7 +542,7 @@
     "state_reason": null,
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/21886/timeline",
     "title": "`screenstring()` doesn't work for Command line in child Neovim process",
-    "updated_at": "2024-03-21T08:42:48Z",
+    "updated_at": "2024-09-30T11:52:29Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/21886",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/24854248?v=4",
