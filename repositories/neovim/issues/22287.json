@@ -3,8 +3,9 @@
     "assignee": null,
     "assignees": [],
     "author_association": "MEMBER",
-    "body": "## Problem\r\n\r\nFor clients to get function signatures and type information, currently we need to model APIs in C. It's not easy for clients to generate their own language-specific interface to the Nvim Lua stdlib (`vim.*`, `:help lua-stdlib`).\r\n\r\n## Expected behavior\r\n\r\nWe have started to annotate the Lua stdlidb with LuaLS ~~EmmyLua~~ type hints. We could use this to ~~generate something like `:help api-metadata` and expose it as a secondary tree via `nvim_get_api_info()` and `nvim --api`.~~ Or alternatively, just ship a `luameta.lua` or `luameta.mpack` file in the runtime files, which can be loaded by clients to generate their wrappers.\r\n\r\n- [x] ship `foo.mpack` files (currently undocumented but they live in `runtime/doc/*.mpack`)\r\n- [x] ship LuaLS annotations in `runtime/lua/vim/_meta` for quasi-introsopection. [#19918](https://github.com/neovim/neovim/issues/19918)\r\n- [ ] ship util function that makes it easy for plugins to consume LuaLS annotations.\r\n\r\n---\r\n\r\n- Benefits\r\n    - Clearly answers the question of where new functionality should go:\r\n        - API (libnvim) = expose low-level things that are otherwise limited to internal usage.\r\n        - Lua stdblib = high-level functionality that builds on top of the API.\r\n        - Related: https://github.com/neovim/neovim/issues/20451\r\n- Costs\r\n    - Lua is less natural to use for C clients linking to `libnvim`.\r\n    - Eventually, this would imply that the Lua stdlib has a strong contract like `:help api-contract`, since this would mean that RPC clients now depend on the Lua stdlib. Thus it would be harder to evolve the Lua stdlib.\r\n        - Mitigation: mechanism for marking Lua functions as \"experimental\" (or just \"mental\" ;).\r\n",
+    "body": "## Problem\r\n\r\nFor clients to get function signatures and type information, currently we need to model APIs in C. It's not easy for clients to generate their own language-specific interface to the Nvim Lua stdlib (`vim.*`, `:help lua-stdlib`).\r\n\r\n## Expected behavior\r\n\r\nWe have started to annotate the Lua stdlidb with LuaLS ~~EmmyLua~~ type hints. We could use this to ~~generate something like `:help api-metadata` and expose it as a secondary tree via `nvim_get_api_info()` and `nvim --api`.~~ Or alternatively, just ship a `luameta.lua` or `luameta.mpack` file in the runtime files, which can be loaded by clients to generate their wrappers.\r\n\r\n- [x] ~~ship `foo.mpack` files (currently undocumented but they live in `runtime/doc/*.mpack`)~~\r\n    - `*.mpack` files were deleted in https://github.com/neovim/neovim/commit/9beb40a4db5613601fc1a4b828a44e5977eca046 , so now the `_meta/*.lua` files are the only source of info exposed in the runtime. \r\n- [x] ship LuaLS annotations in `runtime/lua/vim/_meta` for quasi-introsopection. [#19918](https://github.com/neovim/neovim/issues/19918)\r\n- [ ] ship util function that makes it easy for plugins to consume LuaLS annotations.\r\n\r\n---\r\n\r\n- Benefits\r\n    - Clearly answers the question of where new functionality should go:\r\n        - API (libnvim) = expose low-level things that are otherwise limited to internal usage.\r\n        - Lua stdblib = high-level functionality that builds on top of the API.\r\n        - Related: https://github.com/neovim/neovim/issues/20451\r\n- Costs\r\n    - Lua is less natural to use for C clients linking to `libnvim`.\r\n    - Eventually, this would imply that the Lua stdlib has a strong contract like `:help api-contract`, since this would mean that RPC clients now depend on the Lua stdlib. Thus it would be harder to evolve the Lua stdlib.\r\n        - Mitigation: mechanism for marking Lua functions as \"experimental\" (or just \"mental\" ;).\r\n",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -140,7 +141,7 @@
         },
         {
             "author_association": "MEMBER",
-            "body": "Use-cases:\r\n\r\n- [which-key](https://github.com/folke/which-key.nvim) plugins which dynamically display and search command names+docs\r\n- fuzzy-finders for the same purpose\r\n- could also be used as a starting point for replacing `gen_vimdoc.py`\r\n\r\nAlternatively, we could require LSP for these things. But I'm hesitant to close the door on this idea; a treesitter-based util function doesn't seem like wasted effort to avoid a permanent LSP dependency, and it could start out fairly primitive (no markdown support).",
+            "body": "Use-cases:\r\n\r\n- [which-key](https://github.com/folke/which-key.nvim) plugins which dynamically display and search command names+docs\r\n- fuzzy-finders for the same purpose\r\n- linting new Nvim stdlib functions\r\n\r\n~~Alternatively, we could require LSP for these things.~~ *Update: now we have [luacats_grammar.lua](https://github.com/neovim/neovim/blob/23a08980fd176e231894b8c1d9e5e7b4c50d64cc/scripts/luacats_grammar.lua) which is much faster and can be used to implement the above, and avoids a dependency on LSP.*",
             "created_at": "2023-08-07T16:34:42Z",
             "html_url": "https://github.com/neovim/neovim/issues/22287#issuecomment-1668227457",
             "id": 1668227457,
@@ -159,7 +160,7 @@
                 "total_count": 1,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1668227457/reactions"
             },
-            "updated_at": "2023-08-07T16:34:42Z",
+            "updated_at": "2024-10-04T12:41:34Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1668227457",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -211,7 +212,7 @@
         {
             "color": "c5def5",
             "default": false,
-            "description": null,
+            "description": "stdlib",
             "id": 573222693,
             "name": "lua",
             "node_id": "MDU6TGFiZWw1NzMyMjI2OTM=",
@@ -222,7 +223,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 593,
+        "closed_issues": 650,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -244,17 +245,17 @@
             "type": "User",
             "url": "https://api.github.com/users/justinmk"
         },
-        "description": "Low priority. Not planned for the current target, may be reassigned.",
+        "description": "Low priority items. We plan to work on this but don't have a target date.",
         "due_on": null,
         "html_url": "https://github.com/neovim/neovim/milestone/6",
         "id": 655037,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 427,
+        "open_issues": 597,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2023-12-07T14:58:09Z",
+        "updated_at": "2024-10-07T09:52:20Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM5epbnE",
@@ -264,12 +265,12 @@
         "+1": 0,
         "-1": 0,
         "confused": 0,
-        "eyes": 0,
+        "eyes": 2,
         "heart": 0,
         "hooray": 0,
         "laugh": 0,
         "rocket": 0,
-        "total_count": 0,
+        "total_count": 2,
         "url": "https://api.github.com/repos/neovim/neovim/issues/22287/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
@@ -277,7 +278,7 @@
     "state_reason": null,
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/22287/timeline",
     "title": "Lua: plugins can easily get Lua annotations metadata",
-    "updated_at": "2023-12-08T22:02:46Z",
+    "updated_at": "2024-10-04T12:41:34Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/22287",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",

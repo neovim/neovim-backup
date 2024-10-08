@@ -2,12 +2,13 @@
     "active_lock_reason": null,
     "assignee": null,
     "assignees": [],
-    "author_association": "CONTRIBUTOR",
+    "author_association": "MEMBER",
     "body": "`:python3 vim.funcs.luaeval(...)` calls `vim.call(\"luaeval\", ...)`, which then calls `nvim_call_function('luaeval', [...])` **via RPC**, i.e. `vim.request('nvim_call_function', 'luaeval', [...])`.\r\n\r\nBelow tested with nvim 0.10.x nightly (as of 11/28/2023) and pynvim 0.5.0 nightly (and 0.4.3).\r\n\r\nPrimitives are OK:\r\n\r\n```vim\r\n:python3= vim.funcs.luaeval('1')\r\n:echo nvim_call_function('luaeval', ['1'])\r\n1\r\n\r\n:python3= vim.funcs.luaeval('\"foo\"')\r\n:echo nvim_call_function('luaeval', ['\"foo\"'])\r\nfoo\r\n\r\n:python3= vim.funcs.luaeval('nil')\r\nNone\r\n:echo nvim_call_function('luaeval', ['nil'])\r\nv:null\r\n\r\n:python3= vim.funcs.luaeval('{}')\r\n:echo nvim_call_function('luaeval', ['{}'])\r\n[]\r\n\r\n:python3= vim.funcs.luaeval('{ dict = true }')\r\n{'dict': True}\r\n:echo nvim_call_function('luaeval', ['{ dict = true }'])\r\n{'dict': v:true}\r\n```\r\n\r\nFunctions are not:\r\n\r\n```vim\r\n:echo nvim_call_function('luaeval', ['function() end'])\r\n<lambda>36075\r\n\r\n\" ❌ THIS IS BUGGY !!!!!!!!!\r\n:python3= vim.funcs.luaeval('function() end')\r\nNone\r\n\r\n\r\n\" the proxy function is callable!\r\n:call nvim_call_function('luaeval', ['print'])(\"foo\")\r\nfoo\r\n\r\n:lua vim.api.nvim_call_function('luaeval', { \"print\" })(\"foo\")\r\nfoo\r\n```\r\n\r\nand hence modules:\r\n\r\n```vim\r\n\" ❌ THIS IS BUGGY !!!!!!!!!\r\n:python3= vim.funcs.luaeval('require(\"vim.ui\")')\r\n{'select': None, 'open': None, 'input': None}\r\n\r\n:echo nvim_call_function('luaeval', ['vim.ui'])\r\n{'select': function('<lambda>254'), 'open': function('<lambda>255'), 'input': function('<lambda>256')}\r\n```\r\n\r\nwhich should instead throw an error if conversion is not possible. Ideally it may return some \"proxy\" callable that delegates to the target lua function via RPC.\r\n\r\n\r\nAlso, the following seems to be neovim core's bug (or a lack of feature):\r\n\r\n```vim\r\n\" ❌ should return a lambda function?\r\n:echo nvim_call_function('eval', ['{ -> 3 }'])\r\nv:null\r\n\r\n\" ❌ should return a function?\r\n:python3= vim.call('eval', '{ -> 3 }')\r\nNone\r\n\r\n:echo eval('{ -> 3 }')\r\nfunction('<lambda>49485')\r\n```",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
-            "author_association": "CONTRIBUTOR",
+            "author_association": "MEMBER",
             "body": "Also for `vim.exec_lua` python API:\r\n\r\n```python\r\nvim.lua.require(\"vim.F\")\r\n```\r\nthrows `pynvim.api.common.NvimError: Cannot convert given lua type`. It calls \r\n\r\n```python\r\nvim.exec_lua(\"return require(...)\", \"vim.F\")\r\n```\r\n\r\nwhich then calls via RPC:\r\n\r\n```vim\r\nrpcrequest('nvim_execute_lua', \"return require(...)\", [\"vim.F\"])\r\n```\r\n\r\nThis RPC request cannot convert a lua function and raises errors as expected.\r\n\r\nNote -- this `nvim_execute_lua` RPC API has a different execution mechanism than `luaeval()` which uses `nvim_call_function` RPC API, but very related.",
             "created_at": "2023-11-28T05:41:09Z",
             "html_url": "https://github.com/neovim/pynvim/issues/550#issuecomment-1829140676",
@@ -95,7 +96,7 @@
             }
         },
         {
-            "author_association": "CONTRIBUTOR",
+            "author_association": "MEMBER",
             "body": "Exactly. So on the pynvim side explicit errors should be raised as in `nvim_exec_lua` case, but I guess that some fixes would need to be done on the neovim **core** side rather than pynvim, because the crux is that RPC requests that would evaluate to \"funcrefs\", e.g.,\r\n\r\n```python\r\n# python (using pynvim APIs)\r\n\r\nvim.request('nvim_call_function', 'luaeval', [ \"function() end\" ])\r\nvim.request('nvim_call_function', 'eval', [ \"function('has')\" ])\r\n\r\nvim.funcs.eval(\"function('has')\")\r\n```\r\n\r\nreturns null (`None`) instead of errors?",
             "created_at": "2023-11-28T20:59:39Z",
             "html_url": "https://github.com/neovim/pynvim/issues/550#issuecomment-1830736617",
@@ -178,8 +179,8 @@
     "state": "open",
     "state_reason": null,
     "timeline_url": "https://api.github.com/repos/neovim/pynvim/issues/550/timeline",
-    "title": "luaeval behavior: functions are silently returning `None`",
-    "updated_at": "2023-12-03T23:49:15Z",
+    "title": "luaeval behavior: functions are serialized to `None`",
+    "updated_at": "2024-10-01T15:40:40Z",
     "url": "https://api.github.com/repos/neovim/pynvim/issues/550",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1009873?v=4",
