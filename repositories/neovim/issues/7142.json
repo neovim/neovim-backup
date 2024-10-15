@@ -5,6 +5,7 @@
     "author_association": "CONTRIBUTOR",
     "body": "<!-- Before reporting: search existing issues and check the FAQ. -->\r\n\r\n- `nvim --version`: 0.2.0\r\n- Vim (version: ) behaves differently? N/A\r\n- Operating system/version: macOS Sierra 10.12.1\r\n- Terminal name/version: a remote UI talking to a --headless nvim through the Nvim API\r\n- `$TERM`: N/A\r\n\r\n### Steps to reproduce using `nvim -u NORC`\r\n\r\nRun:\r\n    \r\n    NVIM_LISTEN_ADDRESS=... nvim -u NORC --headless \r\n\r\nConnect to that address, and issue an API call:\r\n\r\n    nvim_command(\"edit README.md\")\r\n\r\nKill the nvim process and restart it.\r\nReconnect and issue the same command.\r\n\r\nObserve that nvim prints out a swap file recovery dialog with a prompt to nvim's stdout:\r\n\r\n```\r\nFound a swap file by the name ...\r\n...\r\n[O]pen Read-Only, (E)dit anyway, (R)ecover, (D)elete it, (Q)uit, (A)bort: \r\n```\r\n\r\n**Note**: Changing `nvim_command` to `nvim_command_output` exposes the same behaviour.\r\n\r\n### Actual behaviour\r\n\r\nThe API call blocks and never returns, neither success nor failure.\r\nMoreover, no API calls work from this point.\r\nFor example, calling `nvim_command(\"recover\")` or `nvim_command(\"help recovery\")` blocks and doesn't return any result either, and has no effect on nvim.\r\n\r\n### Expected behaviour\r\n\r\n`nvim_command` must not block. It should return immediately an error reply explaining that a recovery decision is required. Until the decision is taken, other commands like `nvim_command(\"help recovery\")` should be processed normally.\r\n",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "CONTRIBUTOR",
@@ -96,7 +97,7 @@
         },
         {
             "author_association": "MEMBER",
-            "body": "Only \"async\" API functions are non-blocking. Search `:help api` for \"async\" to see which functions have `Attributes: {async}`. Currently there's only 3:\r\n\r\n- nvim_input\r\n- nvim_get_mode\r\n- nvim_get_api_info\r\n\r\nAll other API functions block while nvim is waiting for input. \r\n\r\nTo avoid being blocked in a client, you can use `nvim_get_mode()` which returns a `blocking` flag to detect whether nvim is in a wait-for-input state. If `nvim_get_mode()` returns `blocking=true`, you can send input to nvim (just as a tty/GUI user could send keyboard input) via the async `nvim_input` function, to unblock nvim. (Yes, this is a bit of a hack.)\r\n\r\nFuture improvements are planned:\r\n\r\n1. Add more non-blocking (\"async\") API functions\r\n2. Offer a mode where functions return with an error if they would block\r\n    - Probably this should be controlled by a timeout limit.\r\n3. Reduce the cases where nvim blocks for a long time. (via mechanisms such as #6201)",
+            "body": "Only \"async\" API functions are non-blocking. Search `:help api` for \"async\" to see which functions have `Attributes: {async}`. Currently there's only 3:\n\n- nvim_input\n- nvim_get_mode\n- nvim_get_api_info\n\nAll other API functions block while nvim is waiting for input. \n\nTo avoid being blocked in a client, you can use `nvim_get_mode()` which returns a `blocking` flag to detect whether nvim is in a wait-for-input state. If `nvim_get_mode()` returns `blocking=true`, you can send input to nvim (just as a tty/GUI user could send keyboard input) via the async `nvim_input` function, to unblock nvim. (Yes, this is a bit of a hack.)\n\nFuture improvements are planned:\n\n1. Add more non-blocking (\"async\") API functions\n2. Offer a mode where functions return with an error if they would block\n    - Probably this should be controlled by a timeout limit.\n3. Reduce the cases where nvim blocks for a long time. (via mechanisms such as #6201)\n4. Allow `nvim_input` caller to confirm that the input was fully processed: https://github.com/neovim/neovim/issues/30760",
             "created_at": "2017-08-09T15:34:10Z",
             "html_url": "https://github.com/neovim/neovim/issues/7142#issuecomment-321292444",
             "id": 321292444,
@@ -115,7 +116,7 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/321292444/reactions"
             },
-            "updated_at": "2017-08-09T21:26:06Z",
+            "updated_at": "2024-10-11T10:41:23Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/321292444",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -299,18 +300,18 @@
         {
             "color": "c7def8",
             "default": false,
-            "description": null,
+            "description": "channels, RPC, msgpack",
             "id": 242522707,
-            "name": "rpc",
+            "name": "channels-rpc",
             "node_id": "MDU6TGFiZWwyNDI1MjI3MDc=",
-            "url": "https://api.github.com/repos/neovim/neovim/labels/rpc"
+            "url": "https://api.github.com/repos/neovim/neovim/labels/channels-rpc"
         }
     ],
     "labels_url": "https://api.github.com/repos/neovim/neovim/issues/7142/labels{/name}",
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 601,
+        "closed_issues": 653,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -332,17 +333,17 @@
             "type": "User",
             "url": "https://api.github.com/users/justinmk"
         },
-        "description": "Low priority. Not planned for the current target, may be reassigned.",
+        "description": "Low priority items. We plan to work on this but don't have a target date.",
         "due_on": null,
         "html_url": "https://github.com/neovim/neovim/milestone/6",
         "id": 655037,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 515,
+        "open_issues": 603,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2024-04-01T02:46:11Z",
+        "updated_at": "2024-10-14T19:27:30Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "MDU6SXNzdWUyNDkwNDYxNjk=",
@@ -365,7 +366,7 @@
     "state_reason": null,
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/7142/timeline",
     "title": "API: timeout for blocking requests",
-    "updated_at": "2024-03-30T13:11:18Z",
+    "updated_at": "2024-10-11T10:41:23Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/7142",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/11477595?v=4",

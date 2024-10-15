@@ -5,6 +5,7 @@
     "author_association": "NONE",
     "body": "I'm trying to create a Qt Creator plugin that uses Neovim as backend. So far so good, it was super easy thanks to the great api you guys designed. But I have a problem with shortcuts:\r\n\r\nQt Creator has a lot of shortcuts (seriously a lot) so some basic vim keys are overlapped by Qt Creator's shortcut. I can capture a key that's going to activate a Qt Creator shortcut and avoid the bound action to happen and send the keys to Neovim but it'd disable lots of useful shortcuts in Qt Creator like `Cmd+b` for build and lots of others. Currently I'm trying to create mappings in neovim in vim file that runs only for the plugin, these mappings map for example `Cmd+b` to an `rpcnotify` which calls the desired action in Qt Creator, something like this:\r\n\r\n```\r\nnnoremap <c-]> :call rpcnotify(0, 'Gui', 'triggerCommand', 'TextEditor.FollowSymbolUnderCursor')<bar>call rpcnotify(0, 'Gui', 'triggerCommand', 'TextEditor.JumpToFileUnderCursor')<cr>\r\ninoremap <expr> <c-space> rpcnotify(0, 'Gui', 'triggerCommand', 'TextEditor.CompleteThis') ? '' : ''\r\n```\r\n\r\nBut the problem is the list is growing so fast and it's not a good idea at all, not just cause the list is long, but also because this way users of the plugin need to update this file with changes they make in Qt Creator settings. Notice that this list can't be generated automatically cause then again some vim useful maps would get overridden.\r\n\r\nSo I thought it'd be helpful if there were a function in vim like `ismapped(\"<D-B>\")`, then by checking it when a shortcut is pressed I can decide to pass it to Neovim or handle it in Qt Creator. This way I can implement the \"default is Neovim, if Neovim doesn't map it to something then lets see if QtCreator can handle it\" for keys.\r\n\r\nSo I'm suggesting the implementation of this `ismapped` function and I think it'll be useful not just for me for this plugin but many others who are trying to use neovim as a backend for another editor.",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -227,7 +228,7 @@
             }
         },
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "Neovim has something like 100% coverage of shortcuts in normal mode and uses lots of them in insert mode as well, but this coverage applies only to `<C-` shortcuts, `<C-S-`, `<A-` and `<D-` are absent or almost absent by default. If you can list QtCreator shortcuts I would just suggest to create prefixed mapping for all of them and let user decide (by creating another map) if he needs them without prefix. And additionally for specifically `<C-S-`, `<A-` and `<D-` shortcuts just create them if they are not mapped already, *in addition* to prefixed mappings.\r\n\r\nWhat I mean by “prefixed mappings” is for each mapping like `<C-a>` create a mapping `<Leader>q<C-a>` where `<Leader>q` prefix is configurable by user. Additionally since QtCreator probably is not going to have single-character shortcuts (correct me if I am wrong) it may make sense to transform them a bit: change `<C-a>` to `\\qa`, `<C-S-a>` to `\\qA`, `<D-a>` to `\\Qa`.\r\n\r\nNote about prefixed shortcuts: non-prefixed ones are to be created *if* they are not occupied (BTW, when do you want to check this?), prefixed are to be created *always* regardless of whether they are occupied or not. Possible problems are supposed to be resolved by ability to configure prefix of your prefixed shortcuts and ability to configure plugins that took shortcut (if there are any and they have this ability).",
             "created_at": "2018-02-20T09:53:02Z",
             "html_url": "https://github.com/neovim/neovim/issues/8029#issuecomment-366924863",
@@ -315,7 +316,7 @@
             }
         },
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "Based on what I know current code simply does not allow collecting “commands” by anything. It may be a good idea to refactor current state into something like you suggesting (minus *c++*, **that** is not going to happen ever and is very bad idea from the beginning), but currently there is an easy way to add API to list built-in functions, or list built-in commands, or list options, and there is an existing API that lists API functions; typed commands simply need even larger refactoring: while there is an array of normal-mode keys that may start a command there are no lists for characters after `g` or e.g. command-mode commands which are still handled by a huge switch.\r\n\r\nThis also leads to some differences like infinite waiting after user typed `g`, hopefully gone in case of refactoring as I do not really see why that should not be a subject to &timeout* options.",
             "created_at": "2018-02-20T21:24:20Z",
             "html_url": "https://github.com/neovim/neovim/issues/8029#issuecomment-367124575",
@@ -403,7 +404,7 @@
             }
         },
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "@sassanh Because generating C++ code may only help C++ developers and nobody else, in addition to the fact that it is compile-time variant for the possible users. If you want to do something strange like this *yourself in your project* - sure, why not, otherwise it is only logical to create a msgpack blob exposed via API function like it is currently done for API functions list and expect Neovim users to fetch this blob at runtime.\r\n\r\nAbout bruteforcing acceptance: a bunch of select modes and various flavours of insert mode accept *any* sequence: if there is built-in command or mapping it will be run, if there is no typed combination will be inserted, in Neovim normally in `<notation>`. Also it is completely possible that plugins just use `getchar()` and “accept” just any input as well (though by just discarding some characters): if I am not mistaking, plugins like CtrlP use this variant to get user input.",
             "created_at": "2018-02-21T06:33:58Z",
             "html_url": "https://github.com/neovim/neovim/issues/8029#issuecomment-367227654",
@@ -491,7 +492,7 @@
             }
         },
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "@sassanh There is an issue regarding why Neovim is not going to use C++: #153.\r\n\r\nThe idea of reporting back states is not feasible without refactoring as well: first, mappings, feedkeys(), `:normal` all use the same facility, but you need responses only to characters coming from certain sources; second, there are no facilities to report back whether character was “consumed” (though Neovim beeps if it was not).",
             "created_at": "2018-02-21T07:09:29Z",
             "html_url": "https://github.com/neovim/neovim/issues/8029#issuecomment-367233290",
@@ -580,7 +581,7 @@
         },
         {
             "author_association": "MEMBER",
-            "body": "# Plan\r\n\r\nApproach discussed in https://github.com/neovim/neovim/pull/19235#issuecomment-1175117406 : \r\n\r\n- ~~`nvim_get_commands({builtin=true})` can read `$VIMRUNTIME/.../ex_cmds.lua` to discover builtin commands~~\r\n- ~~move `ex_cmds.lua` to the runtime~~ \r\n- move `nv_cmd` C structure to `normal.lua`\r\n- Generate docstring annotations: https://github.com/neovim/neovim/issues/19918\r\n    - `_meta/vimcmd.lua`\r\n    - `_meta/vimnormal.lua` \r\n",
+            "body": "# Plan\n\nApproach discussed in https://github.com/neovim/neovim/pull/19235#issuecomment-1175117406 : \n\n- ~~`nvim_get_commands({builtin=true})` can read `$VIMRUNTIME/.../ex_cmds.lua` to discover builtin commands~~\n- ~~move `ex_cmds.lua` to the runtime~~ \n- move `nv_cmd` C structure to `normal.lua`: https://github.com/neovim/neovim/pull/26914\n- Generate docstring annotations: https://github.com/neovim/neovim/issues/19918\n    - `_meta/vimcmd.lua`\n    - `_meta/vimnormal.lua` \n",
             "created_at": "2022-07-05T14:44:53Z",
             "html_url": "https://github.com/neovim/neovim/issues/8029#issuecomment-1175146743",
             "id": 1175146743,
@@ -599,7 +600,7 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1175146743/reactions"
             },
-            "updated_at": "2023-08-02T19:23:15Z",
+            "updated_at": "2024-10-11T10:01:57Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1175146743",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -671,7 +672,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 569,
+        "closed_issues": 653,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -693,17 +694,17 @@
             "type": "User",
             "url": "https://api.github.com/users/justinmk"
         },
-        "description": "Low priority. Not planned for the current target, may be reassigned.",
+        "description": "Low priority items. We plan to work on this but don't have a target date.",
         "due_on": null,
         "html_url": "https://github.com/neovim/neovim/milestone/6",
         "id": 655037,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 411,
+        "open_issues": 603,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2023-08-02T20:38:43Z",
+        "updated_at": "2024-10-14T19:27:30Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "MDU6SXNzdWUyOTg0ODc1NjE=",
@@ -726,7 +727,7 @@
     "state_reason": null,
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/8029/timeline",
     "title": "API: list builtin (normal-mode) commands",
-    "updated_at": "2023-08-02T19:28:07Z",
+    "updated_at": "2024-10-11T10:01:57Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/8029",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1270688?v=4",
