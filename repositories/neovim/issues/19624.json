@@ -3,8 +3,9 @@
     "assignee": null,
     "assignees": [],
     "author_association": "MEMBER",
-    "body": "related: https://github.com/neovim/neovim/issues/11312\r\n\r\n## Problem\r\n\r\nThere's no builtin abstraction for:\r\n\r\n- Representing a task.\r\n    - Example: `vim.system()` returns its own ad-hoc \"task\" that can be \"awaited\" via `:wait()`.\r\n- Orchestrating \"pipelines\" (quasi monads?) of work (\"tasks\") and handling errors.\r\n    - Example: shell-like task chains: `vim.fs.files():filter(..):map(function(f) vim.fs.delete(f) end)`\r\n    - See also `vim.iter`.\r\n\r\n## Request for comments\r\n\r\nWhat are the current patterns for queuing promises in Lua, that are being used in the wild for Nvim plugins (and Nvim core itself)? Are these good enough? Do we need any sugar in the Nvim lua stdlib to encourage these patterns?\r\n\r\n## Expected behavior\r\n\r\nTask or Promise abstraction:\r\n- \"Promise\" abstraction (or something better), maximally leveraging Lua coroutines + libuv.\r\n- \"Task\" abstraction (could this be avoided by overloading the \"Promise\" concept (or vice versa)?).\r\n- Function that creates an awaitable task from \"normal\" functions.\r\n    - Don't want to have to call `await` everywhere, that is a horrible result of JavaScript's async/await model.\r\n    - Instead, could something like `vim.system()` be \"promisified\" without its knowledge? Or could it handle differently when it detects that it's in a coroutine? So `vim.system()` would be synchronous normally, but `vim.async(vim.system, ...):wait()` would be asynchronous.\r\n\r\nStructured concurrency:\r\n- `await_all`, `await_any` (pseudo-names). See javascript's [Promise.all()](https://developer.mozilla.org/de/docs/Web/JavaScript/Reference/Global_Objects/Promise/all).\r\n- Programmer can handle errors and cancellations.\r\n- Programmer can cancel specific coroutines/promises.\r\n- Aggregate results\r\n    - This is something `jobwait()` currently doesn't help with.\r\n\r\n## Implementations\r\n\r\n- https://github.com/lewis6991/async.nvim\r\n- https://github.com/kevinhwang91/promise-async\r\n- https://github.com/ms-jpq/lua-async-await\r\n\r\n## Related\r\n\r\n- https://github.com/sourcegraph/conc\r\n- https://github.com/bitfield/script (example of \"pipeline\" interface)\r\n",
+    "body": "related: https://github.com/neovim/neovim/issues/11312\n\n## Problem\n\nThere's no builtin abstraction for:\n\n- Representing a task.\n    - Example: `vim.system()` returns its own ad-hoc \"task\" that can be \"awaited\" via `:wait()`.\n- Orchestrating \"pipelines\" (quasi monads?) of work (\"tasks\") and handling errors.\n    - Example: shell-like task chains: `vim.fs.files():filter(..):map(function(f) vim.fs.delete(f) end)`\n    - See also `vim.iter`.\n\n## Expected behavior\n\n- \"Task\" abstraction:\n    - Maximally leveraging Lua coroutines + libuv. Only add concepts (\"task\", \"promise\") if absolutely needed.\n    - Coroutines (or tasks that wrap coroutines) can be nested. ([ref](https://gregorias.github.io/posts/using-coroutines-in-neovim-lua/#addendum-whats-wrong-with-plenary-async))\n    - Util to create an awaitable task from \"normal\" functions (cf. \"promisify\"?).\n        - Don't want to call `await` everywhere, that is a horrible consequence of the JS async/await model. Instead consider Go's `go` for opt-in concurrency.\n        - Can e.g. `vim.system()` be \"promisified\" without its knowledge? Or could it handle differently when it detects that it's in a coroutine? So `vim.system()` would be synchronous normally, but `vim.async(vim.system, ...):wait()` would be asynchronous.\n            - See `cb_to_co()` from [this article](https://gregorias.github.io/posts/using-coroutines-in-neovim-lua/#callbackcoroutine-conversion).\n    - Document (or generalize) [\"coroutine to callback\"](https://gregorias.github.io/posts/using-coroutines-in-neovim-lua/#coroutine-to-callback-conversion).\n- Structured concurrency:\n    - `await_all`, `await_any` (pseudo-names). See JS [Promise.all()](https://developer.mozilla.org/de/docs/Web/JavaScript/Reference/Global_Objects/Promise/all).\n    - Tasks can be _canceled_.\n    - Results (and failures) can be _aggregated_. (Can't do this with `jobwait()`!)\n    - Failures/errors can be handled (possibly canceling the rest of the task tree).\n\n## Implementations\n\n- https://github.com/lewis6991/async.nvim\n- https://github.com/nvim-neotest/nvim-nio \"enables async I/O through higher level abstractions and utilities around coroutines\"\n- https://github.com/kevinhwang91/promise-async\n- https://github.com/ms-jpq/lua-async-await\n\n## Related\n\n- https://github.com/sourcegraph/conc\n- https://github.com/bitfield/script (example of \"pipeline\" interface)\n- https://gregorias.github.io/posts/using-coroutines-in-neovim-lua/\n\n### notes from [reddit discussion](https://old.reddit.com/r/neovim/comments/1g8lutp/coroutine_tutorial_for_neovim_lua/lt0rp9m/)\n\n> Briefly speaking, without cancellability, a structured concurrency API can and should be based on fire-and-forget coroutine functions (fafcf). Anything else would likely either be reinventing the wheel or running into a non-composable mess that is currently Plenary’s async.\n> \n> With pure fafcfs, you can have most of your requirements: ability to chain, start concurrent computations, wait for completion of arbitrary “fafcfs.” It’d be quite a expressive and elegant system.\n> \n> As you notice, what’s missing is cancellability. That would require creating a special protocol that fafcfs need to conform to.\n>\n> After briefly looking at [async.nvim](https://github.com/lewis6991/async.nvim), it looks like it’s trying to build concurrency by stepping through chunks, which is kind of what Plenary’s async is trying to do.\n> \n> Ideally, I’d like to try to achieve cancellability without resorting to reimplementing an event loop and a scheduler in Lua. Perhaps fafcfs with a special protocol for indicating that it shouldn’t proceed would be enough.\n> \n> I believe that Neovim/Lua can take design hints from Python. In this regard, Lua fafcfs are [Python coroutines](https://docs.python.org/3/library/asyncio-task.html#awaitables). They can be nested freely. If you want to a cancellable computation, you need to use [Tasks](https://docs.python.org/3/library/asyncio-task.html#creating-tasks), which builds upon coroutines to provide a richer interface.",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -47,7 +48,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -91,7 +93,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -135,7 +138,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -179,7 +183,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -223,7 +228,8 @@
                 "starred_url": "https://api.github.com/users/williamboman/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/williamboman/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/williamboman"
+                "url": "https://api.github.com/users/williamboman",
+                "user_view_type": "public"
             }
         },
         {
@@ -267,7 +273,8 @@
                 "starred_url": "https://api.github.com/users/ii14/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ii14/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ii14"
+                "url": "https://api.github.com/users/ii14",
+                "user_view_type": "public"
             }
         },
         {
@@ -280,7 +287,7 @@
             "node_id": "IC_kwDOAPphoM5H0NLm",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 4,
+                "+1": 5,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -288,7 +295,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 4,
+                "total_count": 5,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1204867814/reactions"
             },
             "updated_at": "2022-08-04T07:23:12Z",
@@ -311,7 +318,8 @@
                 "starred_url": "https://api.github.com/users/mfussenegger/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/mfussenegger/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/mfussenegger"
+                "url": "https://api.github.com/users/mfussenegger",
+                "user_view_type": "public"
             }
         },
         {
@@ -355,7 +363,8 @@
                 "starred_url": "https://api.github.com/users/muniter/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/muniter/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/muniter"
+                "url": "https://api.github.com/users/muniter",
+                "user_view_type": "public"
             }
         },
         {
@@ -399,7 +408,8 @@
                 "starred_url": "https://api.github.com/users/Chromosore/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/Chromosore/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/Chromosore"
+                "url": "https://api.github.com/users/Chromosore",
+                "user_view_type": "public"
             }
         },
         {
@@ -443,7 +453,8 @@
                 "starred_url": "https://api.github.com/users/hrsh7th/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/hrsh7th/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/hrsh7th"
+                "url": "https://api.github.com/users/hrsh7th",
+                "user_view_type": "public"
             }
         },
         {
@@ -487,7 +498,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -531,7 +543,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -575,7 +588,8 @@
                 "starred_url": "https://api.github.com/users/wbthomason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/wbthomason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/wbthomason"
+                "url": "https://api.github.com/users/wbthomason",
+                "user_view_type": "public"
             }
         },
         {
@@ -619,7 +633,8 @@
                 "starred_url": "https://api.github.com/users/oberblastmeister/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/oberblastmeister/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/oberblastmeister"
+                "url": "https://api.github.com/users/oberblastmeister",
+                "user_view_type": "public"
             }
         },
         {
@@ -663,7 +678,8 @@
                 "starred_url": "https://api.github.com/users/hrsh7th/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/hrsh7th/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/hrsh7th"
+                "url": "https://api.github.com/users/hrsh7th",
+                "user_view_type": "public"
             }
         },
         {
@@ -707,7 +723,8 @@
                 "starred_url": "https://api.github.com/users/hrsh7th/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/hrsh7th/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/hrsh7th"
+                "url": "https://api.github.com/users/hrsh7th",
+                "user_view_type": "public"
             }
         },
         {
@@ -751,7 +768,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -795,7 +813,8 @@
                 "starred_url": "https://api.github.com/users/hrsh7th/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/hrsh7th/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/hrsh7th"
+                "url": "https://api.github.com/users/hrsh7th",
+                "user_view_type": "public"
             }
         },
         {
@@ -808,7 +827,7 @@
             "node_id": "IC_kwDOAPphoM5PpkxW",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 1,
+                "+1": 2,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -816,7 +835,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 1,
+                "total_count": 2,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1336298582/reactions"
             },
             "updated_at": "2022-12-04T01:53:33Z",
@@ -839,7 +858,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -883,7 +903,8 @@
                 "starred_url": "https://api.github.com/users/rcarriga/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/rcarriga/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/rcarriga"
+                "url": "https://api.github.com/users/rcarriga",
+                "user_view_type": "public"
             }
         },
         {
@@ -927,7 +948,8 @@
                 "starred_url": "https://api.github.com/users/rcarriga/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/rcarriga/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/rcarriga"
+                "url": "https://api.github.com/users/rcarriga",
+                "user_view_type": "public"
             }
         },
         {
@@ -971,7 +993,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -1015,7 +1038,8 @@
                 "starred_url": "https://api.github.com/users/rcarriga/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/rcarriga/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/rcarriga"
+                "url": "https://api.github.com/users/rcarriga",
+                "user_view_type": "public"
             }
         },
         {
@@ -1059,7 +1083,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -1103,7 +1128,8 @@
                 "starred_url": "https://api.github.com/users/rcarriga/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/rcarriga/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/rcarriga"
+                "url": "https://api.github.com/users/rcarriga",
+                "user_view_type": "public"
             }
         },
         {
@@ -1147,7 +1173,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -1191,7 +1218,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -1235,7 +1263,8 @@
                 "starred_url": "https://api.github.com/users/rcarriga/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/rcarriga/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/rcarriga"
+                "url": "https://api.github.com/users/rcarriga",
+                "user_view_type": "public"
             }
         },
         {
@@ -1279,7 +1308,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -1323,7 +1353,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -1367,7 +1398,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -1411,7 +1443,8 @@
                 "starred_url": "https://api.github.com/users/rcarriga/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/rcarriga/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/rcarriga"
+                "url": "https://api.github.com/users/rcarriga",
+                "user_view_type": "public"
             }
         },
         {
@@ -1455,7 +1488,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -1499,7 +1533,8 @@
                 "starred_url": "https://api.github.com/users/oberblastmeister/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/oberblastmeister/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/oberblastmeister"
+                "url": "https://api.github.com/users/oberblastmeister",
+                "user_view_type": "public"
             }
         },
         {
@@ -1543,7 +1578,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -1587,7 +1623,8 @@
                 "starred_url": "https://api.github.com/users/oberblastmeister/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/oberblastmeister/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/oberblastmeister"
+                "url": "https://api.github.com/users/oberblastmeister",
+                "user_view_type": "public"
             }
         },
         {
@@ -1631,7 +1668,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -1675,7 +1713,8 @@
                 "starred_url": "https://api.github.com/users/oberblastmeister/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/oberblastmeister/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/oberblastmeister"
+                "url": "https://api.github.com/users/oberblastmeister",
+                "user_view_type": "public"
             }
         },
         {
@@ -1719,7 +1758,8 @@
                 "starred_url": "https://api.github.com/users/hrsh7th/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/hrsh7th/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/hrsh7th"
+                "url": "https://api.github.com/users/hrsh7th",
+                "user_view_type": "public"
             }
         },
         {
@@ -1763,7 +1803,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -1807,7 +1848,8 @@
                 "starred_url": "https://api.github.com/users/hrsh7th/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/hrsh7th/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/hrsh7th"
+                "url": "https://api.github.com/users/hrsh7th",
+                "user_view_type": "public"
             }
         },
         {
@@ -1851,7 +1893,8 @@
                 "starred_url": "https://api.github.com/users/rcarriga/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/rcarriga/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/rcarriga"
+                "url": "https://api.github.com/users/rcarriga",
+                "user_view_type": "public"
             }
         },
         {
@@ -1895,7 +1938,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -1939,7 +1983,8 @@
                 "starred_url": "https://api.github.com/users/rcarriga/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/rcarriga/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/rcarriga"
+                "url": "https://api.github.com/users/rcarriga",
+                "user_view_type": "public"
             }
         },
         {
@@ -1983,7 +2028,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -2027,7 +2073,8 @@
                 "starred_url": "https://api.github.com/users/rcarriga/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/rcarriga/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/rcarriga"
+                "url": "https://api.github.com/users/rcarriga",
+                "user_view_type": "public"
             }
         },
         {
@@ -2071,7 +2118,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -2115,7 +2163,8 @@
                 "starred_url": "https://api.github.com/users/hrsh7th/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/hrsh7th/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/hrsh7th"
+                "url": "https://api.github.com/users/hrsh7th",
+                "user_view_type": "public"
             }
         },
         {
@@ -2159,7 +2208,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -2203,7 +2253,8 @@
                 "starred_url": "https://api.github.com/users/rcarriga/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/rcarriga/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/rcarriga"
+                "url": "https://api.github.com/users/rcarriga",
+                "user_view_type": "public"
             }
         },
         {
@@ -2247,7 +2298,8 @@
                 "starred_url": "https://api.github.com/users/hrsh7th/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/hrsh7th/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/hrsh7th"
+                "url": "https://api.github.com/users/hrsh7th",
+                "user_view_type": "public"
             }
         },
         {
@@ -2291,7 +2343,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -2335,7 +2388,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -2379,7 +2433,8 @@
                 "starred_url": "https://api.github.com/users/oberblastmeister/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/oberblastmeister/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/oberblastmeister"
+                "url": "https://api.github.com/users/oberblastmeister",
+                "user_view_type": "public"
             }
         },
         {
@@ -2423,7 +2478,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -2467,7 +2523,8 @@
                 "starred_url": "https://api.github.com/users/oberblastmeister/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/oberblastmeister/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/oberblastmeister"
+                "url": "https://api.github.com/users/oberblastmeister",
+                "user_view_type": "public"
             }
         },
         {
@@ -2511,7 +2568,8 @@
                 "starred_url": "https://api.github.com/users/rcarriga/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/rcarriga/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/rcarriga"
+                "url": "https://api.github.com/users/rcarriga",
+                "user_view_type": "public"
             }
         },
         {
@@ -2555,7 +2613,8 @@
                 "starred_url": "https://api.github.com/users/rcarriga/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/rcarriga/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/rcarriga"
+                "url": "https://api.github.com/users/rcarriga",
+                "user_view_type": "public"
             }
         },
         {
@@ -2599,7 +2658,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -2643,7 +2703,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -2687,7 +2748,8 @@
                 "starred_url": "https://api.github.com/users/rcarriga/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/rcarriga/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/rcarriga"
+                "url": "https://api.github.com/users/rcarriga",
+                "user_view_type": "public"
             }
         },
         {
@@ -2731,7 +2793,8 @@
                 "starred_url": "https://api.github.com/users/oberblastmeister/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/oberblastmeister/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/oberblastmeister"
+                "url": "https://api.github.com/users/oberblastmeister",
+                "user_view_type": "public"
             }
         },
         {
@@ -2775,7 +2838,8 @@
                 "starred_url": "https://api.github.com/users/rcarriga/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/rcarriga/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/rcarriga"
+                "url": "https://api.github.com/users/rcarriga",
+                "user_view_type": "public"
             }
         },
         {
@@ -2819,7 +2883,8 @@
                 "starred_url": "https://api.github.com/users/oberblastmeister/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/oberblastmeister/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/oberblastmeister"
+                "url": "https://api.github.com/users/oberblastmeister",
+                "user_view_type": "public"
             }
         },
         {
@@ -2863,7 +2928,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -2907,7 +2973,8 @@
                 "starred_url": "https://api.github.com/users/oberblastmeister/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/oberblastmeister/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/oberblastmeister"
+                "url": "https://api.github.com/users/oberblastmeister",
+                "user_view_type": "public"
             }
         },
         {
@@ -2951,7 +3018,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -2995,7 +3063,8 @@
                 "starred_url": "https://api.github.com/users/oberblastmeister/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/oberblastmeister/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/oberblastmeister"
+                "url": "https://api.github.com/users/oberblastmeister",
+                "user_view_type": "public"
             }
         },
         {
@@ -3039,7 +3108,8 @@
                 "starred_url": "https://api.github.com/users/wfjt/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/wfjt/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/wfjt"
+                "url": "https://api.github.com/users/wfjt",
+                "user_view_type": "public"
             }
         },
         {
@@ -3083,7 +3153,8 @@
                 "starred_url": "https://api.github.com/users/svermeulen/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/svermeulen/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/svermeulen"
+                "url": "https://api.github.com/users/svermeulen",
+                "user_view_type": "public"
             }
         },
         {
@@ -3127,7 +3198,8 @@
                 "starred_url": "https://api.github.com/users/svermeulen/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/svermeulen/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/svermeulen"
+                "url": "https://api.github.com/users/svermeulen",
+                "user_view_type": "public"
             }
         },
         {
@@ -3171,7 +3243,8 @@
                 "starred_url": "https://api.github.com/users/hrsh7th/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/hrsh7th/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/hrsh7th"
+                "url": "https://api.github.com/users/hrsh7th",
+                "user_view_type": "public"
             }
         },
         {
@@ -3215,7 +3288,8 @@
                 "starred_url": "https://api.github.com/users/s1n7ax/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/s1n7ax/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/s1n7ax"
+                "url": "https://api.github.com/users/s1n7ax",
+                "user_view_type": "public"
             }
         },
         {
@@ -3259,7 +3333,8 @@
                 "starred_url": "https://api.github.com/users/s1n7ax/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/s1n7ax/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/s1n7ax"
+                "url": "https://api.github.com/users/s1n7ax",
+                "user_view_type": "public"
             }
         },
         {
@@ -3303,7 +3378,8 @@
                 "starred_url": "https://api.github.com/users/vurentjie/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/vurentjie/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/vurentjie"
+                "url": "https://api.github.com/users/vurentjie",
+                "user_view_type": "public"
             }
         }
     ],
@@ -3355,7 +3431,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 626,
+        "closed_issues": 655,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -3375,34 +3451,35 @@
             "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/justinmk"
+            "url": "https://api.github.com/users/justinmk",
+            "user_view_type": "public"
         },
-        "description": "Low priority. Not planned for the current target, may be reassigned.",
+        "description": "Low priority items. We plan to work on this but don't have a target date.",
         "due_on": null,
         "html_url": "https://github.com/neovim/neovim/milestone/6",
         "id": 655037,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 550,
+        "open_issues": 607,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2024-06-21T11:50:48Z",
+        "updated_at": "2024-10-21T15:22:37Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM5PBO-Z",
     "number": 19624,
     "performed_via_github_app": null,
     "reactions": {
-        "+1": 0,
+        "+1": 1,
         "-1": 0,
         "confused": 0,
         "eyes": 0,
-        "heart": 7,
+        "heart": 8,
         "hooray": 20,
         "laugh": 0,
         "rocket": 0,
-        "total_count": 27,
+        "total_count": 29,
         "url": "https://api.github.com/repos/neovim/neovim/issues/19624/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
@@ -3410,7 +3487,7 @@
     "state_reason": null,
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/19624/timeline",
     "title": "Lua: structured concurrency, Promises, task pipelines",
-    "updated_at": "2024-06-24T13:41:05Z",
+    "updated_at": "2024-10-21T16:45:33Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/19624",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -3430,6 +3507,7 @@
         "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/justinmk"
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
     }
 }

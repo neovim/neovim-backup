@@ -94,8 +94,8 @@
             "name": "node-client",
             "node_id": "MDEwOlJlcG9zaXRvcnkzMDY1MTI4Mw==",
             "notifications_url": "https://api.github.com/repos/neovim/node-client/notifications{?since,all,participating}",
-            "open_issues": 21,
-            "open_issues_count": 21,
+            "open_issues": 20,
+            "open_issues_count": 20,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -114,15 +114,16 @@
                 "starred_url": "https://api.github.com/users/neovim/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/neovim/subscriptions",
                 "type": "Organization",
-                "url": "https://api.github.com/users/neovim"
+                "url": "https://api.github.com/users/neovim",
+                "user_view_type": "public"
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/node-client/pulls{/number}",
-            "pushed_at": "2024-10-14T06:39:02Z",
+            "pushed_at": "2024-10-21T16:03:56Z",
             "releases_url": "https://api.github.com/repos/neovim/node-client/releases{/id}",
-            "size": 3940,
+            "size": 3369,
             "ssh_url": "git@github.com:neovim/node-client.git",
-            "stargazers_count": 487,
+            "stargazers_count": 486,
             "stargazers_url": "https://api.github.com/repos/neovim/node-client/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/node-client/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/node-client/subscribers",
@@ -139,11 +140,11 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/node-client/git/trees{/sha}",
-            "updated_at": "2024-10-13T12:22:47Z",
+            "updated_at": "2024-10-21T16:03:30Z",
             "url": "https://api.github.com/repos/neovim/node-client",
             "visibility": "public",
-            "watchers": 487,
-            "watchers_count": 487,
+            "watchers": 486,
+            "watchers_count": 486,
             "web_commit_signoff_required": false
         },
         "sha": "b156cbdaf43ec3e8713975d1d5cac1aed836993a",
@@ -165,11 +166,12 @@
             "starred_url": "https://api.github.com/users/neovim/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/neovim/subscriptions",
             "type": "Organization",
-            "url": "https://api.github.com/users/neovim"
+            "url": "https://api.github.com/users/neovim",
+            "user_view_type": "public"
         }
     },
-    "body": "This is a demo for a potential issue noticed in https://github.com/neovim/node-client/pull/414#discussion_r1796637402\r\n\r\n# Problem\r\n\r\n`proc.on('close')` does not always trigger on `nvim.quit()`. Based on the failures from the test changes in this PR, it appears that sometimes the child (`nvim`) does not close the stderr pipe:\r\n\r\n```\r\n    expect(received).toStrictEqual(expected) // deep equality\r\n\r\n    - Expected  - 1\r\n    + Received  + 1\r\n\r\n      Object {\r\n        \"errors\": 0,\r\n    -   \"stderrClosed\": true,\r\n    +   \"stderrClosed\": false,\r\n        \"stdoutClosed\": true,\r\n      }\r\n\r\n      172 |     // TODO: 'close' event sometimes does not emit. #414\r\n      173 |     proc.on('exit', () => {\r\n    > 174 |       expect(r).toStrictEqual({\r\n          |                 ^\r\n      175 |         stdoutClosed: true,\r\n      176 |         stderrClosed: true,\r\n      177 |         errors: 0,\r\n\r\n      at ChildProcess.toStrictEqual (src/attach/attach.test.ts:174:17)\r\n```\r\n\r\n# Solution\r\n\r\nThis seems like a potential bug or at least something to document in Nvim itself. I thought it might be related to this: https://github.com/neovim/neovim/blob/c4762b309714897615607f135aab9d7bcc763c4f/src/nvim/channel.c#L168-L171\r\n\r\n```c\r\n      // Don't close on exit, in case late error messages\r\n      if (!exiting) {\r\n        fclose(stderr);\r\n      }\r\n```\r\n\r\nbut, forcing `fclose(stderr)` does not pass the tests in this PR. Nor does adding `fclose(stderr)` anywhere else AFAICT.",
-    "closed_at": null,
+    "body": "This is a demo for a potential issue noticed in https://github.com/neovim/node-client/issues/419 / https://github.com/neovim/node-client/pull/414#discussion_r1796637402\r\n\r\n# Problem\r\n\r\n`proc.on('close')` does not always trigger on `nvim.quit()`. Based on the failures from the test changes in this PR, it appears that sometimes the child (`nvim`) does not close the stderr pipe:\r\n\r\n```\r\n    expect(received).toStrictEqual(expected) // deep equality\r\n\r\n    - Expected  - 1\r\n    + Received  + 1\r\n\r\n      Object {\r\n        \"errors\": 0,\r\n    -   \"stderrClosed\": true,\r\n    +   \"stderrClosed\": false,\r\n        \"stdoutClosed\": true,\r\n      }\r\n\r\n      172 |     // TODO: 'close' event sometimes does not emit. #414\r\n      173 |     proc.on('exit', () => {\r\n    > 174 |       expect(r).toStrictEqual({\r\n          |                 ^\r\n      175 |         stdoutClosed: true,\r\n      176 |         stderrClosed: true,\r\n      177 |         errors: 0,\r\n\r\n      at ChildProcess.toStrictEqual (src/attach/attach.test.ts:174:17)\r\n```\r\n\r\n# Solution\r\n\r\nThis seems like a potential bug or at least something to document in Nvim itself. I thought it might be related to this: https://github.com/neovim/neovim/blob/c4762b309714897615607f135aab9d7bcc763c4f/src/nvim/channel.c#L168-L171\r\n\r\n```c\r\n      // Don't close on exit, in case late error messages\r\n      if (!exiting) {\r\n        fclose(stderr);\r\n      }\r\n```\r\n\r\nbut, forcing `fclose(stderr)` does not pass the tests in this PR. Nor does adding `fclose(stderr)` anywhere else AFAICT.",
+    "closed_at": "2024-10-17T11:10:47Z",
     "comment_data": [],
     "comment_regular_data": [],
     "comments_url": "https://api.github.com/repos/neovim/node-client/issues/418/comments",
@@ -241,8 +243,8 @@
             "name": "node-client",
             "node_id": "MDEwOlJlcG9zaXRvcnkzMDY1MTI4Mw==",
             "notifications_url": "https://api.github.com/repos/neovim/node-client/notifications{?since,all,participating}",
-            "open_issues": 21,
-            "open_issues_count": 21,
+            "open_issues": 20,
+            "open_issues_count": 20,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -261,15 +263,16 @@
                 "starred_url": "https://api.github.com/users/neovim/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/neovim/subscriptions",
                 "type": "Organization",
-                "url": "https://api.github.com/users/neovim"
+                "url": "https://api.github.com/users/neovim",
+                "user_view_type": "public"
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/node-client/pulls{/number}",
-            "pushed_at": "2024-10-14T06:39:02Z",
+            "pushed_at": "2024-10-21T16:03:56Z",
             "releases_url": "https://api.github.com/repos/neovim/node-client/releases{/id}",
-            "size": 3940,
+            "size": 3369,
             "ssh_url": "git@github.com:neovim/node-client.git",
-            "stargazers_count": 487,
+            "stargazers_count": 486,
             "stargazers_url": "https://api.github.com/repos/neovim/node-client/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/node-client/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/node-client/subscribers",
@@ -286,11 +289,11 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/node-client/git/trees{/sha}",
-            "updated_at": "2024-10-13T12:22:47Z",
+            "updated_at": "2024-10-21T16:03:30Z",
             "url": "https://api.github.com/repos/neovim/node-client",
             "visibility": "public",
-            "watchers": 487,
-            "watchers_count": 487,
+            "watchers": 486,
+            "watchers_count": 486,
             "web_commit_signoff_required": false
         },
         "sha": "8cf12d0c1b97977c99bddd47c5d700834fa01bff",
@@ -312,7 +315,8 @@
             "starred_url": "https://api.github.com/users/neovim/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/neovim/subscriptions",
             "type": "Organization",
-            "url": "https://api.github.com/users/neovim"
+            "url": "https://api.github.com/users/neovim",
+            "user_view_type": "public"
         }
     },
     "html_url": "https://github.com/neovim/node-client/pull/418",
@@ -320,7 +324,7 @@
     "issue_url": "https://api.github.com/repos/neovim/node-client/issues/418",
     "labels": [],
     "locked": false,
-    "merge_commit_sha": "33722cc0bd28f979302bb63cde0194954dd6c394",
+    "merge_commit_sha": null,
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAdOzk85-WsEX",
@@ -330,10 +334,10 @@
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/node-client/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/node-client/pulls/418/comments",
-    "state": "open",
+    "state": "closed",
     "statuses_url": "https://api.github.com/repos/neovim/node-client/statuses/8cf12d0c1b97977c99bddd47c5d700834fa01bff",
     "title": "test: proc.on('close') event",
-    "updated_at": "2024-10-11T15:12:44Z",
+    "updated_at": "2024-10-17T11:12:18Z",
     "url": "https://api.github.com/repos/neovim/node-client/pulls/418",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -353,6 +357,7 @@
         "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/justinmk"
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
     }
 }

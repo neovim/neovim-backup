@@ -6,8 +6,54 @@
     "body": "This is a tracking issue for a potential issue noticed in https://github.com/neovim/node-client/pull/414#discussion_r1796637402\n\n# Problem\n\n`proc.on('close')` does not always trigger on `nvim.quit()`. Based on the failures demonstrated in https://github.com/neovim/node-client/pull/418, it appears that sometimes the child (`nvim`) does not close the stderr pipe:\n\n```\n    expect(received).toStrictEqual(expected) // deep equality\n\n    - Expected  - 1\n    + Received  + 1\n\n      Object {\n        \"errors\": 0,\n    -   \"stderrClosed\": true,\n    +   \"stderrClosed\": false,\n        \"stdoutClosed\": true,\n      }\n\n      172 |     // TODO: 'close' event sometimes does not emit. #414\n      173 |     proc.on('exit', () => {\n    > 174 |       expect(r).toStrictEqual({\n          |                 ^\n      175 |         stdoutClosed: true,\n      176 |         stderrClosed: true,\n      177 |         errors: 0,\n\n      at ChildProcess.toStrictEqual (src/attach/attach.test.ts:174:17)\n```\n\n# Solution\n\n- document that `proc.on('close')` is unreliable.\n- document `proc.on('exit')` as a workaround.\n- fix the issue(?) in Nvim itself. I thought it might be related to this: https://github.com/neovim/neovim/blob/c4762b309714897615607f135aab9d7bcc763c4f/src/nvim/channel.c#L168-L171\n  ```c\n  // Don't close on exit, in case late error messages\n  if (!exiting) {\n    fclose(stderr);\n  }\n  ```\n  but, forcing `fclose(stderr)` does not pass the tests in this PR. Nor does adding `fclose(stderr)` anywhere else AFAICT.\n",
     "closed_at": null,
     "closed_by": null,
-    "comment_data": [],
-    "comments": 0,
+    "comment_data": [
+        {
+            "author_association": "MEMBER",
+            "body": "patch to demo the issue, from https://github.com/neovim/node-client/pull/418\n\n```diff\ndiff --git a/packages/neovim/src/attach/attach.test.ts b/packages/neovim/src/attach/attach.test.ts\nindex 70d16597..4f0c6942 100644\n--- a/packages/neovim/src/attach/attach.test.ts\n+++ b/packages/neovim/src/attach/attach.test.ts\n@@ -154,14 +154,38 @@ describe('Nvim API', () => {\n     expect(newLines).toEqual(['line1', 'line2']);\n   });\n \n-  it('emits \"disconnect\" after quit', done => {\n+  it.only('emits \"disconnect\" after quit', done => {\n     const disconnectMock = jest.fn();\n     nvim.on('disconnect', disconnectMock);\n \n     nvim.quit();\n \n+    const r = {\n+      stdoutClosed: false,\n+      stderrClosed: false,\n+      errors: 0,\n+    };\n+    proc.stdout.on('close', () => {\n+      r.stdoutClosed = true;\n+    });\n+    proc.stderr.on('close', () => {\n+      r.stderrClosed = true;\n+    });\n+    proc.on('error', () => {\n+      r.errors = r.errors + 1;\n+    });\n+\n     // TODO: 'close' event sometimes does not emit. #414\n     proc.on('exit', () => {\n+      expect(r).toStrictEqual({\n+        stdoutClosed: true,\n+        stderrClosed: true,\n+        errors: 0,\n+      });\n+      done();\n+    });\n+\n+    proc.on('close', () => {\n       expect(disconnectMock).toHaveBeenCalledTimes(1);\n       done();\n     });\n```",
+            "created_at": "2024-10-17T11:11:58Z",
+            "html_url": "https://github.com/neovim/node-client/issues/419#issuecomment-2419236745",
+            "id": 2419236745,
+            "issue_url": "https://api.github.com/repos/neovim/node-client/issues/419",
+            "node_id": "IC_kwDOAdOzk86QMp-J",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/node-client/issues/comments/2419236745/reactions"
+            },
+            "updated_at": "2024-10-17T11:11:58Z",
+            "url": "https://api.github.com/repos/neovim/node-client/issues/comments/2419236745",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        }
+    ],
+    "comments": 1,
     "comments_url": "https://api.github.com/repos/neovim/node-client/issues/419/comments",
     "created_at": "2024-10-11T15:09:00Z",
     "events_url": "https://api.github.com/repos/neovim/node-client/issues/419/events",
@@ -47,7 +93,7 @@
     "state_reason": null,
     "timeline_url": "https://api.github.com/repos/neovim/node-client/issues/419/timeline",
     "title": "unreliable proc.on('close') event",
-    "updated_at": "2024-10-11T15:10:48Z",
+    "updated_at": "2024-10-17T11:12:00Z",
     "url": "https://api.github.com/repos/neovim/node-client/issues/419",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -67,6 +113,7 @@
         "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/justinmk"
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
     }
 }

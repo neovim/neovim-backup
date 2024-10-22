@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 5622,
-            "forks_count": 5622,
+            "forks": 5657,
+            "forks_count": 5657,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1788,
-            "open_issues_count": 1788,
+            "open_issues": 1801,
+            "open_issues_count": 1801,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -114,15 +114,16 @@
                 "starred_url": "https://api.github.com/users/neovim/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/neovim/subscriptions",
                 "type": "Organization",
-                "url": "https://api.github.com/users/neovim"
+                "url": "https://api.github.com/users/neovim",
+                "user_view_type": "public"
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2024-10-08T00:43:44Z",
+            "pushed_at": "2024-10-22T01:05:14Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 289510,
+            "size": 290505,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 82327,
+            "stargazers_count": 82684,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -140,11 +141,11 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2024-10-08T00:49:29Z",
+            "updated_at": "2024-10-22T02:10:43Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 82327,
-            "watchers_count": 82327,
+            "watchers": 82684,
+            "watchers_count": 82684,
             "web_commit_signoff_required": false
         },
         "sha": "d3b4772ddcd4c890dc5bc38e1f1b36a08aed0c04",
@@ -166,13 +167,105 @@
             "starred_url": "https://api.github.com/users/neovim/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/neovim/subscriptions",
             "type": "Organization",
-            "url": "https://api.github.com/users/neovim"
+            "url": "https://api.github.com/users/neovim",
+            "user_view_type": "public"
         }
     },
     "body": "Based on issue #30376, I have made this change so that you can run commands when using the `read` command, and have their output added to the current buffer.\r\n\r\nThis is still a fairly rough draft, and while it seems to work, I don't like that: \r\n * it could potentially be building up a big string before even starting to write to the temp file\r\n * I am not sure that a temp file is really needed\r\n * The way it is parsing out commands needs work\r\n * I'm new to the codebase\r\n * I don't usually have to write portable C code so I am not sure how the use of temp files will behave outside of Linux.\r\n\r\nSo before I proceed any further I was hoping someone could give me advice on my approach. ",
     "closed_at": null,
     "comment_data": [],
-    "comment_regular_data": [],
+    "comment_regular_data": [
+        {
+            "author_association": "MEMBER",
+            "body": "definitely wouldn't use a temp file. likely the best way to implement this is to re-use the internals of `:help execute()` : https://github.com/neovim/neovim/blob/e049c6e4c08a141c94218672e770f86f91c27a11/src/nvim/eval/funcs.c#L1592-L1594\r\n\r\nOr rather than directly using those internals, the C code can invoke vimscript:\r\n\r\n    execute(printf(\"put=execute('%s')\", substitute(escape(<q-args>, '\"')\r\n\r\nNote also that \"mods\" should be supported, i.e. `:split read :foo` should collect the output of `:foo` *before*` splitting the window (otherwise this isn't useful).\r\n\r\nAdding tests is the most valuable part of this work, because it defines the \"specification\", so then we can improve the implementation later. A good place for tests would be `test/functional/ex_cmds/` . There is currently no `read_spec.lua` in there, but perhaps could use `test/functional/ex_cmds/write_spec.lua` as a starting point.\r\n\r\nYou can [run a specific test](https://github.com/neovim/neovim/blob/master/test/README.md#filter-by-file) like this:\r\n\r\n    TEST_FILE=test/functional/example_spec.lua make functionaltest",
+            "created_at": "2024-10-17T08:50:51Z",
+            "html_url": "https://github.com/neovim/neovim/pull/30628#issuecomment-2418944607",
+            "id": 2418944607,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/30628",
+            "node_id": "IC_kwDOAPphoM6QLipf",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2418944607/reactions"
+            },
+            "updated_at": "2024-10-17T08:54:55Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2418944607",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "NONE",
+            "body": "OK thanks for the advice. It looks like I won't have time to work on this until some time next week, but I will probably have more questions on Tuesday or Wednesday.",
+            "created_at": "2024-10-17T10:51:13Z",
+            "html_url": "https://github.com/neovim/neovim/pull/30628#issuecomment-2419198065",
+            "id": 2419198065,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/30628",
+            "node_id": "IC_kwDOAPphoM6QMghx",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2419198065/reactions"
+            },
+            "updated_at": "2024-10-17T10:51:13Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2419198065",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/8626587?v=4",
+                "events_url": "https://api.github.com/users/bwalshe/events{/privacy}",
+                "followers_url": "https://api.github.com/users/bwalshe/followers",
+                "following_url": "https://api.github.com/users/bwalshe/following{/other_user}",
+                "gists_url": "https://api.github.com/users/bwalshe/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/bwalshe",
+                "id": 8626587,
+                "login": "bwalshe",
+                "node_id": "MDQ6VXNlcjg2MjY1ODc=",
+                "organizations_url": "https://api.github.com/users/bwalshe/orgs",
+                "received_events_url": "https://api.github.com/users/bwalshe/received_events",
+                "repos_url": "https://api.github.com/users/bwalshe/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/bwalshe/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/bwalshe/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/bwalshe",
+                "user_view_type": "public"
+            }
+        }
+    ],
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/30628/comments",
     "commits_url": "https://api.github.com/repos/neovim/neovim/pulls/30628/commits",
     "created_at": "2024-10-02T17:21:48Z",
@@ -262,7 +355,8 @@
                 "starred_url": "https://api.github.com/users/bwalshe/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/bwalshe/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/bwalshe"
+                "url": "https://api.github.com/users/bwalshe",
+                "user_view_type": "public"
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/bwalshe/neovim/pulls{/number}",
@@ -306,15 +400,26 @@
             "starred_url": "https://api.github.com/users/bwalshe/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/bwalshe/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/bwalshe"
+            "url": "https://api.github.com/users/bwalshe",
+            "user_view_type": "public"
         }
     },
     "html_url": "https://github.com/neovim/neovim/pull/30628",
     "id": 2103958130,
     "issue_url": "https://api.github.com/repos/neovim/neovim/issues/30628",
-    "labels": [],
+    "labels": [
+        {
+            "color": "FBCA04",
+            "default": false,
+            "description": "waiting for reply from the author",
+            "id": 248229439,
+            "name": "needs:response",
+            "node_id": "MDU6TGFiZWwyNDgyMjk0Mzk=",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/needs:response"
+        }
+    ],
     "locked": false,
-    "merge_commit_sha": "6b503a452b386a20e6692d7b34f7120ffd4ee6db",
+    "merge_commit_sha": "a094809f770be9dba3c43eaa0915447b0d44724e",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM59Z9py",
@@ -327,7 +432,7 @@
     "state": "open",
     "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/6d583682d6bbfbf83b0d6a1d221ddbb3e07a87e0",
     "title": "Change behavor of read so that the command \":read :cmd\" executes \"cmd\" and writes the output to the buffer ",
-    "updated_at": "2024-10-03T10:42:45Z",
+    "updated_at": "2024-10-17T11:06:02Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/30628",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/8626587?v=4",
@@ -347,6 +452,7 @@
         "starred_url": "https://api.github.com/users/bwalshe/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/bwalshe/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/bwalshe"
+        "url": "https://api.github.com/users/bwalshe",
+        "user_view_type": "public"
     }
 }

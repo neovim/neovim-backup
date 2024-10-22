@@ -48,7 +48,8 @@
                 "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/zeertzjq"
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
             }
         },
         {
@@ -92,7 +93,8 @@
                 "starred_url": "https://api.github.com/users/errael/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/errael/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/errael"
+                "url": "https://api.github.com/users/errael",
+                "user_view_type": "public"
             }
         },
         {
@@ -136,7 +138,8 @@
                 "starred_url": "https://api.github.com/users/errael/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/errael/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/errael"
+                "url": "https://api.github.com/users/errael",
+                "user_view_type": "public"
             }
         },
         {
@@ -180,7 +183,8 @@
                 "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/zeertzjq"
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
             }
         },
         {
@@ -224,7 +228,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -268,7 +273,8 @@
                 "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/zeertzjq"
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
             }
         },
         {
@@ -312,11 +318,102 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "@zeertzjq Here's a diff patch that allows an `vim.on_key({fn}, {ns_id}, {options})` handler to specify options with`{may_discard=true}`. When `may_discard` is true and the handler returns true, the key is discarded. There might be problems with this patch; like how it's implemented and/or commented/annotated. It does let me test the concept. This does nothing about temporarily disabling mappings.\n\nIt was interesting to get a taste of \"C\"/lua interface.\n```diff\ndiff --git a/runtime/lua/vim/_editor.lua b/runtime/lua/vim/_editor.lua\n--- a/runtime/lua/vim/_editor.lua\n+++ b/runtime/lua/vim/_editor.lua\n@@ -649,7 +649,8 @@\n   end\n end\n \n-local on_key_cbs = {} --- @type table<integer,function>\n+                            -- TODO: following probably not correct\n+local on_key_cbs = {} --- @type table<integer,[function,options?]>\n \n --- Adds Lua function {fn} with namespace id {ns_id} as a listener to every,\n --- yes every, input key.\n@@ -672,12 +673,13 @@\n ---          namespace {ns_id} is removed.\n ---@param ns_id integer? Namespace ID. If nil or 0, generates and returns a\n ---                      new |nvim_create_namespace()| id.\n+---@param options table? may_discard=true if {fn} return controls {key} discard.\n ---\n ---@see |keytrans()|\n ---\n ---@return integer Namespace id associated with {fn}. Or count of all callbacks\n ---if on_key() is called without arguments.\n-function vim.on_key(fn, ns_id)\n+function vim.on_key(fn, ns_id, options)\n   if fn == nil and ns_id == nil then\n     return vim.tbl_count(on_key_cbs)\n   end\n@@ -685,13 +687,14 @@\n   vim.validate({\n     fn = { fn, 'c', true },\n     ns_id = { ns_id, 'n', true },\n+    options = { options, 't', true },\n   })\n \n   if ns_id == nil or ns_id == 0 then\n     ns_id = vim.api.nvim_create_namespace('')\n   end\n \n-  on_key_cbs[ns_id] = fn\n+  on_key_cbs[ns_id] = fn and { fn, options }\n   return ns_id\n end\n \n@@ -700,12 +703,21 @@\n function vim._on_key(buf, typed_buf)\n   local failed_ns_ids = {}\n   local failed_messages = {}\n+  local discard = false\n   for k, v in pairs(on_key_cbs) do\n-    local ok, err_msg = pcall(v, buf, typed_buf)\n+    -- Do something like this if only want to dispatch to 1 of may_discard callbacks;\n+    -- but only makes sense if may_discard callbacks are sorted like by zindex.\n+    -- if discard and v[2] and v2].may_discard then continue end\n+    local ok, discard_or_err_msg = pcall(v[1], buf, typed_buf)\n     if not ok then\n       vim.on_key(nil, k)\n       table.insert(failed_ns_ids, k)\n-      table.insert(failed_messages, err_msg)\n+      table.insert(failed_messages, discard_or_err_msg)\n+    elseif v[2] and v[2].may_discard  then\n+      if discard_or_err_msg == true then\n+        discard = true\n+        -- break;  -- TODO: deliver to all even if it eventually discards?\n+      end\n     end\n   end\n \n@@ -718,6 +730,7 @@\n       )\n     )\n   end\n+  return discard\n end\n \n --- Generates a list of possible completions for the string.\ndiff --git a/src/nvim/getchar.c b/src/nvim/getchar.c\n--- a/src/nvim/getchar.c\n+++ b/src/nvim/getchar.c\n@@ -1772,7 +1772,10 @@\n \n   // Execute Lua on_key callbacks.\n   kvi_push(on_key_buf, NUL);\n-  nlua_execute_on_key(c, on_key_buf.items);\n+  if (nlua_execute_on_key(c, on_key_buf.items)) {\n+    DLOG(\"on_key ignoring '%x'\", c);\n+    c = K_IGNORE;\n+  }\n   kvi_destroy(on_key_buf);\n   kvi_init(on_key_buf);\n \ndiff --git a/src/nvim/lua/executor.c b/src/nvim/lua/executor.c\n--- a/src/nvim/lua/executor.c\n+++ b/src/nvim/lua/executor.c\n@@ -2063,12 +2063,13 @@\n   return name;\n }\n \n-void nlua_execute_on_key(int c, char *typed_buf)\n+// @return true to discrd the key\n+bool nlua_execute_on_key(int c, char *typed_buf)\n {\n   static bool recursive = false;\n \n   if (recursive) {\n-    return;\n+    return false;\n   }\n   recursive = true;\n \n@@ -2097,9 +2098,15 @@\n \n   int save_got_int = got_int;\n   got_int = false;  // avoid interrupts when the key typed is Ctrl-C\n-  if (nlua_pcall(lstate, 2, 0)) {\n+  bool discard = false;\n+  if (nlua_pcall(lstate, 2, 1)) {\n     nlua_error(lstate,\n                _(\"Error executing  vim.on_key Lua callback: %.*s\"));\n+  } else {\n+    if (lua_isboolean(lstate, -1)) {\n+      discard = lua_toboolean(lstate, -1);\n+    }\n+    lua_pop(lstate, 1);\n   }\n   got_int |= save_got_int;\n \n@@ -2112,6 +2119,7 @@\n #endif\n \n   recursive = false;\n+  return discard;\n }\n \n // Sets the editor \"script context\" during Lua execution. Used by :verbose.\n```m.",
+            "created_at": "2024-10-17T03:58:09Z",
+            "html_url": "https://github.com/neovim/neovim/issues/30741#issuecomment-2418447447",
+            "id": 2418447447,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/30741",
+            "node_id": "IC_kwDOAPphoM6QJpRX",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2418447447/reactions"
+            },
+            "updated_at": "2024-10-17T04:28:20Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2418447447",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/20450427?v=4",
+                "events_url": "https://api.github.com/users/errael/events{/privacy}",
+                "followers_url": "https://api.github.com/users/errael/followers",
+                "following_url": "https://api.github.com/users/errael/following{/other_user}",
+                "gists_url": "https://api.github.com/users/errael/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/errael",
+                "id": 20450427,
+                "login": "errael",
+                "node_id": "MDQ6VXNlcjIwNDUwNDI3",
+                "organizations_url": "https://api.github.com/users/errael/orgs",
+                "received_events_url": "https://api.github.com/users/errael/received_events",
+                "repos_url": "https://api.github.com/users/errael/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/errael/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/errael/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/errael",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "Even though the diff in the previous comment is not intended as a PR, I notice at least two things that may be wrong/incomplete.\n\nIn following, does options need to be copied? probably.\n```diff\n    -function vim.on_key(fn, ns_id)\n    +function vim.on_key(fn, ns_id, options)\n```\n\nIn the following, does \"nlua_error\" clean up everything?\nOr does the \"lua_pop(lstate, 1)\" need to be outside the else?\n```diff\n    -  if (nlua_pcall(lstate, 2, 0)) {\n    +  bool discard = false;\n    +  if (nlua_pcall(lstate, 2, 1)) {\n         nlua_error(lstate,\n                    _(\"Error executing  vim.on_key Lua callback: %.*s\"));\n    +  } else {\n    +    if (lua_isboolean(lstate, -1)) {\n    +      discard = lua_toboolean(lstate, -1);\n    +    }\n    +    lua_pop(lstate, 1);\n       }\n```\n",
+            "created_at": "2024-10-18T16:11:37Z",
+            "html_url": "https://github.com/neovim/neovim/issues/30741#issuecomment-2422811388",
+            "id": 2422811388,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/30741",
+            "node_id": "IC_kwDOAPphoM6QaSr8",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2422811388/reactions"
+            },
+            "updated_at": "2024-10-18T16:11:37Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2422811388",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/20450427?v=4",
+                "events_url": "https://api.github.com/users/errael/events{/privacy}",
+                "followers_url": "https://api.github.com/users/errael/followers",
+                "following_url": "https://api.github.com/users/errael/following{/other_user}",
+                "gists_url": "https://api.github.com/users/errael/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/errael",
+                "id": 20450427,
+                "login": "errael",
+                "node_id": "MDQ6VXNlcjIwNDUwNDI3",
+                "organizations_url": "https://api.github.com/users/errael/orgs",
+                "received_events_url": "https://api.github.com/users/errael/received_events",
+                "repos_url": "https://api.github.com/users/errael/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/errael/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/errael/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/errael",
+                "user_view_type": "public"
             }
         }
     ],
-    "comments": 7,
+    "comments": 9,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/30741/comments",
     "created_at": "2024-10-09T22:41:20Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/30741/events",
@@ -384,7 +481,8 @@
             "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/justinmk"
+            "url": "https://api.github.com/users/justinmk",
+            "user_view_type": "public"
         },
         "description": "We don't plan to work on this, but will accept high quality contributions from someone who will own the feature and follow up on bug reports.",
         "due_on": null,
@@ -396,7 +494,7 @@
         "open_issues": 267,
         "state": "open",
         "title": "needs-owner",
-        "updated_at": "2024-10-14T19:27:30Z",
+        "updated_at": "2024-10-18T09:09:28Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/9"
     },
     "node_id": "I_kwDOAPphoM6Zm1x0",
@@ -419,7 +517,7 @@
     "state_reason": null,
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/30741/timeline",
     "title": "vim.on_key() can consume the key and prevent mapping",
-    "updated_at": "2024-10-13T20:05:59Z",
+    "updated_at": "2024-10-18T16:11:39Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/30741",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/20450427?v=4",
@@ -439,6 +537,7 @@
         "starred_url": "https://api.github.com/users/errael/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/errael/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/errael"
+        "url": "https://api.github.com/users/errael",
+        "user_view_type": "public"
     }
 }

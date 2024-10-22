@@ -4,8 +4,28 @@
     "assignees": [],
     "author_association": "NONE",
     "body": "### Description\n\nHi there, I've noticed the kotlin_language_server crashes if you cd before opening a kotlin project, so for example, start neovim at `~`, do `:cd KotlinProject`, so `~/KotlinProject` open any KT file (I've only tested on gradle projects tho), proceeds to give an error. It works fine if you don't do that.\r\n\r\nDoesn't happen to any other LSP that I've used, it turns pretty annoying specially if you use a sessions plugin or something similar.\r\n\r\nI've fixed it by changing the default `init_options.storagePath` to\r\n```lua\r\n  init_options = {\r\n    storagePath = fn.resolve(fn.stdpath(\"cache\") .. \"/kotlin_language_server\")\r\n  }\r\n  ```\r\nBut I'm unsure why this happens, or if it's a good fix.\r\n\r\nLsp Log:\r\n```log\r\n[START][2024-07-18 00:41:18] LSP logging initiated\r\n[ERROR][2024-07-18 00:41:18] .../vim/lsp/rpc.lua:734\t\"rpc\"\t\"/nix/store/f3ca6sj3jyr97axdvs04i10blndi9jic-kotlin-language-server-1.3.9/bin/kotlin-language-server\"\t\"stderr\"\t'SLF4J: Failed to load class \"org.slf4j.impl.StaticLoggerBinder\".\\n'\r\n[ERROR][2024-07-18 00:41:18] .../vim/lsp/rpc.lua:734\t\"rpc\"\t\"/nix/store/f3ca6sj3jyr97axdvs04i10blndi9jic-kotlin-language-server-1.3.9/bin/kotlin-language-server\"\t\"stderr\"\t\"SLF4J: Defaulting to no-operation (NOP) logger implementation\\nSLF4J: See http://www.slf4j.org/codes.html#StaticLoggerBinder for further details.\\n\"\r\n[ERROR][2024-07-18 00:41:19] .../vim/lsp/rpc.lua:734\t\"rpc\"\t\"/nix/store/f3ca6sj3jyr97axdvs04i10blndi9jic-kotlin-language-server-1.3.9/bin/kotlin-language-server\"\t\"stderr\"\t\"Jul 18, 2024 12:41:19 AM org.eclipse.lsp4j.jsonrpc.services.GenericEndpoint lambda$recursiveFindRpcMethods$2\\nSEVERE: A delegate object is null, jsonrpc methods of 'public default org.eclipse.lsp4j.services.NotebookDocumentService org.eclipse.lsp4j.services.LanguageServer.getNotebookDocumentService()' are ignored\\n\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"main      A delegate object is null, jsonrpc methods of 'public default org.eclipse.lsp4j.services.NotebookDocumentService org.eclipse.lsp4j.services.LanguageServer.getNotebookDocumentService()' are ignored\"\r\n[ERROR][2024-07-18 00:41:19] .../vim/lsp/rpc.lua:734\t\"rpc\"\t\"/nix/store/f3ca6sj3jyr97axdvs04i10blndi9jic-kotlin-language-server-1.3.9/bin/kotlin-language-server\"\t\"stderr\"\t\"Jul 18, 2024 12:41:19 AM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint fallbackResponseError\\nSEVERE: Internal error: com.google.gson.JsonSyntaxException: java.lang.IllegalStateException: Expected BEGIN_OBJECT but was BEGIN_ARRAY at path $\\njava.util.concurrent.CompletionException: com.google.gson.JsonSyntaxException: java.lang.IllegalStateException: Expected BEGIN_OBJECT but was BEGIN_ARRAY at path $\\n\\tat java.base/java.util.concurrent.CompletableFuture.encodeThrowable(CompletableFuture.java:315)\\n\\tat java.base/java.util.concurrent.CompletableFuture.completeThrowable(CompletableFuture.java:320)\\n\\tat java.base/java.util.concurrent.CompletableFuture$AsyncSupply.run(CompletableFuture.java:1770)\\n\\tat java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)\\n\\tat java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)\\n\\tat java.base/java.lang.Thread.run(Thread.java:1583)\\nCaused by: com.google.gson.JsonSyntaxException: java.lang.IllegalStateException: Expected BEGIN_OBJECT but was BEGIN_ARRAY at path $\\n\\tat com.google.gson.internal.bind.ReflectiveTypeAdapterFactory$Adapter.read(ReflectiveTypeAdapterFactory.java:270)\\n\\tat com.google.gson.Gson.fromJson(Gson.java:1058)\\n\\tat com.google.gson.Gson.fromJson(Gson.java:1129)\\n\\tat com.google.gson.Gson.fromJson(Gson.java:1101)\\n\\tat org.javacs.kt.ConfigurationKt.getStoragePath(Configuration.kt:64)\\n\\tat org.javacs.kt.KotlinLanguageServer$initialize$1.invoke(KotlinLanguageServer.kt:97)\\n\\tat org.javacs.kt.KotlinLanguageServer$initialize$1.invoke(KotlinLanguageServer.kt:74)\\n\\tat org.javacs.kt.util.AsyncExecutor.compute$lambda$2(AsyncExecutor.kt:19)\\n\\tat java.base/java.util.concurrent.CompletableFuture$AsyncSupply.run(CompletableFuture.java:1768)\\n\\t... 3 more\\nCaused by: java.lang.IllegalStateException: Expected BEGIN_OBJECT but was BEGIN_ARRAY at path $\\n\\tat com.google.gson.internal.bind.JsonTreeReader.expect(JsonTreeReader.java:163)\\n\\tat com.google.gson.internal.bind.JsonTreeReader.beginObject(JsonTreeReader.java:88)\\n\\tat com.google.gson.internal.bind.ReflectiveTypeAdapterFactory$Adapter.read(ReflectiveTypeAdapterFactory.java:259)\\n\\t... 11 more\\n\\n\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"async0    Internal error: com.google.gson.JsonSyntaxException: java.lang.IllegalStateException: Expected BEGIN_OBJECT but was BEGIN_ARRAY at path $\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"java.util.concurrent.CompletionException: com.google.gson.JsonSyntaxException: java.lang.IllegalStateException: Expected BEGIN_OBJECT but was BEGIN_ARRAY at path $\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"\\tat java.base/java.util.concurrent.CompletableFuture.encodeThrowable(CompletableFuture.java:315)\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"\\tat java.base/java.util.concurrent.CompletableFuture.completeThrowable(CompletableFuture.java:320)\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"\\tat java.base/java.util.concurrent.CompletableFuture$AsyncSupply.run(CompletableFuture.java:1770)\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"\\tat java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"\\tat java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"\\tat java.base/java.lang.Thread.run(Thread.java:1583)\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"Caused by: com.google.gson.JsonSyntaxException: java.lang.IllegalStateException: Expected BEGIN_OBJECT but was BEGIN_ARRAY at path $\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"\\tat com.google.gson.internal.bind.ReflectiveTypeAdapterFactory$Adapter.read(ReflectiveTypeAdapterFactory.java:270)\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"\\tat com.google.gson.Gson.fromJson(Gson.java:1058)\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"\\tat com.google.gson.Gson.fromJson(Gson.java:1129)\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"\\tat com.google.gson.Gson.fromJson(Gson.java:1101)\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"\\tat org.javacs.kt.ConfigurationKt.getStoragePath(Configuration.kt:64)\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"\\tat org.javacs.kt.KotlinLanguageServer$initialize$1.invoke(KotlinLanguageServer.kt:97)\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"\\tat org.javacs.kt.KotlinLanguageServer$initialize$1.invoke(KotlinLanguageServer.kt:74)\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"\\tat org.javacs.kt.util.AsyncExecutor.compute$lambda$2(AsyncExecutor.kt:19)\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"\\tat java.base/java.util.concurrent.CompletableFuture$AsyncSupply.run(CompletableFuture.java:1768)\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"\\t... 3 more\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"Caused by: java.lang.IllegalStateException: Expected BEGIN_OBJECT but was BEGIN_ARRAY at path $\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"\\tat com.google.gson.internal.bind.JsonTreeReader.expect(JsonTreeReader.java:163)\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"\\tat com.google.gson.internal.bind.JsonTreeReader.beginObject(JsonTreeReader.java:88)\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"\\tat com.google.gson.internal.bind.ReflectiveTypeAdapterFactory$Adapter.read(ReflectiveTypeAdapterFactory.java:259)\"\r\n[ERROR][2024-07-18 00:41:19] ...lsp/handlers.lua:535\t\"\\t... 11 more\"\r\n```",
-    "closed_at": null,
-    "closed_by": null,
+    "closed_at": "2024-10-18T09:51:22Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+        "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+        "followers_url": "https://api.github.com/users/justinmk/followers",
+        "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+        "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/justinmk",
+        "id": 1359421,
+        "login": "justinmk",
+        "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+        "organizations_url": "https://api.github.com/users/justinmk/orgs",
+        "received_events_url": "https://api.github.com/users/justinmk/received_events",
+        "repos_url": "https://api.github.com/users/justinmk/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "NONE",
@@ -48,7 +68,8 @@
                 "starred_url": "https://api.github.com/users/tacascer/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/tacascer/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/tacascer"
+                "url": "https://api.github.com/users/tacascer",
+                "user_view_type": "public"
             }
         },
         {
@@ -92,7 +113,8 @@
                 "starred_url": "https://api.github.com/users/przybylski/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/przybylski/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/przybylski"
+                "url": "https://api.github.com/users/przybylski",
+                "user_view_type": "public"
             }
         },
         {
@@ -136,7 +158,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         }
     ],
@@ -176,11 +199,11 @@
         "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/3239/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/nvim-lspconfig",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "timeline_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/3239/timeline",
     "title": "Kotlin LSP crashes if you cd before it starts",
-    "updated_at": "2024-09-17T10:06:36Z",
+    "updated_at": "2024-10-18T09:51:22Z",
     "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/3239",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/77858854?v=4",
@@ -200,6 +223,7 @@
         "starred_url": "https://api.github.com/users/B1kku/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/B1kku/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/B1kku"
+        "url": "https://api.github.com/users/B1kku",
+        "user_view_type": "public"
     }
 }

@@ -5,6 +5,7 @@
     "author_association": "NONE",
     "body": "### Problem\n\nI'm trying to setup some lua tests for a neovim plugin following [this](https://hiphish.github.io/blog/2024/01/29/testing-neovim-plugins-with-busted/).\r\n\r\nThis resulted in me running into a NULL pointer deref:\r\n\r\n```\r\n(gdb) bt\r\n#0  0x00000000005d3cbb in grid_del_lines ()\r\n#1  0x0000000000671cb0 in msg_scroll_up ()\r\n#2  0x00000000006761ba in msg_start ()\r\n#3  0x0000000000674ef4 in msg_attr_keep ()\r\n#4  0x00000000006754e9 in emsg_multiline ()\r\n#5  0x0000000000676dbd in semsg_multiline ()\r\n#6  0x0000000000623eb0 in nlua_error ()\r\n#7  0x000000000062ddcd in nlua_exec_file ()\r\n#8  0x0000000000459a93 in main ()\r\n(gdb) \r\n(gdb) x/i $pc\r\n=> 0x5d3cbb <grid_del_lines+587>:       mov    (%rdx),%rdi\r\n(gdb) i r\r\nrax            0x0                 0\r\nrbx            0x1                 1\r\nrcx            0x1                 1\r\nrdx            0x0                 0\r\nrsi            0x0                 0\r\nrdi            0x966a80            9857664\r\nrbp            0x1                 0x1\r\nrsp            0x7ffedab7b660      0x7ffedab7b660\r\nr8             0x0                 0\r\nr9             0x0                 0\r\nr10            0x0                 0\r\nr11            0x1                 1\r\nr12            0x0                 0\r\nr13            0x0                 0\r\nr14            0xffffffff          4294967295\r\nr15            0x966a80            9857664\r\nrip            0x5d3cbb            0x5d3cbb <grid_del_lines+587>\r\n(gdb) x/20i $pc-25\r\n   0x5d3ca2 <grid_del_lines+562>:       pop    %rbp\r\n   0x5d3ca3 <grid_del_lines+563>:       pop    %r14\r\n   0x5d3ca5 <grid_del_lines+565>:       pop    %r15\r\n   0x5d3ca7 <grid_del_lines+567>:       ret\r\n   0x5d3ca8 <grid_del_lines+568>:       nopl   0x0(%rax,%rax,1)\r\n   0x5d3cb0 <grid_del_lines+576>:       mov    0x20(%r15),%rsi\r\n   0x5d3cb4 <grid_del_lines+580>:       movslq %r10d,%rdx\r\n   0x5d3cb7 <grid_del_lines+583>:       lea    (%rsi,%rdx,8),%rdx\r\n=> 0x5d3cbb <grid_del_lines+587>:       mov    (%rdx),%rdi\r\n   0x5d3cbe <grid_del_lines+590>:       cmp    %r11d,%r14d\r\n   0x5d3cc1 <grid_del_lines+593>:       jl     0x5d3ce9 <grid_del_lines+633>\r\n   0x5d3cc3 <grid_del_lines+595>:       cmp    $0x1,%ebp\r\n   0x5d3cc6 <grid_del_lines+598>:       jne    0x5d3fb0 <grid_del_lines+1344>\r\n   0x5d3ccc <grid_del_lines+604>:       nopl   0x0(%rax)\r\n   0x5d3cd0 <grid_del_lines+608>:       movslq %ebx,%rdx\r\n   0x5d3cd3 <grid_del_lines+611>:       lea    (%rsi,%rdx,8),%rdx\r\n   0x5d3cd7 <grid_del_lines+615>:       mov    (%rdx),%rcx\r\n   0x5d3cda <grid_del_lines+618>:       mov    %rcx,(%rsi,%rax,8)\r\n   0x5d3cde <grid_del_lines+622>:       movslq %ebx,%rax\r\n   0x5d3ce1 <grid_del_lines+625>:       add    $0x1,%ebx\r\n```\r\n\r\nThere has been at least 2 different cases where this function has had crashes in the past maybe #20316 and #10031, but they are both pre 0.10.0.\r\n\r\nThere is one other open issue #22278 that has `grid_del_lines` in the stacktrace, but is not the same issue as it's not the crashing function.\n\n### Steps to reproduce\n\nI'm running `busted --run unit` with the following setup:\r\n\r\n```\r\n❯ bat -p .busted\r\nreturn {\r\n    _all = {\r\n        lua = './test/nvim-shim.sh'\r\n    },\r\n    unit = {\r\n        ROOT = {'./test/unit/'},\r\n    },\r\n}\r\n```\r\n\r\n```\r\n❯ bat -p ./test/nvim-shim.sh\r\n#!/usr/bin/env bash\r\nset -euo pipefail\r\n\r\nexport XDG_CONFIG_HOME='test/xdg/config/'\r\nexport XDG_STATE_HOME='test/xdg/local/state/'\r\nexport XDG_DATA_HOME='test/xdg/local/share/'\r\n\r\nmkdir -p ${XDG_CONFIG_HOME} ${XDG_STATE_HOME} ${XDG_DATA_HOME}\r\nmkdir -p ${XDG_DATA_HOME}/nvim/site/pack/testing/start || true\r\n# XXX - Expects to be in cursorless.nvim, so we should force cd here\r\nln -sf \"${PWD}\" ${XDG_DATA_HOME}/nvim/site/pack/testing/start/cursorless.nvim\r\n\r\nNVIM='nvim'\r\nif type -a ${NVIM} | grep 'is an alias'; then\r\n  NVIM=$(type -p nvim)\r\nfi\r\n# shellcheck disable=SC2068\r\necho $@\r\n${NVIM} --cmd 'set loadplugins' -l $@\r\nexit_code=$?\r\nrm ${XDG_DATA_HOME}/nvim/site/pack/testing/start/cursorless.nvim 2>/dev/null || true\r\n\r\nexit $exit_code\r\n```\r\n\r\n```\r\n❯ bat -p test/unit/buffer_selection_spec.lua\r\ndescribe(\"cursorless buffer selection\", function()\r\n  describe(\"Basic selection\", function()\r\n    before_each(function()\r\n      local pos = vim.api.nvim_win_get_cursor(0)[2]\r\n      local line = vim.api.nvim_get_current_line()\r\n      local nline = line:sub(0, pos) .. \"hello\" .. line:sub(pos + 1)\r\n      vim.api.nvim_set_current_line(nline)\r\n    end)\r\n\r\n    it(\"Can read visible lines\", function()\r\n      print(\"foo\")\r\n      assert.is_true(true)\r\n    end)\r\n  end)\r\nend)\r\n```\r\n\r\nIf I have `print(\"foo\")` in the above `buffer_selection_spec.lua` file:\r\n\r\n```\r\n❯ busted --run unit\r\n/nix/store/w1wjplk0znvid1y1kljz1a1nqm2dc24q-luajit2.1-busted-2.2.0-1/busted-2.2.0-1-rocks/busted/2.2.0-1/bin/busted --ignore-lua --run unit\r\n./test/nvim-shim.sh: line 19: 1640715 Segmentation fault      (core dumped) ${NVIM} --cmd 'set loadplugins' -l $@\r\nerror: Recipe `test` failed on line 5 with exit code 1\r\n```\r\n\r\nIf I comment out the print:\r\n\r\n```\r\n❯ busted --run unit\r\n/nix/store/w1wjplk0znvid1y1kljz1a1nqm2dc24q-luajit2.1-busted-2.2.0-1/busted-2.2.0-1-rocks/busted/2.2.0-1/bin/busted --ignore-lua --run unit\r\n●\r\n1 success / 0 failures / 0 errors / 0 pending : 0.000675 seconds\r\n```\r\n\n\n### Expected behavior\n\nDon't crash.\n\n### Neovim version (nvim -v)\n\n❯ /home/aa/.nix-profile/bin/nvim --version NVIM v0.10.0 Build type: Release LuaJIT 2.1.1693350652\n\n### Vim (not Nvim) behaves the same?\n\ndon't know, not sure how to reproduce given my repro relies on lua test\n\n### Operating system/version\n\nnixos 24.05\n\n### Terminal name/version\n\nwezterm\n\n### $TERM environment variable\n\nxterm-256color\n\n### Installation\n\nnixpkgs",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -47,7 +48,8 @@
                 "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/zeertzjq"
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
             }
         },
         {
@@ -91,7 +93,8 @@
                 "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/zeertzjq"
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
             }
         },
         {
@@ -135,7 +138,8 @@
                 "starred_url": "https://api.github.com/users/fidgetingbits/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/fidgetingbits/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/fidgetingbits"
+                "url": "https://api.github.com/users/fidgetingbits",
+                "user_view_type": "public"
             }
         },
         {
@@ -148,7 +152,7 @@
             "node_id": "IC_kwDOAPphoM6BhHU8",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 0,
+                "+1": 1,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -156,7 +160,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 0,
+                "total_count": 1,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2172941628/reactions"
             },
             "updated_at": "2024-06-17T10:00:30Z",
@@ -179,7 +183,8 @@
                 "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/zeertzjq"
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
             }
         },
         {
@@ -223,11 +228,102 @@
                 "starred_url": "https://api.github.com/users/fidgetingbits/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/fidgetingbits/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/fidgetingbits"
+                "url": "https://api.github.com/users/fidgetingbits",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "Should Nvim perform any UI code when started with `-l`?",
+            "created_at": "2024-10-16T13:14:34Z",
+            "html_url": "https://github.com/neovim/neovim/issues/29373#issuecomment-2416809100",
+            "id": 2416809100,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/29373",
+            "node_id": "IC_kwDOAPphoM6QDZSM",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2416809100/reactions"
+            },
+            "updated_at": "2024-10-16T13:14:34Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2416809100",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/11404453?v=4",
+                "events_url": "https://api.github.com/users/przepompownia/events{/privacy}",
+                "followers_url": "https://api.github.com/users/przepompownia/followers",
+                "following_url": "https://api.github.com/users/przepompownia/following{/other_user}",
+                "gists_url": "https://api.github.com/users/przepompownia/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/przepompownia",
+                "id": 11404453,
+                "login": "przepompownia",
+                "node_id": "MDQ6VXNlcjExNDA0NDUz",
+                "organizations_url": "https://api.github.com/users/przepompownia/orgs",
+                "received_events_url": "https://api.github.com/users/przepompownia/received_events",
+                "repos_url": "https://api.github.com/users/przepompownia/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/przepompownia/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/przepompownia/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/przepompownia",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "I got the same bug in my user environment. While we have no fix for it, we can defer setting `cmdheight` after `UIEnter`:\n```lua\nvim.api.nvim_create_autocmd('UIEnter', {\n  callback = function ()\n    vim.o.cmdheight = 0\n  end\n})\n```",
+            "created_at": "2024-10-16T13:27:59Z",
+            "html_url": "https://github.com/neovim/neovim/issues/29373#issuecomment-2416842884",
+            "id": 2416842884,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/29373",
+            "node_id": "IC_kwDOAPphoM6QDhiE",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2416842884/reactions"
+            },
+            "updated_at": "2024-10-16T13:28:22Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2416842884",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/11404453?v=4",
+                "events_url": "https://api.github.com/users/przepompownia/events{/privacy}",
+                "followers_url": "https://api.github.com/users/przepompownia/followers",
+                "following_url": "https://api.github.com/users/przepompownia/following{/other_user}",
+                "gists_url": "https://api.github.com/users/przepompownia/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/przepompownia",
+                "id": 11404453,
+                "login": "przepompownia",
+                "node_id": "MDQ6VXNlcjExNDA0NDUz",
+                "organizations_url": "https://api.github.com/users/przepompownia/orgs",
+                "received_events_url": "https://api.github.com/users/przepompownia/received_events",
+                "repos_url": "https://api.github.com/users/przepompownia/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/przepompownia/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/przepompownia/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/przepompownia",
+                "user_view_type": "public"
             }
         }
     ],
-    "comments": 5,
+    "comments": 7,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/29373/comments",
     "created_at": "2024-06-17T07:19:30Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/29373/events",
@@ -264,7 +360,7 @@
         {
             "color": "C5DEF5",
             "default": false,
-            "description": "UI messages, log messages",
+            "description": "UI messages, log messages, errors, warnings, feedback",
             "id": 5637083595,
             "name": "messages",
             "node_id": "LA_kwDOAPphoM8AAAABT_8Ryw",
@@ -294,7 +390,7 @@
     "state_reason": null,
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/29373/timeline",
     "title": "cmdheight=0: NULL dereference in grid_del_lines()",
-    "updated_at": "2024-06-17T10:19:21Z",
+    "updated_at": "2024-10-16T13:28:22Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/29373",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/13679876?v=4",
@@ -314,6 +410,7 @@
         "starred_url": "https://api.github.com/users/fidgetingbits/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/fidgetingbits/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/fidgetingbits"
+        "url": "https://api.github.com/users/fidgetingbits",
+        "user_view_type": "public"
     }
 }
