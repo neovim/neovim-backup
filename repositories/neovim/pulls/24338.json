@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 5599,
-            "forks_count": 5599,
+            "forks": 5682,
+            "forks_count": 5682,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1777,
-            "open_issues_count": 1777,
+            "open_issues": 1804,
+            "open_issues_count": 1804,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -114,15 +114,16 @@
                 "starred_url": "https://api.github.com/users/neovim/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/neovim/subscriptions",
                 "type": "Organization",
-                "url": "https://api.github.com/users/neovim"
+                "url": "https://api.github.com/users/neovim",
+                "user_view_type": "public"
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2024-09-16T10:33:35Z",
+            "pushed_at": "2024-10-29T01:08:05Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 285944,
+            "size": 291853,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 81723,
+            "stargazers_count": 82872,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -140,11 +141,11 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2024-09-17T01:51:52Z",
+            "updated_at": "2024-10-29T01:08:09Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 81723,
-            "watchers_count": 81723,
+            "watchers": 82872,
+            "watchers_count": 82872,
             "web_commit_signoff_required": false
         },
         "sha": "516b173780e39de3ce1e4525f0a8f0ff250c992b",
@@ -166,7 +167,8 @@
             "starred_url": "https://api.github.com/users/neovim/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/neovim/subscriptions",
             "type": "Organization",
-            "url": "https://api.github.com/users/neovim"
+            "url": "https://api.github.com/users/neovim",
+            "user_view_type": "public"
         }
     },
     "body": "Early WIP/draft:\r\n\r\nThere are occasionally requests for dedicated APIs for code actions or codelens, (also formatter, but there's `formatexpr`, `formatprg` and `!cmd` and afaik so far no explanation of why they are not sufficient). Concrete request for codelens: https://github.com/neovim/neovim/issues/20181\r\n\r\nOr potential use-cases for code-action:\r\n\r\n- https://github.com/lervag/vimtex/blob/01733c0969cf8922e932bcc30b768966c69ffaf0/doc/vimtex.txt#L5953\r\n- https://github.com/lewis6991/gitsigns.nvim#null-ls\r\n\r\nFor `vim.diagnostic`, a dedicated module made a lot of sense as linters have existed long before LSP and there are lots of standalone tools.\r\n\r\n\r\nFor the others (codelens, code actions, hover, inline-hints, etc.) the value proposition is more questionable. What would a dedicated API improve over just using LSP?\r\n\r\nOne problem with \"just use LSP\" is that you either need a separate process, or some boilerplate.\r\nThis PR would address the boilerplate problem.\r\n\r\nE.g. a implementation for hover could look like this:\r\n\r\n\r\n```lua\r\nlocal api = vim.api\r\nlocal server = vim.lsp.server({\r\n  capabilities = {\r\n    hoverProvider = true\r\n  },\r\n  handlers = {\r\n    ---@param params lsp.HoverParams\r\n    [\"textDocument/hover\"] = function(_, params)\r\n      local bufnr = vim.uri_to_bufnr(params.textDocument.uri)\r\n      local lnum = params.position.line\r\n      local col = params.position.character\r\n      -- use bufnr/lnum/col to provide actual text\r\n      return {\r\n        contents = {\r\n          kind = \"plaintext\",\r\n          value = \"just some dummy text\",\r\n        }\r\n      }\r\n    end,\r\n  }\r\n})\r\nvim.lsp.start({ name = \"dummy-ls\", cmd = server })\r\n```\r\n\r\nAdvantages:\r\n\r\n- We don't need to figure out a provider pull/push model for plugins to register code-actions, hover, etc.\r\n- We don't need a ton of new APIs, documentations and tests\r\n- Also provides answers for progress notification and cancellation (although with open construction sites, e.g. https://github.com/neovim/neovim/issues/22852)\r\n- We already use something like that in the tests.  Even if we decide to add dedicated APIs later, this might be low cost due do that\r\n- We can maybe convince Lewis to improve multi-client support, which we want anyway, instead of working on https://github.com/lewis6991/hover.nvim\r\n- Would also be useful for plugins implementing off-spec LSP extensions or similar functions for testing.  (E.g lsp-compl has something like this in its tests)\r\n\r\n\r\nDisadvantages:\r\n\r\n- LSP allows to make requests for buffers that are not visible and not \"current\": That means in the handlers you cannot make good use of functions like `vim.fn.expand(\"<cexpr>\")`, but you'd currently have to create a dummy window, and open the buffer in that windows\r\n- Slightly more verbose than dedicated APIs might be\r\n-  Limited to LSP functionality\r\n\r\n\r\n---\r\n\r\nTBD:\r\n\r\n- [x] Decide if we want this\r\n- [ ] Finetune API\r\n    - is the `method` param required for each handler, it's kinda redundant.\r\n    - How about push from server to client?\r\n- [ ] Finish example in the docs (including how to `vim.lsp.start` such a server)\r\n",
@@ -214,7 +216,8 @@
                 "starred_url": "https://api.github.com/users/mfussenegger/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/mfussenegger/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/mfussenegger"
+                "url": "https://api.github.com/users/mfussenegger",
+                "user_view_type": "public"
             }
         },
         {
@@ -258,7 +261,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -302,7 +306,8 @@
                 "starred_url": "https://api.github.com/users/mfussenegger/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/mfussenegger/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/mfussenegger"
+                "url": "https://api.github.com/users/mfussenegger",
+                "user_view_type": "public"
             }
         },
         {
@@ -346,7 +351,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -390,7 +396,8 @@
                 "starred_url": "https://api.github.com/users/pmizio/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/pmizio/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/pmizio"
+                "url": "https://api.github.com/users/pmizio",
+                "user_view_type": "public"
             }
         },
         {
@@ -434,7 +441,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -478,7 +486,8 @@
                 "starred_url": "https://api.github.com/users/mfussenegger/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/mfussenegger/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/mfussenegger"
+                "url": "https://api.github.com/users/mfussenegger",
+                "user_view_type": "public"
             }
         },
         {
@@ -522,7 +531,143 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "NONE",
+            "body": "@clason do I understand correctly that this is currently blocked by #19624?",
+            "created_at": "2024-10-22T20:14:19Z",
+            "html_url": "https://github.com/neovim/neovim/pull/24338#issuecomment-2430171619",
+            "id": 2430171619,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/24338",
+            "node_id": "IC_kwDOAPphoM6Q2Xnj",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2430171619/reactions"
+            },
+            "updated_at": "2024-10-22T20:14:19Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2430171619",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/66178592?v=4",
+                "events_url": "https://api.github.com/users/flexagoon/events{/privacy}",
+                "followers_url": "https://api.github.com/users/flexagoon/followers",
+                "following_url": "https://api.github.com/users/flexagoon/following{/other_user}",
+                "gists_url": "https://api.github.com/users/flexagoon/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/flexagoon",
+                "id": 66178592,
+                "login": "flexagoon",
+                "node_id": "MDQ6VXNlcjY2MTc4NTky",
+                "organizations_url": "https://api.github.com/users/flexagoon/orgs",
+                "received_events_url": "https://api.github.com/users/flexagoon/received_events",
+                "repos_url": "https://api.github.com/users/flexagoon/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/flexagoon/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/flexagoon/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/flexagoon",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "No. The PR is still WIP. The only feedback from me is that the handlers should accept callback instead of returning the result.",
+            "created_at": "2024-10-22T21:04:37Z",
+            "html_url": "https://github.com/neovim/neovim/pull/24338#issuecomment-2430281157",
+            "id": 2430281157,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/24338",
+            "node_id": "IC_kwDOAPphoM6Q2yXF",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2430281157/reactions"
+            },
+            "updated_at": "2024-10-22T21:04:37Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2430281157",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",
+                "events_url": "https://api.github.com/users/lewis6991/events{/privacy}",
+                "followers_url": "https://api.github.com/users/lewis6991/followers",
+                "following_url": "https://api.github.com/users/lewis6991/following{/other_user}",
+                "gists_url": "https://api.github.com/users/lewis6991/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/lewis6991",
+                "id": 7904185,
+                "login": "lewis6991",
+                "node_id": "MDQ6VXNlcjc5MDQxODU=",
+                "organizations_url": "https://api.github.com/users/lewis6991/orgs",
+                "received_events_url": "https://api.github.com/users/lewis6991/received_events",
+                "repos_url": "https://api.github.com/users/lewis6991/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "Not blocked on a async module, but I'd like to have multi-client/server support in a better shape before this gets in.\r\nThere's been decent progress on that recently.\r\n\r\nAnother aspect could be the `vim._with` - or a LSP specific variant to make it easier to temporarily set the cursor to a requests' position, because I noticed while trying out some extensions that a lot of the useful `vim.fn.` functions depend on buf/win/cursor state.\r\n",
+            "created_at": "2024-10-24T11:52:43Z",
+            "html_url": "https://github.com/neovim/neovim/pull/24338#issuecomment-2435066455",
+            "id": 2435066455,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/24338",
+            "node_id": "IC_kwDOAPphoM6RJCpX",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 1,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2435066455/reactions"
+            },
+            "updated_at": "2024-10-24T11:52:43Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2435066455",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/38700?v=4",
+                "events_url": "https://api.github.com/users/mfussenegger/events{/privacy}",
+                "followers_url": "https://api.github.com/users/mfussenegger/followers",
+                "following_url": "https://api.github.com/users/mfussenegger/following{/other_user}",
+                "gists_url": "https://api.github.com/users/mfussenegger/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/mfussenegger",
+                "id": 38700,
+                "login": "mfussenegger",
+                "node_id": "MDQ6VXNlcjM4NzAw",
+                "organizations_url": "https://api.github.com/users/mfussenegger/orgs",
+                "received_events_url": "https://api.github.com/users/mfussenegger/received_events",
+                "repos_url": "https://api.github.com/users/mfussenegger/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/mfussenegger/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/mfussenegger/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/mfussenegger",
+                "user_view_type": "public"
             }
         }
     ],
@@ -615,13 +760,14 @@
                 "starred_url": "https://api.github.com/users/mfussenegger/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/mfussenegger/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/mfussenegger"
+                "url": "https://api.github.com/users/mfussenegger",
+                "user_view_type": "public"
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/mfussenegger/neovim/pulls{/number}",
-            "pushed_at": "2024-09-13T20:37:01Z",
+            "pushed_at": "2024-10-24T16:20:11Z",
             "releases_url": "https://api.github.com/repos/mfussenegger/neovim/releases{/id}",
-            "size": 278413,
+            "size": 285157,
             "ssh_url": "git@github.com:mfussenegger/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/mfussenegger/neovim/stargazers",
@@ -659,7 +805,8 @@
             "starred_url": "https://api.github.com/users/mfussenegger/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/mfussenegger/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/mfussenegger"
+            "url": "https://api.github.com/users/mfussenegger",
+            "user_view_type": "public"
         }
     },
     "html_url": "https://github.com/neovim/neovim/pull/24338",
@@ -677,7 +824,7 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "23c6a9b0c0d9316c9df0880b01bb604490c51c2f",
+    "merge_commit_sha": null,
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM5Vaebg",
@@ -690,7 +837,7 @@
     "state": "open",
     "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/152e377542d5db303cd6b999e283af9014fa348c",
     "title": "feat(lsp): add vim.lsp.server to create in-process server",
-    "updated_at": "2024-09-12T09:49:44Z",
+    "updated_at": "2024-10-24T11:52:44Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/24338",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/38700?v=4",
@@ -710,6 +857,7 @@
         "starred_url": "https://api.github.com/users/mfussenegger/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/mfussenegger/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/mfussenegger"
+        "url": "https://api.github.com/users/mfussenegger",
+        "user_view_type": "public"
     }
 }

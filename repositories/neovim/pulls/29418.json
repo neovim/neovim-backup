@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/29418"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/c173a59e1524e6dfb27906f2f22ca960823df06a"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/149eea3f943c54504dad5aa91e0a543ac02e2153"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 5605,
-            "forks_count": 5605,
+            "forks": 5682,
+            "forks_count": 5682,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1776,
-            "open_issues_count": 1776,
+            "open_issues": 1804,
+            "open_issues_count": 1804,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -114,15 +114,16 @@
                 "starred_url": "https://api.github.com/users/neovim/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/neovim/subscriptions",
                 "type": "Organization",
-                "url": "https://api.github.com/users/neovim"
+                "url": "https://api.github.com/users/neovim",
+                "user_view_type": "public"
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2024-09-30T22:27:30Z",
+            "pushed_at": "2024-10-29T01:08:05Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 287362,
+            "size": 291853,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 82117,
+            "stargazers_count": 82872,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -140,14 +141,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2024-10-01T02:33:57Z",
+            "updated_at": "2024-10-29T01:08:09Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 82117,
-            "watchers_count": 82117,
+            "watchers": 82872,
+            "watchers_count": 82872,
             "web_commit_signoff_required": false
         },
-        "sha": "eea6b84a87fb72d66f83e8b5c440764ccbdf69b5",
+        "sha": "34c44c355646311aa67fe53e1e5ce040789430c6",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -166,7 +167,8 @@
             "starred_url": "https://api.github.com/users/neovim/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/neovim/subscriptions",
             "type": "Organization",
-            "url": "https://api.github.com/users/neovim"
+            "url": "https://api.github.com/users/neovim",
+            "user_view_type": "public"
         }
     },
     "body": "@lewis6991 \r\nIn the case of running a linematch algorithm with a really large diff hunk that takes forever, the algorithm will hang and the user must stop the neovim process. With this pull request, I added an ability for the running algorithm to respect the ctrl + c press, similar to when you have a word completion (ctrl-p / ctrl-n) huge word list coming from many open buffers or large files, it will hang until you press ctrl + c to cancel it.\r\n\r\nI'm not sure if i handled the capture of the ctrl-c the best way, but it seems to work. so some input on that would be appreciated if anyone knows a better way",
@@ -186,19 +188,19 @@
             },
             "author_association": "MEMBER",
             "body": "would it simplify things we just bailed out of diff-mode entirely? I don't think we need to bother trying to construct partial \"guessed\" result.",
-            "commit_id": "c173a59e1524e6dfb27906f2f22ca960823df06a",
+            "commit_id": "149eea3f943c54504dad5aa91e0a543ac02e2153",
             "created_at": "2024-09-30T18:02:07Z",
             "diff_hunk": "@@ -353,24 +362,46 @@ size_t linematch_nbuffers(const char **diff_blk, const int *diff_len, const size\n \n   // memory for avoiding repetitive calculations of score\n   int df_iters[LN_MAX_BUFS];\n-  populate_tensor(df_iters, 0, diffcmppath, diff_len, ndiffs, diff_blk, iwhite);\n-\n-  const size_t u = unwrap_indexes(diff_len, diff_len, ndiffs);\n-  diffcmppath_T *startNode = &diffcmppath[u];\n+  bool canceled = 0;\n+  populate_tensor(df_iters, 0, diffcmppath, diff_len, ndiffs, diff_blk, iwhite, &canceled);\n \n   *decisions = xmalloc(sizeof(int) * memsize_decisions);\n   size_t n_optimal = 0;\n-  test_charmatch_paths(startNode, 0);\n-  while (startNode->df_path_n > 0) {\n-    size_t j = startNode->df_optimal_choice;\n-    (*decisions)[n_optimal++] = startNode->df_choice[j];\n-    startNode = startNode->df_decision[j];\n-  }\n-  // reverse array\n-  for (size_t i = 0; i < (n_optimal / 2); i++) {\n-    int tmp = (*decisions)[i];\n-    (*decisions)[i] = (*decisions)[n_optimal - 1 - i];\n-    (*decisions)[n_optimal - 1 - i] = tmp;\n+  if (canceled == true) { // if canceled, compare the lines guessing that the new lines are at the\n+                          // bottom of the longer text",
             "html_url": "https://github.com/neovim/neovim/pull/29418#discussion_r1781550697",
             "id": 1781550697,
-            "line": 371,
+            "line": null,
             "node_id": "PRRC_kwDOAPphoM5qME5p",
             "original_commit_id": "c173a59e1524e6dfb27906f2f22ca960823df06a",
             "original_line": 371,
             "original_position": 65,
             "original_start_line": null,
             "path": "src/nvim/linematch.c",
-            "position": 65,
+            "position": null,
             "pull_request_review_id": 2338266555,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/29418",
             "reactions": {
@@ -237,7 +239,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         }
     ],
@@ -283,7 +286,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -327,7 +331,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -371,7 +376,8 @@
                 "starred_url": "https://api.github.com/users/jwhite510/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/jwhite510/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/jwhite510"
+                "url": "https://api.github.com/users/jwhite510",
+                "user_view_type": "public"
             }
         },
         {
@@ -415,7 +421,53 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "@justinmk \r\n> Needs a rebase, and a test. And hopefully the code will be much simpler after removing the attempt to \"guess\" when the user cancels.\r\n\r\nI removed the simplified guessed result, so the error handling is now moved outside linematch_nbuffers. I stored the failed state in diff_T.is_linematched, which is now an integer. 0: not yet ran, 1: success, -1: canceled. I'm not sure in the lua test how to simulate the ctrl-c press of the user to cancel it while it is still running.\r\n",
+            "created_at": "2024-10-28T14:10:03Z",
+            "html_url": "https://github.com/neovim/neovim/pull/29418#issuecomment-2441701133",
+            "id": 2441701133,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/29418",
+            "node_id": "IC_kwDOAPphoM6RiWcN",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2441701133/reactions"
+            },
+            "updated_at": "2024-10-28T14:10:03Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2441701133",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/32371757?v=4",
+                "events_url": "https://api.github.com/users/jwhite510/events{/privacy}",
+                "followers_url": "https://api.github.com/users/jwhite510/followers",
+                "following_url": "https://api.github.com/users/jwhite510/following{/other_user}",
+                "gists_url": "https://api.github.com/users/jwhite510/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/jwhite510",
+                "id": 32371757,
+                "login": "jwhite510",
+                "node_id": "MDQ6VXNlcjMyMzcxNzU3",
+                "organizations_url": "https://api.github.com/users/jwhite510/orgs",
+                "received_events_url": "https://api.github.com/users/jwhite510/received_events",
+                "repos_url": "https://api.github.com/users/jwhite510/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/jwhite510/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/jwhite510/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/jwhite510",
+                "user_view_type": "public"
             }
         }
     ],
@@ -508,13 +560,14 @@
                 "starred_url": "https://api.github.com/users/jwhite510/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/jwhite510/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/jwhite510"
+                "url": "https://api.github.com/users/jwhite510",
+                "user_view_type": "public"
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/jwhite510/neovim/pulls{/number}",
-            "pushed_at": "2024-09-27T14:55:02Z",
+            "pushed_at": "2024-10-28T20:37:03Z",
             "releases_url": "https://api.github.com/repos/jwhite510/neovim/releases{/id}",
-            "size": 292269,
+            "size": 295963,
             "ssh_url": "git@github.com:jwhite510/neovim.git",
             "stargazers_count": 6,
             "stargazers_url": "https://api.github.com/repos/jwhite510/neovim/stargazers",
@@ -533,7 +586,7 @@
             "watchers_count": 6,
             "web_commit_signoff_required": false
         },
-        "sha": "c173a59e1524e6dfb27906f2f22ca960823df06a",
+        "sha": "149eea3f943c54504dad5aa91e0a543ac02e2153",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/32371757?v=4",
             "events_url": "https://api.github.com/users/jwhite510/events{/privacy}",
@@ -552,7 +605,8 @@
             "starred_url": "https://api.github.com/users/jwhite510/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/jwhite510/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/jwhite510"
+            "url": "https://api.github.com/users/jwhite510",
+            "user_view_type": "public"
         }
     },
     "html_url": "https://github.com/neovim/neovim/pull/29418",
@@ -570,7 +624,7 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "b5cfb13d1b2cb316714f0fec11ae3b971bf1042a",
+    "merge_commit_sha": "3cf8b7933cb0d319977af0a916c120bc7782f6e3",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM5y_8tM",
@@ -595,16 +649,17 @@
             "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/lewis6991"
+            "url": "https://api.github.com/users/lewis6991",
+            "user_view_type": "public"
         }
     ],
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/29418/comments",
     "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/c173a59e1524e6dfb27906f2f22ca960823df06a",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/149eea3f943c54504dad5aa91e0a543ac02e2153",
     "title": "feat(diff): cancel linematch if ctrl-c is pressed while it's running",
-    "updated_at": "2024-09-30T18:03:11Z",
+    "updated_at": "2024-10-28T14:10:05Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/29418",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/32371757?v=4",
@@ -624,6 +679,7 @@
         "starred_url": "https://api.github.com/users/jwhite510/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/jwhite510/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/jwhite510"
+        "url": "https://api.github.com/users/jwhite510",
+        "user_view_type": "public"
     }
 }

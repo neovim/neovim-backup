@@ -5,6 +5,7 @@
     "author_association": "MEMBER",
     "body": "# Problem\r\n\r\n- There are various different ways of representing a position (e.g. `:help api-indexing`).\r\n    - https://github.com/neovim/neovim/issues/25272#issuecomment-1729294143\r\n- Comparing or reasoning about positions requires boilerplate / utility functions such as:\r\n    - [get_range_from_mark](https://github.com/neovim/neovim/pull/25301#discussion_r1334298996)\r\n    - [make_line_range_params](https://github.com/neovim/neovim/pull/25194#discussion_r1328985155)\r\n    - [compare_position](https://github.com/vscode-neovim/vscode-neovim/pull/1490/files#diff-356c71d28d1ad83654bec96ec39481938dd06e6589a05d781ed2ab028d9296b6R70-R84)\r\n\r\nCopying @mfussenegger summary:\r\n\r\n> cursor/position related functions:\r\n> \r\n> * `vim.region(..., pos1, pos2, ...)`\r\n>   * pos1 & pos2: `integer[] (line, column)` `(0,0)` indexed byte positions\r\n> * `vim.inspect_pos(..., row, col, ...)` 0 based\r\n> * `vim.show_pos(..., row, col, ...)` 0 based\r\n> * `vim.highlight.range(... start, finish, ...)` - `{line, col}` tuple, doesn't mention if `(0, 0)` or something else?\r\n> * `vim.treesitter.get_node_text(node, ...)`\r\n> * `vim.fn.cursor(lnum, col, off)` `(1, 1)` - With `0` meaning stay in current line or column\r\n> * `vim.fn.getpos(expr)` - result is `[bufnr, lnum, col, off]` (1, 1) based;\r\n> * `vim.fn.getcurpos([{winid}])` like ^ but with an extra `curswant` in the result.\r\n> * `vim.fn.getline(lnum, end)` - 1 based\r\n> * `nvim_win_set_cursor(win, pos)` -  `pos` is `(row, col)` tuple  with `(1, 0)` indexing\r\n> * `nvim_win_get_cursor(win)` - Mirrors `nvim_win_set_cursor`\r\n> * `nvim_buf_get_lines(..., start, end, ...)` - 0 based, end-exclusive\r\n> * `nvim_buf_get_lines(..., start_row, start_col, end_row, end_col...)` - 0 based, row indices end-inclusive, column indices end-exclusive\r\n> \r\n> LSP structures:\r\n> \r\n> ```\r\n> Position\r\n>    line: integer 0 based\r\n>    character: integer 0 base  (but encoding dependent\r\n> ```\r\n> \r\n> ```\r\n> Range\r\n>     start: Position\r\n>     end: Position\r\n> ```\r\n\r\n# Proposal\r\n\r\nImplement `vim.pos` module for representing and working with normalized positions.\r\n\r\n- `vim.pos(row, col)` creates a `vim.pos.Pos` position using \"normalized\" indexing (TBD).\r\n    - `vim.pos(expr: string)` takes a [getpos()-like expression](https://neovim.io/doc/user/builtin.html#line()).\r\n- `vim.pos.Pos` structure is defined as:\r\n  ```\r\n  vim.pos.Pos: {\r\n    kind?: 'mark' | 'extmark' | 'cursor' | ...\r\n    col: number\r\n    row: number\r\n    buf?: number -- Buffer id.\r\n\r\n    -- TODO: do we need these fields?\r\n    -- row_offset?: number\r\n    -- col_offset?: number\r\n    -- vcol?: number  -- virtual column\r\n    -- vrow?: number  -- virtual row\r\n  }\r\n  ```\r\n- `vim.pos.cmp()` compares positions (analogous to `vim.version.cmp()`)\r\n- For integration with legacy interfaces it can _accept_ and _produce_ any kind of position. Interface proposal:\r\n  ```\r\n  vim.pos.mark(row,col)       -- Creates a position from a mark-like row/col.\r\n  vim.pos.extmark(row,col)    -- Creates a position from a extmark-like row/col.\r\n  vim.pos.cursor(row,col)     -- Creates a position from a cursor-like row/col.\r\n  vim.pos.mark(pos)           -- Converts `pos` to a mark-like position.\r\n  vim.pos.extmark(pos)        -- Converts `pos` to a extmark-like position.\r\n  vim.pos.cursor(pos)         -- Converts `pos` to a cursor-like position.\r\n  ```",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -47,7 +48,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -91,7 +93,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -135,7 +138,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -179,7 +183,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -223,7 +228,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -267,7 +273,8 @@
                 "starred_url": "https://api.github.com/users/mfussenegger/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/mfussenegger/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/mfussenegger"
+                "url": "https://api.github.com/users/mfussenegger",
+                "user_view_type": "public"
             }
         },
         {
@@ -311,7 +318,8 @@
                 "starred_url": "https://api.github.com/users/mfussenegger/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/mfussenegger/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/mfussenegger"
+                "url": "https://api.github.com/users/mfussenegger",
+                "user_view_type": "public"
             }
         },
         {
@@ -355,7 +363,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -399,12 +408,13 @@
                 "starred_url": "https://api.github.com/users/mfussenegger/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/mfussenegger/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/mfussenegger"
+                "url": "https://api.github.com/users/mfussenegger",
+                "user_view_type": "public"
             }
         },
         {
             "author_association": "MEMBER",
-            "body": ">> would require the reader to know the indexing of p1, which is a burden.\r\n>\r\n> I think that's a general question of if we want to have a tagged position that knows how it is indexed, or if we're going with a free-form variant.\r\n\r\nIf the position objection doesn't know its indexing that seems to lose half of the benefit...\r\n\r\n> A more drastic proposal: We add `xy2` (0, 0) indexing versions for _all_ functions which currently use a different indexing scheme\r\n\r\nMaybe, but shouldn't block the more tractable near-term solution. Even if we \"normalized\" all functions, we still need a Position abstraction (+conversions) for things at the edges (plugins, treesitter, LSP, ...).",
+            "body": ">> would require the reader to know the indexing of p1, which is a burden.\n>\n> I think that's a general question of if we want to have a tagged position that knows how it is indexed, or if we're going with a free-form variant.\n\nIf the position object doesn't know its indexing that seems to lose half of the benefit...\n\n> A more drastic proposal: We add `xy2` (0, 0) indexing versions for _all_ functions which currently use a different indexing scheme\n\nMaybe, but shouldn't block the more tractable near-term solution. Even if we \"normalized\" all functions, we still need a Position abstraction (+conversions) for things at the edges (plugins, treesitter, LSP, ...).",
             "created_at": "2023-10-09T15:38:43Z",
             "html_url": "https://github.com/neovim/neovim/issues/25509#issuecomment-1753243798",
             "id": 1753243798,
@@ -423,7 +433,7 @@
                 "total_count": 1,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1753243798/reactions"
             },
-            "updated_at": "2023-10-09T15:38:43Z",
+            "updated_at": "2024-10-24T12:26:10Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1753243798",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -443,7 +453,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         }
     ],
@@ -475,7 +486,7 @@
         {
             "color": "c5def5",
             "default": false,
-            "description": null,
+            "description": "stdlib",
             "id": 573222693,
             "name": "lua",
             "node_id": "MDU6TGFiZWw1NzMyMjI2OTM=",
@@ -486,7 +497,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 586,
+        "closed_issues": 658,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -506,26 +517,27 @@
             "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/justinmk"
+            "url": "https://api.github.com/users/justinmk",
+            "user_view_type": "public"
         },
-        "description": "Low priority. Not planned for the current target, may be reassigned.",
+        "description": "Low priority items. We plan to work on this but don't have a target date.",
         "due_on": null,
         "html_url": "https://github.com/neovim/neovim/milestone/6",
         "id": 655037,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 411,
+        "open_issues": 611,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2023-10-09T09:18:58Z",
+        "updated_at": "2024-10-28T13:24:56Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM5y5-xc",
     "number": 25509,
     "performed_via_github_app": null,
     "reactions": {
-        "+1": 4,
+        "+1": 9,
         "-1": 0,
         "confused": 0,
         "eyes": 0,
@@ -533,7 +545,7 @@
         "hooray": 0,
         "laugh": 0,
         "rocket": 0,
-        "total_count": 4,
+        "total_count": 9,
         "url": "https://api.github.com/repos/neovim/neovim/issues/25509/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
@@ -541,7 +553,7 @@
     "state_reason": null,
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/25509/timeline",
     "title": "Lua: Position / Range abstraction (vim.pos.Pos)",
-    "updated_at": "2023-10-09T15:38:43Z",
+    "updated_at": "2024-10-24T12:26:10Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/25509",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -561,6 +573,7 @@
         "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/justinmk"
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
     }
 }

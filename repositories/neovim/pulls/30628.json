@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/30628"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/6d583682d6bbfbf83b0d6a1d221ddbb3e07a87e0"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/6d8821c73a98350697c0acfec5c5f4787c888838"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 5657,
-            "forks_count": 5657,
+            "forks": 5682,
+            "forks_count": 5682,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1801,
-            "open_issues_count": 1801,
+            "open_issues": 1804,
+            "open_issues_count": 1804,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -119,11 +119,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2024-10-22T01:05:14Z",
+            "pushed_at": "2024-10-29T01:08:05Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 290505,
+            "size": 291853,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 82684,
+            "stargazers_count": 82872,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -141,11 +141,11 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2024-10-22T02:10:43Z",
+            "updated_at": "2024-10-29T01:08:09Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 82684,
-            "watchers_count": 82684,
+            "watchers": 82872,
+            "watchers_count": 82872,
             "web_commit_signoff_required": false
         },
         "sha": "d3b4772ddcd4c890dc5bc38e1f1b36a08aed0c04",
@@ -171,9 +171,1120 @@
             "user_view_type": "public"
         }
     },
-    "body": "Based on issue #30376, I have made this change so that you can run commands when using the `read` command, and have their output added to the current buffer.\r\n\r\nThis is still a fairly rough draft, and while it seems to work, I don't like that: \r\n * it could potentially be building up a big string before even starting to write to the temp file\r\n * I am not sure that a temp file is really needed\r\n * The way it is parsing out commands needs work\r\n * I'm new to the codebase\r\n * I don't usually have to write portable C code so I am not sure how the use of temp files will behave outside of Linux.\r\n\r\nSo before I proceed any further I was hoping someone could give me advice on my approach. ",
+    "body": "Based on issue #30376, I have made this change so that you can run commands when using the `read` command, and have their output added to the current buffer.\r\n\r\nThe current implementation uses vim script to basically do a `:put=execute('{cmd}')`, and I am happy to re-implement this in C if that would be better, but I would like to get some feedback on the tests and expected behaviour first. ",
     "closed_at": null,
-    "comment_data": [],
+    "comment_data": [
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/30628#discussion_r1814943731"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/30628"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1814943731"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "this is already coverage of basic `:read` functionality in `test/old/` , so don't spend a lot of time adding more of that here. unless it is helping you during development, or you noticed some gaps in test/old/.",
+            "commit_id": "6d8821c73a98350697c0acfec5c5f4787c888838",
+            "created_at": "2024-10-24T13:02:58Z",
+            "diff_hunk": "@@ -0,0 +1,75 @@\n+local t = require('test.testutil')\n+local n = require('test.functional.testnvim')()\n+\n+local eq, write_file, clear = t.eq, t.write_file, n.clear\n+local fn = n.fn\n+local setline, getline, setcharpos, execute = fn.setline, fn.getline, fn.setcharpos, fn.execute\n+\n+local tmp_file = 'text.txt'\n+local original_text = { 'First', 'Last' }\n+local read_text = { ' This is a line starts with a space', '  This one starts with two spaces.' }\n+local inserted_middle = { original_text[1], read_text[1], read_text[2], original_text[2] }\n+local inserted_start = { read_text[1], read_text[2], original_text[1], original_text[2] }\n+\n+local function test_read(cmd, expected)\n+  setline(1, original_text)\n+  setcharpos('.', { 0, 0, 0 })\n+  execute(cmd)\n+  for i, e in ipairs(expected) do\n+    eq(e, getline(i))\n+  end\n+end\n+\n+local function test_undo(cmd)\n+  setline(1, original_text)\n+  execute(cmd)\n+  execute('undo')\n+  eq(original_text, { getline(1), getline(2) })\n+end\n+\n+describe(':read', function()\n+  local function cleanup()\n+    os.remove(tmp_file)\n+  end\n+  before_each(function()\n+    clear()\n+    cleanup()\n+    write_file(tmp_file, table.concat(read_text, '\\n'), true)\n+  end)\n+  after_each(cleanup)\n+  it('inserts text from file', function()\n+    test_read('read ' .. tmp_file, inserted_middle)\n+    eq({ 0, 2, 2, 0 }, fn.getpos('.'))\n+  end)\n+  it('inserts text from shell', function()\n+    test_read('read !cat ' .. tmp_file, inserted_middle)\n+    eq({ 0, 3, 3, 0 }, fn.getpos('.'))\n+  end)\n+  it('inserts text at specific position', function()\n+    test_read('0read ' .. tmp_file, inserted_start)\n+    eq({ 0, 1, 2, 0 }, fn.getpos('.'))\n+  end)\n+  it('inserts text from command', function()\n+    local make_lines = string.format('let lines=\"%s\"', table.concat(read_text, '\\\\n'))\n+    execute(make_lines)\n+    test_read('read :echo lines', inserted_middle)\n+  end)\n+  it('sets fileformat, fileencoding, bomb correctly', function()",
+            "html_url": "https://github.com/neovim/neovim/pull/30628#discussion_r1814943731",
+            "id": 1814943731,
+            "line": 68,
+            "node_id": "PRRC_kwDOAPphoM5sLdfz",
+            "original_commit_id": "85b6b2117d08d2d9dee2b53fddef9060959f38d8",
+            "original_line": 57,
+            "original_position": 57,
+            "original_start_line": null,
+            "path": "test/functional/ex_cmds/read_spec.lua",
+            "position": 68,
+            "pull_request_review_id": 2392432507,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/30628",
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1814943731/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-10-24T13:02:58Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1814943731",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/30628#discussion_r1816992500"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/30628"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1816992500"
+                }
+            },
+            "author_association": "NONE",
+            "body": "`execute()` seems to add an extra empty line above the output, so I have to jump back to the top of the inserted text and delete this line, so that we get behaviour that is more similar to reading a file. ",
+            "commit_id": "6d8821c73a98350697c0acfec5c5f4787c888838",
+            "created_at": "2024-10-25T16:16:45Z",
+            "diff_hunk": "@@ -5640,6 +5641,20 @@ static void ex_syncbind(exarg_T *eap)\n   }\n }\n \n+void do_read_cmd(exarg_T *eap)\n+{\n+  char *cmd = eap->arg + 1;\n+  StringBuilder put_cmd = KV_INITIAL_VALUE;\n+  kv_printf(put_cmd, \"try | \");\n+  kv_printf(put_cmd, \"%dput=execute('%s') | \", eap->line2, cmd);\n+  kv_printf(put_cmd, \"execute 'norm! `.' | \");",
+            "html_url": "https://github.com/neovim/neovim/pull/30628#discussion_r1816992500",
+            "id": 1816992500,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5sTRr0",
+            "original_commit_id": "adcdfd12f1d8a0ef540ec3b6c39cbb0f3b58a4ae",
+            "original_line": 5650,
+            "original_position": 18,
+            "original_start_line": null,
+            "path": "src/nvim/ex_docmd.c",
+            "position": null,
+            "pull_request_review_id": 2395783348,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/30628",
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1816992500/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-10-25T16:16:45Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1816992500",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/8626587?v=4",
+                "events_url": "https://api.github.com/users/bwalshe/events{/privacy}",
+                "followers_url": "https://api.github.com/users/bwalshe/followers",
+                "following_url": "https://api.github.com/users/bwalshe/following{/other_user}",
+                "gists_url": "https://api.github.com/users/bwalshe/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/bwalshe",
+                "id": 8626587,
+                "login": "bwalshe",
+                "node_id": "MDQ6VXNlcjg2MjY1ODc=",
+                "organizations_url": "https://api.github.com/users/bwalshe/orgs",
+                "received_events_url": "https://api.github.com/users/bwalshe/received_events",
+                "repos_url": "https://api.github.com/users/bwalshe/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/bwalshe/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/bwalshe/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/bwalshe",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/30628#discussion_r1816995825"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/30628"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1816995825"
+                }
+            },
+            "author_association": "NONE",
+            "body": "wrapping things in a `try` means that if there is an error with the command no text is inserted into the buffer. \r\n\r\nThis _feels_ like the right behaviour to me, but potentially could someone want the error text inserted? When using `read !cmd` text will be inserted into the buffer even if there is an error. ",
+            "commit_id": "6d8821c73a98350697c0acfec5c5f4787c888838",
+            "created_at": "2024-10-25T16:19:17Z",
+            "diff_hunk": "@@ -5640,6 +5641,20 @@ static void ex_syncbind(exarg_T *eap)\n   }\n }\n \n+void do_read_cmd(exarg_T *eap)\n+{\n+  char *cmd = eap->arg + 1;\n+  StringBuilder put_cmd = KV_INITIAL_VALUE;\n+  kv_printf(put_cmd, \"try | \");",
+            "html_url": "https://github.com/neovim/neovim/pull/30628#discussion_r1816995825",
+            "id": 1816995825,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5sTSfx",
+            "original_commit_id": "adcdfd12f1d8a0ef540ec3b6c39cbb0f3b58a4ae",
+            "original_line": 5648,
+            "original_position": 16,
+            "original_start_line": null,
+            "path": "src/nvim/ex_docmd.c",
+            "position": null,
+            "pull_request_review_id": 2395788831,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/30628",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1816995825/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-10-25T16:19:17Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1816995825",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/8626587?v=4",
+                "events_url": "https://api.github.com/users/bwalshe/events{/privacy}",
+                "followers_url": "https://api.github.com/users/bwalshe/followers",
+                "following_url": "https://api.github.com/users/bwalshe/following{/other_user}",
+                "gists_url": "https://api.github.com/users/bwalshe/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/bwalshe",
+                "id": 8626587,
+                "login": "bwalshe",
+                "node_id": "MDQ6VXNlcjg2MjY1ODc=",
+                "organizations_url": "https://api.github.com/users/bwalshe/orgs",
+                "received_events_url": "https://api.github.com/users/bwalshe/received_events",
+                "repos_url": "https://api.github.com/users/bwalshe/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/bwalshe/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/bwalshe/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/bwalshe",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/30628#discussion_r1816997966"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/30628"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1816997966"
+                }
+            },
+            "author_association": "NONE",
+            "body": "`:read {path}` and `read !{cmd}` leave the cursor in different positions. For my implementation of `:read :cmd` I leave the cursor in the same position as when reading a file. ",
+            "commit_id": "6d8821c73a98350697c0acfec5c5f4787c888838",
+            "created_at": "2024-10-25T16:21:16Z",
+            "diff_hunk": "@@ -0,0 +1,93 @@\n+local t = require('test.testutil')\n+local n = require('test.functional.testnvim')()\n+\n+local eq, write_file, clear, pcall_err = t.eq, t.write_file, n.clear, t.pcall_err\n+local fn = n.fn\n+local setline, getline, setcharpos, execute = fn.setline, fn.getline, fn.setcharpos, fn.execute\n+\n+local tmp_file = 'text.txt'\n+local original_text = { 'First', 'Last' }\n+local read_text = { ' This is a line starts with a space', '  This one starts with two spaces.' }\n+local inserted_middle = { original_text[1], read_text[1], read_text[2], original_text[2] }\n+local inserted_start = { read_text[1], read_text[2], original_text[1], original_text[2] }\n+\n+local function test_read(cmd, expected)\n+  setline(1, original_text)\n+  setcharpos('.', { 0, 0, 0 })\n+  execute(cmd)\n+  for i, e in ipairs(expected) do\n+    eq(e, getline(i))\n+  end\n+end\n+\n+local function test_undo(cmd)\n+  setline(1, original_text)\n+  execute(cmd)\n+  execute('undo')\n+  eq(original_text, { getline(1), getline(2) })\n+end\n+\n+describe(':read', function()\n+  local function cleanup()\n+    os.remove(tmp_file)\n+  end\n+  before_each(function()\n+    clear()\n+    cleanup()\n+    write_file(tmp_file, table.concat(read_text, '\\n'), true)\n+  end)\n+  after_each(cleanup)\n+  it('inserts text from file', function()\n+    test_read('read ' .. tmp_file, inserted_middle)\n+    eq({ 0, 2, 2, 0 }, fn.getpos('.'))\n+  end)\n+  it('inserts text from shell', function()\n+    test_read('read !cat ' .. tmp_file, inserted_middle)\n+    eq({ 0, 3, 3, 0 }, fn.getpos('.'))",
+            "html_url": "https://github.com/neovim/neovim/pull/30628#discussion_r1816997966",
+            "id": 1816997966,
+            "line": 46,
+            "node_id": "PRRC_kwDOAPphoM5sTTBO",
+            "original_commit_id": "adcdfd12f1d8a0ef540ec3b6c39cbb0f3b58a4ae",
+            "original_line": 46,
+            "original_position": 46,
+            "original_start_line": null,
+            "path": "test/functional/ex_cmds/read_spec.lua",
+            "position": 46,
+            "pull_request_review_id": 2395793045,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/30628",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1816997966/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-10-25T16:21:16Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1816997966",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/8626587?v=4",
+                "events_url": "https://api.github.com/users/bwalshe/events{/privacy}",
+                "followers_url": "https://api.github.com/users/bwalshe/followers",
+                "following_url": "https://api.github.com/users/bwalshe/following{/other_user}",
+                "gists_url": "https://api.github.com/users/bwalshe/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/bwalshe",
+                "id": 8626587,
+                "login": "bwalshe",
+                "node_id": "MDQ6VXNlcjg2MjY1ODc=",
+                "organizations_url": "https://api.github.com/users/bwalshe/orgs",
+                "received_events_url": "https://api.github.com/users/bwalshe/received_events",
+                "repos_url": "https://api.github.com/users/bwalshe/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/bwalshe/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/bwalshe/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/bwalshe",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/30628#discussion_r1817001746"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/30628"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1817001746"
+                }
+            },
+            "author_association": "NONE",
+            "body": "I'm not sure if this error message is the best it could be. Should I have it say `Vim(read):E492: ...`\r\n\r\nAlternatively, the error text could be written to the buffer. I don't _think_ it should, but I can see how someone might want that behaviour. ",
+            "commit_id": "6d8821c73a98350697c0acfec5c5f4787c888838",
+            "created_at": "2024-10-25T16:24:01Z",
+            "diff_hunk": "@@ -0,0 +1,93 @@\n+local t = require('test.testutil')\n+local n = require('test.functional.testnvim')()\n+\n+local eq, write_file, clear, pcall_err = t.eq, t.write_file, n.clear, t.pcall_err\n+local fn = n.fn\n+local setline, getline, setcharpos, execute = fn.setline, fn.getline, fn.setcharpos, fn.execute\n+\n+local tmp_file = 'text.txt'\n+local original_text = { 'First', 'Last' }\n+local read_text = { ' This is a line starts with a space', '  This one starts with two spaces.' }\n+local inserted_middle = { original_text[1], read_text[1], read_text[2], original_text[2] }\n+local inserted_start = { read_text[1], read_text[2], original_text[1], original_text[2] }\n+\n+local function test_read(cmd, expected)\n+  setline(1, original_text)\n+  setcharpos('.', { 0, 0, 0 })\n+  execute(cmd)\n+  for i, e in ipairs(expected) do\n+    eq(e, getline(i))\n+  end\n+end\n+\n+local function test_undo(cmd)\n+  setline(1, original_text)\n+  execute(cmd)\n+  execute('undo')\n+  eq(original_text, { getline(1), getline(2) })\n+end\n+\n+describe(':read', function()\n+  local function cleanup()\n+    os.remove(tmp_file)\n+  end\n+  before_each(function()\n+    clear()\n+    cleanup()\n+    write_file(tmp_file, table.concat(read_text, '\\n'), true)\n+  end)\n+  after_each(cleanup)\n+  it('inserts text from file', function()\n+    test_read('read ' .. tmp_file, inserted_middle)\n+    eq({ 0, 2, 2, 0 }, fn.getpos('.'))\n+  end)\n+  it('inserts text from shell', function()\n+    test_read('read !cat ' .. tmp_file, inserted_middle)\n+    eq({ 0, 3, 3, 0 }, fn.getpos('.'))\n+  end)\n+  it('inserts text from command', function()\n+    local make_lines = string.format('let lines=\"%s\"', table.concat(read_text, '\\\\n'))\n+    execute(make_lines)\n+    test_read('read :echo lines', inserted_middle)\n+  end)\n+  it('inserts text from file at specific position', function()\n+    test_read('0read ' .. tmp_file, inserted_start)\n+    eq({ 0, 1, 2, 0 }, fn.getpos('.'))\n+  end)\n+  it('inserts text from cmd at specific position', function()\n+    test_read('0read !cat ' .. tmp_file, inserted_start)\n+    eq({ 0, 2, 3, 0 }, fn.getpos('.'))\n+  end)\n+  it('inserts text from cmd at specific position', function()\n+    local make_lines = string.format('let lines=\"%s\"', table.concat(read_text, '\\\\n'))\n+    execute(make_lines)\n+    test_read('0read :echo lines', inserted_start)\n+    eq({ 0, 1, 2, 0 }, fn.getpos('.'))\n+  end)\n+  it('sets fileformat, fileencoding, bomb correctly', function()\n+    execute('set fileformat=dos')\n+    execute('set fileencoding=latin1')\n+    execute('set bomb')\n+    execute('read ++edit ' .. tmp_file)\n+    eq('fileformat=unix', vim.trim(execute('set fileformat?')))\n+    eq('fileencoding=utf-8', vim.trim(execute('set fileencoding?')))\n+    eq('nobomb', vim.trim(execute('set bomb?')))\n+  end)\n+  it('file reads can be undone', function()\n+    test_undo('read ' .. tmp_file)\n+  end)\n+  it('shell reads can be undone', function()\n+    test_undo('read !cat ' .. tmp_file)\n+  end)\n+  it('command reads can be undone', function()\n+    local make_lines = string.format('let lines=\"%s\"', table.concat(read_text, '\\\\n'))\n+    execute(make_lines)\n+    test_undo('read :echo lines')\n+  end)\n+  it('errors out correctly when a non-existant file is used', function()\n+    eq(\"Vim(read):E484: Can't open file asdfasdf\", pcall_err(execute, ':read asdfasdf'))\n+  end)\n+  it('errors out correctly when an invalid command is used', function()\n+    eq('Vim:E492: Not an editor command: asdfasdf', pcall_err(execute, ':read :asdfasdf'))",
+            "html_url": "https://github.com/neovim/neovim/pull/30628#discussion_r1817001746",
+            "id": 1817001746,
+            "line": 92,
+            "node_id": "PRRC_kwDOAPphoM5sTT8S",
+            "original_commit_id": "adcdfd12f1d8a0ef540ec3b6c39cbb0f3b58a4ae",
+            "original_line": 91,
+            "original_position": 91,
+            "original_start_line": null,
+            "path": "test/functional/ex_cmds/read_spec.lua",
+            "position": 92,
+            "pull_request_review_id": 2395800277,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/30628",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1817001746/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-10-25T16:24:01Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1817001746",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/8626587?v=4",
+                "events_url": "https://api.github.com/users/bwalshe/events{/privacy}",
+                "followers_url": "https://api.github.com/users/bwalshe/followers",
+                "following_url": "https://api.github.com/users/bwalshe/following{/other_user}",
+                "gists_url": "https://api.github.com/users/bwalshe/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/bwalshe",
+                "id": 8626587,
+                "login": "bwalshe",
+                "node_id": "MDQ6VXNlcjg2MjY1ODc=",
+                "organizations_url": "https://api.github.com/users/bwalshe/orgs",
+                "received_events_url": "https://api.github.com/users/bwalshe/received_events",
+                "repos_url": "https://api.github.com/users/bwalshe/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/bwalshe/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/bwalshe/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/bwalshe",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/30628#discussion_r1817049699"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/30628"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1817049699"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "> Should I have it say `Vim(read):E492: ...`\r\n\r\nif it's not much trouble then I think so.\r\n\r\n> Alternatively, the error text could be written to the buffer\r\n\r\n`execute()` appears to capture error messages. But for now, let's optimize for implementation simplicity. Can always revisit later if needed.",
+            "commit_id": "6d8821c73a98350697c0acfec5c5f4787c888838",
+            "created_at": "2024-10-25T16:56:25Z",
+            "diff_hunk": "@@ -0,0 +1,93 @@\n+local t = require('test.testutil')\n+local n = require('test.functional.testnvim')()\n+\n+local eq, write_file, clear, pcall_err = t.eq, t.write_file, n.clear, t.pcall_err\n+local fn = n.fn\n+local setline, getline, setcharpos, execute = fn.setline, fn.getline, fn.setcharpos, fn.execute\n+\n+local tmp_file = 'text.txt'\n+local original_text = { 'First', 'Last' }\n+local read_text = { ' This is a line starts with a space', '  This one starts with two spaces.' }\n+local inserted_middle = { original_text[1], read_text[1], read_text[2], original_text[2] }\n+local inserted_start = { read_text[1], read_text[2], original_text[1], original_text[2] }\n+\n+local function test_read(cmd, expected)\n+  setline(1, original_text)\n+  setcharpos('.', { 0, 0, 0 })\n+  execute(cmd)\n+  for i, e in ipairs(expected) do\n+    eq(e, getline(i))\n+  end\n+end\n+\n+local function test_undo(cmd)\n+  setline(1, original_text)\n+  execute(cmd)\n+  execute('undo')\n+  eq(original_text, { getline(1), getline(2) })\n+end\n+\n+describe(':read', function()\n+  local function cleanup()\n+    os.remove(tmp_file)\n+  end\n+  before_each(function()\n+    clear()\n+    cleanup()\n+    write_file(tmp_file, table.concat(read_text, '\\n'), true)\n+  end)\n+  after_each(cleanup)\n+  it('inserts text from file', function()\n+    test_read('read ' .. tmp_file, inserted_middle)\n+    eq({ 0, 2, 2, 0 }, fn.getpos('.'))\n+  end)\n+  it('inserts text from shell', function()\n+    test_read('read !cat ' .. tmp_file, inserted_middle)\n+    eq({ 0, 3, 3, 0 }, fn.getpos('.'))\n+  end)\n+  it('inserts text from command', function()\n+    local make_lines = string.format('let lines=\"%s\"', table.concat(read_text, '\\\\n'))\n+    execute(make_lines)\n+    test_read('read :echo lines', inserted_middle)\n+  end)\n+  it('inserts text from file at specific position', function()\n+    test_read('0read ' .. tmp_file, inserted_start)\n+    eq({ 0, 1, 2, 0 }, fn.getpos('.'))\n+  end)\n+  it('inserts text from cmd at specific position', function()\n+    test_read('0read !cat ' .. tmp_file, inserted_start)\n+    eq({ 0, 2, 3, 0 }, fn.getpos('.'))\n+  end)\n+  it('inserts text from cmd at specific position', function()\n+    local make_lines = string.format('let lines=\"%s\"', table.concat(read_text, '\\\\n'))\n+    execute(make_lines)\n+    test_read('0read :echo lines', inserted_start)\n+    eq({ 0, 1, 2, 0 }, fn.getpos('.'))\n+  end)\n+  it('sets fileformat, fileencoding, bomb correctly', function()\n+    execute('set fileformat=dos')\n+    execute('set fileencoding=latin1')\n+    execute('set bomb')\n+    execute('read ++edit ' .. tmp_file)\n+    eq('fileformat=unix', vim.trim(execute('set fileformat?')))\n+    eq('fileencoding=utf-8', vim.trim(execute('set fileencoding?')))\n+    eq('nobomb', vim.trim(execute('set bomb?')))\n+  end)\n+  it('file reads can be undone', function()\n+    test_undo('read ' .. tmp_file)\n+  end)\n+  it('shell reads can be undone', function()\n+    test_undo('read !cat ' .. tmp_file)\n+  end)\n+  it('command reads can be undone', function()\n+    local make_lines = string.format('let lines=\"%s\"', table.concat(read_text, '\\\\n'))\n+    execute(make_lines)\n+    test_undo('read :echo lines')\n+  end)\n+  it('errors out correctly when a non-existant file is used', function()\n+    eq(\"Vim(read):E484: Can't open file asdfasdf\", pcall_err(execute, ':read asdfasdf'))\n+  end)\n+  it('errors out correctly when an invalid command is used', function()\n+    eq('Vim:E492: Not an editor command: asdfasdf', pcall_err(execute, ':read :asdfasdf'))",
+            "html_url": "https://github.com/neovim/neovim/pull/30628#discussion_r1817049699",
+            "id": 1817049699,
+            "in_reply_to_id": 1817001746,
+            "line": 92,
+            "node_id": "PRRC_kwDOAPphoM5sTfpj",
+            "original_commit_id": "adcdfd12f1d8a0ef540ec3b6c39cbb0f3b58a4ae",
+            "original_line": 91,
+            "original_position": 91,
+            "original_start_line": null,
+            "path": "test/functional/ex_cmds/read_spec.lua",
+            "position": 92,
+            "pull_request_review_id": 2395881517,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/30628",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1817049699/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-10-25T16:56:25Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1817049699",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/30628#discussion_r1817055800"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/30628"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1817055800"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "will need to escape single-quotes, possibly other stuff. actually, all that could be avoided, including support for double quotes (\"), by storing `cmd` in a temporary `g:_blah` var, then doing:\r\n\r\n```suggestion\r\n  kv_printf(put_cmd, \"%dput=execute(g:_blah) | \", eap->line2, cmd);\r\n```",
+            "commit_id": "6d8821c73a98350697c0acfec5c5f4787c888838",
+            "created_at": "2024-10-25T17:01:28Z",
+            "diff_hunk": "@@ -5640,6 +5641,20 @@ static void ex_syncbind(exarg_T *eap)\n   }\n }\n \n+void do_read_cmd(exarg_T *eap)\n+{\n+  char *cmd = eap->arg + 1;\n+  StringBuilder put_cmd = KV_INITIAL_VALUE;\n+  kv_printf(put_cmd, \"try | \");\n+  kv_printf(put_cmd, \"%dput=execute('%s') | \", eap->line2, cmd);",
+            "html_url": "https://github.com/neovim/neovim/pull/30628#discussion_r1817055800",
+            "id": 1817055800,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5sThI4",
+            "original_commit_id": "adcdfd12f1d8a0ef540ec3b6c39cbb0f3b58a4ae",
+            "original_line": 5649,
+            "original_position": 17,
+            "original_start_line": null,
+            "path": "src/nvim/ex_docmd.c",
+            "position": null,
+            "pull_request_review_id": 2395891704,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/30628",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1817055800/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-10-25T17:01:28Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1817055800",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/30628#discussion_r1817541607"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/30628"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1817541607"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\r\n\t\t\tExecute Ex command {cmd} and insert its output below\r\n\t\t\tthe cursor or the specified line.\r\n```",
+            "commit_id": "6d8821c73a98350697c0acfec5c5f4787c888838",
+            "created_at": "2024-10-26T01:44:09Z",
+            "diff_hunk": "@@ -2000,14 +2000,20 @@ NOTE: These commands cannot be used with |:global| or |:vglobal|.\n \n \t\t\t\t\t\t\t*:r!* *:read!*\n :[range]r[ead] [++opt] !{cmd}\n-\t\t\tExecute {cmd} and insert its standard output below\n-\t\t\tthe cursor or the specified line.  A temporary file is\n-\t\t\tused to store the output of the command which is then\n-\t\t\tread into the buffer.  'shellredir' is used to save\n-\t\t\tthe output of the command, which can be set to include\n-\t\t\tstderr or not.  {cmd} is executed like with \":!{cmd}\",\n-\t\t\tany '!' is replaced with the previous command |:!|.\n-\t\t\tSee |++opt| for the possible values of [++opt].\n+\t\t\tExecute shell {cmd} and insert its standard output\n+\t\t\tbelow the cursor or the specified line.  A temporary\n+\t\t\tfile is used to store the output of the command which\n+\t\t\tis then\tread into the buffer.  'shellredir' is used to\n+\t\t\tsave the output of the command, which can be set to\n+\t\t\tinclude stderr or not.  {cmd} is executed like with\n+\t\t\t\":!{cmd}\", any '!' is replaced with the previous\n+\t\t\tcommand |:!|. See |++opt| for the possible values of\n+\t\t\t[++opt].\n+\n+\t\t\t\t\t\t\t*:r:* *:read:*\n+:[range]r[ead] :{cmd}\n+\t\t\tExecute vim {cmd} and insert its output below the\n+\t\t\tspecified line",
+            "html_url": "https://github.com/neovim/neovim/pull/30628#discussion_r1817541607",
+            "id": 1817541607,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5sVXvn",
+            "original_commit_id": "adcdfd12f1d8a0ef540ec3b6c39cbb0f3b58a4ae",
+            "original_line": 2016,
+            "original_position": 25,
+            "original_start_line": 2015,
+            "path": "runtime/doc/insert.txt",
+            "position": null,
+            "pull_request_review_id": 2397016726,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/30628",
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1817541607/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2024-10-26T01:44:09Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1817541607",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+                "followers_url": "https://api.github.com/users/zeertzjq/followers",
+                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/zeertzjq",
+                "id": 35768171,
+                "login": "zeertzjq",
+                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+                "repos_url": "https://api.github.com/users/zeertzjq/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/30628#discussion_r1818810464"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/30628"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1818810464"
+                }
+            },
+            "author_association": "NONE",
+            "body": "It would actually be marginally simpler to have the error text written to the buffer. That is what would happen if I didn't wrap the vimscript up in a `try` clause. \r\n\r\nWhen you say we can revisit later on, do you mean before completing the pull request, or some time after this is merged? I imagine this would become a breaking change, so I would want to get it right. ",
+            "commit_id": "6d8821c73a98350697c0acfec5c5f4787c888838",
+            "created_at": "2024-10-28T10:33:41Z",
+            "diff_hunk": "@@ -0,0 +1,93 @@\n+local t = require('test.testutil')\n+local n = require('test.functional.testnvim')()\n+\n+local eq, write_file, clear, pcall_err = t.eq, t.write_file, n.clear, t.pcall_err\n+local fn = n.fn\n+local setline, getline, setcharpos, execute = fn.setline, fn.getline, fn.setcharpos, fn.execute\n+\n+local tmp_file = 'text.txt'\n+local original_text = { 'First', 'Last' }\n+local read_text = { ' This is a line starts with a space', '  This one starts with two spaces.' }\n+local inserted_middle = { original_text[1], read_text[1], read_text[2], original_text[2] }\n+local inserted_start = { read_text[1], read_text[2], original_text[1], original_text[2] }\n+\n+local function test_read(cmd, expected)\n+  setline(1, original_text)\n+  setcharpos('.', { 0, 0, 0 })\n+  execute(cmd)\n+  for i, e in ipairs(expected) do\n+    eq(e, getline(i))\n+  end\n+end\n+\n+local function test_undo(cmd)\n+  setline(1, original_text)\n+  execute(cmd)\n+  execute('undo')\n+  eq(original_text, { getline(1), getline(2) })\n+end\n+\n+describe(':read', function()\n+  local function cleanup()\n+    os.remove(tmp_file)\n+  end\n+  before_each(function()\n+    clear()\n+    cleanup()\n+    write_file(tmp_file, table.concat(read_text, '\\n'), true)\n+  end)\n+  after_each(cleanup)\n+  it('inserts text from file', function()\n+    test_read('read ' .. tmp_file, inserted_middle)\n+    eq({ 0, 2, 2, 0 }, fn.getpos('.'))\n+  end)\n+  it('inserts text from shell', function()\n+    test_read('read !cat ' .. tmp_file, inserted_middle)\n+    eq({ 0, 3, 3, 0 }, fn.getpos('.'))\n+  end)\n+  it('inserts text from command', function()\n+    local make_lines = string.format('let lines=\"%s\"', table.concat(read_text, '\\\\n'))\n+    execute(make_lines)\n+    test_read('read :echo lines', inserted_middle)\n+  end)\n+  it('inserts text from file at specific position', function()\n+    test_read('0read ' .. tmp_file, inserted_start)\n+    eq({ 0, 1, 2, 0 }, fn.getpos('.'))\n+  end)\n+  it('inserts text from cmd at specific position', function()\n+    test_read('0read !cat ' .. tmp_file, inserted_start)\n+    eq({ 0, 2, 3, 0 }, fn.getpos('.'))\n+  end)\n+  it('inserts text from cmd at specific position', function()\n+    local make_lines = string.format('let lines=\"%s\"', table.concat(read_text, '\\\\n'))\n+    execute(make_lines)\n+    test_read('0read :echo lines', inserted_start)\n+    eq({ 0, 1, 2, 0 }, fn.getpos('.'))\n+  end)\n+  it('sets fileformat, fileencoding, bomb correctly', function()\n+    execute('set fileformat=dos')\n+    execute('set fileencoding=latin1')\n+    execute('set bomb')\n+    execute('read ++edit ' .. tmp_file)\n+    eq('fileformat=unix', vim.trim(execute('set fileformat?')))\n+    eq('fileencoding=utf-8', vim.trim(execute('set fileencoding?')))\n+    eq('nobomb', vim.trim(execute('set bomb?')))\n+  end)\n+  it('file reads can be undone', function()\n+    test_undo('read ' .. tmp_file)\n+  end)\n+  it('shell reads can be undone', function()\n+    test_undo('read !cat ' .. tmp_file)\n+  end)\n+  it('command reads can be undone', function()\n+    local make_lines = string.format('let lines=\"%s\"', table.concat(read_text, '\\\\n'))\n+    execute(make_lines)\n+    test_undo('read :echo lines')\n+  end)\n+  it('errors out correctly when a non-existant file is used', function()\n+    eq(\"Vim(read):E484: Can't open file asdfasdf\", pcall_err(execute, ':read asdfasdf'))\n+  end)\n+  it('errors out correctly when an invalid command is used', function()\n+    eq('Vim:E492: Not an editor command: asdfasdf', pcall_err(execute, ':read :asdfasdf'))",
+            "html_url": "https://github.com/neovim/neovim/pull/30628#discussion_r1818810464",
+            "id": 1818810464,
+            "in_reply_to_id": 1817001746,
+            "line": 92,
+            "node_id": "PRRC_kwDOAPphoM5saNhg",
+            "original_commit_id": "adcdfd12f1d8a0ef540ec3b6c39cbb0f3b58a4ae",
+            "original_line": 91,
+            "original_position": 91,
+            "original_start_line": null,
+            "path": "test/functional/ex_cmds/read_spec.lua",
+            "position": 92,
+            "pull_request_review_id": 2398673728,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/30628",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1818810464/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-10-28T10:33:41Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1818810464",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/8626587?v=4",
+                "events_url": "https://api.github.com/users/bwalshe/events{/privacy}",
+                "followers_url": "https://api.github.com/users/bwalshe/followers",
+                "following_url": "https://api.github.com/users/bwalshe/following{/other_user}",
+                "gists_url": "https://api.github.com/users/bwalshe/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/bwalshe",
+                "id": 8626587,
+                "login": "bwalshe",
+                "node_id": "MDQ6VXNlcjg2MjY1ODc=",
+                "organizations_url": "https://api.github.com/users/bwalshe/orgs",
+                "received_events_url": "https://api.github.com/users/bwalshe/received_events",
+                "repos_url": "https://api.github.com/users/bwalshe/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/bwalshe/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/bwalshe/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/bwalshe",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/30628#discussion_r1818940328"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/30628"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1818940328"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "I mean after this is merged. That's a good instinct and a good general practice, but sometimes features like this need to see real-world usage before we fully decide the interface. Especially when \"the stakes are low\", as with this particular behavior decision (error capture vs no error capture).\r\n\r\nErrors are not the common case so I think it's better to just optimize for code simplicity here. Thuse removing the try/catch sounds good.",
+            "commit_id": "6d8821c73a98350697c0acfec5c5f4787c888838",
+            "created_at": "2024-10-28T12:02:49Z",
+            "diff_hunk": "@@ -0,0 +1,93 @@\n+local t = require('test.testutil')\n+local n = require('test.functional.testnvim')()\n+\n+local eq, write_file, clear, pcall_err = t.eq, t.write_file, n.clear, t.pcall_err\n+local fn = n.fn\n+local setline, getline, setcharpos, execute = fn.setline, fn.getline, fn.setcharpos, fn.execute\n+\n+local tmp_file = 'text.txt'\n+local original_text = { 'First', 'Last' }\n+local read_text = { ' This is a line starts with a space', '  This one starts with two spaces.' }\n+local inserted_middle = { original_text[1], read_text[1], read_text[2], original_text[2] }\n+local inserted_start = { read_text[1], read_text[2], original_text[1], original_text[2] }\n+\n+local function test_read(cmd, expected)\n+  setline(1, original_text)\n+  setcharpos('.', { 0, 0, 0 })\n+  execute(cmd)\n+  for i, e in ipairs(expected) do\n+    eq(e, getline(i))\n+  end\n+end\n+\n+local function test_undo(cmd)\n+  setline(1, original_text)\n+  execute(cmd)\n+  execute('undo')\n+  eq(original_text, { getline(1), getline(2) })\n+end\n+\n+describe(':read', function()\n+  local function cleanup()\n+    os.remove(tmp_file)\n+  end\n+  before_each(function()\n+    clear()\n+    cleanup()\n+    write_file(tmp_file, table.concat(read_text, '\\n'), true)\n+  end)\n+  after_each(cleanup)\n+  it('inserts text from file', function()\n+    test_read('read ' .. tmp_file, inserted_middle)\n+    eq({ 0, 2, 2, 0 }, fn.getpos('.'))\n+  end)\n+  it('inserts text from shell', function()\n+    test_read('read !cat ' .. tmp_file, inserted_middle)\n+    eq({ 0, 3, 3, 0 }, fn.getpos('.'))\n+  end)\n+  it('inserts text from command', function()\n+    local make_lines = string.format('let lines=\"%s\"', table.concat(read_text, '\\\\n'))\n+    execute(make_lines)\n+    test_read('read :echo lines', inserted_middle)\n+  end)\n+  it('inserts text from file at specific position', function()\n+    test_read('0read ' .. tmp_file, inserted_start)\n+    eq({ 0, 1, 2, 0 }, fn.getpos('.'))\n+  end)\n+  it('inserts text from cmd at specific position', function()\n+    test_read('0read !cat ' .. tmp_file, inserted_start)\n+    eq({ 0, 2, 3, 0 }, fn.getpos('.'))\n+  end)\n+  it('inserts text from cmd at specific position', function()\n+    local make_lines = string.format('let lines=\"%s\"', table.concat(read_text, '\\\\n'))\n+    execute(make_lines)\n+    test_read('0read :echo lines', inserted_start)\n+    eq({ 0, 1, 2, 0 }, fn.getpos('.'))\n+  end)\n+  it('sets fileformat, fileencoding, bomb correctly', function()\n+    execute('set fileformat=dos')\n+    execute('set fileencoding=latin1')\n+    execute('set bomb')\n+    execute('read ++edit ' .. tmp_file)\n+    eq('fileformat=unix', vim.trim(execute('set fileformat?')))\n+    eq('fileencoding=utf-8', vim.trim(execute('set fileencoding?')))\n+    eq('nobomb', vim.trim(execute('set bomb?')))\n+  end)\n+  it('file reads can be undone', function()\n+    test_undo('read ' .. tmp_file)\n+  end)\n+  it('shell reads can be undone', function()\n+    test_undo('read !cat ' .. tmp_file)\n+  end)\n+  it('command reads can be undone', function()\n+    local make_lines = string.format('let lines=\"%s\"', table.concat(read_text, '\\\\n'))\n+    execute(make_lines)\n+    test_undo('read :echo lines')\n+  end)\n+  it('errors out correctly when a non-existant file is used', function()\n+    eq(\"Vim(read):E484: Can't open file asdfasdf\", pcall_err(execute, ':read asdfasdf'))\n+  end)\n+  it('errors out correctly when an invalid command is used', function()\n+    eq('Vim:E492: Not an editor command: asdfasdf', pcall_err(execute, ':read :asdfasdf'))",
+            "html_url": "https://github.com/neovim/neovim/pull/30628#discussion_r1818940328",
+            "id": 1818940328,
+            "in_reply_to_id": 1817001746,
+            "line": 92,
+            "node_id": "PRRC_kwDOAPphoM5satOo",
+            "original_commit_id": "adcdfd12f1d8a0ef540ec3b6c39cbb0f3b58a4ae",
+            "original_line": 91,
+            "original_position": 91,
+            "original_start_line": null,
+            "path": "test/functional/ex_cmds/read_spec.lua",
+            "position": 92,
+            "pull_request_review_id": 2398876816,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/30628",
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1818940328/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-10-28T12:02:49Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1818940328",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/30628#discussion_r1818955423"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/30628"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1818955423"
+                }
+            },
+            "author_association": "NONE",
+            "body": "OK, I am now using an api call to put {cmd} directly into a global variable. I haven't updated the unit tests yet though as I think I am going to have to take some time to understand how things are being parsed before being to `ex_read`. For example, the big issue with double quotes (as I understand it right now) is that these cause the text to be marked as a comment and chopped off before `eap` is passed to `ex_read`.",
+            "commit_id": "6d8821c73a98350697c0acfec5c5f4787c888838",
+            "created_at": "2024-10-28T12:14:37Z",
+            "diff_hunk": "@@ -5640,6 +5641,20 @@ static void ex_syncbind(exarg_T *eap)\n   }\n }\n \n+void do_read_cmd(exarg_T *eap)\n+{\n+  char *cmd = eap->arg + 1;\n+  StringBuilder put_cmd = KV_INITIAL_VALUE;\n+  kv_printf(put_cmd, \"try | \");\n+  kv_printf(put_cmd, \"%dput=execute('%s') | \", eap->line2, cmd);",
+            "html_url": "https://github.com/neovim/neovim/pull/30628#discussion_r1818955423",
+            "id": 1818955423,
+            "in_reply_to_id": 1817055800,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5saw6f",
+            "original_commit_id": "adcdfd12f1d8a0ef540ec3b6c39cbb0f3b58a4ae",
+            "original_line": 5649,
+            "original_position": 17,
+            "original_start_line": null,
+            "path": "src/nvim/ex_docmd.c",
+            "position": null,
+            "pull_request_review_id": 2398904514,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/30628",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1818955423/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-10-28T12:14:37Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1818955423",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/8626587?v=4",
+                "events_url": "https://api.github.com/users/bwalshe/events{/privacy}",
+                "followers_url": "https://api.github.com/users/bwalshe/followers",
+                "following_url": "https://api.github.com/users/bwalshe/following{/other_user}",
+                "gists_url": "https://api.github.com/users/bwalshe/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/bwalshe",
+                "id": 8626587,
+                "login": "bwalshe",
+                "node_id": "MDQ6VXNlcjg2MjY1ODc=",
+                "organizations_url": "https://api.github.com/users/bwalshe/orgs",
+                "received_events_url": "https://api.github.com/users/bwalshe/received_events",
+                "repos_url": "https://api.github.com/users/bwalshe/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/bwalshe/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/bwalshe/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/bwalshe",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/30628#discussion_r1818960192"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/30628"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1818960192"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "also need a test that checks behavior with `|`\r\n```suggestion\r\n    test_read('read :foo | bar | baz', inserted_middle)\r\n```",
+            "commit_id": "6d8821c73a98350697c0acfec5c5f4787c888838",
+            "created_at": "2024-10-28T12:18:03Z",
+            "diff_hunk": "@@ -0,0 +1,93 @@\n+local t = require('test.testutil')\n+local n = require('test.functional.testnvim')()\n+\n+local eq, write_file, clear, pcall_err = t.eq, t.write_file, n.clear, t.pcall_err\n+local fn = n.fn\n+local setline, getline, setcharpos, execute = fn.setline, fn.getline, fn.setcharpos, fn.execute\n+\n+local tmp_file = 'text.txt'\n+local original_text = { 'First', 'Last' }\n+local read_text = { ' This is a line starts with a space', '  This one starts with two spaces.' }\n+local inserted_middle = { original_text[1], read_text[1], read_text[2], original_text[2] }\n+local inserted_start = { read_text[1], read_text[2], original_text[1], original_text[2] }\n+\n+local function test_read(cmd, expected)\n+  setline(1, original_text)\n+  setcharpos('.', { 0, 0, 0 })\n+  execute(cmd)\n+  for i, e in ipairs(expected) do\n+    eq(e, getline(i))\n+  end\n+end\n+\n+local function test_undo(cmd)\n+  setline(1, original_text)\n+  execute(cmd)\n+  execute('undo')\n+  eq(original_text, { getline(1), getline(2) })\n+end\n+\n+describe(':read', function()\n+  local function cleanup()\n+    os.remove(tmp_file)\n+  end\n+  before_each(function()\n+    clear()\n+    cleanup()\n+    write_file(tmp_file, table.concat(read_text, '\\n'), true)\n+  end)\n+  after_each(cleanup)\n+  it('inserts text from file', function()\n+    test_read('read ' .. tmp_file, inserted_middle)\n+    eq({ 0, 2, 2, 0 }, fn.getpos('.'))\n+  end)\n+  it('inserts text from shell', function()\n+    test_read('read !cat ' .. tmp_file, inserted_middle)\n+    eq({ 0, 3, 3, 0 }, fn.getpos('.'))\n+  end)\n+  it('inserts text from command', function()\n+    local make_lines = string.format('let lines=\"%s\"', table.concat(read_text, '\\\\n'))\n+    execute(make_lines)\n+    test_read('read :echo lines', inserted_middle)",
+            "html_url": "https://github.com/neovim/neovim/pull/30628#discussion_r1818960192",
+            "id": 1818960192,
+            "line": 51,
+            "node_id": "PRRC_kwDOAPphoM5sayFA",
+            "original_commit_id": "fe2244a86be41f61d50686abb500d704f7c612ee",
+            "original_line": 51,
+            "original_position": 51,
+            "original_start_line": null,
+            "path": "test/functional/ex_cmds/read_spec.lua",
+            "position": 51,
+            "pull_request_review_id": 2398912189,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/30628",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1818960192/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-10-28T12:18:03Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1818960192",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/30628#discussion_r1818960219"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/30628"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1818960219"
+                }
+            },
+            "author_association": "NONE",
+            "body": "Cool. I know it is pretty low stakes, and the best course of action is to see how it goes, but I didn't want to make an assumption. ",
+            "commit_id": "6d8821c73a98350697c0acfec5c5f4787c888838",
+            "created_at": "2024-10-28T12:18:04Z",
+            "diff_hunk": "@@ -0,0 +1,93 @@\n+local t = require('test.testutil')\n+local n = require('test.functional.testnvim')()\n+\n+local eq, write_file, clear, pcall_err = t.eq, t.write_file, n.clear, t.pcall_err\n+local fn = n.fn\n+local setline, getline, setcharpos, execute = fn.setline, fn.getline, fn.setcharpos, fn.execute\n+\n+local tmp_file = 'text.txt'\n+local original_text = { 'First', 'Last' }\n+local read_text = { ' This is a line starts with a space', '  This one starts with two spaces.' }\n+local inserted_middle = { original_text[1], read_text[1], read_text[2], original_text[2] }\n+local inserted_start = { read_text[1], read_text[2], original_text[1], original_text[2] }\n+\n+local function test_read(cmd, expected)\n+  setline(1, original_text)\n+  setcharpos('.', { 0, 0, 0 })\n+  execute(cmd)\n+  for i, e in ipairs(expected) do\n+    eq(e, getline(i))\n+  end\n+end\n+\n+local function test_undo(cmd)\n+  setline(1, original_text)\n+  execute(cmd)\n+  execute('undo')\n+  eq(original_text, { getline(1), getline(2) })\n+end\n+\n+describe(':read', function()\n+  local function cleanup()\n+    os.remove(tmp_file)\n+  end\n+  before_each(function()\n+    clear()\n+    cleanup()\n+    write_file(tmp_file, table.concat(read_text, '\\n'), true)\n+  end)\n+  after_each(cleanup)\n+  it('inserts text from file', function()\n+    test_read('read ' .. tmp_file, inserted_middle)\n+    eq({ 0, 2, 2, 0 }, fn.getpos('.'))\n+  end)\n+  it('inserts text from shell', function()\n+    test_read('read !cat ' .. tmp_file, inserted_middle)\n+    eq({ 0, 3, 3, 0 }, fn.getpos('.'))\n+  end)\n+  it('inserts text from command', function()\n+    local make_lines = string.format('let lines=\"%s\"', table.concat(read_text, '\\\\n'))\n+    execute(make_lines)\n+    test_read('read :echo lines', inserted_middle)\n+  end)\n+  it('inserts text from file at specific position', function()\n+    test_read('0read ' .. tmp_file, inserted_start)\n+    eq({ 0, 1, 2, 0 }, fn.getpos('.'))\n+  end)\n+  it('inserts text from cmd at specific position', function()\n+    test_read('0read !cat ' .. tmp_file, inserted_start)\n+    eq({ 0, 2, 3, 0 }, fn.getpos('.'))\n+  end)\n+  it('inserts text from cmd at specific position', function()\n+    local make_lines = string.format('let lines=\"%s\"', table.concat(read_text, '\\\\n'))\n+    execute(make_lines)\n+    test_read('0read :echo lines', inserted_start)\n+    eq({ 0, 1, 2, 0 }, fn.getpos('.'))\n+  end)\n+  it('sets fileformat, fileencoding, bomb correctly', function()\n+    execute('set fileformat=dos')\n+    execute('set fileencoding=latin1')\n+    execute('set bomb')\n+    execute('read ++edit ' .. tmp_file)\n+    eq('fileformat=unix', vim.trim(execute('set fileformat?')))\n+    eq('fileencoding=utf-8', vim.trim(execute('set fileencoding?')))\n+    eq('nobomb', vim.trim(execute('set bomb?')))\n+  end)\n+  it('file reads can be undone', function()\n+    test_undo('read ' .. tmp_file)\n+  end)\n+  it('shell reads can be undone', function()\n+    test_undo('read !cat ' .. tmp_file)\n+  end)\n+  it('command reads can be undone', function()\n+    local make_lines = string.format('let lines=\"%s\"', table.concat(read_text, '\\\\n'))\n+    execute(make_lines)\n+    test_undo('read :echo lines')\n+  end)\n+  it('errors out correctly when a non-existant file is used', function()\n+    eq(\"Vim(read):E484: Can't open file asdfasdf\", pcall_err(execute, ':read asdfasdf'))\n+  end)\n+  it('errors out correctly when an invalid command is used', function()\n+    eq('Vim:E492: Not an editor command: asdfasdf', pcall_err(execute, ':read :asdfasdf'))",
+            "html_url": "https://github.com/neovim/neovim/pull/30628#discussion_r1818960219",
+            "id": 1818960219,
+            "in_reply_to_id": 1817001746,
+            "line": 92,
+            "node_id": "PRRC_kwDOAPphoM5sayFb",
+            "original_commit_id": "adcdfd12f1d8a0ef540ec3b6c39cbb0f3b58a4ae",
+            "original_line": 91,
+            "original_position": 91,
+            "original_start_line": null,
+            "path": "test/functional/ex_cmds/read_spec.lua",
+            "position": 92,
+            "pull_request_review_id": 2398912225,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/30628",
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1818960219/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-10-28T12:18:04Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1818960219",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/8626587?v=4",
+                "events_url": "https://api.github.com/users/bwalshe/events{/privacy}",
+                "followers_url": "https://api.github.com/users/bwalshe/followers",
+                "following_url": "https://api.github.com/users/bwalshe/following{/other_user}",
+                "gists_url": "https://api.github.com/users/bwalshe/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/bwalshe",
+                "id": 8626587,
+                "login": "bwalshe",
+                "node_id": "MDQ6VXNlcjg2MjY1ODc=",
+                "organizations_url": "https://api.github.com/users/bwalshe/orgs",
+                "received_events_url": "https://api.github.com/users/bwalshe/received_events",
+                "repos_url": "https://api.github.com/users/bwalshe/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/bwalshe/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/bwalshe/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/bwalshe",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/30628#discussion_r1818963700"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/30628"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1818963700"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "yeah it's possible that double quotes can't easily be supported because the cmdline is parsed before control reaches the code you have added here. can forget about that for now.",
+            "commit_id": "6d8821c73a98350697c0acfec5c5f4787c888838",
+            "created_at": "2024-10-28T12:20:40Z",
+            "diff_hunk": "@@ -5640,6 +5641,20 @@ static void ex_syncbind(exarg_T *eap)\n   }\n }\n \n+void do_read_cmd(exarg_T *eap)\n+{\n+  char *cmd = eap->arg + 1;\n+  StringBuilder put_cmd = KV_INITIAL_VALUE;\n+  kv_printf(put_cmd, \"try | \");\n+  kv_printf(put_cmd, \"%dput=execute('%s') | \", eap->line2, cmd);",
+            "html_url": "https://github.com/neovim/neovim/pull/30628#discussion_r1818963700",
+            "id": 1818963700,
+            "in_reply_to_id": 1817055800,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5say70",
+            "original_commit_id": "adcdfd12f1d8a0ef540ec3b6c39cbb0f3b58a4ae",
+            "original_line": 5649,
+            "original_position": 17,
+            "original_start_line": null,
+            "path": "src/nvim/ex_docmd.c",
+            "position": null,
+            "pull_request_review_id": 2398917859,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/30628",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1818963700/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-10-28T12:20:40Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1818963700",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/30628#discussion_r1818965354"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/30628"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1818965354"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "unlet the `g:` var after",
+            "commit_id": "6d8821c73a98350697c0acfec5c5f4787c888838",
+            "created_at": "2024-10-28T12:21:54Z",
+            "diff_hunk": "@@ -5643,16 +5644,29 @@ static void ex_syncbind(exarg_T *eap)\n \n void do_read_cmd(exarg_T *eap)\n {\n-  char *cmd = eap->arg + 1;\n+  Object cmd = CSTR_AS_OBJ(eap->arg + 1);\n+  String cmd_var_name = cstr_as_string(\"_ex_cmd\");\n   StringBuilder put_cmd = KV_INITIAL_VALUE;\n+  Error error = ERROR_INIT;\n+  nvim_set_var(cmd_var_name, cmd, &error);\n+  if (error.type != kErrorTypeNone) {\n+    emsg(error.msg);\n+    return;\n+  }\n+\n   kv_printf(put_cmd, \"try | \");\n-  kv_printf(put_cmd, \"%dput=execute('%s') | \", eap->line2, cmd);\n-  kv_printf(put_cmd, \"execute 'norm! `.' | \");\n+  kv_printf(put_cmd, \"%dput=execute(g:%s) | \", eap->line2, cmd_var_name.data);\n+  kv_printf(put_cmd, \"execute 'norm! )`.' | \");\n   kv_printf(put_cmd, \"execute 'd _' | \");\n   kv_printf(put_cmd, \"endtry\");",
+            "html_url": "https://github.com/neovim/neovim/pull/30628#discussion_r1818965354",
+            "id": 1818965354,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5sazVq",
+            "original_commit_id": "fe2244a86be41f61d50686abb500d704f7c612ee",
+            "original_line": 5661,
+            "original_position": 29,
+            "original_start_line": null,
+            "path": "src/nvim/ex_docmd.c",
+            "position": null,
+            "pull_request_review_id": 2398920475,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/30628",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1818965354/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-10-28T12:21:55Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1818965354",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/30628#discussion_r1818966531"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/30628"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1818966531"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\r\n• |:read:| reads the output of an Ex command and into the buffer. Example:>\r\n  :read :ls\r\n```",
+            "commit_id": "6d8821c73a98350697c0acfec5c5f4787c888838",
+            "created_at": "2024-10-28T12:22:49Z",
+            "diff_hunk": "@@ -159,6 +159,7 @@ EDITOR\n   \"~/\" are now expanded to the user's profile directory, not a relative path\n   to a literal \"~\" directory.\n • |hl-PmenuMatch| and |hl-PmenuMatchSel| show matched text in completion popup.\n+• |:read:| can now execute an Ex command and insert the output into the buffer.",
+            "html_url": "https://github.com/neovim/neovim/pull/30628#discussion_r1818966531",
+            "id": 1818966531,
+            "line": 162,
+            "node_id": "PRRC_kwDOAPphoM5sazoD",
+            "original_commit_id": "fe2244a86be41f61d50686abb500d704f7c612ee",
+            "original_line": 162,
+            "original_position": 4,
+            "original_start_line": null,
+            "path": "runtime/doc/news.txt",
+            "position": 4,
+            "pull_request_review_id": 2398922376,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/30628",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1818966531/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-10-28T12:22:49Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1818966531",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        }
+    ],
     "comment_regular_data": [
         {
             "author_association": "MEMBER",
@@ -264,13 +1375,148 @@
                 "url": "https://api.github.com/users/bwalshe",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "NONE",
+            "body": "@justinmk I have pushed some tests and implemented the basic solution of having the C code defer to vimscript. \r\n\r\nAs you can see one of the unit tests is failing as vim is not handling quotations the way I expected it to. It looks like the behaviour is slightly different depending on which code path you go down. For example, `:execute('echo \"line1\\nline2\"')` will echo two lines, but  `$put =execute('echo \"line1\\nline2\"')`  results in \r\n\r\n```\r\nE115: Missing quote: 'echo\r\nE116: Invalid arguments for function execute\r\n```\r\n\r\nDoes that seem right to you?\r\n\r\nAlso what is the expected behaviour when interacting with `:split`? Right now if I do `:split +read !ls` it tells me that it cannot find the file `ls`. If split + read doesn't work with shell commands, should I also implement that?",
+            "created_at": "2024-10-22T16:53:05Z",
+            "html_url": "https://github.com/neovim/neovim/pull/30628#issuecomment-2429788577",
+            "id": 2429788577,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/30628",
+            "node_id": "IC_kwDOAPphoM6Q06Gh",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2429788577/reactions"
+            },
+            "updated_at": "2024-10-22T16:53:05Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2429788577",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/8626587?v=4",
+                "events_url": "https://api.github.com/users/bwalshe/events{/privacy}",
+                "followers_url": "https://api.github.com/users/bwalshe/followers",
+                "following_url": "https://api.github.com/users/bwalshe/following{/other_user}",
+                "gists_url": "https://api.github.com/users/bwalshe/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/bwalshe",
+                "id": 8626587,
+                "login": "bwalshe",
+                "node_id": "MDQ6VXNlcjg2MjY1ODc=",
+                "organizations_url": "https://api.github.com/users/bwalshe/orgs",
+                "received_events_url": "https://api.github.com/users/bwalshe/received_events",
+                "repos_url": "https://api.github.com/users/bwalshe/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/bwalshe/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/bwalshe/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/bwalshe",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "NONE",
+            "body": "BTW - the way I am going, my commit history is going to be quite messy. Should I rebase as I go, or do it at the end?",
+            "created_at": "2024-10-22T16:54:35Z",
+            "html_url": "https://github.com/neovim/neovim/pull/30628#issuecomment-2429791737",
+            "id": 2429791737,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/30628",
+            "node_id": "IC_kwDOAPphoM6Q0635",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2429791737/reactions"
+            },
+            "updated_at": "2024-10-22T16:54:35Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2429791737",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/8626587?v=4",
+                "events_url": "https://api.github.com/users/bwalshe/events{/privacy}",
+                "followers_url": "https://api.github.com/users/bwalshe/followers",
+                "following_url": "https://api.github.com/users/bwalshe/following{/other_user}",
+                "gists_url": "https://api.github.com/users/bwalshe/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/bwalshe",
+                "id": 8626587,
+                "login": "bwalshe",
+                "node_id": "MDQ6VXNlcjg2MjY1ODc=",
+                "organizations_url": "https://api.github.com/users/bwalshe/orgs",
+                "received_events_url": "https://api.github.com/users/bwalshe/received_events",
+                "repos_url": "https://api.github.com/users/bwalshe/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/bwalshe/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/bwalshe/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/bwalshe",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "> @justinmk I have pushed some tests and implemented the basic solution of having the C code defer to vimscript.\r\n> \r\n> As you can see one of the unit tests is failing as vim is not handling quotations the way I expected it to. It looks like the behaviour is slightly different depending on which code path you go down. For example, `:execute('echo \"line1\\nline2\"')` will echo two lines, but `$put =execute('echo \"line1\\nline2\"')` results in\r\n> \r\n> ```\r\n> E115: Missing quote: 'echo\r\n> E116: Invalid arguments for function execute\r\n> ```\r\n> \r\n> Does that seem right to you?\r\n> \r\n> Also what is the expected behaviour when interacting with `:split`? Right now if I do `:split +read !ls` it tells me that it cannot find the file `ls`. If split + read doesn't work with shell commands, should I also implement that?\r\n\r\nYou cannot use `\"` in a `:put` Ex command, as `\"` starts a comment.",
+            "created_at": "2024-10-22T23:54:37Z",
+            "html_url": "https://github.com/neovim/neovim/pull/30628#issuecomment-2430524916",
+            "id": 2430524916,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/30628",
+            "node_id": "IC_kwDOAPphoM6Q3t30",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2430524916/reactions"
+            },
+            "updated_at": "2024-10-22T23:54:37Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2430524916",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+                "followers_url": "https://api.github.com/users/zeertzjq/followers",
+                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/zeertzjq",
+                "id": 35768171,
+                "login": "zeertzjq",
+                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+                "repos_url": "https://api.github.com/users/zeertzjq/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
+            }
         }
     ],
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/30628/comments",
     "commits_url": "https://api.github.com/repos/neovim/neovim/pulls/30628/commits",
     "created_at": "2024-10-02T17:21:48Z",
     "diff_url": "https://github.com/neovim/neovim/pull/30628.diff",
-    "draft": true,
+    "draft": false,
     "head": {
         "label": "bwalshe:read_cmd_to_buffer",
         "ref": "read_cmd_to_buffer",
@@ -360,9 +1606,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/bwalshe/neovim/pulls{/number}",
-            "pushed_at": "2024-10-03T10:42:44Z",
+            "pushed_at": "2024-10-28T16:58:35Z",
             "releases_url": "https://api.github.com/repos/bwalshe/neovim/releases{/id}",
-            "size": 280512,
+            "size": 280658,
             "ssh_url": "git@github.com:bwalshe/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/bwalshe/neovim/stargazers",
@@ -381,7 +1627,7 @@
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "6d583682d6bbfbf83b0d6a1d221ddbb3e07a87e0",
+        "sha": "6d8821c73a98350697c0acfec5c5f4787c888838",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/8626587?v=4",
             "events_url": "https://api.github.com/users/bwalshe/events{/privacy}",
@@ -407,19 +1653,9 @@
     "html_url": "https://github.com/neovim/neovim/pull/30628",
     "id": 2103958130,
     "issue_url": "https://api.github.com/repos/neovim/neovim/issues/30628",
-    "labels": [
-        {
-            "color": "FBCA04",
-            "default": false,
-            "description": "waiting for reply from the author",
-            "id": 248229439,
-            "name": "needs:response",
-            "node_id": "MDU6TGFiZWwyNDgyMjk0Mzk=",
-            "url": "https://api.github.com/repos/neovim/neovim/labels/needs:response"
-        }
-    ],
+    "labels": [],
     "locked": false,
-    "merge_commit_sha": "a094809f770be9dba3c43eaa0915447b0d44724e",
+    "merge_commit_sha": "bf0faaca3f711a117de69761f6ed64f34e0ddd5f",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM59Z9py",
@@ -430,9 +1666,9 @@
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/30628/comments",
     "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/6d583682d6bbfbf83b0d6a1d221ddbb3e07a87e0",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/6d8821c73a98350697c0acfec5c5f4787c888838",
     "title": "Change behavor of read so that the command \":read :cmd\" executes \"cmd\" and writes the output to the buffer ",
-    "updated_at": "2024-10-17T11:06:02Z",
+    "updated_at": "2024-10-28T16:58:37Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/30628",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/8626587?v=4",

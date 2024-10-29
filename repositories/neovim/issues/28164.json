@@ -5,6 +5,27 @@
     "author_association": "NONE",
     "body": "### Problem\r\nThe line-gutter's test-decorators in `:Tutor` become unresponsive after their line numbers change i.e. due to removal/addition of lines before them.\r\n\r\nwhile this is perfectly understandable: _of course, the test is line number specific\"_\r\nbut the issue lies in the fact that the tutorial _demands_ lines to be added/deleted\r\n\r\ni.e. there's a contradiction in how the tutorial interacts with users, vs how the tests assume it would stay.\r\n\r\n### Minimal Steps to reproduce\r\n<sub>I couldn't get the clipboard to work despite `scoop install win32yank` and restart terminal. So, some steps might feel convoluted.</sub>\r\n\r\n**Normal conditions:**\r\n\r\n0. `nvim -c ':Tutor'` or equivalently `nvim` > `:Tutor`\r\n1. correct the L`333` \r\n(say by, `332gg` > paste the following correct line > `jdd`)\r\n    - :-) see test pass responsively\r\n\r\n**Trigger and buggy behaviour:**\r\n\r\n2. `308gg` `dd` `332gg` or better yet, `kdd` (both are equivalent for our purpose)\r\n3. `0i` `f` `<ESC>` (make any change to try to make test fail): \r\n    - :-( see that the `✓` stays there unresponsively\r\n\r\n**Confirmation of the diagnosis/hypothesized cause:**\r\n\r\n4. `ki` `<RET>` `<ESC>` to insert a blank line above (i.e. bring the test line number back to '333')\r\n5. `j0a` `<SPC>` `<ESC>` (force refresh the test):\r\n    - :-) see the test fail responsively\r\n6. `0dw` (neutralise edits from step 5, 7):\r\n    - :-) see the test pass responsively\r\n\r\n```\r\nFix the errors on this line and replace them with undo.\r\n```\r\n\r\n<!-- Fiix the errors oon thhis line and reeplace them witth undo. -->\r\n\r\n### Expected behavior\r\n\r\nthe test indicator on line-gutter `✗✓` stays responsive during at least the normal flow of test...\r\n\r\n[image](https://github.com/neovim/neovim/assets/19423063/ea2d586a-0a88-4185-ad19-88555bc48373)\r\n\r\n<!-- <img src=\"https://github.com/neovim/neovim/assets/19423063/ea2d586a-0a88-4185-ad19-88555bc48373\" width=300px /> -->\r\n\r\n\r\n### Solutions?\r\n\r\nI am not sure what an ideal, MVC solution can be. Some thoughts come to mind:\r\n\r\n**update:** it seems that the best and minimum viable solution can be this 2nd one:\r\n\r\n2. provide a quick shortcut command which restarts the test afresh from the line the user is at at the time of invocation\r\n    * would require: a reminder line in tutorial text (after a deleted line) reminding user to start the test afresh\r\n    - no downsides as far as i can see\r\n    - full flexibility\r\n    - not much is required to change, all the functionality required to make it work already exists\r\n    - i.e. true to `MVC`, simple, cost effective and elegant\r\n\r\n\r\n[fold-marker]: https://neovim.io/doc/user/fold.html#fold-marker \"fold-marker\"\r\n\r\n<details open><summary>alternate solutions considered:</summary>\r\n<p>\r\n\r\n\r\n1. _[hash-map + array][only-upfront-cost]_ define \"named chunk ranges\" somehow, & refer to line numbers relative to chunk's start in tests\r\n   <sub>(dictionaries can solve everything eventually 🤣)</sub>\r\n    + <sub>(inspired from `powershell` config)</sub>\r\n    + neo/vim already has [marker-based folding range][fold-marker] which can fit this purpose very well\r\n      nevertheless, it seems non-trivial to use that in this way\r\n    + but once done; the rest will be easy ride\r\n    + full flexibility of attempting tests in any order\r\n\t+ no constraints on what is done to lines outside of the test chunk: i.e. full freedom to experiment _and_ edit\r\n        + no need to make sweeping changes to fix the line locations in tests on any line insertions in the tutor\r\n\r\n^\r\n\r\n0. _[brute-force][continous-cost]_ hard-coding the expected line numbers after the line deletions through test\r\n    - _requires alll the tests_ and _nothing except the tests_ to be done _sequentially_\r\n    - i.e. would also require to save the tutorial buffer, and resume from there the next time\r\n    - overall, toooo much restrictive\r\n\r\n\r\n</p>\r\n</details> \r\n\r\nSample from neo/vim's marker based folding range with `{{{<N> ... }}}<N>`: \r\n\r\n```markdown\r\n<!-- Chapter 1. Navigation {{{3 -->\r\n\r\n\r\n<!-- Chapter 2. Motions {{{3 -->\r\n```\r\n\r\n\r\nSample from powershell's named chunks with `#region <name> ... #endregion` :\r\n\r\n```powershell\r\n#region conda initialize\r\n# !! Contents within this block are managed by 'conda init' !!\r\nIf (Test-Path \"...\\mambaforge\\Scripts\\conda.exe\") {\r\n    (& \"...\\mambaforge\\Scripts\\conda.exe\" \"shell.powershell\" \"hook\") | Out-String | ?{$_} | Invoke-Expression\r\n}\r\n#endregion\r\n```\r\n\r\n\r\n<!--\r\n<details>\r\n<summary><h3>Archive of original Problem/Steps</h3></summary>\r\n\r\n1. _[hash-map][only-upfront-cost]_ devise some mechanism to define \"named chunk ranges\", and refer to line numbers relative to chunk's start _(dict + array arrangement)_\r\n    - ~it seems hard to actually implement this in an \"invisible-in-output\" while \"still-staying-sane\" way~ \r\n    (no, it will use comments, and i think the `vim-01-beginner.tutor` is using markdown format, which does allow comments)\r\n\r\n#### Problem\r\n<sub>I am removing preview of attached screenshots</sub>\r\n\r\nLines in tutor are not updating their `x` status after correcting to `v` from lessons \"2.7: THE UNDO COMMAND\" onwards\r\n\r\n\r\n[image](https://github.com/neovim/neovim/assets/19423063/964be4ae-d3ed-4b65-8631-46c4efcc4841)\r\n\r\n[image](https://github.com/neovim/neovim/assets/19423063/d67aa13d-0184-4c81-ad88-4a554cec896d)\r\n\r\n[image](https://github.com/neovim/neovim/assets/19423063/948ddd0e-2468-4cb9-b358-84ac3d9b3385)\r\n\r\n\r\n#### Steps to reproduce\r\n\r\nnvim\r\n\r\n:Tutor\r\n\r\nFinish any of lesson from 2.7 Undo `u` `U` `<C-r>`, 3.2 Replace `r`, 3.3 Change `ce`\r\n\r\n</details>\r\n\r\nExpected behaviour\r\n\r\n[image](https://github.com/neovim/neovim/assets/19423063/3d9d6575-200f-485a-af3c-cdb07f7dde7d)\r\n\r\n-->\r\n\r\n\r\n<details>\r\n<summary><h2>Environment</h2></summary>\r\n<p>\r\n\r\n\r\n### Neovim version (nvim -v)\r\n\r\nNVIM v0.9.5 Build type: Release LuaJIT 2.1.1710088188     system vimrc file: \"$VIM\\sysinit.vim\"   fall-back for $VIM: \"/mingw64/share/nvim\"  Run :checkhealth for more info\r\n\r\n### Vim (not Nvim) behaves the same?\r\n\r\nnot applicable\r\n\r\n### Operating system/version\r\n\r\nwindows 10.0.19045 N/A Build 19045\r\n\r\n### Terminal name/version\r\n\r\nmintty 3.7.1 (x86_64-pc-msys)\r\n\r\n### $TERM environment variable\r\n\r\nxterm\r\n\r\n### Installation\r\n\r\nin msys2 `mingw-w64-x86_64-neovim` pkg via command: `pacboy -S neovim:x`\r\n\r\n</p>\r\n</details> \r\n",
     "closed_at": "2024-05-12T09:31:31Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+        "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+        "followers_url": "https://api.github.com/users/justinmk/followers",
+        "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+        "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/justinmk",
+        "id": 1359421,
+        "login": "justinmk",
+        "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+        "organizations_url": "https://api.github.com/users/justinmk/orgs",
+        "received_events_url": "https://api.github.com/users/justinmk/received_events",
+        "repos_url": "https://api.github.com/users/justinmk/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "NONE",
@@ -47,7 +68,8 @@
                 "starred_url": "https://api.github.com/users/goyalyashpal/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/goyalyashpal/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/goyalyashpal"
+                "url": "https://api.github.com/users/goyalyashpal",
+                "user_view_type": "public"
             }
         },
         {
@@ -91,7 +113,8 @@
                 "starred_url": "https://api.github.com/users/goyalyashpal/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/goyalyashpal/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/goyalyashpal"
+                "url": "https://api.github.com/users/goyalyashpal",
+                "user_view_type": "public"
             }
         },
         {
@@ -135,7 +158,8 @@
                 "starred_url": "https://api.github.com/users/goyalyashpal/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/goyalyashpal/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/goyalyashpal"
+                "url": "https://api.github.com/users/goyalyashpal",
+                "user_view_type": "public"
             }
         },
         {
@@ -179,7 +203,8 @@
                 "starred_url": "https://api.github.com/users/goyalyashpal/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/goyalyashpal/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/goyalyashpal"
+                "url": "https://api.github.com/users/goyalyashpal",
+                "user_view_type": "public"
             }
         },
         {
@@ -223,7 +248,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -267,7 +293,8 @@
                 "starred_url": "https://api.github.com/users/goyalyashpal/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/goyalyashpal/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/goyalyashpal"
+                "url": "https://api.github.com/users/goyalyashpal",
+                "user_view_type": "public"
             }
         },
         {
@@ -311,7 +338,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -355,7 +383,8 @@
                 "starred_url": "https://api.github.com/users/goyalyashpal/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/goyalyashpal/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/goyalyashpal"
+                "url": "https://api.github.com/users/goyalyashpal",
+                "user_view_type": "public"
             }
         },
         {
@@ -399,7 +428,8 @@
                 "starred_url": "https://api.github.com/users/goyalyashpal/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/goyalyashpal/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/goyalyashpal"
+                "url": "https://api.github.com/users/goyalyashpal",
+                "user_view_type": "public"
             }
         },
         {
@@ -443,7 +473,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -487,7 +518,8 @@
                 "starred_url": "https://api.github.com/users/goyalyashpal/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/goyalyashpal/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/goyalyashpal"
+                "url": "https://api.github.com/users/goyalyashpal",
+                "user_view_type": "public"
             }
         },
         {
@@ -531,7 +563,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -575,7 +608,8 @@
                 "starred_url": "https://api.github.com/users/goyalyashpal/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/goyalyashpal/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/goyalyashpal"
+                "url": "https://api.github.com/users/goyalyashpal",
+                "user_view_type": "public"
             }
         }
     ],
@@ -618,7 +652,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 616,
+        "closed_issues": 658,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -638,19 +672,20 @@
             "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/justinmk"
+            "url": "https://api.github.com/users/justinmk",
+            "user_view_type": "public"
         },
-        "description": "Low priority. Not planned for the current target, may be reassigned.",
+        "description": "Low priority items. We plan to work on this but don't have a target date.",
         "due_on": null,
         "html_url": "https://github.com/neovim/neovim/milestone/6",
         "id": 655037,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 536,
+        "open_issues": 611,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2024-05-13T02:16:08Z",
+        "updated_at": "2024-10-28T13:24:56Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM6Eh8JZ",
@@ -670,10 +705,10 @@
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "closed",
-    "state_reason": "not_planned",
+    "state_reason": "completed",
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/28164/timeline",
     "title": "tutor tests become unresponsive on line-number mismatch",
-    "updated_at": "2024-05-12T10:36:59Z",
+    "updated_at": "2024-10-27T13:50:18Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/28164",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/19423063?v=4",
@@ -693,6 +728,7 @@
         "starred_url": "https://api.github.com/users/goyalyashpal/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/goyalyashpal/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/goyalyashpal"
+        "url": "https://api.github.com/users/goyalyashpal",
+        "user_view_type": "public"
     }
 }
