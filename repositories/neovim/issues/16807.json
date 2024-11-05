@@ -5,6 +5,7 @@
     "author_association": "CONTRIBUTOR",
     "body": "### Feature already in Vim?\r\n\r\n(No, this relates to the LSP client).\r\n\r\n### Feature description\r\n\r\nTL;DR: as a language server maintainer, it would be useful if the language server stderr stream was written to a temporary file. It's okay if this is optional.\r\n\r\nWithout this:\r\n - nvim users can't usefully report bugs against our server\r\n - it's painful to understand/debug server interactions with nvim\r\n\r\n---\r\n\r\nBackground: clangd and many other language servers produce detailed logs on stderr by default.\r\nThese logs have all critical information for investigating server behavior, e.g. protocol messages interleaved with internal state, crash dumps etc.\r\n\r\nWe require logs with bug reports, and provide [per-editor instructions](https://clangd.llvm.org/installation.html) for how to obtain them.\r\nHere's [an example bug](https://github.com/clangd/clangd/issues/859) investigated with the help of logs. \r\nViewing logs is also a critical part of development, long live printf debugging!\r\n\r\n---\r\n\r\nToday nvim sends the error stream to the lsp.log file in the following format:\r\n\r\n```\r\n[ERROR][2021-12-25 23:48:54] .../vim/lsp/rpc.lua:417\t\"rpc\"\t\"clangd\"\t\"stderr\"\t\"I[23:48:54.673] clangd version 14.0.0 (48d868493fa74025e7768afacdbbbd3ea9c82468)\\nI[23:48:54.673] Features: linux+grpc\\nI[23:48:54.673] PID: 27944\\nI[23:48:54.673] Working directory: /home/sammccall\\nI[23:48:54.673] argv[0]: clangd\\nI[23:48:54.673] argv[1]: --background-index\\n\"\r\n```\r\n\r\nThis isn't useful because:\r\n - it's hard to read due to the long prefixes and escaping\r\n - structure isn't visible because line boundaries aren't respected (lines are both combined and split)\r\n - it combines logs from several instances of the server, so:\r\n   - it's too hard to trace state if the instances are concurrent\r\n   - users don't know where to cut logs (it's *so* hard to get them to provide full logs aready)\r\n   - it's easy for users to leak details of private code into a bug report for an isolated example\r\n\r\n---\r\n\r\nWhat I'd like is for the stderr stream to be sent to a path created by tempname(), and for this path to be logged to lsp.log and/or available programmatically.\r\n\r\nThis means the file would be scoped to the lifetime of the editor - it would remain if clangd exits/crashes but be removed once the editor is closed.\r\n\r\nI've implemented this solution in my own vim LS-client from years ago and it works really well.\r\n\r\n(Passing a --log-file flag to the server isn't a great solution: between ensuring unique file paths, discoverability of the file paths, and giving the files the right lifetime, it's hard to get this right without editor cooperation)",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "CONTRIBUTOR",
@@ -47,7 +48,8 @@
                 "starred_url": "https://api.github.com/users/mjlbach/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/mjlbach/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/mjlbach"
+                "url": "https://api.github.com/users/mjlbach",
+                "user_view_type": "public"
             }
         },
         {
@@ -91,7 +93,8 @@
                 "starred_url": "https://api.github.com/users/sam-mccall/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/sam-mccall/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/sam-mccall"
+                "url": "https://api.github.com/users/sam-mccall",
+                "user_view_type": "public"
             }
         },
         {
@@ -135,7 +138,8 @@
                 "starred_url": "https://api.github.com/users/sam-mccall/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/sam-mccall/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/sam-mccall"
+                "url": "https://api.github.com/users/sam-mccall",
+                "user_view_type": "public"
             }
         },
         {
@@ -179,7 +183,8 @@
                 "starred_url": "https://api.github.com/users/9999years/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/9999years/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/9999years"
+                "url": "https://api.github.com/users/9999years",
+                "user_view_type": "public"
             }
         },
         {
@@ -223,7 +228,8 @@
                 "starred_url": "https://api.github.com/users/9999years/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/9999years/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/9999years"
+                "url": "https://api.github.com/users/9999years",
+                "user_view_type": "public"
             }
         },
         {
@@ -267,7 +273,8 @@
                 "starred_url": "https://api.github.com/users/9999years/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/9999years/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/9999years"
+                "url": "https://api.github.com/users/9999years",
+                "user_view_type": "public"
             }
         },
         {
@@ -311,11 +318,57 @@
                 "starred_url": "https://api.github.com/users/jackielii/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/jackielii/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/jackielii"
+                "url": "https://api.github.com/users/jackielii",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "One use case that I would like to keep open for consideration. Today, I edited my config to spawn language servers with `systemd-run(1)`. With that and logging to stderr, I think you could use `journalctl` to view the language server logs.",
+            "created_at": "2024-10-31T05:40:52Z",
+            "html_url": "https://github.com/neovim/neovim/issues/16807#issuecomment-2449045592",
+            "id": 2449045592,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/16807",
+            "node_id": "IC_kwDOAPphoM6R-XhY",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2449045592/reactions"
+            },
+            "updated_at": "2024-10-31T05:40:52Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2449045592",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/11936772?v=4",
+                "events_url": "https://api.github.com/users/tristan957/events{/privacy}",
+                "followers_url": "https://api.github.com/users/tristan957/followers",
+                "following_url": "https://api.github.com/users/tristan957/following{/other_user}",
+                "gists_url": "https://api.github.com/users/tristan957/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/tristan957",
+                "id": 11936772,
+                "login": "tristan957",
+                "node_id": "MDQ6VXNlcjExOTM2Nzcy",
+                "organizations_url": "https://api.github.com/users/tristan957/orgs",
+                "received_events_url": "https://api.github.com/users/tristan957/received_events",
+                "repos_url": "https://api.github.com/users/tristan957/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/tristan957/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/tristan957/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/tristan957",
+                "user_view_type": "public"
             }
         }
     ],
-    "comments": 7,
+    "comments": 8,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/16807/comments",
     "created_at": "2021-12-27T13:43:45Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/16807/events",
@@ -348,7 +401,7 @@
     "number": 16807,
     "performed_via_github_app": null,
     "reactions": {
-        "+1": 15,
+        "+1": 16,
         "-1": 0,
         "confused": 0,
         "eyes": 1,
@@ -356,15 +409,20 @@
         "hooray": 0,
         "laugh": 1,
         "rocket": 0,
-        "total_count": 17,
+        "total_count": 18,
         "url": "https://api.github.com/repos/neovim/neovim/issues/16807/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "open",
     "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/16807/timeline",
-    "title": "Send language server stderr to a file",
-    "updated_at": "2024-08-02T13:59:24Z",
+    "title": "LSP: send language server stderr to a file",
+    "updated_at": "2024-10-31T10:26:12Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/16807",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/548993?v=4",
@@ -384,6 +442,7 @@
         "starred_url": "https://api.github.com/users/sam-mccall/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/sam-mccall/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/sam-mccall"
+        "url": "https://api.github.com/users/sam-mccall",
+        "user_view_type": "public"
     }
 }

@@ -18,7 +18,8 @@
         "starred_url": "https://api.github.com/users/luukvbaal/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/luukvbaal/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/luukvbaal"
+        "url": "https://api.github.com/users/luukvbaal",
+        "user_view_type": "public"
     },
     "assignees": [
         {
@@ -39,7 +40,8 @@
             "starred_url": "https://api.github.com/users/luukvbaal/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/luukvbaal/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/luukvbaal"
+            "url": "https://api.github.com/users/luukvbaal",
+            "user_view_type": "public"
         }
     ],
     "author_association": "MEMBER",
@@ -88,7 +90,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -132,7 +135,8 @@
                 "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/zeertzjq"
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
             }
         },
         {
@@ -176,11 +180,57 @@
                 "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/zeertzjq"
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "> This only happens with treesitter because treesitter uses `nvim__redraw`. Related: [#28668](https://github.com/neovim/neovim/issues/28668)\n\nUnrelated but I found that it still happens even after `vim.treesitter.stop()`. This is because `stop()` does not actually stop the highlighter's `on_bytes` callback.\n\nThe issue also happens when calling anything else that flushes the cursor position at msg_row/col still at the end of the newly changed cmdline. I.e. the following reproduces the flickering also without treesitter enabled:\n```lua\nlocal function replace_first_line_preview(opts, preview_ns, preview_buf)\n  local replacement = opts.args\n  vim.api.nvim_buf_set_text(0, 0, 0, 1, -1, { replacement })\n  vim.cmd.sleep(\"1m\")\n  -- vim.cmd.redrawtabline()\n  return 2\nend\n\nvim.treesitter.stop()\nvim.api.nvim_create_user_command(\n  \"ReplaceFirstLine\",\n  function() end,\n  { nargs = 1, preview = replace_first_line_preview }\n)\n```\n\nUnlikely that any of those commands make sense to call inside the cmdpreview callback but I think it does indicate that a proper solution would be to ensure that the cursor is at the correct position before doing cmdpreview: #31040.\n\n> Hmm, there is a difference between different options of nvim__redraw regarding how the redraw can be reflected immediately:\n\nTrue, do you think that presents a problem intrinsically? Currently `nvim__redraw` tries to not bother the caller with this and do what's needed implicitly.\n\n> For cursor, statuscolumn, statusline and winbar, only a ui_flush() is needed to reflect the redraw immediately.\n\nTrue except for statuscolumn which does require `update_screen()`.\n\n> For range, both update_screen() and ui_flush() are needed to reflect the redraw immediately, so calling ui_flush() without update_screen() won't work (and leads to the flicker here).\n\nYeah `nvim__redraw->range()` currently does more than what the old `nvim__buf_redraw_range()` did, and that the `ui_flush()` doesn't actually reflect what's intended to be redrawn for the TS `changedtree` callback (updated highlights). I raised this previously in the original PR:https://github.com/neovim/neovim/pull/28101#issuecomment-209105796 (without response). Currently it basically serves as a \"flush pressed keys because TS callback may take a long time\" (unintended). \n\nWe can either keep the `ui_flush()` for `range` (which was established to have improved editor responsiveness when added to the TS highlighter path), in which case it should probably also `update_screen()` (one doesn't make sense without the other as you say although I don't think it's what leads to the flicker per se).\n\nOr we can special case `range` and omit it the `ui_flush()` to keep it working like in 0.9 if there is a valid reason for doing so.\n\n**Further findings:**\n\nOn top of the `on_bytes` callback still being active after `vim.treesitter.stop()`, it seems entirely redundant in the first place? AFAIU an `on_bytes` callback should mean that the buffer range is already marked for redraw by `change.c`. Removing the callback altogether seems to confirm that, which doesn't yield any failed tests. I raised #31041 to do away with it. \n\nSo I think calling `update_screen()` and `ui_flush()` implicitly for `range` would make sense: #31042. But only if we get rid of the `on_bytes` callback as there it would just yield double redraws since the usual pattern is `extmark_splice` (emits `on_bytes`) -> `changed_()` marking the buffer to be redrawn again.\n\n\n",
+            "created_at": "2024-11-02T06:15:46Z",
+            "html_url": "https://github.com/neovim/neovim/issues/30696#issuecomment-2452887985",
+            "id": 2452887985,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/30696",
+            "node_id": "IC_kwDOAPphoM6SNBmx",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2452887985/reactions"
+            },
+            "updated_at": "2024-11-02T06:17:10Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2452887985",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/31730729?v=4",
+                "events_url": "https://api.github.com/users/luukvbaal/events{/privacy}",
+                "followers_url": "https://api.github.com/users/luukvbaal/followers",
+                "following_url": "https://api.github.com/users/luukvbaal/following{/other_user}",
+                "gists_url": "https://api.github.com/users/luukvbaal/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/luukvbaal",
+                "id": 31730729,
+                "login": "luukvbaal",
+                "node_id": "MDQ6VXNlcjMxNzMwNzI5",
+                "organizations_url": "https://api.github.com/users/luukvbaal/orgs",
+                "received_events_url": "https://api.github.com/users/luukvbaal/received_events",
+                "repos_url": "https://api.github.com/users/luukvbaal/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/luukvbaal/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/luukvbaal/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/luukvbaal",
+                "user_view_type": "public"
             }
         }
     ],
-    "comments": 3,
+    "comments": 4,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/30696/comments",
     "created_at": "2024-10-06T15:53:46Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/30696/events",
@@ -228,7 +278,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 6,
+        "closed_issues": 8,
         "created_at": "2024-09-30T11:50:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -248,7 +298,8 @@
             "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/justinmk"
+            "url": "https://api.github.com/users/justinmk",
+            "user_view_type": "public"
         },
         "description": "",
         "due_on": null,
@@ -257,10 +308,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/45/labels",
         "node_id": "MI_kwDOAPphoM4Asc0u",
         "number": 45,
-        "open_issues": 5,
+        "open_issues": 4,
         "state": "open",
         "title": "0.10.3",
-        "updated_at": "2024-10-13T18:34:06Z",
+        "updated_at": "2024-10-17T02:51:46Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/45"
     },
     "node_id": "I_kwDOAPphoM6ZG6-_",
@@ -281,9 +332,14 @@
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "open",
     "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/30696/timeline",
     "title": "inccommand: nvim_buf_set_text causes cursor flickering",
-    "updated_at": "2024-10-10T09:19:24Z",
+    "updated_at": "2024-11-02T06:17:10Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/30696",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/40792180?v=4",
@@ -303,6 +359,7 @@
         "starred_url": "https://api.github.com/users/smjonas/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/smjonas/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/smjonas"
+        "url": "https://api.github.com/users/smjonas",
+        "user_view_type": "public"
     }
 }

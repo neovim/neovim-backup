@@ -6,8 +6,54 @@
     "body": "### Problem\r\n\r\nWhen an lsp is loading, use `lua vim.api.nvim_buf_delete(0, { force = true })` to delete the buffer, and the following error will appear:\r\n```\r\nError executing vim.schedule lua callback: ...ed-nightly/share/nvim/runtime/lua/vim/lsp/inlay_hint.lua:73: Invalid buffer id: 17\r\n\r\nError executing vim.schedule lua callback: ...ghtly/share/nvim/runtime/lua/vim/lsp/semantic_tokens.lua:309: ...ghtly/share/nvim/runtime/lua/vim/lsp/semantic_tokens.lua:102: Invalid buffer id: 26\r\n\r\n```\r\n\r\n### Steps to reproduce\r\n\r\n1. Open a buffer and load lsp (choose the one with longer loading time)\r\n1. Execute `:lua vim.api.nvim_buf_delete(0, { force = true })`\r\n1. An error will be thrown\r\n\r\n### Expected behavior\r\n\r\nat [this](https://github.com/neovim/neovim/blob/b3d94b10870ce494941279f78387e1d98a7e48e7/runtime/lua/vim/lsp/inlay_hint.lua#L73C3-L73C60) place:\r\n\r\n```lua\r\nlocal lines = api.nvim_buf_get_lines(bufnr, 0, -1, false)\r\n```\r\nMaybe we can use `vim.api.nvim_buf_is_valid` before calling `api.nvim_buf_get_lines` to check whether the buffer is still valid at this time\r\n\r\n### Neovim version (nvim -v)\r\n\r\nNVIM v0.11.0-nightly+3c53e8f\r\n\r\n### Vim (not Nvim) behaves the same?\r\n\r\nno\r\n\r\n### Operating system/version\r\n\r\nWindows 11 WSL2 nixos\r\n\r\n### Terminal name/version\r\n\r\nWezterm\r\n\r\n### $TERM environment variable\r\n\r\nxterm-256color\r\n\r\n### Installation\r\n\r\nnix package",
     "closed_at": null,
     "closed_by": null,
-    "comment_data": [],
-    "comments": 0,
+    "comment_data": [
+        {
+            "author_association": "MEMBER",
+            "body": "I was able to produce a similar error using the steps in the OP, though I had to time it precisely.\n\n```\nError executing vim.schedule lua callback: /usr/local/share/nvim/runtime/lua/vim/uri.lua:82: Invalid buffer id: 1\nstack traceback:\n        [C]: in function 'nvim_buf_get_name'\n        /usr/local/share/nvim/runtime/lua/vim/uri.lua:82: in function 'uri_from_bufnr'\n        /usr/local/share/nvim/runtime/lua/vim/lsp/util.lua:212: in function 'get_lines'\n        /usr/local/share/nvim/runtime/lua/vim/lsp/util.lua:275: in function 'get_line'\n        /usr/local/share/nvim/runtime/lua/vim/lsp/util.lua:289: in function 'get_line_byte_from_position'\n        /usr/local/share/nvim/runtime/lua/vim/lsp/util.lua:1636: in function 'buf_highlight_references'\n        /usr/local/share/nvim/runtime/lua/vim/lsp/handlers.lua:468: in function 'handler'\n        /usr/local/share/nvim/runtime/lua/vim/lsp/client.lua:681: in function ''\n        vim/_editor.lua: in function <vim/_editor.lua:0>\n```\n\nI think the problem is that all the async handlers don't check if the buffer is still valid. This will be in a bunch of places. We may be able to fix this centrally in `client.request`.",
+            "created_at": "2024-10-31T09:50:23Z",
+            "html_url": "https://github.com/neovim/neovim/issues/29614#issuecomment-2449450252",
+            "id": 2449450252,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/29614",
+            "node_id": "IC_kwDOAPphoM6R_6UM",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2449450252/reactions"
+            },
+            "updated_at": "2024-10-31T09:50:23Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2449450252",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",
+                "events_url": "https://api.github.com/users/lewis6991/events{/privacy}",
+                "followers_url": "https://api.github.com/users/lewis6991/followers",
+                "following_url": "https://api.github.com/users/lewis6991/following{/other_user}",
+                "gists_url": "https://api.github.com/users/lewis6991/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/lewis6991",
+                "id": 7904185,
+                "login": "lewis6991",
+                "node_id": "MDQ6VXNlcjc5MDQxODU=",
+                "organizations_url": "https://api.github.com/users/lewis6991/orgs",
+                "received_events_url": "https://api.github.com/users/lewis6991/received_events",
+                "repos_url": "https://api.github.com/users/lewis6991/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
+            }
+        }
+    ],
+    "comments": 1,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/29614/comments",
     "created_at": "2024-07-08T11:34:49Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/29614/events",
@@ -37,7 +83,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 645,
+        "closed_issues": 659,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -57,7 +103,8 @@
             "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/justinmk"
+            "url": "https://api.github.com/users/justinmk",
+            "user_view_type": "public"
         },
         "description": "Low priority items. We plan to work on this but don't have a target date.",
         "due_on": null,
@@ -66,10 +113,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 566,
+        "open_issues": 615,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2024-09-09T18:06:19Z",
+        "updated_at": "2024-11-04T13:49:47Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM6OxrP0",
@@ -90,9 +137,14 @@
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "open",
     "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/29614/timeline",
-    "title": "Lsp: inlay_hint.lua:73: Invalid buffer id",
-    "updated_at": "2024-09-03T12:47:25Z",
+    "title": "LSP handlers do not consistently check if the buffer is still valid",
+    "updated_at": "2024-10-31T09:51:21Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/29614",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/31800073?v=4",
@@ -112,6 +164,7 @@
         "starred_url": "https://api.github.com/users/Parsifa1/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/Parsifa1/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/Parsifa1"
+        "url": "https://api.github.com/users/Parsifa1",
+        "user_view_type": "public"
     }
 }
