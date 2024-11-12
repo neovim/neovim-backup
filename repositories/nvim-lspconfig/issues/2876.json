@@ -5,6 +5,27 @@
     "author_association": "NONE",
     "body": "### Description\n\nI have put a function in on_attach which should activate the inlay hints, it works well in other languages, but not in rust.\r\n when I make a file change it is already seen\n\n### Neovim version\n\nNVIM v0.10.0-dev-ac353e8\r\nBuild type: RelWithDebInfo\r\nLuaJIT 2.1.169788790\n\n### Nvim-lspconfig version\n\nd0467b9574b48429debf83f8248d8cee79562586\n\n### Operating system and version\n\nArchLinux 6.5.9-arch2-1\n\n### Affected language servers\n\nrust_analyzer\n\n### Steps to reproduce\n\nset `vim.lsp.inlay_hint(bufnr, true)` in on_attach function\n\n### Actual behavior\n\nthe inlay hints are not seen in rust until the file is changed\r\n![imagen](https://github.com/neovim/nvim-lspconfig/assets/59105868/cef18dff-f88b-481a-b366-d4b0d93f3a71)\r\n\n\n### Expected behavior\n\nthe inlay hints should be seen when loading rust analyzer\r\n![imagen](https://github.com/neovim/nvim-lspconfig/assets/59105868/262ded6d-a204-4586-b6e9-903becc99b15)\r\n\n\n### Minimal config\n\n```Lua\nlocal on_windows = vim.loop.os_uname().version:match 'Windows'\r\n\r\nlocal function join_paths(...)\r\n  local path_sep = on_windows and '\\\\' or '/'\r\n  local result = table.concat({ ... }, path_sep)\r\n  return result\r\nend\r\n\r\nvim.cmd [[set runtimepath=$VIMRUNTIME]]\r\n\r\nlocal temp_dir = vim.loop.os_getenv 'TEMP' or '/tmp'\r\n\r\nvim.cmd('set packpath=' .. join_paths(temp_dir, 'nvim', 'site'))\r\n\r\nlocal package_root = join_paths(temp_dir, 'nvim', 'site', 'pack')\r\nlocal lspconfig_path = join_paths(package_root, 'test', 'start', 'nvim-lspconfig')\r\n\r\nif vim.fn.isdirectory(lspconfig_path) ~= 1 then\r\n  vim.fn.system { 'git', 'clone', 'https://github.com/neovim/nvim-lspconfig', lspconfig_path }\r\nend\r\n\r\nvim.lsp.set_log_level 'trace'\r\nrequire('vim.lsp.log').set_format_func(vim.inspect)\r\nlocal nvim_lsp = require 'lspconfig'\r\nlocal on_attach = function(client, bufnr)\r\n  local function buf_set_option(...)\r\n    vim.api.nvim_buf_set_option(bufnr, ...)\r\n  end\r\n\r\n  buf_set_option('omnifunc', 'v:lua.vim.lsp.omnifunc')\r\n\r\n  if client.server_capabilities.inlayHintProvider then\r\n        local inlay_hints_group = vim.api.nvim_create_augroup('InlayHints', { clear = true })\r\n\r\n        -- Initial inlay hint display.\r\n        local mode = vim.api.nvim_get_mode().mode\r\n        vim.lsp.inlay_hint(bufnr, mode == 'n' or mode == 'v')\r\n\r\n        vim.api.nvim_create_autocmd('InsertEnter', {\r\n            group = inlay_hints_group,\r\n            buffer = bufnr,\r\n            callback = function()\r\n                vim.lsp.inlay_hint(bufnr, true)\r\n            end,\r\n        })\r\n        vim.api.nvim_create_autocmd('InsertLeave', {\r\n            group = inlay_hints_group,\r\n            buffer = bufnr,\r\n            callback = function()\r\n                -- vim.lsp.inlay_hint(bufnr, true)\r\n            end,\r\n        })\r\n    end\r\n\r\n  -- Mappings.\r\n  local opts = { buffer = bufnr, noremap = true, silent = true }\r\n  vim.keymap.set('n', 'gD', vim.lsp.buf.declaration, opts)\r\n  vim.keymap.set('n', 'gd', vim.lsp.buf.definition, opts)\r\n  vim.keymap.set('n', 'K', vim.lsp.buf.hover, opts)\r\n  vim.keymap.set('n', 'gi', vim.lsp.buf.implementation, opts)\r\n  vim.keymap.set('n', '<C-k>', vim.lsp.buf.signature_help, opts)\r\n  vim.keymap.set('n', '<space>wa', vim.lsp.buf.add_workspace_folder, opts)\r\n  vim.keymap.set('n', '<space>wr', vim.lsp.buf.remove_workspace_folder, opts)\r\n  vim.keymap.set('n', '<space>wl', function()\r\n    print(vim.inspect(vim.lsp.buf.list_workspace_folders()))\r\n  end, opts)\r\n  vim.keymap.set('n', '<space>D', vim.lsp.buf.type_definition, opts)\r\n  vim.keymap.set('n', '<space>rn', vim.lsp.buf.rename, opts)\r\n  vim.keymap.set('n', 'gr', vim.lsp.buf.references, opts)\r\n  vim.keymap.set('n', '<space>e', vim.diagnostic.open_float, opts)\r\n  vim.keymap.set('n', '[d', vim.diagnostic.goto_prev, opts)\r\n  vim.keymap.set('n', ']d', vim.diagnostic.goto_next, opts)\r\n  vim.keymap.set('n', '<space>q', vim.diagnostic.setloclist, opts)\r\nend\r\n\r\n-- Add the server that troubles you here\r\nlocal name = 'rust_analyzer'\r\nlocal cmd = { 'rust-analyzer'} -- needed for elixirls, lua_ls, omnisharp\r\nif not name then\r\n  print 'You have not defined a server name, please edit minimal_init.lua'\r\nend\r\nif not nvim_lsp[name].document_config.default_config.cmd and not cmd then\r\n  print [[You have not defined a server default cmd for a server\r\n    that requires it please edit minimal_init.lua]]\r\nend\r\n\r\nnvim_lsp[name].setup {\r\n  cmd = cmd,\r\n  on_attach = on_attach,\r\n}\r\n\r\nprint [[You can find your log at $HOME/.cache/nvim/lsp.log. Please paste in a github issue under a details tag as described in the issue template.]]\n```\n\n\n### LSP log\n\nhttps://gist.github.com/SrWither/d6c09b3f855539301e604a29fdb940c8",
     "closed_at": "2023-11-20T15:28:15Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+        "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+        "followers_url": "https://api.github.com/users/justinmk/followers",
+        "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+        "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/justinmk",
+        "id": 1359421,
+        "login": "justinmk",
+        "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+        "organizations_url": "https://api.github.com/users/justinmk/orgs",
+        "received_events_url": "https://api.github.com/users/justinmk/received_events",
+        "repos_url": "https://api.github.com/users/justinmk/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -47,7 +68,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -60,7 +82,7 @@
             "node_id": "IC_kwDODTQC1851AOJ3",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 7,
+                "+1": 8,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -68,7 +90,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 7,
+                "total_count": 8,
                 "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/comments/1962992247/reactions"
             },
             "updated_at": "2024-02-25T16:33:17Z",
@@ -91,7 +113,8 @@
                 "starred_url": "https://api.github.com/users/rikhuijzer/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/rikhuijzer/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/rikhuijzer"
+                "url": "https://api.github.com/users/rikhuijzer",
+                "user_view_type": "public"
             }
         },
         {
@@ -104,7 +127,7 @@
             "node_id": "IC_kwDODTQC186DYqul",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 0,
+                "+1": 1,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -112,7 +135,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 0,
+                "total_count": 1,
                 "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/comments/2204281765/reactions"
             },
             "updated_at": "2024-07-02T20:00:42Z",
@@ -135,11 +158,57 @@
                 "starred_url": "https://api.github.com/users/KoushikSahu/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/KoushikSahu/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/KoushikSahu"
+                "url": "https://api.github.com/users/KoushikSahu",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "> [@rikhuijzer](https://github.com/rikhuijzer) why is editing the file required? Is there any way around this?\n\nExactly, why? I mean, I've noticed the same, but other LSP servers have Inlay Hints upon enabling, no need to edit the buffer whatsoever.",
+            "created_at": "2024-11-11T00:56:52Z",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/issues/2876#issuecomment-2467035770",
+            "id": 2467035770,
+            "issue_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/2876",
+            "node_id": "IC_kwDODTQC186TC_p6",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/comments/2467035770/reactions"
+            },
+            "updated_at": "2024-11-11T00:56:52Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/comments/2467035770",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/102958?v=4",
+                "events_url": "https://api.github.com/users/baco/events{/privacy}",
+                "followers_url": "https://api.github.com/users/baco/followers",
+                "following_url": "https://api.github.com/users/baco/following{/other_user}",
+                "gists_url": "https://api.github.com/users/baco/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/baco",
+                "id": 102958,
+                "login": "baco",
+                "node_id": "MDQ6VXNlcjEwMjk1OA==",
+                "organizations_url": "https://api.github.com/users/baco/orgs",
+                "received_events_url": "https://api.github.com/users/baco/received_events",
+                "repos_url": "https://api.github.com/users/baco/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/baco/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/baco/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/baco",
+                "user_view_type": "public"
             }
         }
     ],
-    "comments": 3,
+    "comments": 4,
     "comments_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/2876/comments",
     "created_at": "2023-10-29T03:25:57Z",
     "events_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/2876/events",
@@ -177,9 +246,14 @@
     "repository_url": "https://api.github.com/repos/neovim/nvim-lspconfig",
     "state": "closed",
     "state_reason": "not_planned",
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/2876/timeline",
     "title": "Inlay hints not working in rust analyzer on_attach",
-    "updated_at": "2024-07-02T20:00:42Z",
+    "updated_at": "2024-11-11T00:56:53Z",
     "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/2876",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/59105868?v=4",
@@ -199,6 +273,7 @@
         "starred_url": "https://api.github.com/users/SrWither/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/SrWither/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/SrWither"
+        "url": "https://api.github.com/users/SrWither",
+        "user_view_type": "public"
     }
 }

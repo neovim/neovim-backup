@@ -5,6 +5,7 @@
     "author_association": "MEMBER",
     "body": "## Problem\r\n\r\n\"Press ENTER\" prompt is obnoxious. Most messages do not require explicit user confirmation. No, not even error messages.\r\n\r\nThe prevalence of \"Press ENTER\" is mostly an accident because of vim's reliance on stale tty state to show a message.\r\n\r\nRelated:\r\n\r\n- https://github.com/neovim/neovim/issues/1029\r\n- https://github.com/neovim/neovim/issues/10879\r\n\r\n\r\n## Expected behavior\r\n\r\n\r\n\r\n`:messages` should be querable via an API.\r\nAll messages emitted by Nvim should have metadata allowing Nvim (and plugins etc) to better decide:\r\n\r\n1. which messages genuinely need active user confirmation\r\n2. which messages can be shown passively (in the cmdline/message area)\r\n3. which messages need a pager\r\n4. which messages should be shown for a minimum of X seconds, fading away after some time\r\n\r\n### Message metadata\r\n\r\n- result (needs pager -- or actual buffer/floating window)\r\n- error (needs message, and be sticky; user cannot silence)\r\n    - most errors don't need confirm. they can be \"sticky\" by showing them in the cmdline/message area (which may get overwritten by another message, then show `+3 errors` in 'showcmd')\r\n- confirm (invokes \"Press ENTER\" or something like it)\r\n- info (needs message, but user can decide how it happens)\r\n- progress (be sticky and replaceable)\r\n\r\n### Eliminate \"Press ENTER\" (for 99% of cases)\r\n\r\nWith the above, Nvim can do smart things like , instead of showing \"Press ENTER\", show `+3 messages` in the 'showcmd' area (e.g.) and the user can check them if they want (via a mapping like `g<` or `g>`).\r\n\r\n\"Press ENTER\" should be very rare except for actually dangerous situations.\r\n\"Editing a readonly file\" is not a dangerous situation.",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "NONE",
@@ -47,11 +48,57 @@
                 "starred_url": "https://api.github.com/users/9mm/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/9mm/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/9mm"
+                "url": "https://api.github.com/users/9mm",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "NONE",
+            "body": "I apologize for commenting here if not appropriate (if there is a gh issue or discussion that is more appropriate, please point me there as happy to take conversation there)... but I am curious to know where things stand with the `:messages api` (specifically avoiding the \"press Enter...\" annoyance when setting cmdheight=0). Thanks!",
+            "created_at": "2024-11-11T15:39:40Z",
+            "html_url": "https://github.com/neovim/neovim/issues/22478#issuecomment-2468468760",
+            "id": 2468468760,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/22478",
+            "node_id": "IC_kwDOAPphoM6TIdgY",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 1,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2468468760/reactions"
+            },
+            "updated_at": "2024-11-11T15:39:40Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2468468760",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/64155612?v=4",
+                "events_url": "https://api.github.com/users/GitMurf/events{/privacy}",
+                "followers_url": "https://api.github.com/users/GitMurf/followers",
+                "following_url": "https://api.github.com/users/GitMurf/following{/other_user}",
+                "gists_url": "https://api.github.com/users/GitMurf/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/GitMurf",
+                "id": 64155612,
+                "login": "GitMurf",
+                "node_id": "MDQ6VXNlcjY0MTU1NjEy",
+                "organizations_url": "https://api.github.com/users/GitMurf/orgs",
+                "received_events_url": "https://api.github.com/users/GitMurf/received_events",
+                "repos_url": "https://api.github.com/users/GitMurf/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/GitMurf/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/GitMurf/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/GitMurf",
+                "user_view_type": "public"
             }
         }
     ],
-    "comments": 1,
+    "comments": 2,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/22478/comments",
     "created_at": "2023-03-02T15:51:56Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/22478/events",
@@ -88,7 +135,7 @@
         {
             "color": "C5DEF5",
             "default": false,
-            "description": "UI messages, log messages",
+            "description": "UI messages, log messages, errors, warnings, feedback",
             "id": 5637083595,
             "name": "messages",
             "node_id": "LA_kwDOAPphoM8AAAABT_8Ryw",
@@ -99,7 +146,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 629,
+        "closed_issues": 660,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -119,42 +166,48 @@
             "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/justinmk"
+            "url": "https://api.github.com/users/justinmk",
+            "user_view_type": "public"
         },
-        "description": "Low priority. Not planned for the current target, may be reassigned.",
+        "description": "Low priority items. We plan to work on this but don't have a target date.",
         "due_on": null,
         "html_url": "https://github.com/neovim/neovim/milestone/6",
         "id": 655037,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 546,
+        "open_issues": 614,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2024-07-13T00:12:58Z",
+        "updated_at": "2024-11-07T08:21:30Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM5fybfi",
     "number": 22478,
     "performed_via_github_app": null,
     "reactions": {
-        "+1": 44,
+        "+1": 51,
         "-1": 0,
         "confused": 0,
         "eyes": 0,
         "heart": 0,
-        "hooray": 12,
+        "hooray": 13,
         "laugh": 0,
         "rocket": 0,
-        "total_count": 56,
+        "total_count": 64,
         "url": "https://api.github.com/repos/neovim/neovim/issues/22478/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "open",
     "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/22478/timeline",
     "title": ":messages query API, kill \"Press ENTER\" with fire",
-    "updated_at": "2024-07-10T13:18:18Z",
+    "updated_at": "2024-11-11T15:39:42Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/22478",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -174,6 +227,7 @@
         "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/justinmk"
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
     }
 }
