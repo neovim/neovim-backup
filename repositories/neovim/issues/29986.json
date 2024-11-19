@@ -3,10 +3,57 @@
     "assignee": null,
     "assignees": [],
     "author_association": "NONE",
-    "body": "### Problem\n\nI am currently trying to setup intelephense to work and need to increase the max file size, in vscode using the `settings.json` file it would be down as follows: `\"intelephense.files.maxSize\" = 1500000`.\r\nI see in the docs that we should be able to set this as follows\r\n```\r\nlspconfig.intelephense.setup({\r\n\tcapabilities = capabilities,\r\n\tsettings = {\r\n\t\tintelephense = {\r\n\t\t\tfiles = {\r\n\t\t\t\tmaxSize = 1500000,\r\n\t\t\t},\r\n\t\t},\r\n\t},\r\n})\r\n```\r\nUpon using the following:\r\n\r\n`:lua=require('lspconfig').intelephense`\r\nI do get a block that includes it, but it's listed below the root_dir.\r\n\r\nOriginally it did not seem to work at all, however it does seem to work inconsistently, and I don't know what causes it to work when it does.\r\n\r\nYou can use https://pinetools.com/random-file-generator to create a file with over 1mb of data (I set 1 file, 1100000 bytes, called the file `sample.php` and downloaded it)\r\n\r\nYou will need to open the file once with the `minimal_init.lua` to let intelephense install, and then a second time for it to attempt to succesfully run intelephense.\n\n### Steps to reproduce using \"nvim -u minimal_init.lua\"\n\n```\r\nlocal pattern = \"php\"\r\nlocal cmd = { \"node\", \"intelephense\", \"--stdio\" }\r\nvim.lsp.log.set_level(vim.log.levels.WARN)\r\n-- Add files/folders here that indicate the root of a project\r\nlocal root_markers = { \".git\", \".editorconfig\" }\r\nfor name, url in pairs({\r\n\tmason = \"https://github.com/williamboman/mason.nvim\",\r\n\tmasonLspConfig = \"https://github.com/williamboman/mason-lspconfig.nvim\",\r\n}) do\r\n\tlocal install_path = vim.fn.fnamemodify(\"nvim_issue/\" .. name, \":p\")\r\n\tprint(install_path)\r\n\tif vim.fn.isdirectory(install_path) == 0 then\r\n\t\tvim.fn.system({ \"git\", \"clone\", \"--depth=1\", url, install_path })\r\n\tend\r\n\tvim.opt.runtimepath:append(install_path)\r\nend -- Change to table with settings if required\r\n\r\nrequire(\"mason\").setup()\r\nrequire(\"mason-lspconfig\").setup({\r\n\tensure_installed = { \"intelephense\" },\r\n})\r\nlocal settings = {\r\n\tintelephense = {\r\n\t\tfiles = {\r\n\t\t\tmaxSize = 1500000,\r\n\t\t},\r\n\t},\r\n}\r\n\r\nvim.api.nvim_create_autocmd(\"FileType\", {\r\n\tpattern = pattern,\r\n\tcallback = function(args)\r\n\t\tlocal match = vim.fs.find(root_markers, { path = args.file, upward = true })[1]\r\n\t\tlocal root_dir = match and vim.fn.fnamemodify(match, \":p:h\") or nil\r\n\t\tprint(root_dir)\r\n\t\tvim.lsp.start({\r\n\t\t\tname = \"intelephense\",\r\n\t\t\tcmd_cwd = \"/Users/[YOU]/.local/share/nvim/mason/bin\",\r\n\t\t\tcmd = cmd,\r\n\t\t\troot_dir = root_dir,\r\n\t\t\tsettings = settings,\r\n\t\t})\r\n\tend,\r\n})\r\n```\n\n### Expected behavior\n\nIntelephense starts up without issue.\n\n### Neovim version (nvim -v)\n\n0.11.0-dev-408+gb1aa8f5eb\n\n### Language server name/version\n\nintelephense 1.11.8\n\n### Operating system/version\n\nMacOS Sonoma 14.2.1\n\n### Log file\n\nhttps://gist.github.com/Ryntak94/1c00d9976cbe9c89591ca21a239e89fd",
+    "body": "### Problem\n\nI am currently trying to setup intelephense to work and need to increase the max file size, in vscode using the `settings.json` file it would be down as follows: `\"intelephense.files.maxSize\" = 1500000`.\nI see in the docs that we should be able to set this as follows\n```lua\nlspconfig.intelephense.setup({\n\tcapabilities = capabilities,\n\tsettings = {\n\t\tintelephense = {\n\t\t\tfiles = {\n\t\t\t\tmaxSize = 1500000,\n\t\t\t},\n\t\t},\n\t},\n})\n```\nUpon using the following:\n\n`:lua=require('lspconfig').intelephense`\nI do get a block that includes it, but it's listed below the root_dir.\n\nOriginally it did not seem to work at all, however it does seem to work inconsistently, and I don't know what causes it to work when it does.\n\nYou can use https://pinetools.com/random-file-generator to create a file with over 1mb of data (I set 1 file, 1100000 bytes, called the file `sample.php` and downloaded it)\n\nYou will need to open the file once with the `minimal_init.lua` to let intelephense install, and then a second time for it to attempt to succesfully run intelephense.\n\n### Steps to reproduce using \"nvim -u minimal_init.lua\"\n\n```lua\nlocal pattern = \"php\"\nlocal cmd = { \"node\", \"intelephense\", \"--stdio\" }\nvim.lsp.log.set_level(vim.log.levels.WARN)\n-- Add files/folders here that indicate the root of a project\nlocal root_markers = { \".git\", \".editorconfig\" }\nfor name, url in pairs({\n\tmason = \"https://github.com/williamboman/mason.nvim\",\n\tmasonLspConfig = \"https://github.com/williamboman/mason-lspconfig.nvim\",\n}) do\n\tlocal install_path = vim.fn.fnamemodify(\"nvim_issue/\" .. name, \":p\")\n\tprint(install_path)\n\tif vim.fn.isdirectory(install_path) == 0 then\n\t\tvim.fn.system({ \"git\", \"clone\", \"--depth=1\", url, install_path })\n\tend\n\tvim.opt.runtimepath:append(install_path)\nend -- Change to table with settings if required\n\nrequire(\"mason\").setup()\nrequire(\"mason-lspconfig\").setup({\n\tensure_installed = { \"intelephense\" },\n})\nlocal settings = {\n\tintelephense = {\n\t\tfiles = {\n\t\t\tmaxSize = 1500000,\n\t\t},\n\t},\n}\n\nvim.api.nvim_create_autocmd(\"FileType\", {\n\tpattern = pattern,\n\tcallback = function(args)\n\t\tlocal match = vim.fs.find(root_markers, { path = args.file, upward = true })[1]\n\t\tlocal root_dir = match and vim.fn.fnamemodify(match, \":p:h\") or nil\n\t\tprint(root_dir)\n\t\tvim.lsp.start({\n\t\t\tname = \"intelephense\",\n\t\t\tcmd_cwd = \"/Users/[YOU]/.local/share/nvim/mason/bin\",\n\t\t\tcmd = cmd,\n\t\t\troot_dir = root_dir,\n\t\t\tsettings = settings,\n\t\t})\n\tend,\n})\n```\n\n### Expected behavior\n\nIntelephense starts up without issue.\n\n### Neovim version (nvim -v)\n\n0.11.0-dev-408+gb1aa8f5eb\n\n### Language server name/version\n\nintelephense 1.11.8\n\n### Operating system/version\n\nMacOS Sonoma 14.2.1\n\n### Log file\n\nhttps://gist.github.com/Ryntak94/1c00d9976cbe9c89591ca21a239e89fd",
     "closed_at": null,
-    "comment_data": [],
-    "comments": 0,
+    "closed_by": null,
+    "comment_data": [
+        {
+            "author_association": "MEMBER",
+            "body": "Neovim doesn't do a lot here. I just sends a notification to the server https://github.com/neovim/neovim/blob/29ded889579a9d590e8ea885a9a402ff4bae87be/runtime/lua/vim/lsp/client.lua#L597-L599\n\nAny issues are likely due to the server itself.",
+            "created_at": "2024-11-14T10:23:59Z",
+            "html_url": "https://github.com/neovim/neovim/issues/29986#issuecomment-2475966192",
+            "id": 2475966192,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/29986",
+            "node_id": "IC_kwDOAPphoM6TlD7w",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2475966192/reactions"
+            },
+            "updated_at": "2024-11-16T21:55:20Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2475966192",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",
+                "events_url": "https://api.github.com/users/lewis6991/events{/privacy}",
+                "followers_url": "https://api.github.com/users/lewis6991/followers",
+                "following_url": "https://api.github.com/users/lewis6991/following{/other_user}",
+                "gists_url": "https://api.github.com/users/lewis6991/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/lewis6991",
+                "id": 7904185,
+                "login": "lewis6991",
+                "node_id": "MDQ6VXNlcjc5MDQxODU=",
+                "organizations_url": "https://api.github.com/users/lewis6991/orgs",
+                "received_events_url": "https://api.github.com/users/lewis6991/received_events",
+                "repos_url": "https://api.github.com/users/lewis6991/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
+            }
+        }
+    ],
+    "comments": 1,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/29986/comments",
     "created_at": "2024-08-06T01:45:40Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/29986/events",
@@ -21,6 +68,15 @@
             "name": "bug",
             "node_id": "MDU6TGFiZWw3Nzk5NzQ3NA==",
             "url": "https://api.github.com/repos/neovim/neovim/labels/bug"
+        },
+        {
+            "color": "FBCA04",
+            "default": false,
+            "description": "waiting for reply from the author",
+            "id": 248229439,
+            "name": "needs:response",
+            "node_id": "MDU6TGFiZWwyNDgyMjk0Mzk=",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/needs:response"
         },
         {
             "color": "c5def5",
@@ -53,9 +109,14 @@
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "open",
     "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/29986/timeline",
     "title": "LSP: settings field does not work consistently",
-    "updated_at": "2024-08-12T13:13:04Z",
+    "updated_at": "2024-11-16T21:55:20Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/29986",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/25399037?v=4",
@@ -75,6 +136,7 @@
         "starred_url": "https://api.github.com/users/Ryntak94/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/Ryntak94/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/Ryntak94"
+        "url": "https://api.github.com/users/Ryntak94",
+        "user_view_type": "public"
     }
 }

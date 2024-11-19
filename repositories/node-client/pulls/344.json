@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/node-client/pulls/344"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/node-client/statuses/17f61b7880428b3242d3b0054b982a02e4433b86"
+            "href": "https://api.github.com/repos/neovim/node-client/statuses/816c6ba6a3efc774ba2e3b5ab73cd39678a2cbb1"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/node-client/downloads",
             "events_url": "https://api.github.com/repos/neovim/node-client/events",
             "fork": false,
-            "forks": 52,
-            "forks_count": 52,
+            "forks": 53,
+            "forks_count": 53,
             "forks_url": "https://api.github.com/repos/neovim/node-client/forks",
             "full_name": "neovim/node-client",
             "git_commits_url": "https://api.github.com/repos/neovim/node-client/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "node-client",
             "node_id": "MDEwOlJlcG9zaXRvcnkzMDY1MTI4Mw==",
             "notifications_url": "https://api.github.com/repos/neovim/node-client/notifications{?since,all,participating}",
-            "open_issues": 21,
-            "open_issues_count": 21,
+            "open_issues": 22,
+            "open_issues_count": 22,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -114,15 +114,16 @@
                 "starred_url": "https://api.github.com/users/neovim/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/neovim/subscriptions",
                 "type": "Organization",
-                "url": "https://api.github.com/users/neovim"
+                "url": "https://api.github.com/users/neovim",
+                "user_view_type": "public"
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/node-client/pulls{/number}",
-            "pushed_at": "2024-10-14T06:39:02Z",
+            "pushed_at": "2024-11-18T06:35:15Z",
             "releases_url": "https://api.github.com/repos/neovim/node-client/releases{/id}",
-            "size": 3940,
+            "size": 3561,
             "ssh_url": "git@github.com:neovim/node-client.git",
-            "stargazers_count": 487,
+            "stargazers_count": 489,
             "stargazers_url": "https://api.github.com/repos/neovim/node-client/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/node-client/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/node-client/subscribers",
@@ -139,14 +140,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/node-client/git/trees{/sha}",
-            "updated_at": "2024-10-13T12:22:47Z",
+            "updated_at": "2024-11-17T18:13:00Z",
             "url": "https://api.github.com/repos/neovim/node-client",
             "visibility": "public",
-            "watchers": 487,
-            "watchers_count": 487,
+            "watchers": 489,
+            "watchers_count": 489,
             "web_commit_signoff_required": false
         },
-        "sha": "a334f3d3fc6c6004fc871b7812dbec7e7e1b3805",
+        "sha": "8702dcdc1e15f57c01d8ef2c9805e31d2e915cc1",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -165,7 +166,8 @@
             "starred_url": "https://api.github.com/users/neovim/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/neovim/subscriptions",
             "type": "Organization",
-            "url": "https://api.github.com/users/neovim"
+            "url": "https://api.github.com/users/neovim",
+            "user_view_type": "public"
         }
     },
     "body": "## Problem:\r\nThe \"remote plugin\" concept is too complicated. https://github.com/neovim/neovim/issues/27949\r\n\r\n## Solution:\r\n- Let the \"client\" also be the \"host\". Eliminate the separate \"host\" concept and related modules.\r\n- Any node module that imports the \"neovim\" package and defines method handler(s) is a \"remote module\". It is loaded by Nvim same as any \"node client\".\r\n\r\n## TODO\r\n\r\n- [ ] `setup()` (placeholder name) attaches and calls `nvim_set_client_info()` with the `methods` defined by `setHandler()`.\r\n- [ ] node scripts can't import globally-installed modules. ~~So the rplugin script will need to be run with `NODE_PATH=$(npm root --quiet -g)` , or would need to `npm install` in the local plugin directory.~~\r\n    - [ ] most reliabe: do `npm install neovim` at the root of `stdpath('cache')` (or wherever plugins are stored)\r\n    - [ ] yarn, pnpm, etc? 💩 [ref](https://github.com/neovim/neovim/blob/562719033ec8bec9f6d56c166b9aef13f8a50a96/runtime/autoload/provider/node.vim#L65-L104)\r\n\r\n## TEST CASE / DEMO:\r\n\r\n### Invocation\r\n\r\n    const found = findNvim({ orderBy: 'desc', minVersion: '0.9.0' })\r\n    const nvim_proc = child_process.spawn(found.matches[0].path, ['--clean', '--embed'], {});\r\n    const nvim = attach({ proc: nvim_proc });\r\n    nvim.setHandler('foo', (ev, args) => {\r\n      nvim.logger.info('handled from remote module: \"%s\": args:%O', ev.name, args);\r\n    });\r\n    nvim.callFunction('rpcrequest', [(await nvim.channelId), 'foo', [42, true, 'bar']]);\r\n\r\n### Result\r\n\r\n    2024-03-26 16:47:35 INF handleRequest: foo\r\n    2024-03-26 16:47:35 DBG request received: foo\r\n    2024-03-26 16:47:35 INF handled from remote module: \"foo\": args:[ [ 42, true, 'bar' ] ]",
@@ -202,8 +204,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/node-client/downloads",
             "events_url": "https://api.github.com/repos/neovim/node-client/events",
             "fork": false,
-            "forks": 52,
-            "forks_count": 52,
+            "forks": 53,
+            "forks_count": 53,
             "forks_url": "https://api.github.com/repos/neovim/node-client/forks",
             "full_name": "neovim/node-client",
             "git_commits_url": "https://api.github.com/repos/neovim/node-client/git/commits{/sha}",
@@ -241,8 +243,8 @@
             "name": "node-client",
             "node_id": "MDEwOlJlcG9zaXRvcnkzMDY1MTI4Mw==",
             "notifications_url": "https://api.github.com/repos/neovim/node-client/notifications{?since,all,participating}",
-            "open_issues": 21,
-            "open_issues_count": 21,
+            "open_issues": 22,
+            "open_issues_count": 22,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -261,15 +263,16 @@
                 "starred_url": "https://api.github.com/users/neovim/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/neovim/subscriptions",
                 "type": "Organization",
-                "url": "https://api.github.com/users/neovim"
+                "url": "https://api.github.com/users/neovim",
+                "user_view_type": "public"
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/node-client/pulls{/number}",
-            "pushed_at": "2024-10-14T06:39:02Z",
+            "pushed_at": "2024-11-18T06:35:15Z",
             "releases_url": "https://api.github.com/repos/neovim/node-client/releases{/id}",
-            "size": 3940,
+            "size": 3561,
             "ssh_url": "git@github.com:neovim/node-client.git",
-            "stargazers_count": 487,
+            "stargazers_count": 489,
             "stargazers_url": "https://api.github.com/repos/neovim/node-client/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/node-client/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/node-client/subscribers",
@@ -286,14 +289,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/node-client/git/trees{/sha}",
-            "updated_at": "2024-10-13T12:22:47Z",
+            "updated_at": "2024-11-17T18:13:00Z",
             "url": "https://api.github.com/repos/neovim/node-client",
             "visibility": "public",
-            "watchers": 487,
-            "watchers_count": 487,
+            "watchers": 489,
+            "watchers_count": 489,
             "web_commit_signoff_required": false
         },
-        "sha": "17f61b7880428b3242d3b0054b982a02e4433b86",
+        "sha": "816c6ba6a3efc774ba2e3b5ab73cd39678a2cbb1",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -312,7 +315,8 @@
             "starred_url": "https://api.github.com/users/neovim/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/neovim/subscriptions",
             "type": "Organization",
-            "url": "https://api.github.com/users/neovim"
+            "url": "https://api.github.com/users/neovim",
+            "user_view_type": "public"
         }
     },
     "html_url": "https://github.com/neovim/node-client/pull/344",
@@ -320,7 +324,7 @@
     "issue_url": "https://api.github.com/repos/neovim/node-client/issues/344",
     "labels": [],
     "locked": false,
-    "merge_commit_sha": "fc70bd38890b2da7a5102b1b0254a4e8689559a4",
+    "merge_commit_sha": "6709e44471daf6ef22bbf52ea06ff117f4f38108",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAdOzk85q0Bke",
@@ -331,9 +335,9 @@
     "review_comment_url": "https://api.github.com/repos/neovim/node-client/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/node-client/pulls/344/comments",
     "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/node-client/statuses/17f61b7880428b3242d3b0054b982a02e4433b86",
+    "statuses_url": "https://api.github.com/repos/neovim/node-client/statuses/816c6ba6a3efc774ba2e3b5ab73cd39678a2cbb1",
     "title": "WIP: redesign \"remote plugins\", eliminate \"host\" concept",
-    "updated_at": "2024-10-10T11:52:48Z",
+    "updated_at": "2024-11-16T18:00:46Z",
     "url": "https://api.github.com/repos/neovim/node-client/pulls/344",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -353,6 +357,7 @@
         "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/justinmk"
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
     }
 }

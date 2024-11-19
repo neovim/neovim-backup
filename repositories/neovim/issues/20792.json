@@ -4,8 +4,28 @@
     "assignees": [],
     "author_association": "MEMBER",
     "body": "### Neovim version (nvim -v)\n\nv0.9.0-dev-156+g29fe3348b\n\n### Vim (not Nvim) behaves the same?\n\nN/A\n\n### Operating system/version\n\nArch Linux\n\n### Terminal name/version\n\nkitty 0.26.4\n\n### $TERM environment variable\n\nxterm-kitty\n\n### Installation\n\nbuild from repo\n\n### How to reproduce the issue\n\n1. Run `nvim -u NONE` (`nvim --clean` also reproduces the issue but I think `nvim -u NONE` is cleaner here)\r\n2. Source the following Lua file:\r\n```lua\r\nvim.cmd([[\r\n  let g:var1 = 1\r\n  let g:var2 = 2\r\n]])\r\n\r\nlocal ns = vim.api.nvim_create_namespace('test')\r\n\r\nvim.ui_attach(ns, { ext_messages = true }, function(event, _, content)\r\n  if event == 'msg_show' and content[1][2] == 'var1                  #1' then\r\n    vim.cmd('unlet var2')\r\n  end\r\nend)\r\n\r\nvim.cmd('let g:')\r\n\r\nvim.ui_detach(ns)\r\n```\n\n### Expected behavior\n\nNo crash\n\n### Actual behavior\n\nheap-use-after-free:\r\n```\r\n=================================================================\r\n==293331==ERROR: AddressSanitizer: heap-use-after-free on address 0x6030000841a1 at pc 0x5643a4583788 bp 0x7ffd4f50f030 sp 0x7ffd4f50e7f0\r\nREAD of size 4 at 0x6030000841a1 thread T0\r\n    #0 0x5643a4583787 in __interceptor_memchr.part.0 asan_interceptors.cpp.o\r\n    #1 0x5643a53baa6d in msg_puts_attr_len **/src/nvim/message.c:2024:3\r\n    #2 0x5643a4d9b297 in list_one_var_a **/src/nvim/eval/vars.c:1179:5\r\n    #3 0x5643a4d89c42 in list_one_var **/src/nvim/eval/vars.c:1164:3\r\n    #4 0x5643a4d898e8 in list_hashtable_vars **/src/nvim/eval/vars.c:422:9\r\n    #5 0x5643a4d9991b in list_glob_vars **/src/nvim/eval/vars.c:431:3\r\n    #6 0x5643a4d993a4 in list_arg_vars **/src/nvim/eval/vars.c:499:17\r\n    #7 0x5643a4d830cb in ex_let_const **/src/nvim/eval/vars.c:199:21\r\n    #8 0x5643a4d82826 in ex_let **/src/nvim/eval/vars.c:161:3\r\n    #9 0x5643a4e54a7f in execute_cmd0 **/src/nvim/ex_docmd.c:1619:7\r\n    #10 0x5643a4e31a94 in do_one_cmd **/src/nvim/ex_docmd.c:2274:7\r\n    #11 0x5643a4e2178e in do_cmdline **/src/nvim/ex_docmd.c:583:20\r\n    #12 0x5643a583e3df in source_using_linegetter **/src/nvim/runtime.c:1802:16\r\n    #13 0x5643a583dc51 in do_source_str **/src/nvim/runtime.c:1853:10\r\n    #14 0x5643a487b386 in nvim_exec **/src/nvim/api/vimscript.c:67:3\r\n    #15 0x5643a466ec2f in nlua_api_nvim_exec **/build/src/nvim/auto/lua_api_c_bindings.generated.c:5480:22\r\n    #16 0x5643a6000f95 in lj_BC_FUNCC (**/build/bin/nvim+0x26fef95) (BuildId: 27fa072e05f9e23fbf8d36b2c3b9541486acb568)\r\n    #17 0x5643a5fed3d4 in lua_pcall **/.deps/build/src/luajit/src/lj_api.c:1145:12\r\n    #18 0x5643a5164e5d in nlua_pcall **/src/nvim/lua/executor.c:140:16\r\n    #19 0x5643a51692b2 in nlua_exec_file **/src/nvim/lua/executor.c:1712:7\r\n    #20 0x5643a5841277 in do_source **/src/nvim/runtime.c:2019:5\r\n    #21 0x5643a583ce1d in cmd_source **/src/nvim/runtime.c:1618:14\r\n    #22 0x5643a583c99d in ex_source **/src/nvim/runtime.c:1626:3\r\n    #23 0x5643a4e54a7f in execute_cmd0 **/src/nvim/ex_docmd.c:1619:7\r\n    #24 0x5643a4e31a94 in do_one_cmd **/src/nvim/ex_docmd.c:2274:7\r\n    #25 0x5643a4e2178e in do_cmdline **/src/nvim/ex_docmd.c:583:20\r\n    #26 0x5643a54b586b in nv_colon **/src/nvim/normal.c:4059:20\r\n    #27 0x5643a54a1bf5 in normal_execute **/src/nvim/normal.c:1173:3\r\n    #28 0x5643a5ab72e7 in state_enter **/src/nvim/state.c:88:26\r\n    #29 0x5643a5471e00 in normal_enter **/src/nvim/normal.c:471:3\r\n    #30 0x5643a5193e30 in main **/src/nvim/main.c:580:3\r\n    #31 0x7f26bbd5e28f  (/usr/lib/libc.so.6+0x2328f) (BuildId: 1e94beb079e278ac4f2c8bce1f53091548ea1584)\r\n    #32 0x7f26bbd5e349 in __libc_start_main (/usr/lib/libc.so.6+0x23349) (BuildId: 1e94beb079e278ac4f2c8bce1f53091548ea1584)\r\n    #33 0x5643a4539d94 in _start /build/glibc/src/glibc/csu/../sysdeps/x86_64/start.S:115\r\n\r\n0x6030000841a1 is located 17 bytes inside of 28-byte region [0x603000084190,0x6030000841ac)\r\nfreed by thread T0 here:\r\n    #0 0x5643a45edc52 in __interceptor_free.part.0 asan_malloc_linux.cpp.o\r\n    #1 0x5643a537b664 in xfree **/src/nvim/memory.c:128:3\r\n    #2 0x5643a4d9018e in delete_var **/src/nvim/eval/vars.c:1157:3\r\n    #3 0x5643a4d8face in do_unlet **/src/nvim/eval/vars.c:978:7\r\n    #4 0x5643a4d8b587 in do_unlet_var **/src/nvim/eval/vars.c:854:16\r\n    #5 0x5643a4d8aabc in ex_unletlock **/src/nvim/eval/vars.c:816:35\r\n    #6 0x5643a4d89d5d in ex_unlet **/src/nvim/eval/vars.c:743:3\r\n    #7 0x5643a4e54a7f in execute_cmd0 **/src/nvim/ex_docmd.c:1619:7\r\n    #8 0x5643a4e31a94 in do_one_cmd **/src/nvim/ex_docmd.c:2274:7\r\n    #9 0x5643a4e2178e in do_cmdline **/src/nvim/ex_docmd.c:583:20\r\n    #10 0x5643a583e3df in source_using_linegetter **/src/nvim/runtime.c:1802:16\r\n    #11 0x5643a583dc51 in do_source_str **/src/nvim/runtime.c:1853:10\r\n    #12 0x5643a487b386 in nvim_exec **/src/nvim/api/vimscript.c:67:3\r\n    #13 0x5643a466ec2f in nlua_api_nvim_exec **/build/src/nvim/auto/lua_api_c_bindings.generated.c:5480:22\r\n    #14 0x5643a6000f95 in lj_BC_FUNCC (**/build/bin/nvim+0x26fef95) (BuildId: 27fa072e05f9e23fbf8d36b2c3b9541486acb568)\r\n\r\npreviously allocated by thread T0 here:\r\n    #0 0x5643a45eec69 in malloc (**/build/bin/nvim+0xcecc69) (BuildId: 27fa072e05f9e23fbf8d36b2c3b9541486acb568)\r\n    #1 0x5643a537b372 in try_malloc **/src/nvim/memory.c:80:15\r\n    #2 0x5643a537b53c in xmalloc **/src/nvim/memory.c:114:15\r\n    #3 0x5643a4d927bb in set_var_const **/src/nvim/eval/vars.c:1330:9\r\n    #4 0x5643a4b33030 in set_var_lval **/src/nvim/eval.c:1685:7\r\n    #5 0x5643a4d883d3 in ex_let_one **/src/nvim/eval/vars.c:728:9\r\n    #6 0x5643a4d84e0e in ex_let_vars **/src/nvim/eval/vars.c:276:9\r\n    #7 0x5643a4d84ae8 in ex_let_const **/src/nvim/eval/vars.c:249:13\r\n    #8 0x5643a4d82826 in ex_let **/src/nvim/eval/vars.c:161:3\r\n    #9 0x5643a4e54a7f in execute_cmd0 **/src/nvim/ex_docmd.c:1619:7\r\n    #10 0x5643a4e31a94 in do_one_cmd **/src/nvim/ex_docmd.c:2274:7\r\n    #11 0x5643a4e2178e in do_cmdline **/src/nvim/ex_docmd.c:583:20\r\n    #12 0x5643a583e3df in source_using_linegetter **/src/nvim/runtime.c:1802:16\r\n    #13 0x5643a583dc51 in do_source_str **/src/nvim/runtime.c:1853:10\r\n    #14 0x5643a487b386 in nvim_exec **/src/nvim/api/vimscript.c:67:3\r\n    #15 0x5643a466ec2f in nlua_api_nvim_exec **/build/src/nvim/auto/lua_api_c_bindings.generated.c:5480:22\r\n    #16 0x5643a6000f95 in lj_BC_FUNCC (**/build/bin/nvim+0x26fef95) (BuildId: 27fa072e05f9e23fbf8d36b2c3b9541486acb568)\r\n\r\nSUMMARY: AddressSanitizer: heap-use-after-free asan_interceptors.cpp.o in __interceptor_memchr.part.0\r\nShadow bytes around the buggy address:\r\n  0x0c06800087e0: fd fd fa fa fd fd fd fd fa fa fd fd fd fd fa fa\r\n  0x0c06800087f0: fd fd fd fd fa fa fd fd fd fd fa fa fd fd fd fd\r\n  0x0c0680008800: fa fa fd fd fd fd fa fa fd fd fd fd fa fa fd fd\r\n  0x0c0680008810: fd fd fa fa fd fd fd fd fa fa fd fd fd fd fa fa\r\n  0x0c0680008820: 00 00 00 00 fa fa fd fd fd fd fa fa 00 00 00 04\r\n=>0x0c0680008830: fa fa fd fd[fd]fd fa fa 00 00 00 00 fa fa fd fd\r\n  0x0c0680008840: fd fd fa fa fd fd fd fd fa fa fd fd fd fd fa fa\r\n  0x0c0680008850: fd fd fd fd fa fa fd fd fd fd fa fa fa fa fa fa\r\n  0x0c0680008860: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\r\n  0x0c0680008870: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\r\n  0x0c0680008880: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\r\nShadow byte legend (one shadow byte represents 8 application bytes):\r\n  Addressable:           00\r\n  Partially addressable: 01 02 03 04 05 06 07 \r\n  Heap left redzone:       fa\r\n  Freed heap region:       fd\r\n  Stack left redzone:      f1\r\n  Stack mid redzone:       f2\r\n  Stack right redzone:     f3\r\n  Stack after return:      f5\r\n  Stack use after scope:   f8\r\n  Global redzone:          f9\r\n  Global init order:       f6\r\n  Poisoned by user:        f7\r\n  Container overflow:      fc\r\n  Array cookie:            ac\r\n  Intra object redzone:    bb\r\n  ASan internal:           fe\r\n  Left alloca redzone:     ca\r\n  Right alloca redzone:    cb\r\n==293331==ABORTING\r\n```",
-    "closed_at": null,
-    "closed_by": null,
+    "closed_at": "2024-11-15T08:05:55Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+        "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+        "followers_url": "https://api.github.com/users/zeertzjq/followers",
+        "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+        "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/zeertzjq",
+        "id": 35768171,
+        "login": "zeertzjq",
+        "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+        "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+        "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+        "repos_url": "https://api.github.com/users/zeertzjq/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/zeertzjq",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -48,7 +68,8 @@
                 "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/zeertzjq"
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
             }
         },
         {
@@ -92,7 +113,8 @@
                 "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/zeertzjq"
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
             }
         },
         {
@@ -136,7 +158,8 @@
                 "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/zeertzjq"
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
             }
         },
         {
@@ -180,7 +203,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -224,11 +248,57 @@
                 "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/zeertzjq"
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "After #27874 this can no longer happen.",
+            "created_at": "2024-11-15T08:05:55Z",
+            "html_url": "https://github.com/neovim/neovim/issues/20792#issuecomment-2478182278",
+            "id": 2478182278,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/20792",
+            "node_id": "IC_kwDOAPphoM6Ttg-G",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2478182278/reactions"
+            },
+            "updated_at": "2024-11-15T08:05:55Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2478182278",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+                "followers_url": "https://api.github.com/users/zeertzjq/followers",
+                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/zeertzjq",
+                "id": 35768171,
+                "login": "zeertzjq",
+                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+                "repos_url": "https://api.github.com/users/zeertzjq/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
             }
         }
     ],
-    "comments": 5,
+    "comments": 6,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/20792/comments",
     "created_at": "2022-10-24T08:12:02Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/20792/events",
@@ -291,11 +361,16 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/20792/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/20792/timeline",
     "title": "heap-use-after-free if callback deletes a variable while listing variables",
-    "updated_at": "2024-09-11T13:11:43Z",
+    "updated_at": "2024-11-15T08:05:57Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/20792",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
@@ -315,6 +390,7 @@
         "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/zeertzjq"
+        "url": "https://api.github.com/users/zeertzjq",
+        "user_view_type": "public"
     }
 }
