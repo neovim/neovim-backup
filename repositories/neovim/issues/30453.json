@@ -3,7 +3,7 @@
     "assignee": null,
     "assignees": [],
     "author_association": "MEMBER",
-    "body": "### Problem\r\n\r\nRelated: https://github.com/neovim/neovim/issues/30450\r\n\r\nCurrently there are lots of single-purpose APIs to get what may be called \"editor metadata\" about:\r\n\r\n- a buffer (not its text contents, nor extmarks (which is a big topic), nor its scripting state such as `b:`/`w:`/etc.)\r\n- a window (not highlight state or other \"big topics\")\r\n- a tabpage\r\n\r\nBesides just ergonomics (simpler interface + documentation), there are technical reasons why the above isn't ideal:\r\n\r\n- The `nvim_buf_x` paradigm was intended to behave like \"object methods\", but each call on such an \"object\" would invoke a separate RPC request (`buf.line_count`, `buf.is_valid`). That's not a great tradeoff, because metadata is very cheap, thus it's better to put all metadata into one response instead of requiring multiple RPC calls.\r\n    - Calculating this metadata is cheap so there's no reason to require separate calls.\r\n- Functions such as `nvim_buf_set_name` can trigger the swapfile ATTENTION dialog, yet there's currently no way to run it \"noswapfile\".\r\n\r\n### Expected behavior\r\n\r\nFor buffers:\r\n\r\n- Deprecate the API `buf_x` meta functions in favor of the existing `getbufinfo()`.\r\n    - *Or* provide `nvim_buf_get(filter:table)` which returns a superset (except `b:`) of `getbufinfo()`.\r\n- Introduce `nvim_buf_set(buf: int, info: dict, with: dict)`, which works like `nvim_open_win` on existing windows?\r\n    - ~~Doesn't look useful, only `name` would make sense.~~\r\n        - But `nvim_buf_set_name` has some side-effects which the caller may not want:\r\n            - can trigger the swapfile ATTENTION dialog, yet there's currently no way to run it \"noswapfile\".\r\n            - sets the alternate buffer\r\n    - The `with:dict` parameter would allow overriding and restoring various flags/options (internally uses `vim._with()`).\r\n- Eliminates:\r\n  ```\r\n  nvim_buf_is_loaded\r\n  nvim_buf_is_valid\r\n  nvim_buf_line_count\r\n  nvim_buf_get_name\r\n  nvim_buf_set_name\r\n  ```\r\n\r\nFor windows:\r\n\r\n- Deprecate the API `win_x` meta functions in favor of the existing `getwininfo(filter:table)`.\r\n    - *Or* provide `nvim_win_get(filter:table)` which returns a superset (except `w:`) of `getwininfo()`.\r\n    - *Or* augment `nvim_win_get_config(filter:table)` to provide any missing meta fields.\r\n- `nvim_win_set_config`, already exists, can we add a new optional `with: dict` param?\r\n- Eliminates:\r\n  ```\r\n  nvim_win_get_buf\r\n  nvim_win_get_cursor\r\n  nvim_win_get_height\r\n  nvim_win_get_number\r\n  nvim_win_get_position\r\n  nvim_win_get_width\r\n  nvim_win_is_valid\r\n  nvim_win_set_buf\r\n  nvim_win_set_height\r\n  nvim_win_set_width\r\n  ```\r\n- TODO: Not sure if we can eliminate:\r\n  ```\r\n  nvim_win_set_cursor\r\n  nvim_win_text_height\r\n  ```\r\n\r\n\r\nFor tabpages:\r\n\r\n- Deprecate the API `tabpage_x` meta functions in favor of the existing `gettabinfo(filter:table)`.\r\n    - *Or* provide `nvim_tabpage_get(filter:table)` which returns a superset (except `t:`) of `gettabinfo()`.\r\n- Introduce `nvim_tabpage_set(tab: int, info: dict, with: dict)`\r\n  ```\r\n  info {\r\n    name\r\n    curwin // current window\r\n  }\r\n  ```\r\n- Eliminates:\r\n  ```\r\n  nvim_tabpage_list_wins\r\n  nvim_tabpage_get_win\r\n  nvim_tabpage_set_win\r\n  nvim_tabpage_get_number\r\n  nvim_tabpage_is_valid\r\n  ```\r\n\r\n",
+    "body": "# Problem\n\nRelated: https://github.com/neovim/neovim/issues/30450\n\nCurrently there are lots of single-purpose APIs to get what may be called \"editor metadata\" about:\n\n- a buffer (not its text contents, nor extmarks (which is a big topic), nor its scripting state such as `b:`/`w:`/etc.)\n- a window (not highlight state or other \"big topics\")\n- a tabpage\n\nBesides just ergonomics (simpler interface + documentation), there are technical reasons why the above isn't ideal:\n\n- The `nvim_buf_x` paradigm was intended to behave like \"object methods\", but each call on such an \"object\" would invoke a separate RPC request (`buf.line_count`, `buf.is_valid`). That's not a great tradeoff, because metadata is very cheap, thus it's better to put all metadata into one response instead of requiring multiple RPC calls.\n    - Calculating this metadata is cheap so there's no reason to require separate calls.\n- Functions such as `nvim_buf_set_name` can trigger the swapfile ATTENTION dialog, yet there's currently no way to run it \"noswapfile\".\n\n# Expected behavior\n\n## For buffers:\n\n- Deprecate the API `buf_x` meta functions in favor of the existing `getbufinfo()`.\n    - *Or* provide `nvim_buf_get(filter:table)` which returns a superset (except `b:`) of `getbufinfo()`.\n- Introduce `nvim_buf_set(buf: int, info: dict, with: dict)`, which works like `nvim_open_win` on existing windows?\n    - ~~Doesn't look useful, only `name` would make sense.~~\n        - But `nvim_buf_set_name` has some side-effects which the caller may not want:\n            - can trigger the swapfile ATTENTION dialog, yet there's currently no way to run it \"noswapfile\".\n            - sets the alternate buffer\n    - The `with:dict` parameter would allow overriding and restoring various flags/options (internally uses `vim._with()`).\n- Eliminates:\n  ```\n  nvim_buf_is_loaded\n  nvim_buf_is_valid\n  nvim_buf_line_count\n  nvim_buf_get_name\n  nvim_buf_set_name\n  ```\n\n## For windows:\n\n- Deprecate the API `win_x` meta functions in favor of the existing `getwininfo(filter:table)`.\n    - *Or* provide `nvim_win_get(filter:table)` which returns a superset (except `w:`) of `getwininfo()`.\n    - *Or* augment `nvim_win_get_config(filter:table)` to provide any missing meta fields.\n- `nvim_win_set_config`, already exists, can we add a new optional `with: dict` param?\n- Eliminates:\n  ```\n  nvim_win_get_buf\n  nvim_win_get_cursor\n  nvim_win_get_height\n  nvim_win_get_number\n  nvim_win_get_position\n  nvim_win_get_width\n  nvim_win_is_valid\n  nvim_win_set_buf\n  nvim_win_set_height\n  nvim_win_set_width\n  ```\n- TODO: Not sure if we can eliminate:\n  ```\n  nvim_win_set_cursor\n  nvim_win_text_height\n  ```\n\n\n## For tabpages:\n\n- Deprecate the API `tabpage_x` meta functions in favor of the existing `gettabinfo(filter:table)`.\n    - *Or* provide `nvim_tabpage_get(filter:table)` which returns a superset (except `t:`) of `gettabinfo()`.\n- Introduce `nvim_tabpage_set(tab: int, info: dict, with: dict)`\n  ```\n  info {\n    name\n    curwin // current window\n  }\n  ```\n- Eliminates:\n  ```\n  nvim_tabpage_list_wins\n  nvim_tabpage_get_win\n  nvim_tabpage_set_win\n  nvim_tabpage_get_number\n  nvim_tabpage_is_valid\n  ```\n\n",
     "closed_at": null,
     "closed_by": null,
     "comment_data": [
@@ -48,7 +48,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -92,7 +93,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -136,7 +138,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -180,7 +183,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -224,7 +228,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         }
     ],
@@ -276,7 +281,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 653,
+        "closed_issues": 670,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -296,7 +301,8 @@
             "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/justinmk"
+            "url": "https://api.github.com/users/justinmk",
+            "user_view_type": "public"
         },
         "description": "Low priority items. We plan to work on this but don't have a target date.",
         "due_on": null,
@@ -305,10 +311,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 603,
+        "open_issues": 614,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2024-10-14T19:27:30Z",
+        "updated_at": "2024-12-03T02:08:24Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM6XaPk2",
@@ -329,9 +335,14 @@
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "open",
     "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/30453/timeline",
     "title": "API: clean up \"meta info\" functions for buf/win/tabpage",
-    "updated_at": "2024-10-10T09:19:43Z",
+    "updated_at": "2024-11-27T13:47:07Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/30453",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -351,6 +362,7 @@
         "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/justinmk"
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
     }
 }

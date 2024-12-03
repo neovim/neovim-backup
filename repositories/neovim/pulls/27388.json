@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 5201,
-            "forks_count": 5201,
+            "forks": 5726,
+            "forks_count": 5726,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1728,
-            "open_issues_count": 1728,
+            "open_issues": 1842,
+            "open_issues_count": 1842,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -114,15 +114,16 @@
                 "starred_url": "https://api.github.com/users/neovim/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/neovim/subscriptions",
                 "type": "Organization",
-                "url": "https://api.github.com/users/neovim"
+                "url": "https://api.github.com/users/neovim",
+                "user_view_type": "public"
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2024-02-12T23:38:13Z",
+            "pushed_at": "2024-12-03T00:32:23Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 252813,
+            "size": 296843,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 73720,
+            "stargazers_count": 83804,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -140,11 +141,11 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2024-02-13T01:34:21Z",
+            "updated_at": "2024-12-03T02:31:16Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 73720,
-            "watchers_count": 73720,
+            "watchers": 83804,
+            "watchers_count": 83804,
             "web_commit_signoff_required": false
         },
         "sha": "1f9da3d0835af2cfe937de250c2cde3a59e1677e",
@@ -166,12 +167,153 @@
             "starred_url": "https://api.github.com/users/neovim/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/neovim/subscriptions",
             "type": "Organization",
-            "url": "https://api.github.com/users/neovim"
+            "url": "https://api.github.com/users/neovim",
+            "user_view_type": "public"
         }
     },
     "body": "#### vim-patch:9.1.0082: Redrawing can be improved when deleting lines with 'cursorline'\n\nProblem:  Redrawing can be improved when deleting lines with 'cursorline'.\nSolution: Use smarter invalidation and adjustment.  Remove unnecessary\n          UPD_VALID as it is already set at the top of the loop.  Make\n          the test for vim/vim#4862 fail without the fix.\n          (zeertzjq)\n\ncloses: vim/vim#13986\n\nhttps://github.com/vim/vim/commit/7ce34c9a947b17a8b5e81e7c2335a63552182d10\n\n\n#### vim-patch:9.1.0083: Redrawing can be improved when deleting lines with 'number'\n\nProblem:  Redrawing can be improved when inserting/deleting lines with 'number'.\nSolution: Only redraw the number column of lines below changed lines.\n          Add a test as this wasn't previously tested.\n          (zeertzjq)\n\ncloses: vim/vim#13985\n\nhttps://github.com/vim/vim/commit/ae07ebc04b0726e12b1af39d52e01d86ae79ef0a",
     "closed_at": "2024-02-08T11:37:41Z",
-    "comment_data": [],
+    "comment_data": [
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/27388#discussion_r1858352085"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/27388"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1858352085"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Should `b_mod_xlines` be reset somewhere after redrawing? Currently we always update the number column upon cursor movement after lines have been inserted/deleted, until an edit is made that doesn't insert/delete lines.",
+            "commit_id": "da3facb7eea92bd4082bb6ea12e0947580a63962",
+            "created_at": "2024-11-26T11:59:48Z",
+            "diff_hunk": "@@ -2326,9 +2320,12 @@ static void win_update(win_T *wp)\n       idx++;\n       lnum += foldinfo.fi_lines + 1;\n     } else {\n-      if (wp->w_p_rnu && wp->w_last_cursor_lnum_rnu != wp->w_cursor.lnum) {\n-        // 'relativenumber' set and cursor moved vertically: The\n-        // text doesn't need to be drawn, but the number column does.\n+      // If:\n+      // - 'number' is set and below inserted/deleted lines, or\n+      // - 'relativenumber' is set and cursor moved vertically,\n+      // the text doesn't need to be redrawn, but the number column does.\n+      if ((wp->w_p_nu && mod_top != 0 && lnum >= mod_bot && buf->b_mod_xlines != 0)",
+            "html_url": "https://github.com/neovim/neovim/pull/27388#discussion_r1858352085",
+            "id": 1858352085,
+            "line": 2327,
+            "node_id": "PRRC_kwDOAPphoM5uxDPV",
+            "original_commit_id": "da3facb7eea92bd4082bb6ea12e0947580a63962",
+            "original_line": 2327,
+            "original_position": 24,
+            "original_start_line": null,
+            "path": "src/nvim/drawscreen.c",
+            "position": 24,
+            "pull_request_review_id": 2461259680,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27388",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1858352085/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-11-26T11:59:49Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1858352085",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/31730729?v=4",
+                "events_url": "https://api.github.com/users/luukvbaal/events{/privacy}",
+                "followers_url": "https://api.github.com/users/luukvbaal/followers",
+                "following_url": "https://api.github.com/users/luukvbaal/following{/other_user}",
+                "gists_url": "https://api.github.com/users/luukvbaal/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/luukvbaal",
+                "id": 31730729,
+                "login": "luukvbaal",
+                "node_id": "MDQ6VXNlcjMxNzMwNzI5",
+                "organizations_url": "https://api.github.com/users/luukvbaal/orgs",
+                "received_events_url": "https://api.github.com/users/luukvbaal/received_events",
+                "repos_url": "https://api.github.com/users/luukvbaal/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/luukvbaal/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/luukvbaal/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/luukvbaal",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/27388#discussion_r1858441717"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/27388"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1858441717"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Hmm, actually `b_mod_set` needs to be checked first here.",
+            "commit_id": "da3facb7eea92bd4082bb6ea12e0947580a63962",
+            "created_at": "2024-11-26T12:20:28Z",
+            "diff_hunk": "@@ -2326,9 +2320,12 @@ static void win_update(win_T *wp)\n       idx++;\n       lnum += foldinfo.fi_lines + 1;\n     } else {\n-      if (wp->w_p_rnu && wp->w_last_cursor_lnum_rnu != wp->w_cursor.lnum) {\n-        // 'relativenumber' set and cursor moved vertically: The\n-        // text doesn't need to be drawn, but the number column does.\n+      // If:\n+      // - 'number' is set and below inserted/deleted lines, or\n+      // - 'relativenumber' is set and cursor moved vertically,\n+      // the text doesn't need to be redrawn, but the number column does.\n+      if ((wp->w_p_nu && mod_top != 0 && lnum >= mod_bot && buf->b_mod_xlines != 0)",
+            "html_url": "https://github.com/neovim/neovim/pull/27388#discussion_r1858441717",
+            "id": 1858441717,
+            "in_reply_to_id": 1858352085,
+            "line": 2327,
+            "node_id": "PRRC_kwDOAPphoM5uxZH1",
+            "original_commit_id": "da3facb7eea92bd4082bb6ea12e0947580a63962",
+            "original_line": 2327,
+            "original_position": 24,
+            "original_start_line": null,
+            "path": "src/nvim/drawscreen.c",
+            "position": 24,
+            "pull_request_review_id": 2461373496,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27388",
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1858441717/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2024-11-26T12:20:28Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1858441717",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+                "followers_url": "https://api.github.com/users/zeertzjq/followers",
+                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/zeertzjq",
+                "id": 35768171,
+                "login": "zeertzjq",
+                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+                "repos_url": "https://api.github.com/users/zeertzjq/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
+            }
+        }
+    ],
     "comment_regular_data": [],
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/27388/comments",
     "commits_url": "https://api.github.com/repos/neovim/neovim/pulls/27388/commits",
@@ -262,13 +404,14 @@
                 "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/zeertzjq"
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/zeertzjq/neovim/pulls{/number}",
-            "pushed_at": "2024-02-12T23:38:14Z",
+            "pushed_at": "2024-12-03T00:33:30Z",
             "releases_url": "https://api.github.com/repos/zeertzjq/neovim/releases{/id}",
-            "size": 246229,
+            "size": 288728,
             "ssh_url": "git@github.com:zeertzjq/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/zeertzjq/neovim/stargazers",
@@ -306,7 +449,8 @@
             "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/zeertzjq"
+            "url": "https://api.github.com/users/zeertzjq",
+            "user_view_type": "public"
         }
     },
     "html_url": "https://github.com/neovim/neovim/pull/27388",
@@ -316,7 +460,7 @@
         {
             "color": "e6e6e6",
             "default": false,
-            "description": "See https://github.com/neovim/neovim/wiki/Merging-patches-from-upstream-Vim",
+            "description": "See https://neovim.io/doc/user/dev_vimpatch.html",
             "id": 843184430,
             "name": "vim-patch",
             "node_id": "MDU6TGFiZWw4NDMxODQ0MzA=",
@@ -337,7 +481,7 @@
     "state": "closed",
     "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/da3facb7eea92bd4082bb6ea12e0947580a63962",
     "title": "vim-patch:9.1.{0082,0083}: redrawing can be improved",
-    "updated_at": "2024-02-08T11:37:56Z",
+    "updated_at": "2024-11-26T12:20:28Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/27388",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
@@ -357,6 +501,7 @@
         "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/zeertzjq"
+        "url": "https://api.github.com/users/zeertzjq",
+        "user_view_type": "public"
     }
 }
