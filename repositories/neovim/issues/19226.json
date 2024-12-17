@@ -3,7 +3,7 @@
     "assignee": null,
     "assignees": [],
     "author_association": "MEMBER",
-    "body": "### Problem\r\n\r\n- Plugins cannot inspect folds\r\n- Custom folds require `foldexpr` which is inefficient as it requires evaluating this expression on every buffer line.\r\n\r\n### Solution\r\n\r\nAPI for plugins to set, inspect folds and get fold events.\r\n\r\n### Notes\r\n\r\n- Folds are window local and so are most of the folding related options.\r\n- Fold state (whether a fold is open/closed) is also local to the window.\r\n- Extmarks are buffer local.\r\n- Folds can be nested\r\n\r\n### Proposal\r\n\r\n- Add folding support to extmarks\r\n  - Add a new method to `'foldmethod'` named `extmark` so extmark folds cannot be mixed with other kinds of folds.\r\n  - When folds of calculated, we scan the extmarks for all the folds and store them in `win->w_folds`.\r\n  - The trigger for updating is the same as other foldmethods.\r\n- Add `nvim_win_add_fold` and `nvim_win_del_fold`. These new API functions are to be used instead of the `zf`/`zd` operators.\r\n  - _Should these functions work for all fold methods or just `manual`/`marker` like `zf` does?_\r\n\r\n  ```\r\n  nvim_win_add_fold({window}, {start}, {end}, {opts})\r\n      Add a fold to the window from {start} to {end}.\r\n\r\n      All row arguments are 0-indexed, inclusive.\r\n\r\n      Only supported for `foldmethod=manåual`\r\n\r\n      Parameters: ~\r\n          {window}  Window handle, or 0 for current window\r\n          {start}   Start row of fold.\r\n          {end}     End row of fold.\r\n          {opts}    Optional parameters. Reserved for future use.\r\n\r\n  nvim_win_del_fold({window}, {start}, {end}, {opts})\r\n      Delete a fold from the window from {start} to {end}.\r\n\r\n      All row arguments are 0-indexed, inclusive.\r\n\r\n      Only supported for `foldmethod=manual`\r\n\r\n      Parameters: ~\r\n          {window}  Window handle, or 0 for current window\r\n          {start}   Start row of fold.\r\n          {end}     End row of fold.\r\n          {opts}    Optional parameters. Reserved for future use.\r\n\r\n  ```\r\n- Add `nvim_win_get_folds` for getting folds for any foldmethod.\r\n  ```\r\n  nvim_win_get_folds({window}, {opts})\r\n\r\n      All row arguments are 0-indexed, inclusive.\r\n\r\n      Parameters: ~\r\n          {window}  Window handle, or 0 for current window\r\n          {opts}    Optional parameters:\r\n                    - start_row: get folds from this row\r\n                    - end_row: get folds up to this row\r\n      Returns:\r\n\r\n      Array of dictionaries for each fold. Each elements has the keys:\r\n      - state: string, \"open\" | \"closed\"\r\n      - start_row: integer, start row of fold\r\n      - end_row: integer, end row of fold\r\n      - [FUTURE] start_col: integer\r\n      - [FUTURE] end_col: integer\r\n      - children: array of folds ????? SHOULD WE HAVE THIS?\r\n\r\n  ```\r\n\r\n- Add `nvim_win_toggle_folds` change the fold state of all folds in a region.\r\n  ```\r\n  nvim_win_toggle_folds({window}, {opts})\r\n\r\n      Parameters: ~\r\n          {window}  Window handle, or 0 for current window\r\n          {opts}    Optional parameters:\r\n                    - start_row: get folds from this row\r\n                    - end_row: get folds up to this row\r\n                    - action: \"toggle\", \"open\", \"close\". Default is \"toggle\".\r\n                      Note: for \"toggle\", only the first fold state is considered.\r\n                      E.g. if the first fold in the region is open, then all folds\r\n                      in the region will be closed.\r\n    ```\r\n- Add `nvim_win_attach` with an `on_fold` callback for detecting changes to folds.\r\n  ```\r\n  nvim_win_attach({window}, {opts})\r\n      Activates window-update events on a channel, or as Lua\r\n      callbacks.\r\n\r\n      Parameters: ~\r\n          {window}  Window handle, or 0 for current window\r\n          {opts}    Optional parameters:\r\n                    - on_fold: Lua callback invoked on change.\r\n                      Args:\r\n                      - the string \"fold\"\r\n                      - window handle\r\n                      - first line where folds where updated\r\n                      - last line where folds where updated\r\n                      - String \"add | del | update | open | close\"\r\n\r\n  ```\r\n\r\n\r\n### Future Enhancements\r\n\r\n- Column-aware folds (aka inline folds)\r\n\r\n### Questions\r\n\r\n- For nested folds, do we represent them as a flat list of locations or a nested structure?\r\n\r\n- ~Should we assign ID's and namespaces to folds?~\r\n  - EDIT: No as ID's/namespaces for folds will be achievable using extmarks which will be the preferred method for applying folds.\r\n\r\n### Related\r\n\r\n- Fold events: #8538\r\n- Window events: #8539\r\n\r\n",
+    "body": "### Problem\n\n- Plugins cannot inspect folds\n- Custom folds require `foldexpr` which is inefficient as it requires evaluating this expression on every buffer line.\n\n### Solution\n\nAPI for plugins to set, inspect folds and get fold events.\n\n### Notes\n\n- Folds are window local and so are most of the folding related options.\n- Fold state (whether a fold is open/closed) is also local to the window.\n- ~Extmarks are buffer local.~ Can now be window local with `nvim__ns_set`.\n- Folds can be nested\n\n### Proposal\n\n- Add folding support to extmarks\n  - Add a new method to `'foldmethod'` named `extmark` so extmark folds cannot be mixed with other kinds of folds.\n  - When folds of calculated, we scan the extmarks for all the folds and store them in `win->w_folds`.\n  - The trigger for updating is the same as other foldmethods.\n- Add `nvim_win_add_fold` and `nvim_win_del_fold`. These new API functions are to be used instead of the `zf`/`zd` operators.\n  - _Should these functions work for all fold methods or just `manual`/`marker` like `zf` does?_\n\n  ```\n  nvim_win_add_fold({window}, {start}, {end}, {opts})\n      Add a fold to the window from {start} to {end}.\n\n      All row arguments are 0-indexed, inclusive.\n\n      Only supported for `foldmethod=manåual`\n\n      Parameters: ~\n          {window}  Window handle, or 0 for current window\n          {start}   Start row of fold.\n          {end}     End row of fold.\n          {opts}    Optional parameters. Reserved for future use.\n\n  nvim_win_del_fold({window}, {start}, {end}, {opts})\n      Delete a fold from the window from {start} to {end}.\n\n      All row arguments are 0-indexed, inclusive.\n\n      Only supported for `foldmethod=manual`\n\n      Parameters: ~\n          {window}  Window handle, or 0 for current window\n          {start}   Start row of fold.\n          {end}     End row of fold.\n          {opts}    Optional parameters. Reserved for future use.\n\n  ```\n- Add `nvim_win_get_folds` for getting folds for any foldmethod.\n  ```\n  nvim_win_get_folds({window}, {opts})\n\n      All row arguments are 0-indexed, inclusive.\n\n      Parameters: ~\n          {window}  Window handle, or 0 for current window\n          {opts}    Optional parameters:\n                    - start_row: get folds from this row\n                    - end_row: get folds up to this row\n      Returns:\n\n      Array of dictionaries for each fold. Each elements has the keys:\n      - state: string, \"open\" | \"closed\"\n      - start_row: integer, start row of fold\n      - end_row: integer, end row of fold\n      - [FUTURE] start_col: integer\n      - [FUTURE] end_col: integer\n      - children: array of folds ????? SHOULD WE HAVE THIS?\n\n  ```\n\n- Add `nvim_win_toggle_folds` change the fold state of all folds in a region.\n  ```\n  nvim_win_toggle_folds({window}, {opts})\n\n      Parameters: ~\n          {window}  Window handle, or 0 for current window\n          {opts}    Optional parameters:\n                    - start_row: get folds from this row\n                    - end_row: get folds up to this row\n                    - action: \"toggle\", \"open\", \"close\". Default is \"toggle\".\n                      Note: for \"toggle\", only the first fold state is considered.\n                      E.g. if the first fold in the region is open, then all folds\n                      in the region will be closed.\n    ```\n- Add `nvim_win_attach` with an `on_fold` callback for detecting changes to folds.\n  ```\n  nvim_win_attach({window}, {opts})\n      Activates window-update events on a channel, or as Lua\n      callbacks.\n\n      Parameters: ~\n          {window}  Window handle, or 0 for current window\n          {opts}    Optional parameters:\n                    - on_fold: Lua callback invoked on change.\n                      Args:\n                      - the string \"fold\"\n                      - window handle\n                      - first line where folds where updated\n                      - last line where folds where updated\n                      - String \"add | del | update | open | close\"\n\n  ```\n\n\n### Future Enhancements\n\n- Column-aware folds (aka inline folds)\n\n### Questions\n\n- For nested folds, do we represent them as a flat list of locations or a nested structure?\n\n- ~Should we assign ID's and namespaces to folds?~\n  - EDIT: No as ID's/namespaces for folds will be achievable using extmarks which will be the preferred method for applying folds.\n\n### Related\n\n- Fold events: #8538\n- Window events: #8539\n\n",
     "closed_at": null,
     "closed_by": null,
     "comment_data": [
@@ -48,7 +48,8 @@
                 "starred_url": "https://api.github.com/users/muniter/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/muniter/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/muniter"
+                "url": "https://api.github.com/users/muniter",
+                "user_view_type": "public"
             }
         },
         {
@@ -92,7 +93,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -136,7 +138,8 @@
                 "starred_url": "https://api.github.com/users/MagicDuck/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/MagicDuck/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/MagicDuck"
+                "url": "https://api.github.com/users/MagicDuck",
+                "user_view_type": "public"
             }
         },
         {
@@ -180,7 +183,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         }
     ],
@@ -223,7 +227,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 648,
+        "closed_issues": 670,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -243,7 +247,8 @@
             "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/justinmk"
+            "url": "https://api.github.com/users/justinmk",
+            "user_view_type": "public"
         },
         "description": "Low priority items. We plan to work on this but don't have a target date.",
         "due_on": null,
@@ -252,17 +257,17 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 575,
+        "open_issues": 624,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2024-09-23T15:31:12Z",
+        "updated_at": "2024-12-16T14:46:04Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM5NFh5X",
     "number": 19226,
     "performed_via_github_app": null,
     "reactions": {
-        "+1": 20,
+        "+1": 21,
         "-1": 0,
         "confused": 0,
         "eyes": 0,
@@ -270,15 +275,20 @@
         "hooray": 0,
         "laugh": 0,
         "rocket": 1,
-        "total_count": 21,
+        "total_count": 22,
         "url": "https://api.github.com/repos/neovim/neovim/issues/19226/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "open",
     "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/19226/timeline",
     "title": "API: folds",
-    "updated_at": "2024-09-21T18:33:57Z",
+    "updated_at": "2024-12-12T12:02:51Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/19226",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",
@@ -298,6 +308,7 @@
         "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/lewis6991"
+        "url": "https://api.github.com/users/lewis6991",
+        "user_view_type": "public"
     }
 }

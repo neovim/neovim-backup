@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/30559"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/a37ea267f0a832b8861c7a2319114494eb24c42c"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/127dc9839b0188568bf1f24d52f576708c25f2d4"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 5646,
-            "forks_count": 5646,
+            "forks": 5750,
+            "forks_count": 5750,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1800,
-            "open_issues_count": 1800,
+            "open_issues": 1841,
+            "open_issues_count": 1841,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -114,15 +114,16 @@
                 "starred_url": "https://api.github.com/users/neovim/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/neovim/subscriptions",
                 "type": "Organization",
-                "url": "https://api.github.com/users/neovim"
+                "url": "https://api.github.com/users/neovim",
+                "user_view_type": "public"
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2024-10-15T01:40:54Z",
+            "pushed_at": "2024-12-17T01:03:26Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 289049,
+            "size": 298939,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 82517,
+            "stargazers_count": 84221,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -140,14 +141,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2024-10-15T02:03:54Z",
+            "updated_at": "2024-12-17T02:03:44Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 82517,
-            "watchers_count": 82517,
+            "watchers": 84221,
+            "watchers_count": 84221,
             "web_commit_signoff_required": false
         },
-        "sha": "99e0facf3a001608287ec6db69b01c77443c7b9d",
+        "sha": "3f1d09bc94d02266d6fa588a2ccd1be1ca084cf7",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -166,11 +167,12 @@
             "starred_url": "https://api.github.com/users/neovim/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/neovim/subscriptions",
             "type": "Organization",
-            "url": "https://api.github.com/users/neovim"
+            "url": "https://api.github.com/users/neovim",
+            "user_view_type": "public"
         }
     },
     "body": "**Problem:** Currently, it is difficult to get node(s)-level metadata for a capture returned by `get_captures_at_pos()`. This is because it is stored in `metadata[id]` and we do not have access to the value of `id`, so to get this value we have to iterate over the keys of `metadata`. See [this commit](https://github.com/neovim/neovim/commit/d63622930001b39b12f14112fc3abb55b760c447#diff-8bd4742121c2f359d0345f3c6c253a58220f1a28670cc4e1c957992232059a6cR16).\r\n\r\nThings would be much simpler if we were given the `id` of the capture so we could use it to just index `metadata` directly.\r\n\r\n**Solution:** Include `id` in the data returned by `get_captures_at_pos()`\r\n\r\n**Examples:**\r\n\r\nUnder a normal query like:\r\n```scm\r\n((function_call) @_fn\r\n  (#set! @_fn \"test\" 789))\r\n```\r\n\r\nThe returned capture will look like this:\r\n```lua\r\n{                                                                                                                                              \r\n  capture = \"_fn\",                                                                                                                             \r\n  lang = \"lua\",                                                                                                                                \r\n  metadata = {                                                                                                                                 \r\n    [39] = {                                                                                                                                   \r\n      test = \"789\"                                                                                                                             \r\n    }                                                                                                                                          \r\n  }                                                                                                                                            \r\n}\r\n```\r\nonly the metadata for this capture (of id 39) is returned, which is good; however, it's still annoying that we don't know the id for the capture, because it means we have to iterate over the keys of `metadata` and access the value that way.\r\n\r\n```lua\r\nfor _, md in pairs(cap.metadata) do\r\n  vim.print(md)\r\n  break\r\nend\r\n```\r\n\r\nThings are even worse if we have a query like the following:\r\n\r\n```scm\r\n((number) @_num @_numagain\r\n  (#set! @_num \"field1\" 15)\r\n  (#set! @_numagain \"field2\" 88))\r\n```\r\n\r\nNow the data returned by `get_captures_at_pos()` is:\r\n\r\n```lua\r\n{ {                                                                                                                                           \r\n  capture = \"_num\",                                                                                                                            \r\n  lang = \"lua\",                                                                                                                                \r\n  metadata = <1>{                                                                                                                              \r\n    [41] = {                                                                                                                                   \r\n      field1 = \"15\"                                                                                                                            \r\n    },                                                                                                                                         \r\n    [42] = {                                                                                                                                   \r\n      field2 = \"88\"                                                                                                                            \r\n    }                                                                                                                                          \r\n  }                                                                                                                                            \r\n}, {                                                                                                                                           \r\n  capture = \"_numagain\",                                                                                                                       \r\n  lang = \"lua\",                                                                                                                                \r\n  metadata = <table 1>                                                                                                                         \r\n} }\r\n```\r\n\r\nIn this case it would be impossible to, say, write a function to get all metadata information at a position (which would be useful for comment metadata & `_get_urls`) without counting duplicate metadata fields. We don't know the capture ids for `_numagain` or `_num` so we have to find them using a `for` loop, yet their metadata tables are identical so we can't properly extract the metadata for just that capture. Of course, this example is a bit convoluted, but we should be able to be robustly extract data in cases like this regardless, which would be possible only if we know the id for each specific capture, which we can then use to index into (potentially duplicate) metadata tables.",
-    "closed_at": null,
+    "closed_at": "2024-12-11T12:34:25Z",
     "comment_data": [],
     "comment_regular_data": [
         {
@@ -183,7 +185,7 @@
             "node_id": "IC_kwDOAPphoM6PjjP9",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 0,
+                "+1": 1,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -191,7 +193,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 0,
+                "total_count": 1,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2408461309/reactions"
             },
             "updated_at": "2024-10-12T08:43:46Z",
@@ -214,7 +216,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -258,7 +261,8 @@
                 "starred_url": "https://api.github.com/users/ribru17/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ribru17/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ribru17"
+                "url": "https://api.github.com/users/ribru17",
+                "user_view_type": "public"
             }
         },
         {
@@ -302,7 +306,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -346,7 +351,8 @@
                 "starred_url": "https://api.github.com/users/ribru17/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ribru17/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ribru17"
+                "url": "https://api.github.com/users/ribru17",
+                "user_view_type": "public"
             }
         },
         {
@@ -390,7 +396,8 @@
                 "starred_url": "https://api.github.com/users/ribru17/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ribru17/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ribru17"
+                "url": "https://api.github.com/users/ribru17",
+                "user_view_type": "public"
             }
         }
     ],
@@ -483,13 +490,14 @@
                 "starred_url": "https://api.github.com/users/ribru17/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ribru17/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ribru17"
+                "url": "https://api.github.com/users/ribru17",
+                "user_view_type": "public"
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/ribru17/neovim/pulls{/number}",
-            "pushed_at": "2024-10-14T13:48:38Z",
+            "pushed_at": "2024-12-14T02:24:53Z",
             "releases_url": "https://api.github.com/repos/ribru17/neovim/releases{/id}",
-            "size": 282323,
+            "size": 291146,
             "ssh_url": "git@github.com:ribru17/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/ribru17/neovim/stargazers",
@@ -501,14 +509,14 @@
             "teams_url": "https://api.github.com/repos/ribru17/neovim/teams",
             "topics": [],
             "trees_url": "https://api.github.com/repos/ribru17/neovim/git/trees{/sha}",
-            "updated_at": "2024-10-12T15:25:54Z",
+            "updated_at": "2024-12-14T02:25:01Z",
             "url": "https://api.github.com/repos/ribru17/neovim",
             "visibility": "public",
             "watchers": 0,
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "a37ea267f0a832b8861c7a2319114494eb24c42c",
+        "sha": "127dc9839b0188568bf1f24d52f576708c25f2d4",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/55766287?v=4",
             "events_url": "https://api.github.com/users/ribru17/events{/privacy}",
@@ -527,7 +535,8 @@
             "starred_url": "https://api.github.com/users/ribru17/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/ribru17/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/ribru17"
+            "url": "https://api.github.com/users/ribru17",
+            "user_view_type": "public"
         }
     },
     "html_url": "https://github.com/neovim/neovim/pull/30559",
@@ -545,101 +554,20 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "b4581d0edcda7e159c18496713ec09cde3d8cf4c",
-    "merged_at": null,
+    "merge_commit_sha": "3dfb9e6f60d9ca27ff140a9300cc1a43e38aa2ee",
+    "merged_at": "2024-12-11T12:34:25Z",
     "milestone": null,
     "node_id": "PR_kwDOAPphoM58_xts",
     "number": 30559,
     "patch_url": "https://github.com/neovim/neovim/pull/30559.patch",
-    "requested_reviewers": [
-        {
-            "avatar_url": "https://avatars.githubusercontent.com/u/1363104?v=4",
-            "events_url": "https://api.github.com/users/bfredl/events{/privacy}",
-            "followers_url": "https://api.github.com/users/bfredl/followers",
-            "following_url": "https://api.github.com/users/bfredl/following{/other_user}",
-            "gists_url": "https://api.github.com/users/bfredl/gists{/gist_id}",
-            "gravatar_id": "",
-            "html_url": "https://github.com/bfredl",
-            "id": 1363104,
-            "login": "bfredl",
-            "node_id": "MDQ6VXNlcjEzNjMxMDQ=",
-            "organizations_url": "https://api.github.com/users/bfredl/orgs",
-            "received_events_url": "https://api.github.com/users/bfredl/received_events",
-            "repos_url": "https://api.github.com/users/bfredl/repos",
-            "site_admin": false,
-            "starred_url": "https://api.github.com/users/bfredl/starred{/owner}{/repo}",
-            "subscriptions_url": "https://api.github.com/users/bfredl/subscriptions",
-            "type": "User",
-            "url": "https://api.github.com/users/bfredl"
-        },
-        {
-            "avatar_url": "https://avatars.githubusercontent.com/u/2361214?v=4",
-            "events_url": "https://api.github.com/users/clason/events{/privacy}",
-            "followers_url": "https://api.github.com/users/clason/followers",
-            "following_url": "https://api.github.com/users/clason/following{/other_user}",
-            "gists_url": "https://api.github.com/users/clason/gists{/gist_id}",
-            "gravatar_id": "",
-            "html_url": "https://github.com/clason",
-            "id": 2361214,
-            "login": "clason",
-            "node_id": "MDQ6VXNlcjIzNjEyMTQ=",
-            "organizations_url": "https://api.github.com/users/clason/orgs",
-            "received_events_url": "https://api.github.com/users/clason/received_events",
-            "repos_url": "https://api.github.com/users/clason/repos",
-            "site_admin": false,
-            "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
-            "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
-            "type": "User",
-            "url": "https://api.github.com/users/clason"
-        },
-        {
-            "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",
-            "events_url": "https://api.github.com/users/lewis6991/events{/privacy}",
-            "followers_url": "https://api.github.com/users/lewis6991/followers",
-            "following_url": "https://api.github.com/users/lewis6991/following{/other_user}",
-            "gists_url": "https://api.github.com/users/lewis6991/gists{/gist_id}",
-            "gravatar_id": "",
-            "html_url": "https://github.com/lewis6991",
-            "id": 7904185,
-            "login": "lewis6991",
-            "node_id": "MDQ6VXNlcjc5MDQxODU=",
-            "organizations_url": "https://api.github.com/users/lewis6991/orgs",
-            "received_events_url": "https://api.github.com/users/lewis6991/received_events",
-            "repos_url": "https://api.github.com/users/lewis6991/repos",
-            "site_admin": false,
-            "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
-            "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
-            "type": "User",
-            "url": "https://api.github.com/users/lewis6991"
-        },
-        {
-            "avatar_url": "https://avatars.githubusercontent.com/u/1009873?v=4",
-            "events_url": "https://api.github.com/users/wookayin/events{/privacy}",
-            "followers_url": "https://api.github.com/users/wookayin/followers",
-            "following_url": "https://api.github.com/users/wookayin/following{/other_user}",
-            "gists_url": "https://api.github.com/users/wookayin/gists{/gist_id}",
-            "gravatar_id": "",
-            "html_url": "https://github.com/wookayin",
-            "id": 1009873,
-            "login": "wookayin",
-            "node_id": "MDQ6VXNlcjEwMDk4NzM=",
-            "organizations_url": "https://api.github.com/users/wookayin/orgs",
-            "received_events_url": "https://api.github.com/users/wookayin/received_events",
-            "repos_url": "https://api.github.com/users/wookayin/repos",
-            "site_admin": false,
-            "starred_url": "https://api.github.com/users/wookayin/starred{/owner}{/repo}",
-            "subscriptions_url": "https://api.github.com/users/wookayin/subscriptions",
-            "type": "User",
-            "url": "https://api.github.com/users/wookayin"
-        }
-    ],
+    "requested_reviewers": [],
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/30559/comments",
-    "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/a37ea267f0a832b8861c7a2319114494eb24c42c",
+    "state": "closed",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/127dc9839b0188568bf1f24d52f576708c25f2d4",
     "title": "feat(treesitter): include capture id in return value of `get_captures_at_pos()`",
-    "updated_at": "2024-10-14T02:17:04Z",
+    "updated_at": "2024-12-11T12:34:40Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/30559",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/55766287?v=4",
@@ -659,6 +587,7 @@
         "starred_url": "https://api.github.com/users/ribru17/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/ribru17/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/ribru17"
+        "url": "https://api.github.com/users/ribru17",
+        "user_view_type": "public"
     }
 }
