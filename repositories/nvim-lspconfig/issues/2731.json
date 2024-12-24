@@ -4,7 +4,28 @@
     "assignees": [],
     "author_association": "NONE",
     "body": "### Description\n\nIf the user defined `on_attach` functions contains a `vim.api.nvim_exec2` statement (see minimum repro example below), then nvim-lspconfig will mysteriously and without error stop execution on this line and not proceed: \r\n\r\nhttps://github.com/neovim/nvim-lspconfig/blob/dd11ba7b3c8f82d51b6d4dd7d68fce2d78bf78a0/lua/lspconfig/configs.lua#L333\r\n\r\nThis is bad because the next couple of lines register the user passed `commands`:\r\n\r\nhttps://github.com/neovim/nvim-lspconfig/blob/dd11ba7b3c8f82d51b6d4dd7d68fce2d78bf78a0/lua/lspconfig/configs.lua#L335-L340\r\n\r\nSo this means that the commands field is completely ignored, and this is the reason that my [rust-tools](https://github.com/simrat39/rust-tools.nvim) had none of its [commands](https://github.com/simrat39/rust-tools.nvim/blob/0cc8adab23117783a0292a0c8a2fbed1005dc645/lua/rust-tools/lsp.lua#L30) on start up (took way too long to root cause 😳)\n\n### Neovim version\n\nNVIM v0.9.0-dev-1319+g10baf8971\r\nBuild type: RelWithDebInfo\r\nLuaJIT 2.1.0-beta3\n\n### Nvim-lspconfig version\n\ndd11ba7b3c8f82d51b6d4dd7d68fce2d78bf78a0\n\n### Operating system and version\n\nLinux main 6.4.3-zen1-2-zen #1 ZEN SMP PREEMPT_DYNAMIC Sat, 15 Jul 2023 20:18:15 +0000 x86_64 GNU/Linux\n\n### Affected language servers\n\nall\n\n### Steps to reproduce\n\n1. `nvim -u min.lua sample.rs` (need a sample rust file to trigger rust_analyzer)\r\n2. Try `:SampleCommand`\n\n### Actual behavior\n\n`E492: Not an editor command: SampleCommand`\r\n\n\n### Expected behavior\n\n`hello world`\r\n\r\ni.e. `SampleCommand` was defined\n\n### Minimal config\n\n```Lua\nlocal opt = vim.opt\r\nlocal api = vim.api\r\nlocal fn = vim.fn\r\n\r\n--- Lazy bootstrap\r\nlocal lazypath = fn.stdpath('data') .. '/lazy/lazy.nvim'\r\nif not vim.loop.fs_stat(lazypath) then\r\n  vim.notify('Bootstraping lazy.nvim...')\r\n  fn.system({\r\n    'git',\r\n    'clone',\r\n    '--filter=blob:none',\r\n    'https://github.com/folke/lazy.nvim.git',\r\n    '--branch=stable', -- latest stable release\r\n    lazypath,\r\n  })\r\nend\r\nopt.rtp:prepend(lazypath)\r\n\r\n-- Problematic function\r\nlocal function bad_on_attach()\r\n  -- This statement causes SampleCommand to not be registered.\r\n  -- Comment it out and it will regsiter\r\n  api.nvim_exec2[[\r\n    augroup lsp_document_highlight\r\n    autocmd! * <buffer>\r\n    autocmd CursorHold <buffer> lua vim.lsp.buf.document_highlight()\r\n    autocmd CursorMoved <buffer> lua vim.lsp.buf.clear_references()\r\n    augroup END\r\n  ]]\r\nend\r\n\r\nrequire'lazy'.setup {\r\n  {\r\n    'neovim/nvim-lspconfig',\r\n    config = function()\r\n      local lspconfig = require'lspconfig'\r\n      lspconfig.rust_analyzer.setup {\r\n        on_attach = bad_on_attach,\r\n        commands = {\r\n          SampleCommand = {\r\n            function()\r\n              print('hello world')\r\n            end,\r\n          },\r\n        },\r\n      }\r\n    end,\r\n  },\r\n}\n```\n\n\n### LSP log\n\nsee minimal lua",
-    "closed_at": null,
+    "closed_at": "2024-12-17T11:51:50Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+        "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+        "followers_url": "https://api.github.com/users/justinmk/followers",
+        "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+        "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/justinmk",
+        "id": 1359421,
+        "login": "justinmk",
+        "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+        "organizations_url": "https://api.github.com/users/justinmk/orgs",
+        "received_events_url": "https://api.github.com/users/justinmk/received_events",
+        "repos_url": "https://api.github.com/users/justinmk/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "CONTRIBUTOR",
@@ -47,7 +68,8 @@
                 "starred_url": "https://api.github.com/users/sigmaSd/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/sigmaSd/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/sigmaSd"
+                "url": "https://api.github.com/users/sigmaSd",
+                "user_view_type": "public"
             }
         },
         {
@@ -91,11 +113,57 @@
                 "starred_url": "https://api.github.com/users/jeanlucthumm/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/jeanlucthumm/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/jeanlucthumm"
+                "url": "https://api.github.com/users/jeanlucthumm",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "> I never got an error message. Execution just stopped silently.\n\nIf it's during startup, that is a Nvim core issue. Using `:messages` manually, should show the error.",
+            "created_at": "2024-12-17T11:51:50Z",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/issues/2731#issuecomment-2548253609",
+            "id": 2548253609,
+            "issue_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/2731",
+            "node_id": "IC_kwDODTQC186X40Op",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/comments/2548253609/reactions"
+            },
+            "updated_at": "2024-12-17T11:51:50Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/comments/2548253609",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         }
     ],
-    "comments": 2,
+    "comments": 3,
     "comments_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/2731/comments",
     "created_at": "2023-07-22T00:56:05Z",
     "events_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/2731/events",
@@ -131,11 +199,16 @@
         "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/2731/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/nvim-lspconfig",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "not_planned",
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/2731/timeline",
     "title": "nvim-lspconfig shortcircuits if `on_attach` contains `vim.api.nvim_exec2` statements",
-    "updated_at": "2023-07-23T21:44:13Z",
+    "updated_at": "2024-12-17T11:51:51Z",
     "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/2731",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/4934853?v=4",
@@ -155,6 +228,7 @@
         "starred_url": "https://api.github.com/users/jeanlucthumm/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/jeanlucthumm/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/jeanlucthumm"
+        "url": "https://api.github.com/users/jeanlucthumm",
+        "user_view_type": "public"
     }
 }
