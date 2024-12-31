@@ -5,6 +5,27 @@
     "author_association": "CONTRIBUTOR",
     "body": "### Problem\n\nThere are two ways a Neovim UI can configure its size.\r\n1. Set the lines/columns based on the current window size and update it as the window size changes.\r\n2. Set lines/columns from within Neovim and let the UI resize according to that.\r\n\r\nFor Neovide we would like the following behaviour\r\n1. If no lines/columns have been set, then set the initial lines/columns according to 1.\r\n2. If lines/columns are set during startup, then resize the initial window size according to 2.\r\n3. After startup follow 1. when the window is resized either by the user or window manager. But 2. if the user sets lines/colums from within Neovim.\r\n\r\nThis is almost supported, except that there appear to be no way to know if lines/columns have been set during startup. The `OptionSet` is not called until `VimEnter`. And there are also no UI events for these. \r\n\r\nThe good thing is that `OptionSet `is not called when we call `nvim_ui_try_resize`, even if the actual values are changes, which makes it possible to support both window resizing and setting the options after the startup.\r\n\r\nMy current planned workaround for this is to set the minimum allowed size 12x2 during startup, and check if the values have changed from that. NOTE: Checking if the options have changed from the default values is not good enough. Since the user might want to use that size. It's much less likely that someone wants a 12x2 size.\n\n### Expected behavior\n\nThere's a way to know if the user has changed lines/columns during startup.\r\n\r\n",
     "closed_at": null,
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/9946255?v=4",
+        "events_url": "https://api.github.com/users/fredizzimo/events{/privacy}",
+        "followers_url": "https://api.github.com/users/fredizzimo/followers",
+        "following_url": "https://api.github.com/users/fredizzimo/following{/other_user}",
+        "gists_url": "https://api.github.com/users/fredizzimo/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/fredizzimo",
+        "id": 9946255,
+        "login": "fredizzimo",
+        "node_id": "MDQ6VXNlcjk5NDYyNTU=",
+        "organizations_url": "https://api.github.com/users/fredizzimo/orgs",
+        "received_events_url": "https://api.github.com/users/fredizzimo/received_events",
+        "repos_url": "https://api.github.com/users/fredizzimo/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/fredizzimo/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/fredizzimo/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/fredizzimo",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -47,7 +68,8 @@
                 "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/zeertzjq"
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
             }
         },
         {
@@ -91,7 +113,8 @@
                 "starred_url": "https://api.github.com/users/fredizzimo/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/fredizzimo/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/fredizzimo"
+                "url": "https://api.github.com/users/fredizzimo",
+                "user_view_type": "public"
             }
         },
         {
@@ -135,11 +158,57 @@
                 "starred_url": "https://api.github.com/users/fredizzimo/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/fredizzimo/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/fredizzimo"
+                "url": "https://api.github.com/users/fredizzimo",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "With our current way of doing the startup, we might be able to use `nvim_get_option_info2()` but that requires an RPC roundtrip before we can show the window, which is not ideal at all.\n\nI think changing `UIEnter` to always be called before the window is shown, as discussed in https://github.com/neovim/neovim/issues/25377, is the best way to solve the issue.\n\nThat way Neovide can add its own `UIEnter` handler which sets the final grid layout before it's shown (hopefully with some chance of invisible re-layouting happening before that. Our implementation would do something roughly like this\n\n1. If number of lines and columns is passed as a commandline, then pass that in `ui_attach`, otherwise pass some default. Preferably, `ui_attach` would accept nil and use the Neovim default.\n2. In UIEnter\n    a. If columns and lines was set in `ui_attach` then do nothing\n    b. If the user has set lines or columns in their init files, also don't do anything \n    c. Otherwise calculate the amount of lines and columns based on the actual size of the window. This takes things like Neovide specific padding and font size into account. \n\nc. is the tricky part, that can't be done when calling `ui_attach`, since we don't know what font and how much padding will be used. ",
+            "created_at": "2024-12-24T13:10:12Z",
+            "html_url": "https://github.com/neovim/neovim/issues/25378#issuecomment-2561114617",
+            "id": 2561114617,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/25378",
+            "node_id": "IC_kwDOAPphoM6Yp4H5",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2561114617/reactions"
+            },
+            "updated_at": "2024-12-24T13:10:12Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2561114617",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/9946255?v=4",
+                "events_url": "https://api.github.com/users/fredizzimo/events{/privacy}",
+                "followers_url": "https://api.github.com/users/fredizzimo/followers",
+                "following_url": "https://api.github.com/users/fredizzimo/following{/other_user}",
+                "gists_url": "https://api.github.com/users/fredizzimo/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/fredizzimo",
+                "id": 9946255,
+                "login": "fredizzimo",
+                "node_id": "MDQ6VXNlcjk5NDYyNTU=",
+                "organizations_url": "https://api.github.com/users/fredizzimo/orgs",
+                "received_events_url": "https://api.github.com/users/fredizzimo/received_events",
+                "repos_url": "https://api.github.com/users/fredizzimo/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/fredizzimo/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/fredizzimo/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/fredizzimo",
+                "user_view_type": "public"
             }
         }
     ],
-    "comments": 3,
+    "comments": 4,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/25378/comments",
     "created_at": "2023-09-26T22:18:31Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/25378/events",
@@ -158,16 +227,16 @@
         {
             "color": "c5def5",
             "default": false,
-            "description": "UI extensibility, events, protocol",
+            "description": "UI extensibility, events, protocol, externalized UI",
             "id": 640132777,
-            "name": "ui-ext",
+            "name": "ui-extensibility",
             "node_id": "MDU6TGFiZWw2NDAxMzI3Nzc=",
-            "url": "https://api.github.com/repos/neovim/neovim/labels/ui-ext"
+            "url": "https://api.github.com/repos/neovim/neovim/labels/ui-extensibility"
         },
         {
             "color": "C5DEF5",
             "default": false,
-            "description": "",
+            "description": "configuration, settings",
             "id": 4242493821,
             "name": "options",
             "node_id": "LA_kwDOAPphoM7831F9",
@@ -195,9 +264,14 @@
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "open",
     "state_reason": "reopened",
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/25378/timeline",
     "title": "Provide a way to know if columns or lines have been set by the user",
-    "updated_at": "2023-09-29T22:34:46Z",
+    "updated_at": "2024-12-24T13:10:13Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/25378",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/9946255?v=4",
@@ -217,6 +291,7 @@
         "starred_url": "https://api.github.com/users/fredizzimo/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/fredizzimo/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/fredizzimo"
+        "url": "https://api.github.com/users/fredizzimo",
+        "user_view_type": "public"
     }
 }

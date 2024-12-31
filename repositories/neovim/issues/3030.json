@@ -5,6 +5,7 @@
     "author_association": "CONTRIBUTOR",
     "body": "I'm attempting to run a GNU Make instance with termopen, and I'm seeing messages being dropped. I'm hooking into the on_exit() callback to write the terminal buffer to an external log, as well as parse it for errors for the quickfix list.\n\nI deliberately added a compile error so that Make would error-out. When this happens, GCC prints to stderr, make exits, and my messages show up on the terminal. When I look at test.log, however, the last few lines are just _gone._\n\nRather than sharing the repository, I've managed to find a minimal case that results in lost data, namely by throwing lots of text at the terminal. I don't know if this is the same problem as the make issue, but with this test case, I get about 700 lines of \"stdout,\" when I am expecting 2000.\n\nI poked into it a bit and my guess is that data is being dropped somewhere after SIGCHLD is sent but there is still data either to be read in the TTY fds, or its already been sucked out of the fd but it makes it to the terminal buffer after the process has already exited and the exit callback has been called.\n\nI've attached a minimal test case that fails on my computer as of \n5e9f9a875645af1e3c858daba799fe4a9021a767\n\nAm I doing something stupid?\n\n```\nlet s:Output = {}\n\nfunction! s:Output.on_exit(id, code)\n    write! test.log\nendfunction\n\nfunction! s:termtest()\n    only\n    vert botright sp | enew\n    let s:Output['bufid'] = bufnr('%')\n    call termopen([&sh, &shcf, './test.sh'], s:Output)\nendfunction\n\ncommand! -nargs=0 Termtest call s:termtest()\n```\n\nEDIT (@mhinz: shortened 2000 lines of code to two loops, as suggested by @lucc):\n\n``` shell\n#!/bin/sh\nfor i in {0..1000}; do echo \"stdout $i\"; done\nfor i in {0..1000}; do echo \"stderr $i\" 1>&2; done\n```\n",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "CONTRIBUTOR",
@@ -47,7 +48,8 @@
                 "starred_url": "https://api.github.com/users/iperry/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/iperry/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/iperry"
+                "url": "https://api.github.com/users/iperry",
+                "user_view_type": "public"
             }
         },
         {
@@ -91,7 +93,8 @@
                 "starred_url": "https://api.github.com/users/lucc/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lucc/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lucc"
+                "url": "https://api.github.com/users/lucc",
+                "user_view_type": "public"
             }
         },
         {
@@ -135,7 +138,8 @@
                 "starred_url": "https://api.github.com/users/mhinz/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/mhinz/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/mhinz"
+                "url": "https://api.github.com/users/mhinz",
+                "user_view_type": "public"
             }
         },
         {
@@ -179,7 +183,8 @@
                 "starred_url": "https://api.github.com/users/iperry/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/iperry/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/iperry"
+                "url": "https://api.github.com/users/iperry",
+                "user_view_type": "public"
             }
         },
         {
@@ -223,7 +228,8 @@
                 "starred_url": "https://api.github.com/users/iperry/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/iperry/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/iperry"
+                "url": "https://api.github.com/users/iperry",
+                "user_view_type": "public"
             }
         },
         {
@@ -267,7 +273,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -311,7 +318,8 @@
                 "starred_url": "https://api.github.com/users/tarruda/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/tarruda/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/tarruda"
+                "url": "https://api.github.com/users/tarruda",
+                "user_view_type": "public"
             }
         },
         {
@@ -355,11 +363,12 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "Could be that the terminal buffer is not yet up to date when the exit-callback is called. \nCalling `refresth_terminal(...)` in `on_process_exit()` works for me. Most of the patch makes sure that no data is missing in the terminal. \n\n``` diff\ndiff --git a/src/nvim/eval.c b/src/nvim/eval.c\nindex 47d44b1..35ade19 100644\n--- a/src/nvim/eval.c\n+++ b/src/nvim/eval.c\n@@ -22157,6 +22157,9 @@ static void on_process_exit(Process *proc, int status, void *d)\n {\n   TerminalJobData *data = d;\n   if (data->term && !data->exited) {\n+\n+    refresh_terminal(data->term);\n+\n     data->exited = true;\n     char msg[sizeof(\"\\r\\n[Process exited ]\") + NUMBUFLEN];\n     snprintf(msg, sizeof msg, \"\\r\\n[Process exited %d]\", proc->status);\ndiff --git a/src/nvim/event/process.c b/src/nvim/event/process.c\nindex 317e40e..aa04d78 100644\n--- a/src/nvim/event/process.c\n+++ b/src/nvim/event/process.c\n@@ -352,31 +352,23 @@ static void flush_stream(Process *proc, Stream *stream)\n   int err = uv_recv_buffer_size((uv_handle_t *)&stream->uv.pipe,\n                                 &system_buffer_size);\n   if (err) {\n-    system_buffer_size = (int)rbuffer_capacity(stream->buffer);\n+    // Max pipe size on Linux.\n+    system_buffer_size = 1048576;\n   }\n\n   size_t max_bytes = stream->num_bytes + (size_t)system_buffer_size;\n\n   // Read remaining data.\n-  while (!stream->closed && stream->num_bytes < max_bytes) {\n-    // Remember number of bytes before polling\n-    size_t num_bytes = stream->num_bytes;\n+  while (!stream->eof && stream->num_bytes < max_bytes && !stream->closed) {\n\n     // Poll for data and process the generated events.\n     loop_poll_events(proc->loop, 0);\n+    if (rbuffer_size(stream->buffer) == 0) {\n+        break;\n+    }\n     if (proc->events) {\n         queue_process_events(proc->events);\n     }\n-\n-    // Stream can be closed if it is empty.\n-    if (num_bytes == stream->num_bytes) {\n-      if (stream->read_cb) {\n-        // Stream callback could miss EOF handling if a child keeps the stream\n-        // open.\n-        stream->read_cb(stream, stream->buffer, 0, stream->data, true);\n-      }\n-      break;\n-    }\n   }\n }\n\ndiff --git a/src/nvim/event/rstream.c b/src/nvim/event/rstream.c\nindex a520143..e202cf4 100644\n--- a/src/nvim/event/rstream.c\n+++ b/src/nvim/event/rstream.c\n@@ -118,6 +118,7 @@ static void read_cb(uv_stream_t *uvstream, ssize_t cnt, const uv_buf_t *buf)\n       // Read error or EOF, either way stop the stream and invoke the callback\n       // with eof == true\n       uv_read_stop(uvstream);\n+      stream->eof = true;\n       invoke_read_cb(stream, 0, true);\n     }\n     return;\n@@ -181,6 +182,7 @@ static void read_event(void **argv)\n     bool eof = (uintptr_t)argv[2];\n     stream->read_cb(stream, stream->buffer, count, stream->data, eof);\n   }\n+\n   stream->pending_reqs--;\n   if (stream->closed && !stream->pending_reqs) {\n     stream_close_handle(stream);\ndiff --git a/src/nvim/event/stream.c b/src/nvim/event/stream.c\nindex 3340415..49bfe12 100644\n--- a/src/nvim/event/stream.c\n+++ b/src/nvim/event/stream.c\n@@ -72,6 +72,7 @@ void stream_init(Loop *loop, Stream *stream, int fd, uv_stream_t *uvstream,\n   stream->buffer = NULL;\n   stream->events = NULL;\n   stream->num_bytes = 0;\n+  stream->eof = false;\n }\n\n void stream_close(Stream *stream, stream_close_cb on_stream_close)\ndiff --git a/src/nvim/event/stream.h b/src/nvim/event/stream.h\nindex ad4e247..a9d0b05 100644\n--- a/src/nvim/event/stream.h\n+++ b/src/nvim/event/stream.h\n@@ -50,6 +50,7 @@ struct stream {\n   size_t maxmem;\n   size_t pending_reqs;\n   size_t num_bytes;\n+  bool eof;\n   void *data, *internal_data;\n   bool closed;\n   Queue *events;\ndiff --git a/src/nvim/rbuffer.c b/src/nvim/rbuffer.c\nindex a2cc432..14b652a 100644\n--- a/src/nvim/rbuffer.c\n+++ b/src/nvim/rbuffer.c\n@@ -15,7 +15,7 @@ RBuffer *rbuffer_new(size_t capacity)\n   FUNC_ATTR_WARN_UNUSED_RESULT FUNC_ATTR_NONNULL_RET\n {\n   if (!capacity) {\n-    capacity = 0x10000;\n+    capacity = 4095;\n   }\n\n   RBuffer *rv = xmalloc(sizeof(RBuffer) + capacity);\ndiff --git a/src/nvim/terminal.c b/src/nvim/terminal.c\nindex 6f50c03..53b0d31 100644\n--- a/src/nvim/terminal.c\n+++ b/src/nvim/terminal.c\n@@ -952,7 +952,7 @@ static void invalidate_terminal(Terminal *term, int start_row, int end_row)\n   }\n }\n\n-static void refresh_terminal(Terminal *term)\n+void refresh_terminal(Terminal *term)\n {\n   // TODO(SplinterOfChaos): Find the condition that makes term->buf invalid.\n   buf_T *buf = handle_get_buffer(term->buf_handle);\n\n```\n",
             "created_at": "2016-07-17T17:50:18Z",
             "html_url": "https://github.com/neovim/neovim/issues/3030#issuecomment-233194402",
@@ -399,7 +408,8 @@
                 "starred_url": "https://api.github.com/users/oni-link/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/oni-link/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/oni-link"
+                "url": "https://api.github.com/users/oni-link",
+                "user_view_type": "public"
             }
         },
         {
@@ -443,11 +453,12 @@
                 "starred_url": "https://api.github.com/users/radenling/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/radenling/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/radenling"
+                "url": "https://api.github.com/users/radenling",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "@radenling, do we want to have `[Process exited 0]` also written to the log file?\n",
             "created_at": "2016-08-06T12:28:38Z",
             "html_url": "https://github.com/neovim/neovim/issues/3030#issuecomment-238021073",
@@ -487,7 +498,8 @@
                 "starred_url": "https://api.github.com/users/oni-link/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/oni-link/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/oni-link"
+                "url": "https://api.github.com/users/oni-link",
+                "user_view_type": "public"
             }
         },
         {
@@ -531,7 +543,8 @@
                 "starred_url": "https://api.github.com/users/radenling/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/radenling/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/radenling"
+                "url": "https://api.github.com/users/radenling",
+                "user_view_type": "public"
             }
         },
         {
@@ -575,7 +588,8 @@
                 "starred_url": "https://api.github.com/users/radenling/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/radenling/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/radenling"
+                "url": "https://api.github.com/users/radenling",
+                "user_view_type": "public"
             }
         },
         {
@@ -619,7 +633,8 @@
                 "starred_url": "https://api.github.com/users/KillTheMule/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/KillTheMule/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/KillTheMule"
+                "url": "https://api.github.com/users/KillTheMule",
+                "user_view_type": "public"
             }
         },
         {
@@ -663,7 +678,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -707,11 +723,12 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "Without https://github.com/radenling/neovim/commit/9b9ad59dbd1e329a4de631a8ceeda3b7a83bb7d3#diff-148af05e3fe185d22c19b2ceb9ba5196\r\nI still see missing output in an ASAN build when running the following script with `nvim -S issue.3030.vim +Termtest +Termtest`.\r\n\r\nissue.3030.vim:\r\n```vim\r\nlet s:Output = {}\r\n\r\nfunction! s:termtest()\r\n    only\r\n    vert botright sp | enew\r\n    let s:Output['bufid'] = bufnr('%')\r\n    call termopen([&sh, &shcf, './issue.3030.sh'], s:Output)\r\nendfunction\r\n\r\ncommand! -nargs=0 Termtest call s:termtest()\r\n```\r\nissue.3030.sh:\r\n```bash\r\n#!/bin/bash\r\n\r\nfor i in {0..1000}; do echo \"stdout $i\"; done\r\nfor i in {0..1000}; do echo \"stderr $i\" 1>&2; done\r\n\r\n```\r\n",
             "created_at": "2017-05-28T19:01:59Z",
             "html_url": "https://github.com/neovim/neovim/issues/3030#issuecomment-304533544",
@@ -751,7 +768,8 @@
                 "starred_url": "https://api.github.com/users/oni-link/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/oni-link/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/oni-link"
+                "url": "https://api.github.com/users/oni-link",
+                "user_view_type": "public"
             }
         },
         {
@@ -764,7 +782,7 @@
             "node_id": "IC_kwDOAPphoM5Rkabw",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 2,
+                "+1": 3,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -772,7 +790,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 2,
+                "total_count": 3,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1368499952/reactions"
             },
             "updated_at": "2023-01-01T18:04:35Z",
@@ -795,7 +813,8 @@
                 "starred_url": "https://api.github.com/users/AckslD/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/AckslD/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/AckslD"
+                "url": "https://api.github.com/users/AckslD",
+                "user_view_type": "public"
             }
         },
         {
@@ -839,17 +858,18 @@
                 "starred_url": "https://api.github.com/users/SamWindell/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/SamWindell/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/SamWindell"
+                "url": "https://api.github.com/users/SamWindell",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "NONE",
-            "body": "I am also experiencing this issue both on MacOS and Fedora.\r\n\r\nThis causes parsing and build output to be missed when compiling or testing using a terminal.\r\n\r\nIf I have a fast running test and if fails the test output is usually lost",
-            "created_at": "2023-05-15T12:57:27Z",
-            "html_url": "https://github.com/neovim/neovim/issues/3030#issuecomment-1547811522",
-            "id": 1547811522,
+            "author_association": "CONTRIBUTOR",
+            "body": "I tested this with my Mac `15.1.1 (24B91)` and an Ubuntu github runner `ubuntu-24.04`.\n\nNo issues on Mac, nvim v0.10.03 (and nightly), python 3.11.4\n\n![Image](https://github.com/user-attachments/assets/d3c87e98-558c-46b6-9443-e22b259d5c49)\n\n\nSame problem as @AckslD for Ubuntu, nvim v0.10.03, python 3.12.3\n\n<img width=\"767\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/278468af-d5d2-432e-be66-66236aa9d45c\" />\n\nSimilar errors are observed inconsistently and infrequently on test runs of kitty-scrollback.nvim with tmux integration https://github.com/mikesmithgh/kitty-scrollback.nvim/issues/115#issuecomment-2563004094.  \n\nAdding a sleep does seem to workaround the issue:\n\n<img width=\"767\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/7ae499ab-4b5f-493c-875d-6e55d37a2527\" />\n",
+            "created_at": "2024-12-30T20:21:15Z",
+            "html_url": "https://github.com/neovim/neovim/issues/3030#issuecomment-2565883489",
+            "id": 2565883489,
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/3030",
-            "node_id": "IC_kwDOAPphoM5cQbrC",
+            "node_id": "IC_kwDOAPphoM6Y8EZh",
             "performed_via_github_app": null,
             "reactions": {
                 "+1": 0,
@@ -861,29 +881,30 @@
                 "laugh": 0,
                 "rocket": 0,
                 "total_count": 0,
-                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1547811522/reactions"
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2565883489/reactions"
             },
-            "updated_at": "2023-05-15T12:57:27Z",
-            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1547811522",
+            "updated_at": "2024-12-30T20:21:15Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2565883489",
             "user": {
-                "avatar_url": "https://avatars.githubusercontent.com/u/25723553?v=4",
-                "events_url": "https://api.github.com/users/ten3roberts/events{/privacy}",
-                "followers_url": "https://api.github.com/users/ten3roberts/followers",
-                "following_url": "https://api.github.com/users/ten3roberts/following{/other_user}",
-                "gists_url": "https://api.github.com/users/ten3roberts/gists{/gist_id}",
+                "avatar_url": "https://avatars.githubusercontent.com/u/10135646?v=4",
+                "events_url": "https://api.github.com/users/mikesmithgh/events{/privacy}",
+                "followers_url": "https://api.github.com/users/mikesmithgh/followers",
+                "following_url": "https://api.github.com/users/mikesmithgh/following{/other_user}",
+                "gists_url": "https://api.github.com/users/mikesmithgh/gists{/gist_id}",
                 "gravatar_id": "",
-                "html_url": "https://github.com/ten3roberts",
-                "id": 25723553,
-                "login": "ten3roberts",
-                "node_id": "MDQ6VXNlcjI1NzIzNTUz",
-                "organizations_url": "https://api.github.com/users/ten3roberts/orgs",
-                "received_events_url": "https://api.github.com/users/ten3roberts/received_events",
-                "repos_url": "https://api.github.com/users/ten3roberts/repos",
+                "html_url": "https://github.com/mikesmithgh",
+                "id": 10135646,
+                "login": "mikesmithgh",
+                "node_id": "MDQ6VXNlcjEwMTM1NjQ2",
+                "organizations_url": "https://api.github.com/users/mikesmithgh/orgs",
+                "received_events_url": "https://api.github.com/users/mikesmithgh/received_events",
+                "repos_url": "https://api.github.com/users/mikesmithgh/repos",
                 "site_admin": false,
-                "starred_url": "https://api.github.com/users/ten3roberts/starred{/owner}{/repo}",
-                "subscriptions_url": "https://api.github.com/users/ten3roberts/subscriptions",
+                "starred_url": "https://api.github.com/users/mikesmithgh/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/mikesmithgh/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ten3roberts"
+                "url": "https://api.github.com/users/mikesmithgh",
+                "user_view_type": "public"
             }
         }
     ],
@@ -924,7 +945,7 @@
         {
             "color": "BFDADC",
             "default": false,
-            "description": "Low-risk. Do NOT ask \"can I work on this\", just read CONTRIBUTING.md",
+            "description": "Low-risk, self-contained. Do NOT ask \"can I work on this\", just read CONTRIBUTING.md",
             "id": 407246773,
             "name": "complexity:low",
             "node_id": "MDU6TGFiZWw0MDcyNDY3NzM=",
@@ -935,7 +956,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 601,
+        "closed_issues": 677,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -955,19 +976,20 @@
             "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/justinmk"
+            "url": "https://api.github.com/users/justinmk",
+            "user_view_type": "public"
         },
-        "description": "Low priority. Not planned for the current target, may be reassigned.",
+        "description": "Low priority items. We plan to work on this but don't have a target date.",
         "due_on": null,
         "html_url": "https://github.com/neovim/neovim/milestone/6",
         "id": 655037,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 515,
+        "open_issues": 621,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2024-04-01T02:46:11Z",
+        "updated_at": "2024-12-30T21:08:08Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "MDU6SXNzdWU5NTY5Njg2NA==",
@@ -988,9 +1010,14 @@
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "open",
     "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/3030/timeline",
     "title": "Terminal UI buffer drops data?",
-    "updated_at": "2024-03-30T13:07:03Z",
+    "updated_at": "2024-12-30T20:45:28Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/3030",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/224968?v=4",
@@ -1010,6 +1037,7 @@
         "starred_url": "https://api.github.com/users/iperry/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/iperry/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/iperry"
+        "url": "https://api.github.com/users/iperry",
+        "user_view_type": "public"
     }
 }
