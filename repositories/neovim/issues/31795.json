@@ -6,8 +6,54 @@
     "body": "### Problem\n\nWhen using `completeopt=menuone,longest`, triggering omnifunc with `<C-X C-O>` will delete the already-typed prefix if there are multiple matches. It should not delete any characters at all.\n\nIf I edit a Python file and try to type `staticmethod` by typing `sta` then pressing `<C-X C-O>`, `sta` is deleted and the completion popup is shown for prefix `sta`. If I type more characters before I invoke omnifunc, it will complete properly instead of deleting. It seems to be inconsistent how many characters are needed.\n\nIf I disable `longest` and just set `completeopt` to `menuone`, omnifunc in the Python file no longer causes the already-typed prefix to be deleted (but I lose the functionality of `longest`).\n\nI bisected and found commit 025c87441502cf570bad7b71f40bc6fe88989297 does not exhibit this bug, but it looks like there has been a lot of change to the LSP code since then so there may be versions in between that don't exhibit it either.\n\n### Steps to reproduce\n\nMy `minimal.lua`, from the template, and run with `nvim --clean -u minimal.lua`:\n\n```\nfor name, url in pairs {\n  'https://github.com/neovim/nvim-lspconfig/',\n} do\n  local install_path = vim.fn.fnamemodify('nvim_issue/' .. name, ':p')\n  if vim.fn.isdirectory(install_path) == 0 then\n    vim.fn.system { 'git', 'clone', '--depth=1', url, install_path }\n  end\n  vim.opt.runtimepath:append(install_path)\nend\n\nvim.o.completeopt = \"longest,menuone\"\n\nlocal on_attach = function(client, bufnr)\n    vim.bo.omnifunc = \"v:lua.vim.lsp.omnifunc\"\nend\n\nlocal nvim_lsp = require('lspconfig')\n\nnvim_lsp.pyright.setup({ on_attach = on_attach })\n```\n\nI have built neovim from source using a vanilla `make install` to a custom prefix:\n\n```\ngit clone --bare --recurse-submodules https://github.com/neovim/neovim /path/to/dir\ncd /path/to/dir\nmake CMAKE_BUILD_TYPE=Release CMAKE_INSTALL_PREFIX=\"/path/to/install\" install\n```\n\n### Expected behavior\n\nIf I edit a Python file and try to type `staticmethod` by typing `sta` then pressing `<C-X C-O>`, `sta` should be preserved and the completion popup should be shown for prefix `sta`.\n\n### Nvim version (nvim -v)\n\ncommit e9c077d197a80a2ecd858821b18d0be3e3eb6d0b\n\n### Vim (not Nvim) behaves the same?\n\nCan't reproduce, LSP related.\n\n### Operating system/version\n\nDebian Trixie\n\n### Terminal name/version\n\nfoot 1.18.1\n\n### $TERM environment variable\n\nxterm-256color\n\n### Installation\n\nBuild from repo",
     "closed_at": null,
     "closed_by": null,
-    "comment_data": [],
-    "comments": 0,
+    "comment_data": [
+        {
+            "author_association": "MEMBER",
+            "body": "When item.textEdit has matches, item is considered a match. This will return a large number of results that do not match preifx. comp_leader is frequently changed in ins_compl_longest_match to find the longest substring. This can cause prefix to be deleted when many items that do not match prefix exist. this should work. . .\n\n```diff\ndiff --git a/runtime/lua/vim/lsp/completion.lua b/runtime/lua/vim/lsp/completion.lua\nindex dbf0a62ee..7d4e11ac2 100644\n--- a/runtime/lua/vim/lsp/completion.lua\n+++ b/runtime/lua/vim/lsp/completion.lua\n@@ -262,7 +262,7 @@ function M._lsp_to_complete_items(result, prefix, client_id)\n         return match_item_by_value(item.filterText, prefix)\n       end\n\n-      if item.textEdit then\n+      if item.textEdit and not vim.o.completeopt:find('longest') then\n         -- server took care of filtering\n         return true\n       end\n```",
+            "created_at": "2024-12-31T06:15:22Z",
+            "html_url": "https://github.com/neovim/neovim/issues/31795#issuecomment-2566165014",
+            "id": 2566165014,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31795",
+            "node_id": "IC_kwDOAPphoM6Y9JIW",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2566165014/reactions"
+            },
+            "updated_at": "2024-12-31T06:15:22Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2566165014",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",
+                "events_url": "https://api.github.com/users/glepnir/events{/privacy}",
+                "followers_url": "https://api.github.com/users/glepnir/followers",
+                "following_url": "https://api.github.com/users/glepnir/following{/other_user}",
+                "gists_url": "https://api.github.com/users/glepnir/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/glepnir",
+                "id": 41671631,
+                "login": "glepnir",
+                "node_id": "MDQ6VXNlcjQxNjcxNjMx",
+                "organizations_url": "https://api.github.com/users/glepnir/orgs",
+                "received_events_url": "https://api.github.com/users/glepnir/received_events",
+                "repos_url": "https://api.github.com/users/glepnir/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/glepnir/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/glepnir/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/glepnir",
+                "user_view_type": "public"
+            }
+        }
+    ],
+    "comments": 1,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/31795/comments",
     "created_at": "2024-12-31T02:16:06Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/31795/events",
@@ -22,6 +68,24 @@
             "name": "bug",
             "node_id": "MDU6TGFiZWw3Nzk5NzQ3NA==",
             "url": "https://api.github.com/repos/neovim/neovim/labels/bug"
+        },
+        {
+            "color": "c5def5",
+            "default": false,
+            "description": null,
+            "id": 662566370,
+            "name": "lsp",
+            "node_id": "MDU6TGFiZWw2NjI1NjYzNzA=",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/lsp"
+        },
+        {
+            "color": "C5DEF5",
+            "default": false,
+            "description": "Nvim built-in (omni)completion",
+            "id": 3214348835,
+            "name": "completion",
+            "node_id": "MDU6TGFiZWwzMjE0MzQ4ODM1",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/completion"
         }
     ],
     "labels_url": "https://api.github.com/repos/neovim/neovim/issues/31795/labels{/name}",
@@ -52,7 +116,7 @@
     },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/31795/timeline",
     "title": "Already-typed prefix is deleted when invoking omnifunc with completeopt set to menuone,longest",
-    "updated_at": "2024-12-31T02:16:06Z",
+    "updated_at": "2024-12-31T15:29:19Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/31795",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/288426?v=4",
