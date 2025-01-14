@@ -5,6 +5,7 @@
     "author_association": "NONE",
     "body": "### Problem\r\n\r\nAlthough the LSP provides the entire call hierarchy information, Neovim only displays references that are one level deep. Similar to vscode, the entire call hierarchy should be shown in a window allowing us to explore all the paths. There is an unmaintained [plugin](https://github.com/crusj/hierarchy-tree-go.nvim?tab=readme-ov-file) that used to address this issue.\r\n\r\n### Steps to reproduce using \"nvim -u minimal_init.lua\"\r\n\r\n```\r\n:lua vim.lsp.buf.incoming_calls()\r\n```\r\n\r\n### Expected behavior\r\n\r\nShould display a window showing the full call hierarchy\r\n\r\n### Neovim version (nvim -v)\r\n\r\nNVIM v0.9.2 Build type: Release LuaJIT 2.1.0-beta3\r\n\r\n### Language server name/version\r\n\r\ngolang.org/x/tools/gopls@v0.11.0 h1:/nvKHdTtePQmrv9XN3gIUN9MOdUrKzO/dcqgbG6x8EY=\r\n\r\n### Operating system/version\r\n\r\nmacos\r\n\r\n### Log file\r\n\r\n_No response_",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "CONTRIBUTOR",
@@ -47,11 +48,57 @@
                 "starred_url": "https://api.github.com/users/hiberabyss/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/hiberabyss/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/hiberabyss"
+                "url": "https://api.github.com/users/hiberabyss",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "NONE",
+            "body": "I've been recently looking at this problem, as I too wanted a deeper call hierarchy and ended up here following a Google search.\n\nThe honest truth is it is a bit tricky for the following reasons:\n- The LSP only answers with the hierarchy one level deep, to explore the \"full hierarchy\" you need to make repeated calls on each subsequent layer\n- There is potentially exponential growth on the discovered hierarchy, if each function leads to multiple further functions, Recursive calls in particular would be infinite\n- You can limit this (to the number of functions in a codebase) by caching the found call hierarchy information for a function but this is extra hassle and is still potentially quite large on big codebases\n- Even when you do discover the whole hierarchy there is then the question of how to display it. The call hierarchy is a tree but the LSP results are currently dumped into the quickfix list, a flat list. To display the tree we really need to build a new bit of UI, which is a non-trivial undertaking\n\nI have written [a Telescope plugin](https://github.com/jmacadie/telescope-hierarchy.nvim) that does show the call hierarchy in a treeview. In the [See Also section](https://github.com/jmacadie/telescope-hierarchy.nvim?tab=readme-ov-file#see-also) I call out a number of alternatives that I found, if what I've written is not to your taste.\n\nI'd love to be wrong on this, but I suspect that for the above reasons this problem will be solved by plugins and not Neovim core.",
+            "created_at": "2025-01-09T17:09:52Z",
+            "html_url": "https://github.com/neovim/neovim/issues/26817#issuecomment-2580841794",
+            "id": 2580841794,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/26817",
+            "node_id": "IC_kwDOAPphoM6Z1IVC",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 5,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 5,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2580841794/reactions"
+            },
+            "updated_at": "2025-01-09T17:09:52Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2580841794",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1902025?v=4",
+                "events_url": "https://api.github.com/users/jmacadie/events{/privacy}",
+                "followers_url": "https://api.github.com/users/jmacadie/followers",
+                "following_url": "https://api.github.com/users/jmacadie/following{/other_user}",
+                "gists_url": "https://api.github.com/users/jmacadie/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/jmacadie",
+                "id": 1902025,
+                "login": "jmacadie",
+                "node_id": "MDQ6VXNlcjE5MDIwMjU=",
+                "organizations_url": "https://api.github.com/users/jmacadie/orgs",
+                "received_events_url": "https://api.github.com/users/jmacadie/received_events",
+                "repos_url": "https://api.github.com/users/jmacadie/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/jmacadie/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/jmacadie/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/jmacadie",
+                "user_view_type": "public"
             }
         }
     ],
-    "comments": 1,
+    "comments": 2,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/26817/comments",
     "created_at": "2023-12-31T06:31:07Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/26817/events",
@@ -81,7 +128,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 626,
+        "closed_issues": 682,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -101,42 +148,48 @@
             "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/justinmk"
+            "url": "https://api.github.com/users/justinmk",
+            "user_view_type": "public"
         },
-        "description": "Low priority. Not planned for the current target, may be reassigned.",
+        "description": "Low priority items. We plan to work on this but don't have a target date.",
         "due_on": null,
         "html_url": "https://github.com/neovim/neovim/milestone/6",
         "id": 655037,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 550,
+        "open_issues": 627,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2024-06-21T11:50:48Z",
+        "updated_at": "2025-01-14T00:14:22Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM5617wv",
     "number": 26817,
     "performed_via_github_app": null,
     "reactions": {
-        "+1": 12,
+        "+1": 23,
         "-1": 0,
         "confused": 0,
         "eyes": 0,
-        "heart": 0,
+        "heart": 1,
         "hooray": 0,
         "laugh": 0,
         "rocket": 0,
-        "total_count": 12,
+        "total_count": 24,
         "url": "https://api.github.com/repos/neovim/neovim/issues/26817/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "open",
     "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/26817/timeline",
     "title": "vim.lsp.buf.incoming_calls does not show full call hierarchy",
-    "updated_at": "2024-06-20T13:34:35Z",
+    "updated_at": "2025-01-09T17:09:54Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/26817",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/6192130?v=4",
@@ -156,6 +209,7 @@
         "starred_url": "https://api.github.com/users/sp71/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/sp71/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/sp71"
+        "url": "https://api.github.com/users/sp71",
+        "user_view_type": "public"
     }
 }

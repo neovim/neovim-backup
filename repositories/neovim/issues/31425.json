@@ -46,8 +46,28 @@
     ],
     "author_association": "NONE",
     "body": "### Problem\n\nI maintain a plugin over at https://github.com/julienvincent/nvim-paredit whose test-suite started failing on nightly builds.\n\nI isolated the issue down to calls to `TSNode:next_named_sibling` which now returns `nil` even when there is a node sibling. There may be other broken API's too - but this was the first one I found that was failing.\n\nThis is working on stable/0.10.2 and previous neovim versions. I looked and didn't see any issues regarding this but might have missed something.\n\n---\n\nThis first started failing in 28bf25d012778d911ea5757ae0e587b0bdd7c3ec\n\n### Steps to reproduce\n\n```lua\nlocal function prepare()\n  local deps_path = \".build/dependencies\"\n  local ts_path = deps_path .. \"/nvim-treesitter\"\n  if not vim.loop.fs_stat(ts_path) then\n    vim.fn.mkdir(deps_path, \"p\")\n    vim.fn.system({\n      \"git\",\n      \"clone\",\n      \"--filter=blob:none\",\n      \"--depth=1\",\n      \"https://github.com/nvim-treesitter/nvim-treesitter\",\n      ts_path,\n    })\n  end\n  vim.opt.runtimepath:append(ts_path)\n  vim.cmd.runtime({ \"plugin/nvim-treesitter.lua\", bang = true })\n\n  vim.o.swapfile = false\n  vim.bo.swapfile = false\n\n  vim.opt.runtimepath:append(\"./.build/parsers/\")\n  require(\"nvim-treesitter.configs\").setup({\n    parser_install_dir = vim.fn.getcwd() .. \"/.build/parsers\",\n    ensure_installed = { \"clojure\" },\n    sync_install = true,\n  })\nend\n\nlocal function run()\n  local buf = vim.api.nvim_create_buf(false, true)\n  vim.api.nvim_win_set_buf(0, buf)\n  local win = vim.fn.win_findbuf(buf)[1]\n\n  vim.api.nvim_set_option_value(\"filetype\", \"clojure\", {\n    buf = buf,\n  })\n\n  local content = \"(a) b c\"\n\n  vim.api.nvim_buf_set_lines(buf, 0, -1, true, { content })\n  vim.api.nvim_win_set_cursor(win, { 1, 0 })\n\n  local tree = vim.treesitter.get_parser(buf):parse()\n  local root = tree[1]:root()\n  local first = root:named_child(0)\n  local sibling = first:next_named_sibling()\n\n  assert(sibling ~= nil, \"Sibling should not be nil\")\n  assert(sibling:type() == \"sym_lit\", \"Should be a sym\")\nend\n\nprepare()\nrun()\n```\n\n### Expected behavior\n\nThe `TSNode:next_named_sibling` should return siblings when the node has siblings.\n\n### Nvim version (nvim -v)\n\nNVIM v0.11.0-dev-1265+g6cdcac4492\n\n### Vim (not Nvim) behaves the same?\n\nN\\A\n\n### Operating system/version\n\nmacOs 14.3\n\n### Terminal name/version\n\nWezterm 20240203-110809-5046fc22\n\n### $TERM environment variable\n\nxterm-256color\n\n### Installation\n\nmise",
-    "closed_at": null,
-    "closed_by": null,
+    "closed_at": "2025-01-13T10:19:18Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/8571121?v=4",
+        "events_url": "https://api.github.com/users/julienvincent/events{/privacy}",
+        "followers_url": "https://api.github.com/users/julienvincent/followers",
+        "following_url": "https://api.github.com/users/julienvincent/following{/other_user}",
+        "gists_url": "https://api.github.com/users/julienvincent/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/julienvincent",
+        "id": 8571121,
+        "login": "julienvincent",
+        "node_id": "MDQ6VXNlcjg1NzExMjE=",
+        "organizations_url": "https://api.github.com/users/julienvincent/orgs",
+        "received_events_url": "https://api.github.com/users/julienvincent/received_events",
+        "repos_url": "https://api.github.com/users/julienvincent/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/julienvincent/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/julienvincent/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/julienvincent",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -588,9 +608,54 @@
                 "url": "https://api.github.com/users/clason",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "NONE",
+            "body": "Fixed with f4cff3077b21ba110bc498f3e9331c16d3121cb1. Thanks.",
+            "created_at": "2025-01-13T10:19:18Z",
+            "html_url": "https://github.com/neovim/neovim/issues/31425#issuecomment-2586708127",
+            "id": 2586708127,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31425",
+            "node_id": "IC_kwDOAPphoM6aLgif",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 1,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2586708127/reactions"
+            },
+            "updated_at": "2025-01-13T10:19:18Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2586708127",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/8571121?v=4",
+                "events_url": "https://api.github.com/users/julienvincent/events{/privacy}",
+                "followers_url": "https://api.github.com/users/julienvincent/followers",
+                "following_url": "https://api.github.com/users/julienvincent/following{/other_user}",
+                "gists_url": "https://api.github.com/users/julienvincent/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/julienvincent",
+                "id": 8571121,
+                "login": "julienvincent",
+                "node_id": "MDQ6VXNlcjg1NzExMjE=",
+                "organizations_url": "https://api.github.com/users/julienvincent/orgs",
+                "received_events_url": "https://api.github.com/users/julienvincent/received_events",
+                "repos_url": "https://api.github.com/users/julienvincent/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/julienvincent/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/julienvincent/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/julienvincent",
+                "user_view_type": "public"
+            }
         }
     ],
-    "comments": 12,
+    "comments": 13,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/31425/comments",
     "created_at": "2024-12-02T12:29:37Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/31425/events",
@@ -605,15 +670,6 @@
             "name": "api",
             "node_id": "MDU6TGFiZWwxMDM4MTk2NzE=",
             "url": "https://api.github.com/repos/neovim/neovim/labels/api"
-        },
-        {
-            "color": "FBCA04",
-            "default": false,
-            "description": "waiting for reply from the author",
-            "id": 248229439,
-            "name": "needs:response",
-            "node_id": "MDU6TGFiZWwyNDgyMjk0Mzk=",
-            "url": "https://api.github.com/repos/neovim/neovim/labels/needs:response"
         },
         {
             "color": "f9d0c4",
@@ -653,8 +709,8 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/31425/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "sub_issues_summary": {
         "completed": 0,
         "percent_completed": 0,
@@ -662,7 +718,7 @@
     },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/31425/timeline",
     "title": "Treesitter API `TSNode:next_named_sibling` broken on nightly",
-    "updated_at": "2024-12-30T21:16:51Z",
+    "updated_at": "2025-01-13T10:19:32Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/31425",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/8571121?v=4",

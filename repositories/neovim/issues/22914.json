@@ -4,7 +4,28 @@
     "assignees": [],
     "author_association": "CONTRIBUTOR",
     "body": "### Problem\n\nNeovim crashes at the start, probably when trying to display a deprecation message from lspconfig using Noice.\r\n\r\nPlease change the title to something more accurate.\r\n\r\nIt seems to be not the same as #21604 \r\n\r\n```\r\n#0  __pthread_kill_implementation (threadid=<optimized out>, signo=signo@entry=6, no_tid=no_tid@entry=0) at ./nptl/pthread_kill.c:44\r\n#1  0x00007eff5d5f1d2f in __pthread_kill_internal (signo=6, threadid=<optimized out>) at ./nptl/pthread_kill.c:78\r\n#2  0x00007eff5d5a2ef2 in __GI_raise (sig=sig@entry=6) at ../sysdeps/posix/raise.c:26\r\n#3  0x00007eff5d58d472 in __GI_abort () at ./stdlib/abort.c:79\r\n#4  0x00007eff5d58d395 in __assert_fail_base (fmt=0x7eff5d701a70 \"%s%s%s:%u: %s%sAssertion `%s' failed.\\n%n\", assertion=assertion@entry=0x5646bfb38300 \"to_scroll >= 0\", \r\n    file=file@entry=0x5646bfb38148 \"**/src/nvim/message.c\", line=line@entry=2419, function=function@entry=0x5646bfb38600 <__PRETTY_FUNCTION__.0> \"msg_scroll_flush\") at ./assert/assert.c:92\r\n#5  0x00007eff5d59bdf2 in __GI___assert_fail (assertion=assertion@entry=0x5646bfb38300 \"to_scroll >= 0\", file=file@entry=0x5646bfb38148 \"**/src/nvim/message.c\", line=line@entry=2419, \r\n    function=function@entry=0x5646bfb38600 <__PRETTY_FUNCTION__.0> \"msg_scroll_flush\") at ./assert/assert.c:101\r\n#6  0x00005646bf8e2034 in msg_scroll_flush () at **/src/nvim/message.c:2419\r\n#7  0x00005646bf9c3dbe in ui_flush () at **/src/nvim/ui.c:498\r\n#8  0x00005646bf80783a in screen_resize (width=<optimized out>, height=<optimized out>) at **/src/nvim/drawscreen.c:376\r\n#9  0x00005646bf9bfc62 in ui_refresh () at **/src/nvim/ui.c:228\r\n#10 0x00005646bf9c1df4 in ui_add_cb (ns_id=6, cb=100, ext_widgets=<optimized out>) at **/src/nvim/ui.c:720\r\n#11 0x00005646bf8b24a0 in nlua_ui_attach (lstate=0x7eff5d545380) at **/src/nvim/lua/executor.c:681\r\n#12 0x00005646bfa77a26 in lj_BC_FUNCC ()\r\n#13 0x00005646bfa63e65 in lua_pcall (L=L@entry=0x7eff5d545380, nargs=nargs@entry=1, nresults=nresults@entry=1, errfunc=errfunc@entry=-3) at lj_api.c:1116\r\n#14 0x00005646bf8ac295 in nlua_pcall (lstate=lstate@entry=0x7eff5d545380, nargs=nargs@entry=1, nresults=nresults@entry=1) at **/src/nvim/lua/executor.c:159\r\n#15 0x00005646bf8b13d4 in nlua_call_ref (ref=<optimized out>, name=<optimized out>, args=..., retval=<optimized out>, err=0x0) at **/src/nvim/lua/executor.c:1577\r\n#16 0x00005646bf7d3b99 in call_autocmd_callback (ac=ac@entry=0x5646c091e710, apc=apc@entry=0x7ffe4bae09e0) at **/src/nvim/autocmd.c:2148\r\n#17 0x00005646bf7d414c in getnextac (c=<optimized out>, cookie=0x7ffe4bae09e0, indent=<optimized out>, do_concat=<optimized out>) at **/src/nvim/autocmd.c:2230\r\n#18 0x00005646bf86180a in do_cmdline (cmdline=<optimized out>, fgetline=0x5646bf7d3fc3 <getnextac>, cookie=0x7ffe4bae09e0, flags=7) at **/src/nvim/ex_docmd.c:513\r\n#19 0x00005646bf7d4d03 in apply_autocmds_group (event=EVENT_VIMENTER, fname=0x5646c0946ce0 \"\", fname_io=<optimized out>, force=<optimized out>, group=group@entry=-3, buf=0x5646c085f7a0, eap=0x0, data=0x0)\r\n    at **/src/nvim/autocmd.c:1928\r\n#20 0x00005646bf7d518d in apply_autocmds (event=<optimized out>, fname=<optimized out>, fname_io=<optimized out>, force=<optimized out>, buf=<optimized out>) at **/src/nvim/autocmd.c:1594\r\n#21 0x00005646bf78eedf in main (argc=<optimized out>, argv=<optimized out>) at **/src/nvim/main.c:592\r\n```\n\n### Steps to reproduce\n\n1. Use the following `minimal.lua`:\r\n```lua\r\nlocal root = vim.fn.fnamemodify(\"./.repro\", \":p\")\r\n\r\n-- set stdpaths to use .repro\r\nfor _, name in ipairs({ \"config\", \"data\", \"state\", \"cache\" }) do\r\n  vim.env[(\"XDG_%s_HOME\"):format(name:upper())] = root .. \"/\" .. name\r\nend\r\n\r\n-- bootstrap lazy\r\nlocal lazypath = root .. \"/plugins/lazy.nvim\"\r\nif not vim.loop.fs_stat(lazypath) then\r\n  vim.fn.system({\r\n    \"git\",\r\n    \"clone\",\r\n    \"--filter=blob:none\",\r\n    \"--single-branch\",\r\n    \"https://github.com/folke/lazy.nvim.git\",\r\n    lazypath,\r\n  })\r\nend\r\nvim.opt.runtimepath:prepend(lazypath)\r\n\r\n-- install plugins\r\nlocal plugins = {\r\n  \"neovim/nvim-lspconfig\",\r\n  \"folke/tokyonight.nvim\",\r\n  {\r\n    \"folke/noice.nvim\",\r\n    dependencies = {\r\n      \"MunifTanjim/nui.nvim\",\r\n    },\r\n  },\r\n}\r\nrequire(\"lazy\").setup(plugins, {\r\n  root = root .. \"/plugins\",\r\n})\r\n\r\nrequire('lspconfig').sqls.setup {}\r\n\r\n-- add anything else here\r\nvim.opt.termguicolors = true\r\nvim.cmd([[colorscheme tokyonight]])\r\nrequire(\"noice\").setup()\r\n```\r\n\r\n2.  Run `nvim -u minimal.lua`. Try it also after commenting out `require('lspconfig').sqls.setup {}` or `require(\"noice\").setup()`.\r\n\r\nMaybe someone else can find a simpler example than the above.\n\n### Expected behavior\n\nNo crash\n\n### Neovim version (nvim -v)\n\nNVIM v0.9.0-dev-1352+g0bc323850\n\n### Vim (not Nvim) behaves the same?\n\nno\n\n### Operating system/version\n\nDebian Sid\n\n### Terminal name/version\n\nkitty 0.26.5-4 with tmux 3.3a-3\n\n### $TERM environment variable\n\ntmux-256color\n\n### Installation\n\nbuild from repo",
-    "closed_at": null,
+    "closed_at": "2025-01-10T22:51:08Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/31730729?v=4",
+        "events_url": "https://api.github.com/users/luukvbaal/events{/privacy}",
+        "followers_url": "https://api.github.com/users/luukvbaal/followers",
+        "following_url": "https://api.github.com/users/luukvbaal/following{/other_user}",
+        "gists_url": "https://api.github.com/users/luukvbaal/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/luukvbaal",
+        "id": 31730729,
+        "login": "luukvbaal",
+        "node_id": "MDQ6VXNlcjMxNzMwNzI5",
+        "organizations_url": "https://api.github.com/users/luukvbaal/orgs",
+        "received_events_url": "https://api.github.com/users/luukvbaal/received_events",
+        "repos_url": "https://api.github.com/users/luukvbaal/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/luukvbaal/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/luukvbaal/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/luukvbaal",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -47,7 +68,8 @@
                 "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/zeertzjq"
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
             }
         },
         {
@@ -91,7 +113,8 @@
                 "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/zeertzjq"
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
             }
         },
         {
@@ -135,7 +158,8 @@
                 "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/zeertzjq"
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
             }
         },
         {
@@ -179,7 +203,8 @@
                 "starred_url": "https://api.github.com/users/przepompownia/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/przepompownia/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/przepompownia"
+                "url": "https://api.github.com/users/przepompownia",
+                "user_view_type": "public"
             }
         },
         {
@@ -223,7 +248,8 @@
                 "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/zeertzjq"
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
             }
         },
         {
@@ -267,11 +293,102 @@
                 "starred_url": "https://api.github.com/users/przepompownia/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/przepompownia/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/przepompownia"
+                "url": "https://api.github.com/users/przepompownia",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "> Minimal repro:\n> \n> vim.api.nvim_echo({ { \"foo\\nbar\" } }, true, {})\n> local ns = vim.api.nvim_create_namespace('foo')\n> vim.ui_attach(ns, { ext_messages = true }, function() end)\n\nThis no longer crashes after #31952. I tried adding this repro to `ui_event_spec.lua` but it brings the test instance in a hit-enter state where it doesn't process any events anymore. Ran into this before but couldn't remember how to deal with it.",
+            "created_at": "2025-01-10T22:48:05Z",
+            "html_url": "https://github.com/neovim/neovim/issues/22914#issuecomment-2584635752",
+            "id": 2584635752,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/22914",
+            "node_id": "IC_kwDOAPphoM6aDmlo",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2584635752/reactions"
+            },
+            "updated_at": "2025-01-10T22:49:08Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2584635752",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/31730729?v=4",
+                "events_url": "https://api.github.com/users/luukvbaal/events{/privacy}",
+                "followers_url": "https://api.github.com/users/luukvbaal/followers",
+                "following_url": "https://api.github.com/users/luukvbaal/following{/other_user}",
+                "gists_url": "https://api.github.com/users/luukvbaal/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/luukvbaal",
+                "id": 31730729,
+                "login": "luukvbaal",
+                "node_id": "MDQ6VXNlcjMxNzMwNzI5",
+                "organizations_url": "https://api.github.com/users/luukvbaal/orgs",
+                "received_events_url": "https://api.github.com/users/luukvbaal/received_events",
+                "repos_url": "https://api.github.com/users/luukvbaal/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/luukvbaal/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/luukvbaal/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/luukvbaal",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "No crash on the minimal repro. Thank you! 💣 ",
+            "created_at": "2025-01-10T23:28:35Z",
+            "html_url": "https://github.com/neovim/neovim/issues/22914#issuecomment-2584815959",
+            "id": 2584815959,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/22914",
+            "node_id": "IC_kwDOAPphoM6aESlX",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2584815959/reactions"
+            },
+            "updated_at": "2025-01-10T23:28:35Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2584815959",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/11404453?v=4",
+                "events_url": "https://api.github.com/users/przepompownia/events{/privacy}",
+                "followers_url": "https://api.github.com/users/przepompownia/followers",
+                "following_url": "https://api.github.com/users/przepompownia/following{/other_user}",
+                "gists_url": "https://api.github.com/users/przepompownia/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/przepompownia",
+                "id": 11404453,
+                "login": "przepompownia",
+                "node_id": "MDQ6VXNlcjExNDA0NDUz",
+                "organizations_url": "https://api.github.com/users/przepompownia/orgs",
+                "received_events_url": "https://api.github.com/users/przepompownia/received_events",
+                "repos_url": "https://api.github.com/users/przepompownia/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/przepompownia/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/przepompownia/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/przepompownia",
+                "user_view_type": "public"
             }
         }
     ],
-    "comments": 6,
+    "comments": 8,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/22914/comments",
     "created_at": "2023-04-06T20:30:38Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/22914/events",
@@ -317,7 +434,7 @@
         {
             "color": "c5def5",
             "default": false,
-            "description": "UI extensibility, events, protocol",
+            "description": "UI extensibility, events, protocol, externalized UI",
             "id": 640132777,
             "name": "ui-extensibility",
             "node_id": "MDU6TGFiZWw2NDAxMzI3Nzc=",
@@ -326,7 +443,7 @@
         {
             "color": "C5DEF5",
             "default": false,
-            "description": "UI messages, log messages",
+            "description": "UI messages, log messages, errors, warnings, feedback",
             "id": 5637083595,
             "name": "messages",
             "node_id": "LA_kwDOAPphoM8AAAABT_8Ryw",
@@ -337,7 +454,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 1,
+        "closed_issues": 131,
         "created_at": "2023-12-07T23:09:35Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -357,19 +474,20 @@
             "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/justinmk"
+            "url": "https://api.github.com/users/justinmk",
+            "user_view_type": "public"
         },
         "description": "",
-        "due_on": "2024-10-31T07:00:00Z",
+        "due_on": "2025-03-15T07:00:00Z",
         "html_url": "https://github.com/neovim/neovim/milestone/41",
         "id": 10283236,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/41/labels",
         "node_id": "MI_kwDOAPphoM4AnOjk",
         "number": 41,
-        "open_issues": 55,
+        "open_issues": 59,
         "state": "open",
         "title": "0.11",
-        "updated_at": "2024-05-06T15:50:07Z",
+        "updated_at": "2025-01-11T10:49:46Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/41"
     },
     "node_id": "I_kwDOAPphoM5i0zKe",
@@ -388,11 +506,16 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/22914/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/22914/timeline",
     "title": "Assert failure when attaching ext_messages callback after multiline message",
-    "updated_at": "2024-05-06T09:05:34Z",
+    "updated_at": "2025-01-10T23:28:36Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/22914",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/11404453?v=4",
@@ -412,6 +535,7 @@
         "starred_url": "https://api.github.com/users/przepompownia/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/przepompownia/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/przepompownia"
+        "url": "https://api.github.com/users/przepompownia",
+        "user_view_type": "public"
     }
 }
