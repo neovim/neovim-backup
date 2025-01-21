@@ -5,6 +5,7 @@
     "author_association": "CONTRIBUTOR",
     "body": "### Problem\n\nSee https://github.com/neovim/neovim/issues/16957 for some of the existing issues with using a Unix shell in Neovim on Windows. \r\n\r\nI've dug into it now, seeing as no workaround really managed to fully take, and here's what I was able to find.\r\n\r\nThe root of evil is the fact that `CreateProcessA` takes some long string as the command line. The Microsoft C runtime takes that string, runs it through splitting logic described [here](https://learn.microsoft.com/en-us/cpp/c-language/parsing-c-command-line-arguments?view=msvc-170), then passes the processed result to `main`. The result of that processing is what `'shell'` ultimately receives.\r\n\r\nVim on the other hand, wants to be able to think about running programs in terms of regular C `argv` arrays.\r\n\r\nAssuming `shell=bash`, `shellcmdflag=-c` and `shellxquote=\"`, running `!ls -l`, produces the argument vector `[bash, -c, \"ls -l\"]` (note the quotes around `ls -l`). The resulting argument vector is then [passed to libuv](https://github.com/neovim/neovim/blob/master/src/nvim/event/libuv_process.c#L22), which then [reconstitutes the entire thing back to a single string](https://github.com/libuv/libuv/blob/v1.x/src/win/process.c#L521) so it can pass it to `CreateProcessA`.\r\n\r\nThis is where the issue arises. libuv expects an *unquoted* argument vector (`[bash, -c, ls -l]`, no quotes), as you would pass to `execve` on Unix, but gets `[bash, -c, \"ls -l\"]` instead. This causes it to *quote the quoted string* on Windows, which ultimately causes bash to receive the command `\"ls -l\"` (one shell word, with quotes) instead of `ls -l` (two shell words, no quotes).\r\n\r\nSo, basically, there are two places in the chain that are trying to make the argument vector \"windows-friendly\": Vim's `shell_build_argv`, and libuv's `make_program_args`. Only one of the two should be done. To only use vim's behaviour, it is probably sufficient to change [libuv_process_spawn](https://github.com/neovim/neovim/blob/master/src/nvim/event/libuv_process.c#L32) to always pass `UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS`. Since `cmd.exe` already has to use this behaviour since its argument parsing does *not* follow that of the C runtime (i.e. all other programs), this seems like it will cause the least amount of breakage.\r\n\r\nTo only follow libuv's behaviour (an arguably more sound strategy but that may not work with cmd.exe), we'd simply need to skip `shell_xescape_xquote` (or set both `shellxescape` and `shellxquote` to the empty string?).\r\n\r\nWhichever the case may be, it's pretty clear that Neovim's current behaviour on Windows is incorrect. Double quoting like this shouldn't occur, and having two completely different implementations both doing argv-sanitation depending on context is bound to lead to issues. (As it did very recently for Rust)\r\n\r\nThere's also some other issues. For example, Neovim tries to pass `2>&1 | tee <tempfile>` to the shell. However, the Windows-style backslash-using tempfile path will cause the shell to misinterpret something like `C:\\somedir\\tmp\\` to contain a `\\t` (tab) (at least in zsh) and cause it to spit out the file in the wrong place, causing errors in `:make`, `:grep`, etc. Easiest solution would be to change the path to use `/` as the separator (possibly in accordance with `'shellslash'`, which doesn't apply to the temporary file arguments currently) (though this will also not work for UNC paths), or to use something like `cygpath` if available (most unix shells on Windows are cygwin/msys2 based).\r\n\n\n### Steps to reproduce\n\nnvim --clean\r\n:set shell=C:/path/to/bash.exe shellcmdflag=-c\r\n:!echo test <- fails\r\n:set shellxquote=\r\n:!echo test <- works\r\n(and many other such cases)\n\n### Expected behavior\n\nWe should figure out a way to fix this properly, once and for all.\n\n### Neovim version (nvim -v)\n\nmaster\n\n### Vim (not Nvim) behaves the same?\n\nHave not verified, but it seems to be Neovim specific\n\n### Operating system/version\n\nWindows 10/11\n\n### Terminal name/version\n\nwezterm, but doesn't matter (not TUI related)\n\n### $TERM environment variable\n\nxterm-256color\n\n### Installation\n\nGitHub nightly releases",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -47,7 +48,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -91,7 +93,8 @@
                 "starred_url": "https://api.github.com/users/LunarLambda/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/LunarLambda/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/LunarLambda"
+                "url": "https://api.github.com/users/LunarLambda",
+                "user_view_type": "public"
             }
         },
         {
@@ -135,7 +138,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -179,7 +183,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -223,7 +228,8 @@
                 "starred_url": "https://api.github.com/users/LunarLambda/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/LunarLambda/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/LunarLambda"
+                "url": "https://api.github.com/users/LunarLambda",
+                "user_view_type": "public"
             }
         },
         {
@@ -267,7 +273,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -311,7 +318,8 @@
                 "starred_url": "https://api.github.com/users/LunarLambda/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/LunarLambda/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/LunarLambda"
+                "url": "https://api.github.com/users/LunarLambda",
+                "user_view_type": "public"
             }
         },
         {
@@ -355,7 +363,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -399,7 +408,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -412,7 +422,7 @@
             "node_id": "IC_kwDOAPphoM563NiI",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 1,
+                "+1": 2,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -420,7 +430,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 1,
+                "total_count": 2,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2061293704/reactions"
             },
             "updated_at": "2024-04-17T13:42:21Z",
@@ -443,7 +453,8 @@
                 "starred_url": "https://api.github.com/users/dundargoc/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/dundargoc/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/dundargoc"
+                "url": "https://api.github.com/users/dundargoc",
+                "user_view_type": "public"
             }
         },
         {
@@ -487,7 +498,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -531,7 +543,8 @@
                 "starred_url": "https://api.github.com/users/LunarLambda/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/LunarLambda/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/LunarLambda"
+                "url": "https://api.github.com/users/LunarLambda",
+                "user_view_type": "public"
             }
         },
         {
@@ -575,7 +588,8 @@
                 "starred_url": "https://api.github.com/users/ykhan21/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ykhan21/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ykhan21"
+                "url": "https://api.github.com/users/ykhan21",
+                "user_view_type": "public"
             }
         },
         {
@@ -619,7 +633,8 @@
                 "starred_url": "https://api.github.com/users/LunarLambda/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/LunarLambda/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/LunarLambda"
+                "url": "https://api.github.com/users/LunarLambda",
+                "user_view_type": "public"
             }
         },
         {
@@ -663,7 +678,8 @@
                 "starred_url": "https://api.github.com/users/ykhan21/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ykhan21/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ykhan21"
+                "url": "https://api.github.com/users/ykhan21",
+                "user_view_type": "public"
             }
         },
         {
@@ -707,7 +723,8 @@
                 "starred_url": "https://api.github.com/users/LunarLambda/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/LunarLambda/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/LunarLambda"
+                "url": "https://api.github.com/users/LunarLambda",
+                "user_view_type": "public"
             }
         },
         {
@@ -751,7 +768,8 @@
                 "starred_url": "https://api.github.com/users/ykhan21/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ykhan21/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ykhan21"
+                "url": "https://api.github.com/users/ykhan21",
+                "user_view_type": "public"
             }
         },
         {
@@ -795,11 +813,12 @@
                 "starred_url": "https://api.github.com/users/LunarLambda/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/LunarLambda/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/LunarLambda"
+                "url": "https://api.github.com/users/LunarLambda",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "@LunarLambda  @ykhan21 \r\n\r\nFor people who want to use git-bash for `:!` or `:ter` on Windows, the following config works.\r\n\r\nFor zsh or other unix shell, setting `opts.shellslash = true` might also help.\r\n\r\n ```lua\r\nif vim.fn.has(\"win32\") == 1 or vim.fn.has(\"win64\") == 1 then\r\n  local opt = vim.opt\r\n  -- use git-bash for `:!`, `:ter`\r\n  -- windows only, convert \\ to / when expanding file names\r\n  opt.shellslash = true\r\n  -- defaults to cmd.exe\r\n  opt.shell = vim.fs.normalize(\"~/scoop/apps/git/current/bin/bash.exe\")\r\n  -- opt.shell = \"bash.exe\" -- WARN: sometimes mistakenly points to wsl bash\r\n\r\n  -- defaults to \"/s /c\" for cmd.exe\r\n  opt.shellcmdflag = \"-c\"\r\n  -- default value works\r\n  opt.shellpipe = \"2>&1| tee\"\r\n  -- Windows: may default to \"\\\"\" when 'shell' contains 'sh'\r\n  opt.shellquote = \"\"\r\n  opt.shellxquote = \"\"\r\n  -- defaults to \">\", 'bash' uses:\r\n  opt.shellredir = \">%s 2>&1\"\r\n  -- defualt value works\r\n  opt.shellxescape = \"\"\r\nend\r\n```",
             "created_at": "2024-08-29T03:10:54Z",
             "html_url": "https://github.com/neovim/neovim/issues/28384#issuecomment-2316629775",
@@ -839,7 +858,8 @@
                 "starred_url": "https://api.github.com/users/xudyang1/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/xudyang1/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/xudyang1"
+                "url": "https://api.github.com/users/xudyang1",
+                "user_view_type": "public"
             }
         }
     ],
@@ -889,7 +909,7 @@
         {
             "color": "c5def5",
             "default": false,
-            "description": null,
+            "description": "OS resources, pipes, streams",
             "id": 713599092,
             "name": "system",
             "node_id": "MDU6TGFiZWw3MTM1OTkwOTI=",
@@ -900,7 +920,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 47,
+        "closed_issues": 138,
         "created_at": "2023-12-07T23:09:35Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -920,19 +940,20 @@
             "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/justinmk"
+            "url": "https://api.github.com/users/justinmk",
+            "user_view_type": "public"
         },
         "description": "",
-        "due_on": "2024-10-31T07:00:00Z",
+        "due_on": "2025-03-15T07:00:00Z",
         "html_url": "https://github.com/neovim/neovim/milestone/41",
         "id": 10283236,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/41/labels",
         "node_id": "MI_kwDOAPphoM4AnOjk",
         "number": 41,
-        "open_issues": 54,
+        "open_issues": 57,
         "state": "open",
         "title": "0.11",
-        "updated_at": "2024-09-02T22:52:20Z",
+        "updated_at": "2025-01-17T23:02:36Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/41"
     },
     "node_id": "I_kwDOAPphoM6F9sMr",
@@ -943,19 +964,24 @@
         "-1": 0,
         "confused": 0,
         "eyes": 0,
-        "heart": 5,
+        "heart": 7,
         "hooray": 0,
         "laugh": 0,
         "rocket": 0,
-        "total_count": 5,
+        "total_count": 7,
         "url": "https://api.github.com/repos/neovim/neovim/issues/28384/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "open",
     "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/28384/timeline",
     "title": "Fixing `'shell'` on Windows, properly",
-    "updated_at": "2024-08-29T12:35:28Z",
+    "updated_at": "2025-01-19T11:19:19Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/28384",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/38919842?v=4",
@@ -975,6 +1001,7 @@
         "starred_url": "https://api.github.com/users/LunarLambda/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/LunarLambda/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/LunarLambda"
+        "url": "https://api.github.com/users/LunarLambda",
+        "user_view_type": "public"
     }
 }

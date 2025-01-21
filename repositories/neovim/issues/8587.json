@@ -217,7 +217,7 @@
             "node_id": "IC_kwDOAPphoM5ivmFd",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 9,
+                "+1": 10,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -225,7 +225,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 9,
+                "total_count": 10,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1656643933/reactions"
             },
             "updated_at": "2023-07-29T08:54:15Z",
@@ -2144,7 +2144,7 @@
         },
         {
             "author_association": "NONE",
-            "body": "I made a debug build of Neovim 0.10.3, and used the debugger to break on the crash. This is what happens AFAIK:\n\ntldr: When writing shada, buffer local file marks from an old shada file is added to a FileMarks hashmap. When adding a hashmap entry, the entire hashmap is rehashed. In the rehash function, it expects the hashmap to be zeroed out beforehand. Sometimes it is not zeroed out, that's when the crash happens.\n\nIf you have any ideas @justinmk, that would be awesome. I've written a tldr for you.\n\nCrash happens here: https://github.com/neovim/neovim/blob/a4f575abd85e734340ee303daace1a63e5ca9782/src/nvim/map_key_impl.c.h#L68\n\nAlso @GitMurf https://github.com/neovim/neovim/issues/8587#issuecomment-2519283531 Are you sure this crash happens because of the slash issue? If you can verify, that would be helpful.\n\n<details>\n\n<summary>Detailed explanation</summary>\n\nWhen shada file is being written, a `WriteMergerState` struct is allocated. This holds a hashmap of struct `FileMarks`.\n\nThe hashmap is similarly implemented as a dynamic array of pointers, pointing to the allocated hashmap values.\n\nIn the function `shada_read_when_writing`, AFAIK an existing shada file is read. Now it iterates through every item in the existing shada file.\n\nWhen iterating, it checks if the item is of type `kSDItemLocalMark` (a buffer local mark). If yes, this mark is added into the FileMarks hashmap of the WriteMergerState.\n\nhttps://github.com/neovim/neovim/blob/a4f575abd85e734340ee303daace1a63e5ca9782/src/nvim/map_key_impl.c.h#L59-L73\n\nWhen new hashmap items are added, `void KEY_NAME()` is called. This function rehashes the entire hashmap. It expects the passed hashmap pointers from index `0` to index `h.n_keys` to be set to 0. This is what the check `!mh_is_empty()` is for. If that is not the case, the crash happens.\n\nFor some reason, when I break with the debugger when the crash happens, the values are NOT zeroed out.\n\nI can't (yet) identify a code path where the values are not zeroed out. The should be, yet they are not.\n\nI have no experience in Neovim's code-base, so take everything I've said with a grain of salt.\n\nI won't promise anything, but I'll see if I have time to find the issue.\n\nNot being able to consistently reproduce makes this extra hard. If someone knows something, I'd appreciate that.\n\n</details>",
+            "body": "I made a debug build of Neovim 0.10.3, and used the debugger to break on the crash. This is what happens AFAIK:\n\ntldr: When writing shada, buffer local file marks from an old shada file is added to a FileMarks hashmap. When adding a hashmap entry, the entire hashmap is rehashed. In the rehash function, it expects the hashmap to be zeroed out beforehand. Sometimes it is not zeroed out, that's when the crash happens.\n\nIf you have any ideas @justinmk, that would be awesome. I've written a tldr for you.\n\nCrash happens [here](https://github.com/neovim/neovim/blob/a4f575abd85e734340ee303daace1a63e5ca9782/src/nvim/map_key_impl.c.h#L62) at `abort`: \n```C\n/// Rebuild hash from keys[] array \n/// \n/// set->h.hash must be allocated and empty before&alling! \nvoid KEY_NAME(mh_rehash_)(SET_TYPE *set) \n{ \n  for (uint32_t k = 0; k < set->h.n_keys; k++) { \n    uint32_t idx = KEY_NAME(mh_find_bucket_)(set, set->keys[k], true); \n    // there must be tombstones when we do a rehash \n    if (!mh_is_empty((&set->h), idx)) { \n      abort(); \n    } \n    set->h.hash[idx] = k + 1; \n  } \n  set->h.n_occupied = set->h.size = set->h.n_keys; \n} \n```\n\n\nAlso @GitMurf https://github.com/neovim/neovim/issues/8587#issuecomment-2519283531 Are you sure this crash happens because of the slash issue? If you can verify, that would be helpful.\n\n<details>\n\n<summary>Detailed explanation</summary>\n\nWhen shada file is being written, a `WriteMergerState` struct is allocated. This holds a hashmap of struct `FileMarks`.\n\nThe hashmap is similarly implemented as a dynamic array of pointers, pointing to the allocated hashmap values.\n\nIn the function `shada_read_when_writing`, AFAIK an existing shada file is read. Now it iterates through every item in the existing shada file.\n\nWhen iterating, it checks if the item is of type `kSDItemLocalMark` (a buffer local mark). If yes, this mark is added into the FileMarks hashmap of the WriteMergerState.\n\nWhen new hashmap items are added, `void KEY_NAME()` is called. This function rehashes the entire hashmap. It expects the passed hashmap pointers from index `0` to index `h.n_keys` to be set to 0. This is what the check `!mh_is_empty()` is for. If that is not the case, the crash happens.\n\nFor some reason, when I break with the debugger when the crash happens, the values are NOT zeroed out.\n\nI can't (yet) identify a code path where the values are not zeroed out. They should be, yet they are not.\n\nI have no experience in Neovim's code-base, so take everything I've said with a grain of salt.\n\n</details>",
             "created_at": "2025-01-14T02:04:37Z",
             "html_url": "https://github.com/neovim/neovim/issues/8587#issuecomment-2588629091",
             "id": 2588629091,
@@ -2152,7 +2152,7 @@
             "node_id": "IC_kwDOAPphoM6aS1hj",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 0,
+                "+1": 2,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -2160,10 +2160,10 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 0,
+                "total_count": 2,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2588629091/reactions"
             },
-            "updated_at": "2025-01-14T02:31:49Z",
+            "updated_at": "2025-01-14T02:37:58Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2588629091",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/63406944?v=4",
@@ -2245,7 +2245,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 131,
+        "closed_issues": 138,
         "created_at": "2023-12-07T23:09:35Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -2275,17 +2275,17 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/41/labels",
         "node_id": "MI_kwDOAPphoM4AnOjk",
         "number": 41,
-        "open_issues": 59,
+        "open_issues": 57,
         "state": "open",
         "title": "0.11",
-        "updated_at": "2025-01-11T10:49:46Z",
+        "updated_at": "2025-01-17T23:02:36Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/41"
     },
     "node_id": "MDU6SXNzdWUzMzMzMjk0NDY=",
     "number": 8587,
     "performed_via_github_app": null,
     "reactions": {
-        "+1": 20,
+        "+1": 21,
         "-1": 0,
         "confused": 0,
         "eyes": 0,
@@ -2293,7 +2293,7 @@
         "hooray": 0,
         "laugh": 0,
         "rocket": 0,
-        "total_count": 20,
+        "total_count": 21,
         "url": "https://api.github.com/repos/neovim/neovim/issues/8587/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
@@ -2306,7 +2306,7 @@
     },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/8587/timeline",
     "title": "Windows: \"E138: main.shada.tmp.X files exist, cannot write ShaDa\" on close",
-    "updated_at": "2025-01-14T02:31:49Z",
+    "updated_at": "2025-01-19T10:59:54Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/8587",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/2086176?v=4",

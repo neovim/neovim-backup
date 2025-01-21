@@ -5,6 +5,7 @@
     "author_association": "CONTRIBUTOR",
     "body": "### Problem\r\n\r\nUpdate: I might be misremembering something about the \"old\" behavior, so that can be disregarded, but I would still like an option for the described behavior. \r\n\r\nIn earlier versions of neovim `iter_captures` included all the captures caught from the \"parents\" of the captures on the line it was called on, when called on one line. (This is not very clear, I think the example is easier to follow.) But now it only includes the outermost capture and not the internal ones. (Looking back at this, I am not 100% sure that neovim used to behave exactly as I said here, but there has definitely been some change since the Fall of 2023.)\r\n\r\nFor example, in `rainbow-delimiters` most queries look something like\r\n```query\r\n(name\r\n  \"(\" @delimiter\r\n  \")\" @delimiter @sentinel) @container\r\n```\r\nor similar with `[]`, `{}`, etc. \r\n\r\nWhen capturing a change at the cursor (marked by `|`) in\r\n```lua\r\nlocal tmp = {\r\n  [1] = {1},\r\n  [2] = {\r\n    a = print(|)\r\n  },\r\n}\r\n```\r\nand updating highlighting via `iter_captures` on the cursor line (and not the whole tree), I now get capture names like this:\r\n```\r\ncontainer (from outer {})\r\ncontainer (from [2])\r\ncontainer (from inner {})\r\ncontainer (from print() )\r\ndelimiter \r\ndelimiter\r\nsentinel\r\n```\r\nwhere I used to get all `delimiter` and `sentinel` captures from the included `container` captures in the above. \r\n\r\nThe old captures with all `delimiter` and `sentinel` captures included (so the above would look like\r\n```\r\ncontainer -- from outer {}\r\ndelimiter -- {   from outer {}\r\n\r\ncontainer -- from [2]\r\ndelimiter -- [   from [2]\r\ndelimiter -- ]   from [2]\r\nsentinel  -- ]   from [2], which ends here\r\n\r\ncontainer -- from inner {}\r\ndelimiter -- {   from inner {}\r\n\r\ncontainer -- from () in print()\r\ndelimiter -- (   from ()\r\ndelimiter -- )   from ()\r\nsentinel  -- )   from (), which ends here\r\n\r\ndelimiter -- }   from inner {}\r\nsentinel  -- }   from inner {}, which ends here\r\n\r\ndelimiter -- }   from outer {}\r\nsentinel  -- }   from outer {}, which ends here\r\n```\r\n), were much easier to reason about when figuring out the nesting level.\r\n\r\n(Update: The above might not have actually been an old behavior for one line changes, but it is similar to the _current_ behavior when using `iter_captures` on the whole buffer, and it is a behavior I would like to be able to get.)\r\n\r\nWith the way captures are currently reported the only way to figure out nesting is by making assumptions that are not always true or try using a lot of ancestor checks in treesitter, but that affects the performance (or at least it did last I checked) and doesn't work as well, so it would be nice to have an option to include all the captures as above. \r\n\r\nNote: For a lot of situations, you might not want as much information as I am asking for, so I think it makes sense to keep an option in `opts` table deciding which way to use.\r\n\r\nAlso, I know that some work on `iter_captures` is already being done in #27274, so that PR might already fix this? I haven't fully looked into the details of what is causing my problem yet.\r\n\r\n### Expected behavior\r\n\r\nBe able to get all \"parent\" captures as you used to be able to do.\r\n\r\nNote: `iter_matches` already has an `opts` table, and thus `iter_captures` basically also has one too although the types don't reflect this currently. ",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -47,7 +48,8 @@
                 "starred_url": "https://api.github.com/users/wookayin/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/wookayin/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/wookayin"
+                "url": "https://api.github.com/users/wookayin",
+                "user_view_type": "public"
             }
         },
         {
@@ -91,7 +93,8 @@
                 "starred_url": "https://api.github.com/users/Danielkonge/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/Danielkonge/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/Danielkonge"
+                "url": "https://api.github.com/users/Danielkonge",
+                "user_view_type": "public"
             }
         },
         {
@@ -104,7 +107,7 @@
             "node_id": "IC_kwDOAPphoM5ylU09",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 0,
+                "+1": 1,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -112,7 +115,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 1,
+                "total_count": 2,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1922387261/reactions"
             },
             "updated_at": "2024-02-01T22:55:22Z",
@@ -135,7 +138,8 @@
                 "starred_url": "https://api.github.com/users/wookayin/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/wookayin/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/wookayin"
+                "url": "https://api.github.com/users/wookayin",
+                "user_view_type": "public"
             }
         },
         {
@@ -179,7 +183,8 @@
                 "starred_url": "https://api.github.com/users/wookayin/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/wookayin/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/wookayin"
+                "url": "https://api.github.com/users/wookayin",
+                "user_view_type": "public"
             }
         },
         {
@@ -223,7 +228,8 @@
                 "starred_url": "https://api.github.com/users/Danielkonge/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/Danielkonge/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/Danielkonge"
+                "url": "https://api.github.com/users/Danielkonge",
+                "user_view_type": "public"
             }
         },
         {
@@ -267,7 +273,8 @@
                 "starred_url": "https://api.github.com/users/wookayin/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/wookayin/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/wookayin"
+                "url": "https://api.github.com/users/wookayin",
+                "user_view_type": "public"
             }
         },
         {
@@ -311,7 +318,8 @@
                 "starred_url": "https://api.github.com/users/llllvvuu/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/llllvvuu/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/llllvvuu"
+                "url": "https://api.github.com/users/llllvvuu",
+                "user_view_type": "public"
             }
         },
         {
@@ -355,7 +363,8 @@
                 "starred_url": "https://api.github.com/users/Danielkonge/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/Danielkonge/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/Danielkonge"
+                "url": "https://api.github.com/users/Danielkonge",
+                "user_view_type": "public"
             }
         },
         {
@@ -399,7 +408,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -443,7 +453,8 @@
                 "starred_url": "https://api.github.com/users/Danielkonge/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/Danielkonge/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/Danielkonge"
+                "url": "https://api.github.com/users/Danielkonge",
+                "user_view_type": "public"
             }
         }
     ],
@@ -503,9 +514,14 @@
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "open",
     "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/27296/timeline",
     "title": "Treesitter:  Make `iter_captures` include all \"parent\" captures when called on one line",
-    "updated_at": "2024-02-02T13:49:12Z",
+    "updated_at": "2025-01-17T15:27:33Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/27296",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/7075380?v=4",
@@ -525,6 +541,7 @@
         "starred_url": "https://api.github.com/users/Danielkonge/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/Danielkonge/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/Danielkonge"
+        "url": "https://api.github.com/users/Danielkonge",
+        "user_view_type": "public"
     }
 }

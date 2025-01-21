@@ -5,6 +5,7 @@
     "author_association": "CONTRIBUTOR",
     "body": "\r\n\r\n### Problem\r\n\r\nCurrently, both `nvim_buf_set_lines` and `nvim_buf_set_text` destroys marks (`:h mark-motions`) between the `{starting}` and `{ending}` index. Fortunately, there is a `lockmarks` command but not having a callback signature makes it difficult to use from Lua script.\r\n\r\nRef: https://github.com/numToStr/Comment.nvim/issues/24 https://github.com/numToStr/Comment.nvim/issues/76\r\n\r\n### Proposal\r\n\r\nIntroduce lua API (`nvim_lock_marks`) equivalent to `lockmarks` with lua callback support\r\n\r\n```\r\napi.nvim_lock_marks({command})                         *vim.api.nvim_lock_marks*\r\n    Execute {command} without adjusting marks\r\n\r\n    Parameters: ~\r\n        {command}  (string|function)  Command/Callback to be executed\r\n\r\n    See: ~\r\n        |lockmarks|\r\n\r\n    Usage: ~\r\n        >\r\n            vim.api.nvim_lock_marks(function()\r\n                vim.api.nvim_buf_set_lines(0, 0, 1, true, { \"hello\" })\r\n            end)\r\n        <\r\n```\r\n\r\nFollowing is an example of workaround that is needed in the absence of aforementioned lua API.\r\n\r\n- Current\r\n\r\n```lua\r\n-- my-module.lua\r\n\r\nlocal mod = {}\r\n\r\nfunction mod.run(motion, cfg)\r\n    print(motion, cfg)\r\n    local line = string.gsub(vim.api.nvim_get_current_line(), '^(%s*)', '%1-- ')\r\n    vim.api.nvim_buf_set_lines(0, 0, 1, true, { line })\r\nend\r\n\r\n---@param motion string See |g@|\r\n---@param cfg table Plugin config\r\nfunction mod.locked(motion, cfg) -- I can't use this {cfg} table without converting it string or something\r\n    vim.cmd(string.format(\"lockmarks lua require'my-module'.run'%s'\", motion))\r\nend\r\n\r\nfunction mod.op()\r\n    vim.o.operatorfunc = \"v:lua.require'my-module'.locked\"\r\n    return 'g@'\r\nend\r\n\r\nvim.keymap.set('n', 'gc', mod.op, { expr = true })\r\n\r\nreturn mod\r\n```\r\n\r\n- With Lua API (`nvim_lock_marks`)\r\n\r\n```lua\r\n-- my-module.lua\r\n\r\nlocal mod = {}\r\n\r\n---@param motion string See |g@|\r\n---@param cfg table Plugin config\r\nfunction mod.run(motion, cfg)\r\n    -- I can then wrap plugin's API function and expose them directly to user\r\n    vim.api.nvim_lock_marks(function()\r\n        print(motion, cfg)\r\n        local line = string.gsub(vim.api.nvim_get_current_line(), '^(%s*)', '%1-- ')\r\n        vim.api.nvim_buf_set_lines(0, 0, 1, true, { line })\r\n    end)\r\nend\r\n\r\nfunction mod.op()\r\n    vim.o.operatorfunc = \"v:lua.require'my-module'.run\"\r\n    return 'g@'\r\nend\r\n\r\nvim.keymap.set('n', 'gc', mod.op, { expr = true })\r\n\r\nreturn mod\r\n``` ",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -47,7 +48,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -91,7 +93,8 @@
                 "starred_url": "https://api.github.com/users/numToStr/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/numToStr/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/numToStr"
+                "url": "https://api.github.com/users/numToStr",
+                "user_view_type": "public"
             }
         },
         {
@@ -135,7 +138,8 @@
                 "starred_url": "https://api.github.com/users/muniter/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/muniter/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/muniter"
+                "url": "https://api.github.com/users/muniter",
+                "user_view_type": "public"
             }
         },
         {
@@ -179,7 +183,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -223,7 +228,8 @@
                 "starred_url": "https://api.github.com/users/ii14/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ii14/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ii14"
+                "url": "https://api.github.com/users/ii14",
+                "user_view_type": "public"
             }
         },
         {
@@ -267,7 +273,8 @@
                 "starred_url": "https://api.github.com/users/Sleepful/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/Sleepful/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/Sleepful"
+                "url": "https://api.github.com/users/Sleepful",
+                "user_view_type": "public"
             }
         }
     ],
@@ -336,9 +343,14 @@
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "open",
     "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/19832/timeline",
     "title": "API: save/restore context (options, lockmarks, keepjumps, ...): vim.with()/vim.context()",
-    "updated_at": "2024-05-23T13:51:54Z",
+    "updated_at": "2025-01-17T15:58:34Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/19832",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/24727447?v=4",
@@ -358,6 +370,7 @@
         "starred_url": "https://api.github.com/users/numToStr/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/numToStr/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/numToStr"
+        "url": "https://api.github.com/users/numToStr",
+        "user_view_type": "public"
     }
 }

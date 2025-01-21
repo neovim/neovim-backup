@@ -2,9 +2,10 @@
     "active_lock_reason": null,
     "assignee": null,
     "assignees": [],
-    "author_association": "NONE",
+    "author_association": "CONTRIBUTOR",
     "body": "### Problem\r\n\r\nI'm trying to conceal Markdown checkboxes _and_ the minus sign in front of them with one conceal character. Here's my query:\r\n\r\n```scm\r\n(\r\n  (list_marker_minus)\r\n  (task_list_marker_unchecked)\r\n) @checkbox (#set! conceal \"\")\r\n```\r\n\r\nHowever, only the first sibling, `list_marker_minus` gets concealed.\r\n\r\nHere's a file that I'm using as an example:\r\n\r\n```markdown\r\n- [x] foo\r\n- [ ] bar\r\n  - [ ] baz\r\n```\r\n\r\nHere's what the syntax tree looks like:\r\n\r\n```scm\r\nsection [0, 0] - [3, 0]\r\n  list [0, 0] - [3, 0]\r\n    list_item [0, 0] - [1, 0]\r\n      list_marker_minus [0, 0] - [0, 2]\r\n      task_list_marker_checked [0, 2] - [0, 5]\r\n      ...\r\n    list_item [1, 0] - [3, 0]\r\n      list_marker_minus [1, 0] - [1, 2]\r\n      task_list_marker_unchecked [1, 2] - [1, 5]\r\n      ...\r\n      list [2, 2] - [3, 0]\r\n        list_item [2, 2] - [3, 0]\r\n          list_marker_minus [2, 2] - [2, 4]\r\n          task_list_marker_unchecked [2, 4] - [2, 7]\r\n          ...\r\n```\r\n\r\nI feel like this is a pretty trivial use case. \r\n\r\n### Expected behavior\r\n\r\nThis does seem to be [an issue with treesitter](https://github.com/tree-sitter/tree-sitter/issues/1508). However, one way I see that Neovim could work around this is to add the ability to specify a start and an end to a conceal range with treesitter captures.\r\n\r\n```scm\r\n(\r\n  (list_marker_minus) @conceal_start\r\n  (task_list_marker_unchecked) @conceal_end\r\n)\r\n```\r\n\r\nThen I could through some new conceal API tell Neovim that I want everything between `@conceal_start`s and `@conceal_end`s to be conceald with some character, including (or excluding) the captures.\r\n\r\nWhat do you say?",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -47,7 +48,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -91,7 +93,8 @@
                 "starred_url": "https://api.github.com/users/ahlinc/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ahlinc/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ahlinc"
+                "url": "https://api.github.com/users/ahlinc",
+                "user_view_type": "public"
             }
         },
         {
@@ -135,11 +138,12 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "@clason That's a good idea that I hadn't thought of. However, when I tried it for some reason the `list_marker_minus` gets the conceal character, and not `task_list_marker_unchecked`:\r\n\r\nI even tried giving the minus a different capture group like this\r\n\r\n```scheme\r\n(\r\n   (list_marker_minus) @minus (#set! conceal \"\")\r\n   (task_list_marker_checked) @conceal (#set! conceal \"\")\r\n)\r\n```\r\n\r\nBut I still get the same behaviour:\r\n\r\n![image](https://github.com/neovim/neovim/assets/15816726/81a77bde-d22f-44ba-bfc1-9b4247432628)\r\n",
             "created_at": "2023-10-06T07:51:39Z",
             "html_url": "https://github.com/neovim/neovim/issues/25515#issuecomment-1750142427",
@@ -179,7 +183,8 @@
                 "starred_url": "https://api.github.com/users/mawkler/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/mawkler/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/mawkler"
+                "url": "https://api.github.com/users/mawkler",
+                "user_view_type": "public"
             }
         },
         {
@@ -223,11 +228,12 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "MEMBER",
             "body": "@mawkler As a workaround, I use something like this:\r\n```scheme\r\n((task_list_marker_unchecked)\r\n @text.todo.unchecked\r\n (#offset! @text.todo.unchecked 0 -2 0 0)\r\n (#set! conceal \"✗\")) ;\r\n((task_list_marker_checked)\r\n @text.todo.checked\r\n (#offset! @text.todo.checked 0 -2 0 0)\r\n (#set! conceal \"✓\")) ;\r\n```\r\nthe `#offset!` directive will conceal the preceding minus signs. The only caveat is that this will only work properly when there is one space between the minus sign and the checkbox. If you only want this conceal to apply to checkboxes with the minus sign, you should be able to modify the query to make that work.",
             "created_at": "2023-12-18T03:05:58Z",
             "html_url": "https://github.com/neovim/neovim/issues/25515#issuecomment-1859479161",
@@ -267,11 +273,12 @@
                 "starred_url": "https://api.github.com/users/ribru17/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ribru17/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ribru17"
+                "url": "https://api.github.com/users/ribru17",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "@ribru17 That works great as a workaround, thank you!",
             "created_at": "2023-12-19T09:56:14Z",
             "html_url": "https://github.com/neovim/neovim/issues/25515#issuecomment-1862450908",
@@ -311,7 +318,8 @@
                 "starred_url": "https://api.github.com/users/mawkler/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/mawkler/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/mawkler"
+                "url": "https://api.github.com/users/mawkler",
+                "user_view_type": "public"
             }
         },
         {
@@ -355,7 +363,8 @@
                 "starred_url": "https://api.github.com/users/savetheclocktower/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/savetheclocktower/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/savetheclocktower"
+                "url": "https://api.github.com/users/savetheclocktower",
+                "user_view_type": "public"
             }
         },
         {
@@ -399,7 +408,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         }
     ],
@@ -450,9 +460,14 @@
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "open",
     "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/25515/timeline",
     "title": "Concealing range between nodes with one character using treesitter",
-    "updated_at": "2024-01-14T22:57:48Z",
+    "updated_at": "2025-01-17T15:27:43Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/25515",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/15816726?v=4",
@@ -472,6 +487,7 @@
         "starred_url": "https://api.github.com/users/mawkler/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/mawkler/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/mawkler"
+        "url": "https://api.github.com/users/mawkler",
+        "user_view_type": "public"
     }
 }

@@ -18,7 +18,8 @@
         "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/justinmk"
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
     },
     "assignees": [
         {
@@ -39,12 +40,14 @@
             "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/justinmk"
+            "url": "https://api.github.com/users/justinmk",
+            "user_view_type": "public"
         }
     ],
     "author_association": "NONE",
     "body": "### Problem\r\n\r\nWindows has 2 distinct absolute [path styles](https://learn.microsoft.com/en-us/dotnet/standard/io/file-path-formats):\r\n\r\n1. Traditional DOS path `C:/some/path`\r\n2. UNC path `//someshare/path`\r\n\r\nCurrently neovim seems to not always take this into account and some of the path handling functions end up breaking with UNC paths. \r\n\r\n[`vim.fs.normalize`](https://github.com/neovim/neovim/blob/master/runtime/lua/vim/fs.lua#L327) has recently been updated and now it trims (`:gsub('/+', '/')`) all continuous slashes, leaving only one. This will \"normalize\" UNC path to a single slash.\r\n\r\n[`vim.uri_to_fname` ](https://github.com/neovim/neovim/blob/master/runtime/lua/vim/uri.lua#L106) and other `uri` related functions also generally don't expect UNC paths (these are used by `vim.lsp.util.locations_to_items`). `is_windows_file_uri` only expects a traditional drive/volume letter based path. But even if it matched, it has a substitution that would remove UNC path `uri:gsub('^file:/+', '')` (sort of expected, as it does not expect UNC path).\r\n\r\n[`vim.uri_from_bufnr`](https://github.com/neovim/neovim/blob/master/runtime/lua/vim/uri.lua#L85) and [`vim.uri_from_fname`](https://github.com/neovim/neovim/blob/master/runtime/lua/vim/uri.lua#L63) also suffer from same-ish issues, where \"is windows\" is determined purely based on whether it is letter-based path.\r\n\r\n[`vim.uri_to_bufnr`](https://github.com/neovim/neovim/blob/master/runtime/lua/vim/uri.lua#L127) in this case ends up creating a new buffer relative to current location.\r\n\r\n[`path_is_absolute`](https://github.com/neovim/neovim/blob/master/src/nvim/path.c#L2392) on another hand seems to have mostly correct way to determine if path is absolute and supports traditional and UNC paths. This function is eventually called by `vim.api.nvim_buf_set_name`. So when using `vim.api.nvim_buf_set_name` it allows renaming a buffer to a valid UNC path, unlike other options.\r\n\r\nAs the functionality and outcome varies, usability of these functions is questionable. I myself have run into this when trying to create a buffer and then rename it to a \"fake\" path and provide it as LSP location. But since these functions interpret the paths in different ways, they end up not resolving to same thing.\r\n\r\nI first thought of trying to fix `vim.uri_to_fname` myself, but as the issue seems a little bit broader than that one function, thought that maybe looking at this whole issue first would be beneficial. Two main questions being, whether normalization of UNC paths is correct/expected and whether more centralised path handling is on the roadmap (e.g. `uri_to_fname` utilizing `vim.fs.normalize`).\r\n\r\n### Steps to reproduce\r\n\r\n```\r\nnvim --clean\r\n:lua print(vim.fs.normalize(\"//GodotOnReady.Generator/GodotOnReady.Generator.GodotOnReadySourceGenerator/Partial_TextDocReferenceRepro_MyClass.cs\"))\r\n:lua print(vim.uri_to_fname(\"file:////GodotOnReady.Generator/GodotOnReady.Generator.GodotOnReadySourceGenerator/Partial_TextDocReferenceRepro_MyClass.cs\"))\r\n\r\n:lua vim.api.nvim_buf_set_name(vim.api.nvim_create_buf(true, true), \"//GodotOnReady.Generator/GodotOnReady.Generator.GodotOnReadySourceGenerator/Partial_TextDocReferenceRepro_MyClass.cs\")\r\n:b2\r\n:lua print(vim.api.nvim_buf_get_name(0))\r\n```\r\n\r\n### Expected behavior\r\n\r\nconsistent handling of UNC paths\r\n\r\n### Neovim version (nvim -v)\r\n\r\nNVIM v0.8.3 / NVIM v0.9.0\r\n\r\n### Vim (not Nvim) behaves the same?\r\n\r\nno\r\n\r\n### Operating system/version\r\n\r\nWindows\r\n\r\n### Terminal name/version\r\n\r\nN/A\r\n\r\n### $TERM environment variable\r\n\r\nN/A\r\n\r\n### Installation\r\n\r\npackage manager",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [],
     "comments": 0,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/23006/comments",
@@ -74,7 +77,7 @@
         {
             "color": "C5DEF5",
             "default": false,
-            "description": "filenames, path manipulation",
+            "description": "file metadata/attributes, filenames, path manipulation",
             "id": 3386070083,
             "name": "filesystem",
             "node_id": "LA_kwDOAPphoM7J01RD",
@@ -88,7 +91,7 @@
     "number": 23006,
     "performed_via_github_app": null,
     "reactions": {
-        "+1": 1,
+        "+1": 2,
         "-1": 0,
         "confused": 0,
         "eyes": 0,
@@ -96,15 +99,20 @@
         "hooray": 0,
         "laugh": 0,
         "rocket": 0,
-        "total_count": 1,
+        "total_count": 2,
         "url": "https://api.github.com/repos/neovim/neovim/issues/23006/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "open",
     "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/23006/timeline",
     "title": "Inconsistent path handling on windows (UNC related)",
-    "updated_at": "2024-01-04T11:41:21Z",
+    "updated_at": "2025-01-19T11:30:01Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/23006",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/5737899?v=4",
@@ -124,6 +132,7 @@
         "starred_url": "https://api.github.com/users/Hoffs/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/Hoffs/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/Hoffs"
+        "url": "https://api.github.com/users/Hoffs",
+        "user_view_type": "public"
     }
 }

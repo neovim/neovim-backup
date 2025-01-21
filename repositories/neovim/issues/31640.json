@@ -2,7 +2,7 @@
     "active_lock_reason": null,
     "assignee": null,
     "assignees": [],
-    "author_association": "NONE",
+    "author_association": "CONTRIBUTOR",
     "body": "### Problem\n\nWas playing with the new `vim.lsp.config` functionality (https://github.com/neovim/neovim/pull/31031) and I've either found a bug or I misunderstand the behavior of this functionality.\n\nThe issue is that it seems like any configuration defined in `lsp/*.lua` cannot be retrieved afterwards. Namely - contents of `vim.lsp.config` are empty despite the fact that servers seem to start and work properly, as configured.\n\nWhat's interesting is that if I call `vim.lsp.config('somelsp', {...})` outside `lsp/*.lua` (e.g. in `init.lua`) then I indeed can access it through `vim.lsp.config`.\n\nSo, TL;DR - configs defined in `lsp/*.lua` are not visible in `vim.lsp.config`, but the ones defined somewhere else are visible.\n\nIs this a bug or a feature?\n\n### Steps to reproduce\n\n```lua\n-- Given tree:\n-- nvim/\n-- ├── init.lua\n-- ├── lsp\n-- │   └── gopls2.lua\n-- └── main.go -> just empty file\n\n-- lsp/gopls2.lua\nprint(\"loading gopls2\")\nvim.lsp.config(\"gopls2\", {\n\tcmd = { \"gopls\" },\n\troot_markers = { \"go.work\", \"go.mod\", \".git\" },\n\tfiletypes = { \"go\" },\n})\n\n-- init.lua\nprint(\"loading gopls1\")\nvim.lsp.config(\"gopls1\", {\n\tcmd = { \"gopls\" },\n\troot_markers = { \"go.work\", \"go.mod\", \".git\" },\n\tfiletypes = { \"go\" },\n})\n\nvim.lsp.enable(\"gopls1\")\nvim.lsp.enable(\"gopls2\")\n```\n\nThen:\n```lua\n-- at start prints\nloading gopls1\n\n-- output of :lua= vim.lsp.config\n{\n  _configs = {\n    gopls1 = {\n      cmd = { \"gopls\" },\n      filetypes = { \"go\" },\n      root_markers = { \"go.work\", \"go.mod\", \".git\" }\n    }\n  },\n  <metatable> = {\n    __call = <function 1>,\n    __index = <function 2>,\n    __newindex = <function 3>\n  }\n}\n```\n\nOk, so `lsp/*.lua` files seem to be loaded lazily. Let's open a `main.go` then:\n```lua\n-- execute :e main.go\n-- it prints\nloading gopls2\n\n-- then output of :lua= vim.lsp.config\n{\n  _configs = {\n    gopls1 = {\n      cmd = { \"gopls\" },\n      filetypes = { \"go\" },\n      root_markers = { \"go.work\", \"go.mod\", \".git\" }\n    }\n  },\n  <metatable> = {\n    __call = <function 1>,\n    __index = <function 2>,\n    __newindex = <function 3>\n  }\n}\n```\n\nAlso note that `gopls1` is defined only for clarity and comparison. The behavior for `gopls2` is the same whether we include `gopls1` or not. \n\n### Expected behavior\n\nI expected the output of `vim.lua.config` at the very end to be:\n```lua\n{\n  _configs = {\n    gopls1 = {\n      cmd = { \"gopls\" },\n      filetypes = { \"go\" },\n      root_markers = { \"go.work\", \"go.mod\", \".git\" }\n    },\n    gopls2 = {\n      cmd = { \"gopls\" },\n      filetypes = { \"go\" },\n      root_markers = { \"go.work\", \"go.mod\", \".git\" }\n    }\n  },\n  <metatable> = {\n    __call = <function 1>,\n    __index = <function 2>,\n    __newindex = <function 3>\n  }\n}\n```\n\n### Nvim version (nvim -v)\n\nfrom https://github.com/neovim/neovim/commit/17383870dd3b7f04eddd48ed929cc25c7e102277\n\n### Vim (not Nvim) behaves the same?\n\nnot applicable\n\n### Operating system/version\n\nnixos\n\n### Terminal name/version\n\nalacritty\n\n### $TERM environment variable\n\ntmux-256color\n\n### Installation\n\nhttps://github.com/nix-community/neovim-nightly-overlay",
     "closed_at": "2024-12-31T12:18:06Z",
     "closed_by": {
@@ -73,7 +73,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "Nope:\n```lua\n-- vim.lsp.config['gopls1']\n{\n  cmd = { \"gopls\" },\n  filetypes = { \"go\" },\n  root_markers = { \"go.work\", \"go.mod\", \".git\" }\n}\n\n-- while vim.lsp.config['gopls2']\n{}\n```\n\nThis is the same whether I open `main.go` or not.\nAlso note that in the issue I'm printing the public `config`, not the private `_configs`.",
             "created_at": "2024-12-19T17:11:03Z",
             "html_url": "https://github.com/neovim/neovim/issues/31640#issuecomment-2555176355",
@@ -163,7 +163,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "@clason \nThank you, now is starts to make sense.\n\nThe problem I see is that `vim.lsp.config` is public. As a user, it's weird to me that I'm 'not meant to access this'. I mean, I've just written some data to it, it's confusing that it's not there. Where is it then? (now I know where 😄)\n\nOne use-case I'd see for accessing this is - let's say some plugin defines `vim.lsp.config['gopls']` in their `lsp/gopls.lua`.\nThen I start this server and I don't know why it behaves this way (e.g. experimental feature or gopls is enabled but it's buggy), so I investigate my configuration but... I don't see it at all. Seems like I could use private `vim.lsp._resolve_config` for that but (even if it was public) it's not obvious that I **should not** use `vim.lsp.config` for this.",
             "created_at": "2024-12-19T17:22:30Z",
             "html_url": "https://github.com/neovim/neovim/issues/31640#issuecomment-2555239671",
@@ -253,7 +253,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "> > The problem I see is that vim.lsp.config is public.\n> \n> This is just how tables work. The documented(!) interface is the `vim.lsp.config()` _function_.\n\nbut what about `:h vim.lsp.config` ?\n\n```\n    • Get configuration for luals: >lua\n        local cfg = vim.lsp.config.luals\n```\nSeems like this is not true and should not be used.",
             "created_at": "2024-12-19T17:26:18Z",
             "html_url": "https://github.com/neovim/neovim/issues/31640#issuecomment-2555264295",
@@ -577,7 +577,7 @@
     },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/31640/timeline",
     "title": "LSP: get resolved config from vim.lsp.config",
-    "updated_at": "2024-12-31T12:18:06Z",
+    "updated_at": "2025-01-17T15:33:19Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/31640",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/13033392?v=4",

@@ -18,7 +18,8 @@
         "starred_url": "https://api.github.com/users/bfredl/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/bfredl/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/bfredl"
+        "url": "https://api.github.com/users/bfredl",
+        "user_view_type": "public"
     },
     "assignees": [
         {
@@ -39,12 +40,14 @@
             "starred_url": "https://api.github.com/users/bfredl/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/bfredl/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/bfredl"
+            "url": "https://api.github.com/users/bfredl",
+            "user_view_type": "public"
         }
     ],
     "author_association": "CONTRIBUTOR",
     "body": "### Problem\n\n`getmousepos()` has several problems when multigrid is enabled.\r\n\r\n1. An unfocusable floating window gives a `winid` of 0\r\n2. A window border also gives `winid` 0, but I think I saw slightly different behaviour in the test code, where `wincol` and `winrow` becomes wrong instead. But maybe I messed something up there. In neovide we get a `winid` of 0 though.\r\n3. `screenrow` and `screencol` are window relative instead of screen relative\r\n\r\nThis causes this issue in Neovide, due to the scrollbar being unfocusable\r\n* https://github.com/neovide/neovide/issues/2226\n\n### Steps to reproduce\n\nRun this test adapted from the regular `getmousepos` test\r\n<details>\r\n<summary>Code</summary>\r\n\r\n```lua\r\ndescribe('ui/mouse/input', function()\r\n  local screen\r\n\r\n  before_each(function()\r\n    clear()\r\n    api.nvim_set_option_value('mouse', 'a', {})\r\n    api.nvim_set_option_value('list', true, {})\r\n    -- NB: this is weird, but mostly irrelevant to the test\r\n    -- So I didn't bother to change it\r\n    command('set listchars=eol:$')\r\n    command('setl listchars=nbsp:x')\r\n    screen = Screen.new(25, 5)\r\n    screen:attach()\r\n    screen:set_default_attr_ids({\r\n      [0] = { bold = true, foreground = Screen.colors.Blue },\r\n      [1] = { background = Screen.colors.LightGrey },\r\n      [2] = { bold = true },\r\n      [3] = {\r\n        foreground = Screen.colors.Blue,\r\n        background = Screen.colors.LightGrey,\r\n        bold = true,\r\n      },\r\n      [4] = { reverse = true },\r\n      [5] = { bold = true, reverse = true },\r\n      [6] = { foreground = Screen.colors.Grey100, background = Screen.colors.Red },\r\n      [7] = { bold = true, foreground = Screen.colors.SeaGreen4 },\r\n      [8] = { foreground = Screen.colors.Brown },\r\n    })\r\n    command('set mousemodel=extend')\r\n    feed('itesting<cr>mouse<cr>support and selection<esc>')\r\n    screen:expect([[\r\n      testing                  |\r\n      mouse                    |\r\n      support and selectio^n    |\r\n      {0:~                        }|\r\n                               |\r\n    ]])\r\n  end)\r\nend)\r\n\r\ndescribe('ui/mouse/input/multigird', function()\r\n  local screen\r\n\r\n  before_each(function()\r\n    clear()\r\n    api.nvim_set_option_value('mouse', 'a', {})\r\n    api.nvim_set_option_value('list', true, {})\r\n    -- NB: this is weird, but mostly irrelevant to the test\r\n    -- So I didn't bother to change it\r\n    command('set listchars=eol:$')\r\n    command('setl listchars=nbsp:x')\r\n    screen = Screen.new(25, 5)\r\n    screen:attach({ext_multigrid=true})\r\n    screen:set_default_attr_ids({\r\n      [0] = { bold = true, foreground = Screen.colors.Blue },\r\n      [1] = { background = Screen.colors.LightGrey },\r\n      [2] = { bold = true },\r\n      [3] = {\r\n        foreground = Screen.colors.Blue,\r\n        background = Screen.colors.LightGrey,\r\n        bold = true,\r\n      },\r\n      [4] = { reverse = true },\r\n      [5] = { bold = true, reverse = true },\r\n      [6] = { foreground = Screen.colors.Grey100, background = Screen.colors.Red },\r\n      [7] = { bold = true, foreground = Screen.colors.SeaGreen4 },\r\n      [8] = { foreground = Screen.colors.Brown },\r\n    })\r\n    command('set mousemodel=extend')\r\n    feed('itesting<cr>mouse<cr>support and selection<esc>')\r\n    screen:expect{grid=[[\r\n    ## grid 1\r\n      [2:-------------------------]|*4\r\n      [3:-------------------------]|\r\n    ## grid 2\r\n      testing                  |\r\n      mouse                    |\r\n      support and selectio^n    |\r\n      {0:~                        }|\r\n    ## grid 3\r\n                               |\r\n    ]], win_viewport={\r\n      [2] = {win = 1000, topline = 0, botline = 4, curline = 2, curcol = 20, linecount = 3, sum_scroll_delta = 0};\r\n    }}\r\n  end)\r\n\r\n  it('getmousepos()', function()\r\n    local winwidth = api.nvim_get_option_value('winwidth', {})\r\n    -- Set winwidth=1 so that window sizes don't change.\r\n    api.nvim_set_option_value('winwidth', 1, {})\r\n    command('tabedit')\r\n    local tabpage = api.nvim_get_current_tabpage()\r\n    insert('hello')\r\n    command('vsplit')\r\n    local opts = {\r\n      relative = 'editor',\r\n      width = 12,\r\n      height = 1,\r\n      col = 8,\r\n      row = 1,\r\n      anchor = 'NW',\r\n      style = 'minimal',\r\n      border = 'single',\r\n      focusable = 1,\r\n    }\r\n    local float = api.nvim_open_win(api.nvim_get_current_buf(), false, opts)\r\n    command('redraw')\r\n    local screenstate = {grid=[[\r\n    ## grid 1\r\n      {9: + No Name] }{2: }{10:3}{2:+ o Name] }{9:X}|\r\n      [5:------------]│[4:------------]|*2\r\n      {5:< Name] [+]  }{4:< Name] [+] }|\r\n      [3:-------------------------]|\r\n    ## grid 2 (hidden)\r\n      testing                  |\r\n      mouse                    |\r\n      support and selection    |\r\n      {0:~                        }|\r\n    ## grid 3\r\n                               |\r\n    ## grid 4\r\n      hello{0:$}      |\r\n      {0:~           }|\r\n    ## grid 5\r\n      hell^o{0:$}      |\r\n      {0:~           }|\r\n    ## grid 6\r\n      ┌────────────┐|\r\n      │{11:hello       }│|\r\n      └────────────┘|\r\n    ]], attr_ids={\r\n      [0] = {bold = true, foreground = Screen.colors.Blue1};\r\n      [1] = {background = Screen.colors.LightGray};\r\n      [2] = {bold = true};\r\n      [3] = {bold = true, foreground = Screen.colors.Blue1, background = Screen.colors.LightGray};\r\n      [4] = {reverse = true};\r\n      [5] = {bold = true, reverse = true};\r\n      [6] = {foreground = Screen.colors.Grey100, background = Screen.colors.Red};\r\n      [7] = {bold = true, foreground = Screen.colors.SeaGreen};\r\n      [8] = {foreground = Screen.colors.Brown};\r\n      [9] = {underline = true, background = Screen.colors.LightGray};\r\n      [10] = {bold = true, foreground = Screen.colors.Magenta1};\r\n      [11] = {background = Screen.colors.LightMagenta};\r\n    }, float_pos={\r\n      [6] = {1003, \"NW\", 1, 1, 8, true, 50};\r\n    }, win_viewport={\r\n      [2] = {win = 1000, topline = 0, botline = 4, curline = 2, curcol = 20, linecount = 3, sum_scroll_delta = 0};\r\n      [4] = {win = 1001, topline = 0, botline = 2, curline = 0, curcol = 4, linecount = 1, sum_scroll_delta = 0};\r\n      [5] = {win = 1002, topline = 0, botline = 2, curline = 0, curcol = 4, linecount = 1, sum_scroll_delta = 0};\r\n      [6] = {win = 1003, topline = 0, botline = 1, curline = 0, curcol = 4, linecount = 1, sum_scroll_delta = 0};\r\n    }, condition=function()\r\n      eq({\r\n        [4] = { win = 1001, startrow = 1, startcol = 13, width = 12, height =  2 },\r\n        [5] = { win = 1002, startrow = 1, startcol =  0, width = 12, height = 2 },\r\n      }, screen.win_position)\r\n    end}\r\n    screen:expect(screenstate)\r\n    local lines = api.nvim_get_option_value('lines', {})\r\n    local columns = api.nvim_get_option_value('columns', {})\r\n\r\n    local input_mouse = function(button, action, modifier, row, col)\r\n      local grid = -1\r\n      if row == lines - 1 then\r\n        grid = 3\r\n      elseif row >= opts.row and row <= opts.row + opts.height + 1 and col >= opts.col and col <= opts.col + opts.width + 1 then\r\n        grid = 6\r\n        row = row - opts.row\r\n        col = col - opts.col\r\n      elseif col >= 12 then\r\n        grid = 4\r\n        row = row - 1\r\n        col = col - 13\r\n      else\r\n        grid = 5\r\n        row = row - 1\r\n      end\r\n      api.nvim_input_mouse(button, action, modifier, grid, row, col)\r\n    end\r\n\r\n    -- Test that screenrow and screencol are set properly for all positions.\r\n    for row = 0, lines - 1 do\r\n      for col = 0, columns - 1 do\r\n        -- Skip the X button that would close the tab.\r\n        if row ~= 0 or col ~= columns - 1 then\r\n          input_mouse('left', 'press', '', row, col)\r\n          api.nvim_set_current_tabpage(tabpage)\r\n          local mousepos = fn.getmousepos()\r\n          -- FIXME: fix screenrow and screencol, they return window position instead of screen positions\r\n          --eq(row + 1, mousepos.screenrow)\r\n          --eq(col + 1, mousepos.screencol)\r\n          -- All other values should be 0 when clicking on the command line.\r\n          if row == lines - 1 then\r\n            eq(0, mousepos.winid)\r\n            eq(0, mousepos.winrow)\r\n            eq(0, mousepos.wincol)\r\n            eq(0, mousepos.line)\r\n            eq(0, mousepos.column)\r\n            eq(0, mousepos.coladd)\r\n          end\r\n        end\r\n      end\r\n    end\r\n\r\n    -- Test that mouse position values are properly set for the floating window\r\n    -- with a border. 1 is added to the height and width to account for the\r\n    -- border.\r\n    -- FIXME: The exact borders don't work\r\n    --for win_row = 0, opts.height + 1 do\r\n    for win_row = 0, opts.height do\r\n      --for win_col = 0, opts.width + 1 do\r\n      for win_col = 0, opts.width do\r\n        local row = win_row + opts.row\r\n        local col = win_col + opts.col\r\n        input_mouse('left', 'press', '', row, col)\r\n        local mousepos = fn.getmousepos()\r\n        eq(float, mousepos.winid)\r\n        eq(win_row + 1, mousepos.winrow)\r\n        eq(win_col + 1, mousepos.wincol)\r\n        local line = 0\r\n        local column = 0\r\n        local coladd = 0\r\n        if\r\n          win_row > 0\r\n          and win_row < opts.height + 1\r\n          and win_col > 0\r\n          and win_col < opts.width + 1\r\n        then\r\n          -- Because of border, win_row and win_col don't need to be\r\n          -- incremented by 1.\r\n          line = math.min(win_row, fn.line('$'))\r\n          column = math.min(win_col, #fn.getline(line) + 1)\r\n          coladd = win_col - column\r\n        end\r\n        eq(line, mousepos.line)\r\n        eq(column, mousepos.column)\r\n        eq(coladd, mousepos.coladd)\r\n      end\r\n    end\r\n\r\n    -- Test that mouse position values are properly set for the floating\r\n    -- window, after removing the border.\r\n    opts.border = 'none'\r\n    api.nvim_win_set_config(float, opts)\r\n    command('redraw')\r\n    for win_row = 0, opts.height - 1 do\r\n      for win_col = 0, opts.width - 1 do\r\n        local row = win_row + opts.row\r\n        local col = win_col + opts.col\r\n        input_mouse('left', 'press', '', row, col)\r\n        local mousepos = fn.getmousepos()\r\n        eq(float, mousepos.winid)\r\n        eq(win_row + 1, mousepos.winrow)\r\n        eq(win_col + 1, mousepos.wincol)\r\n        local line = math.min(win_row + 1, fn.line('$'))\r\n        local column = math.min(win_col + 1, #fn.getline(line) + 1)\r\n        local coladd = win_col + 1 - column\r\n        eq(line, mousepos.line)\r\n        eq(column, mousepos.column)\r\n        eq(coladd, mousepos.coladd)\r\n      end\r\n    end\r\n\r\n    -- Test that mouse position values are properly set for ordinary windows.\r\n    -- Set the float to be unfocusable instead of closing, to additionally test\r\n    -- that getmousepos() does not consider unfocusable floats. (see discussion\r\n    -- in PR #14937 for details).\r\n    opts.focusable = false\r\n    api.nvim_win_set_config(float, opts)\r\n    command('redraw')\r\n    for nr = 1, 2 do\r\n      for win_row = 0, fn.winheight(nr) - 1 do\r\n        for win_col = 0, fn.winwidth(nr) - 1 do\r\n          local row = win_row + fn.win_screenpos(nr)[1] - 1\r\n          local col = win_col + fn.win_screenpos(nr)[2] - 1\r\n          input_mouse('left', 'press', '', row, col)\r\n          local mousepos = fn.getmousepos()\r\n          -- FIXME: Hitting the floating window does not work\r\n          if col < opts.col or col > opts.col + opts.width + 1 then\r\n            eq(fn.win_getid(nr), mousepos.winid)\r\n            eq(win_row + 1, mousepos.winrow)\r\n            eq(win_col + 1, mousepos.wincol)\r\n            local line = math.min(win_row + 1, fn.line('$'))\r\n            local column = math.min(win_col + 1, #fn.getline(line) + 1)\r\n            local coladd = win_col + 1 - column\r\n            eq(line, mousepos.line)\r\n            eq(column, mousepos.column)\r\n            eq(coladd, mousepos.coladd)\r\n          end\r\n        end\r\n      end\r\n    end\r\n\r\n    -- Restore state and release mouse.\r\n    command('tabclose!')\r\n    api.nvim_set_option_value('winwidth', winwidth, {})\r\n    api.nvim_input_mouse('left', 'release', '', 0, 0, 0)\r\n  end)\r\nend)\r\n```\r\n</details>\r\n\r\nNOTE: I'm not fully sure that everything is completely correct, there might be one or two offset errors in my adapted code, as they are hard to detect when the actual code does not work properly.\n\n### Expected behavior\n\nThe tests should pass, even when the `FIXME` parts are fixed\n\n### Neovim version (nvim -v)\n\nv0.9.5\n\n### Vim (not Nvim) behaves the same?\n\nN/A\n\n### Operating system/version\n\nArch Linux\n\n### Terminal name/version\n\nAlacritty/Neovide\n\n### $TERM environment variable\n\nalacritty\n\n### Installation\n\nManually built",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "CONTRIBUTOR",
@@ -87,7 +90,8 @@
                 "starred_url": "https://api.github.com/users/fredizzimo/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/fredizzimo/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/fredizzimo"
+                "url": "https://api.github.com/users/fredizzimo",
+                "user_view_type": "public"
             }
         },
         {
@@ -131,7 +135,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -175,7 +180,8 @@
                 "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/zeertzjq"
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
             }
         },
         {
@@ -219,7 +225,8 @@
                 "starred_url": "https://api.github.com/users/fredizzimo/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/fredizzimo/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/fredizzimo"
+                "url": "https://api.github.com/users/fredizzimo",
+                "user_view_type": "public"
             }
         }
     ],
@@ -253,7 +260,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 32,
+        "closed_issues": 138,
         "created_at": "2023-12-07T23:09:35Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -273,19 +280,20 @@
             "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/justinmk"
+            "url": "https://api.github.com/users/justinmk",
+            "user_view_type": "public"
         },
         "description": "",
-        "due_on": "2024-10-31T07:00:00Z",
+        "due_on": "2025-03-15T07:00:00Z",
         "html_url": "https://github.com/neovim/neovim/milestone/41",
         "id": 10283236,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/41/labels",
         "node_id": "MI_kwDOAPphoM4AnOjk",
         "number": 41,
-        "open_issues": 50,
+        "open_issues": 57,
         "state": "open",
         "title": "0.11",
-        "updated_at": "2024-06-16T22:33:15Z",
+        "updated_at": "2025-01-17T23:02:36Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/41"
     },
     "node_id": "I_kwDOAPphoM59GuZZ",
@@ -306,9 +314,14 @@
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "open",
     "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/27181/timeline",
     "title": "getmousepos() reports wrong when using multigrid",
-    "updated_at": "2024-06-15T20:55:56Z",
+    "updated_at": "2025-01-19T11:22:13Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/27181",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/9946255?v=4",
@@ -328,6 +341,7 @@
         "starred_url": "https://api.github.com/users/fredizzimo/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/fredizzimo/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/fredizzimo"
+        "url": "https://api.github.com/users/fredizzimo",
+        "user_view_type": "public"
     }
 }

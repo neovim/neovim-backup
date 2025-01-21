@@ -5,6 +5,7 @@
     "author_association": "MEMBER",
     "body": "A lot of our standard plugins run into the question of how to allow consumers to handle an event without clobbering each other. We have things like `vim.paste()` where the idea is \"you can choose exactly one way to do this\", and things like Nvim LSP handlers where `vim.lsp.with()` tries to provide some composition.\r\n\r\n# Paradigms\r\n\r\nTo avoid going in circles let's write down the current conventions (\"paradigms\"). Then when adding an interface or a feature, pick one from the list, and then use the existing mechanism for achieving that, instead of reinventing it. Also: do we actually need _all_ of these interfaces, can we eliminate any? \r\n\r\n1. \"provider\": single handler, may return a response\r\n    - examples: `'tagfunc'`, `vim.paste`, clipboard, `:py`, etc.\r\n    - aka \"callback\" in narrow ad-hoc contexts\r\n    - mechanism: `vim.foo`\r\n        - does not \"fan out\".\r\n        - can compose by using the `old = vim.foo` trick.\r\n1. \"callback\", \"attach\": multiple subscribers (\"fan out\" / multicast, no response)\r\n    - mechanism: callbacks hooked into an ad-hoc registry\r\n    - examples: `vim.on_foo()`, `vim.ui_attach()`, …\r\n    - related:  multicast EventEmitter: [vscode](https://code.visualstudio.com/api/references/vscode-api#EventEmitter&lt;T&gt;), [C#](https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/event)\r\n1. \"event handler\": multiple subscribers (\"fan out\", no response)\r\n    - mechanism: autocmds \r\n    - mechanism: callbacks associated with a namespace (see `nvim_set_decoration_provider`)\r\n    - related:  multicast EventEmitter: [vscode](https://code.visualstudio.com/api/references/vscode-api#EventEmitter&lt;T&gt;), [C#](https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/event)\r\n1. \"RPC notification\": e.g. UI events\r\n    - does it make sense to also use the autocmd system as the interface for RPC notifications?   e.g. instead of `nvim_buf_attach`, buf-update events would just be `nvim_create_autocmd('BufUpdate',...)`\r\n\r\n# Discussion\r\n\r\nWhat do we need in the autocmd system so that it fully solves the use-case of plugins or subsystems that want to support multiple subscribers to arbtirary plugin-defined events?\r\n\r\n- performance\r\n- usability\r\n- visibility\r\n- debuggability\r\n\r\n`vim.on_key` implements its own quasi-event system by using namespaces (which is not a bad idea, but raises the question of whether we should try to make it easier to use the builtin event (autocmd) system instead of introducing these inner platforms). Using the event system (autocmds) allows us to focus on improving the performance, usability, visibility and debuggability of that one system instead of partially reinventing it over and over.\r\n\r\nPlugins can \"namespace\" events via `augroup`. We could also allow `nvim_create_namespace()` there?\r\n\r\nvia @mfussenegger : \r\n\r\n> * With multiple clients it's often required to aggregate the results from all clients before doing something with the results, ... (E.g. vim.lsp.buf.references: gather all references, then set quickfix list _once_)\r\n> * For high level functionality a simple request-response model is often not enough. Many LSP actions require multiple steps: code actions, rename, call hierarchy/incoming/outgoing calls.\r\n\r\n\r\n\r\n\r\n# Done\r\n\r\n- `nvim_get_autocmds()`\r\n- `nvim_create_autocmd()`\r\n- `nvim_create_autocmd()`\r\n\r\n# Missing\r\n\r\n1. Do we need a new event/autocmd similar to `User` ?\r\n2. \"Visibility\":  add something like `nvim_inspect_ns`, which could list everything a particular namespace is used for.\r\n3. use autocmd system as the interface for RPC notifications? \r\n    - e.g. instead of `nvim_buf_attach`, buf-update events would just be `nvim_create_autocmd('BufUpdate',...)`\r\n4. Allow `nvim_create_namespace()` as an `augroup` ?\r\n5. Ability to \"compose\" handlers? `vim.lsp.with()` or ...?\r\n6. The _aggregation_ use-case mentioned by @mfussenegger above, implies that we might need _dependency modeling_ of events.\r\n    - Could be done with a simple map-of-maps (disallow circular dependencies). But is it really needed?\r\n\r\n# Proposal: `nvim_on`, `vim.on` ?\r\n\r\n- TODO: gather coherent proposal from https://github.com/neovim/neovim/pull/21811#issuecomment-1383991552\r\n- eliminate `nvim_create_augroup` by using `nvim_create_namespace` instead ?\r\n- For \"providers\" or handlers, prefer `vim.handlers.foo()` and *deprecate* the following:\r\n    - `'foofunc'` (example: 'tagfunc')\r\n    - the old `:help provider` mechanism (example: `:help provider-clipboard`)\r\n\r\n---\r\n\r\nsee also:\r\n\r\n- https://github.com/neovim/neovim/issues/16810",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -47,7 +48,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -91,7 +93,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -135,7 +138,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -179,7 +183,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -223,7 +228,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -267,7 +273,8 @@
                 "starred_url": "https://api.github.com/users/ii14/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ii14/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ii14"
+                "url": "https://api.github.com/users/ii14",
+                "user_view_type": "public"
             }
         },
         {
@@ -311,7 +318,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -355,7 +363,8 @@
                 "starred_url": "https://api.github.com/users/ii14/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ii14/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ii14"
+                "url": "https://api.github.com/users/ii14",
+                "user_view_type": "public"
             }
         },
         {
@@ -399,7 +408,8 @@
                 "starred_url": "https://api.github.com/users/ii14/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ii14/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ii14"
+                "url": "https://api.github.com/users/ii14",
+                "user_view_type": "public"
             }
         },
         {
@@ -443,7 +453,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         }
     ],
@@ -533,19 +544,20 @@
             "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/justinmk"
+            "url": "https://api.github.com/users/justinmk",
+            "user_view_type": "public"
         },
         "description": "",
-        "due_on": "2024-07-01T07:00:00Z",
+        "due_on": "2026-04-01T07:00:00Z",
         "html_url": "https://github.com/neovim/neovim/milestone/33",
         "id": 8487042,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/33/labels",
         "node_id": "MI_kwDOAPphoM4AgYCC",
         "number": 33,
-        "open_issues": 3,
+        "open_issues": 2,
         "state": "open",
         "title": "1.0",
-        "updated_at": "2023-09-29T12:37:12Z",
+        "updated_at": "2024-10-02T01:24:05Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/33"
     },
     "node_id": "I_kwDOAPphoM5M1YUg",
@@ -566,9 +578,14 @@
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "open",
     "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/19156/timeline",
     "title": "events interface: event/autocmd, attach, provider, 'foofunc', nvim_on, vim.on",
-    "updated_at": "2023-10-28T18:52:35Z",
+    "updated_at": "2025-01-17T15:58:54Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/19156",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -588,6 +605,7 @@
         "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/justinmk"
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
     }
 }

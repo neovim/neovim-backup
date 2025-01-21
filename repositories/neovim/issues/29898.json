@@ -5,6 +5,7 @@
     "author_association": "NONE",
     "body": "### Problem\n\nWhen inserting Unicode from Xorg CLIPBOARD (or PRIMARY, not sure, I've configured them to sync) using `<S-Insert>` keypress (handled by X terminal app, I think) Neovim may (it's a race) send invalid `textDocument/didChange` JSON-RPC 2 request to LSP server.\r\n\r\nThe request is invalid because JSON string with Neovim's buffer contents ends with incomplete Unicode symbol. E.g. it may contain only first byte of multi-byte symbol before `\"` which is supposed to close JSON string but instead that `\"` may be handled as second byte of that broken Unicode symbol by LSP server's JSON parser.\r\n\r\nI suppose this issue may depends on X terminal (I fail to reproduce it using NORMAL mode `p` to paste Unicode from X clipboard, it happens only when I press `<S-Insert>`). I was able to reproduce it in urxvt and xterm, but fail to reproduce in wezterm and kitty. I'm using xorg-server-21.1.13.\n\n### Steps to reproduce\n\nThis repro uses LSP markdown-oxide just because it return error when receive invalid JSON-RPC 2.0 request, and this error is shown by Neovim as an indication of this issue. Some other LSP just ignore such an invalid request, which makes it harder to detect this issue (it still can be noticed in Neovim's `lsp.log`).\r\n\r\n```\r\n$ nvim --clean -u minimal.lua\r\n:MasonInstall markdown-oxide\r\n:qa\r\n$ # Copy some amount of multi-byte Unicode symbols into X clipboard:\r\n$ seq 40 | xargs -n 1 echo 󰃤󰃤󰃤󰃤󰃤󰃤󰃤󰃤󰃤󰃤󰃤󰃤󰃤󰃤󰃤󰃤󰃤󰃤󰃤󰃤󰃤󰃤󰃤 | xsel -i\r\n$ # File test.md does not exists, it's used only to attach LSP server\r\n$ nvim --clean -u minimal.lua test.md\r\n<Insert><S-Insert><S-Insert><S-Insert>…\r\n```\r\n\r\nOn my system it's usually enough to press `<S-Insert>` a couple of times to trigger this issue and get this as an indication of successfully triggered issue:\r\n\r\n```\r\nLSP[markdown_oxide]: Error INVALID_SERVER_MESSAGE: {\r\n  error = {                                                                                         \r\n    code = -32700,                                                                                  \r\n    message = \"Parse error\"                                                                         \r\n  },                                                                                                \r\n  jsonrpc = \"2.0\"                                                                                   \r\n}                                                                                                   \r\n```\r\n\r\nNext you should check `~/.local/state/nvim/lsp.log` and last `textDocument/didChange` params will looks like this (last Unicode in a string is broken):\r\n\r\n```\r\n[DEBUG][2024-07-29 04:13:54] .../vim/lsp/rpc.lua:286\t\"rpc.send\"\t{\r\n  jsonrpc = \"2.0\",\r\n  method = \"textDocument/didChange\",\r\n  params = {\r\n    contentChanges = { {\r\n        text = \"ó°¤ó°¤ó°¤.........ó°¤ó°¤ 16\\nó°\\n\"\r\n      } },\r\n    textDocument = {\r\n      uri = \"file:///home/powerman/.config/nvim/test.md\",\r\n      version = 11\r\n    }\r\n  }\r\n}\r\n```\r\n[lsp.log](https://github.com/user-attachments/files/16406085/lsp.log)\r\n\n\n### Expected behavior\n\nNeovim should send only valid JSON to LSP servers, without incomplete Unicode symbols.\n\n### Neovim version (nvim -v)\n\nv0.10.0, v0.11.0-dev-512+gfe5030c05-dirty\n\n### Vim (not Nvim) behaves the same?\n\nN/A\n\n### Operating system/version\n\nGentoo Linux\n\n### Terminal name/version\n\nrxvt-unicode-9.31, xterm-393\n\n### $TERM environment variable\n\nrxvt-unicode-256color, xterm\n\n### Installation\n\nGentoo portage",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "NONE",
@@ -47,7 +48,8 @@
                 "starred_url": "https://api.github.com/users/powerman/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/powerman/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/powerman"
+                "url": "https://api.github.com/users/powerman",
+                "user_view_type": "public"
             }
         }
     ],
@@ -98,9 +100,14 @@
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "open",
     "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/29898/timeline",
     "title": "[race,linux] LSP textDocument/didChange is sent with invalid Unicode string, producing invalid JSON as result",
-    "updated_at": "2024-07-29T01:26:21Z",
+    "updated_at": "2025-01-19T11:17:29Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/29898",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1354301?v=4",
@@ -120,6 +127,7 @@
         "starred_url": "https://api.github.com/users/powerman/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/powerman/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/powerman"
+        "url": "https://api.github.com/users/powerman",
+        "user_view_type": "public"
     }
 }

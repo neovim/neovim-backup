@@ -5,6 +5,7 @@
     "author_association": "CONTRIBUTOR",
     "body": "### Problem\n\nUsually, folds in diff mode is synced with all diffed windows. If a fold is open is one window, the matching fold in the other window should be open too. But after an insert mode edit that changes diff folds, the fold in the other window is not opened accordingly. \r\n\r\n\r\nThe root cause seems to be that this invocation of `setManualFoldWin` can't find the matching fold in the other window: \r\nhttps://github.com/neovim/neovim/blob/2955c921ceaf5764e8d1592a78370d9ca3a268e2/src/nvim/fold.c#L1161-L1174\r\n\r\nThis seems to be related to the fact that nvim does not update folds in insert mode. In fact, the following patch that allows diff fold update in insert mode fixes the problem:\r\n```diff\r\ndiff --git a/src/nvim/fold.c b/src/nvim/fold.c\r\nindex be3295c44..dba2a7492 100644\r\n--- a/src/nvim/fold.c\r\n+++ b/src/nvim/fold.c\r\n@@ -777,7 +777,7 @@ void clearFolding(win_T *win)\r\n /// The changes in lines from top to bot (inclusive).\r\n void foldUpdate(win_T *wp, linenr_T top, linenr_T bot)\r\n {\r\n-  if (disable_fold_update || (State & MODE_INSERT && !foldmethodIsIndent(wp))) {\r\n+  if (disable_fold_update || (State & MODE_INSERT && !foldmethodIsIndent(wp) && !foldmethodIsDiff(wp))) {\r\n     return;\r\n   }\r\n```\r\nBut some people may find eager fold update in insert mode annoying, which is one of the reason `State & MODE_INSERT` check was introduced to nvim.\r\n\r\nAn alternative approach is forcing diff update when opening a diff fold, but I'm not sure if this is a good solution.\r\n```diff\r\ndiff --git a/src/nvim/fold.c b/src/nvim/fold.c\r\nindex be3295c44..b0713aa7f 100644\r\n--- a/src/nvim/fold.c\r\n+++ b/src/nvim/fold.c\r\n@@ -1160,6 +1160,7 @@ static linenr_T setManualFold(pos_T pos, bool opening, bool recurse, int *donep)\r\n {\r\n   if (foldmethodIsDiff(curwin) && curwin->w_p_scb) {\r\n     linenr_T dlnum;\r\n+    ex_diffupdate(NULL);\r\n \r\n     // Do the same operation in other windows in diff mode.  Calculate the\r\n     // line number from the diffs.\r\n```\r\n\r\nI can make a PR with either approach, but \n\n### Steps to reproduce\n\n```\r\nnvim --clean -S <(tee << 'EOF'\r\n    call setline(1, range(1,100))\r\n    vnew\r\n    call setline(1, insert(insert(range(1,100), '',  20), '', 80))\r\n    windo diffthis\r\n    20\r\n    normal! o\r\nEOF\r\n)\r\n```\r\n![image](https://github.com/neovim/neovim/assets/19489738/97aa4555-33c1-490f-b07d-11db2332261c)\r\n\r\nThe right window's fold is open, but not the left's. \n\n### Expected behavior\n\nIn vim, folds in both windows are opened. \r\n![image](https://github.com/neovim/neovim/assets/19489738/c2d00732-ab46-44cc-9bdb-23fd28f18a9a)\r\n\n\n### Neovim version (nvim -v)\n\n0.10 2955c921ceaf5764e8d1592a78370d9ca3a268e2\n\n### Vim (not Nvim) behaves the same?\n\nNo. 9.1.181\n\n### Operating system/version\n\nubuntu 22.04\n\n### Terminal name/version\n\nGNOME Terminal 3.44.0 using VTE 0.68.0 +BIDI +GNUTLS +ICU +SYSTEMD\n\n### $TERM environment variable\n\ntmux-256color\n\n### Installation\n\nbuild from repo",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [],
     "comments": 0,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/27989/comments",
@@ -45,7 +46,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 603,
+        "closed_issues": 686,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -65,19 +66,20 @@
             "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/justinmk"
+            "url": "https://api.github.com/users/justinmk",
+            "user_view_type": "public"
         },
-        "description": "Low priority. Not planned for the current target, may be reassigned.",
+        "description": "Low priority items. We plan to work on this but don't have a target date.",
         "due_on": null,
         "html_url": "https://github.com/neovim/neovim/milestone/6",
         "id": 655037,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 521,
+        "open_issues": 635,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2024-04-15T19:43:11Z",
+        "updated_at": "2025-01-21T00:09:37Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM6DWrq-",
@@ -98,9 +100,14 @@
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "open",
     "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/27989/timeline",
     "title": "diff fold not synced after insert mode",
-    "updated_at": "2024-04-15T00:19:12Z",
+    "updated_at": "2025-01-19T11:27:18Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/27989",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/19489738?v=4",
@@ -120,6 +127,7 @@
         "starred_url": "https://api.github.com/users/tomtomjhj/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/tomtomjhj/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/tomtomjhj"
+        "url": "https://api.github.com/users/tomtomjhj",
+        "user_view_type": "public"
     }
 }

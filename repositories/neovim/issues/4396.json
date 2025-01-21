@@ -5,6 +5,7 @@
     "author_association": "NONE",
     "body": "- Neovim version: v0.1.3-293-g576c5f7\n- Operating system: Ubuntu Xenial beta\n- Terminal emulator: vte/gnome-terminal (git master)\n\nI have configured my gnome-terminal (in its Profile Preferences dialog) to use an I-Beam cursor. It also inherits from my global Gnome settings that the cursor is blinking.\n\nI have NVIM_TUI_ENABLE_CURSOR_SHAPE=1, so that supposedly the cursor is a rectangle in command mode, and I-Beam in insert mode.\n\nThis is true for the main lifetime of neovim, but is neither initialized correctly on startup, nor reverted correctly on exit.\n\nWhen I start up neovim, the cursor remains what it was before. That is, nvim (incorrectly) assumes it was a solid block, and does not issue the escape sequence that changes it to a block. The fix should be straightforward: initialize the cursor shape when neovim starts up.\n\nUpon exit I'm left with a solid block, and that's not what I want to have there, I'd like to get back to my generally preferred cursor shape. The fix here is trickier. There's no way to query or save/restore the cursor shape. In xterm it's probably impossible, since according to http://invisible-island.net/xterm/ctlseqs/ctlseqs.html (-> \"Set cursor style (DECSCUSR, VT520)\") you can only choose from 6 different modes, numbered from 0 to 6, whereas 0 and 1 are the same.\n\nVTE (gnome-terminal et al) intentionally differs here from xterm. Numbers 1-6 work just as in xterm: select a particular mode. However, number 0 means to revert to the terminal emulator's default, as specified in its profile preferences.\n\nOf course there's still no guarantee that someone didn't modify the cursor shape by some escape sequence prior to starting up neovim. However, setting mode 0 upon exit would be a nice step towards restoring the previous value in gnome-terminal, whereas it wouldn't hurt xterm. (Note: the parameter 0 can be omitted, \"\\e[ q\" and \"\\e[0 q\" are the same.)\n",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "NONE",
@@ -47,7 +48,8 @@
                 "starred_url": "https://api.github.com/users/megalithic/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/megalithic/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/megalithic"
+                "url": "https://api.github.com/users/megalithic",
+                "user_view_type": "public"
             }
         },
         {
@@ -91,7 +93,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -135,7 +138,8 @@
                 "starred_url": "https://api.github.com/users/teto/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/teto/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/teto"
+                "url": "https://api.github.com/users/teto",
+                "user_view_type": "public"
             }
         },
         {
@@ -179,7 +183,8 @@
                 "starred_url": "https://api.github.com/users/tealsnow/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/tealsnow/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/tealsnow"
+                "url": "https://api.github.com/users/tealsnow",
+                "user_view_type": "public"
             }
         },
         {
@@ -223,7 +228,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -267,7 +273,8 @@
                 "starred_url": "https://api.github.com/users/UtkarshVerma/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/UtkarshVerma/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/UtkarshVerma"
+                "url": "https://api.github.com/users/UtkarshVerma",
+                "user_view_type": "public"
             }
         },
         {
@@ -311,7 +318,8 @@
                 "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/zeertzjq"
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
             }
         }
     ],
@@ -354,7 +362,7 @@
     "locked": true,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 601,
+        "closed_issues": 686,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -374,19 +382,20 @@
             "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/justinmk"
+            "url": "https://api.github.com/users/justinmk",
+            "user_view_type": "public"
         },
-        "description": "Low priority. Not planned for the current target, may be reassigned.",
+        "description": "Low priority items. We plan to work on this but don't have a target date.",
         "due_on": null,
         "html_url": "https://github.com/neovim/neovim/milestone/6",
         "id": 655037,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 515,
+        "open_issues": 635,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2024-04-01T02:46:11Z",
+        "updated_at": "2025-01-21T00:09:37Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "MDU6SXNzdWUxMzc5NTY0Mzk=",
@@ -407,9 +416,14 @@
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "open",
     "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/4396/timeline",
     "title": "TUI: cursor shape not correctly initialized and restored",
-    "updated_at": "2024-03-30T13:09:23Z",
+    "updated_at": "2025-01-17T16:05:51Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/4396",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/5750745?v=4",
@@ -429,6 +443,7 @@
         "starred_url": "https://api.github.com/users/egmontkob/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/egmontkob/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/egmontkob"
+        "url": "https://api.github.com/users/egmontkob",
+        "user_view_type": "public"
     }
 }

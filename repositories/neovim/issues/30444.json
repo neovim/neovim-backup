@@ -2,7 +2,7 @@
     "active_lock_reason": null,
     "assignee": null,
     "assignees": [],
-    "author_association": "NONE",
+    "author_association": "CONTRIBUTOR",
     "body": "### Problem\r\n\r\nThis is sort of a re-post of <https://github.com/neovim/nvim-lspconfig/issues/1788>, but hopefully in a place where it will get some traction. That issue is locked, so I don't know if @bavalpey or @baltitenger got answers somewhere else. CC-ing them here in case they did.\r\n\r\nI've read through this awfully long thread on Pyright: <https://github.com/microsoft/pyright/issues/1118>. If you haven't read this before, don't. @baltitenger summarized it well [in their issue to nvim-lspconfig](https://github.com/neovim/nvim-lspconfig/issues/1788).\r\n\r\nIn short: the Pyright author says that it's a bug if a IDE displays \"hint diagnostics\" ([VS Code doesn't seem to show them anywhere](https://github.com/microsoft/language-server-protocol/issues/1696#issuecomment-1482487245)). Here's some discussion on the spec about this: <https://github.com/microsoft/language-server-protocol/issues/1696>.\r\n\r\nHowever, Neovim does not behave this way out of the box (I just checked with <https://github.com/neovim/neovim/commit/100bb15d186ce855d064e86ff4630d9ad8d43a5e>, the latest `main` when I started writing this issue):\r\n\r\n- `vim.diagnostic.handlers`\r\n  - `sign`: Arguably wrong: displays diagnostic hints in signcolumn\r\n  - `underline`: This handler does the right thing with `DiagnosticTag.Unnecessary`. @lewis6991 did this in <https://github.com/neovim/neovim/pull/22747>. Thanks!\r\n  - `virtual_text`: Arguably wrong: displays diagnostic hints at the end of lines\r\n- `vim.diagnostic.goto_next` and `vim.diagnostic.goto_prev`: Arguably wrong: these navigate to non-actionable hint diagnostics\r\n\r\n### Expected behavior\r\n\r\nI am not the first person to think neovim should have more nuanced handling of \"hint diagnostics\".\r\n\r\n- The aforementioned nvim-lspconfig issue: <https://github.com/neovim/nvim-lspconfig/issues/1788>\r\n- @gpanders mentions it in <https://github.com/neovim/neovim/pull/22747#issuecomment-1478040364>\r\n  > We could modify the default settings for virtual text, signs, and underline to not display hint messages, but still display them in open_float. That seems like a reasonable middle ground to me.\r\n- I checked, and some of the early iterations of <https://github.com/neovim/neovim/pull/22747> had this filtering, but it looks like it was backed out for a couple of reasons:\r\n  - <https://github.com/neovim/neovim/pull/22747#issuecomment-1478093281>\r\n    > There's a good chance that another language sever assumes that the message stays accessible for users.\r\n  - <https://github.com/neovim/neovim/pull/22747#issuecomment-1478124774>\r\n    > However, up till now vim.diagnostic has remained completely decoupled from any \"LSP\"-isms. Having goto_next and friends check for an LSP tag would introduce a coupling. Not sure that's a good idea.\r\n- [Here's some lua code from the prolific @lewis6991](https://github.com/neovim/neovim/issues/17757#issuecomment-1401652935) demonstrating monkeypatching the existing `vim.diagnostic.handlers` to ignore `DiagnosticTag.Unnecessary` and adding a new `vim.diagnostic.handlers.unnecessary` that uses `vim.highlight` to annotate the relevant text as \"unnecessary\".\r\n  - I believe this is the Lua code that @lewis6991 alluded to here: <https://github.com/neovim/neovim/pull/22747#issuecomment-1478074555>\r\n    > I've had a bunch of custom lua code to handle this for a good while\r\n  - However, that filtering logic never landed in `main`. I do see that @lewis6991 [eventually removed that logic from their dotfiles](https://github.com/lewis6991/dotfiles/commit/63f7474ab6862658eaf2371ba09a0832ce599b2f), I don't know why.\r\n- Here's an even older (now closed, never merged) PR that also implements that filter logic: <https://github.com/neovim/neovim/pull/15333/>.\r\n\r\n@lewis6991, is there interest in getting some of this filter logic merged into neovim core? I understand from the past discussions that differences between LSP server implementations may mean that there's currently no sane default behavior here, and perhaps whatever we do here needs to be configurable. I don't know if that means this shouldn't be part of core, and is instead something that should be handled by a plugin.",
     "closed_at": "2024-09-20T21:46:33Z",
     "closed_by": {
@@ -23,7 +23,8 @@
         "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/clason"
+        "url": "https://api.github.com/users/clason",
+        "user_view_type": "public"
     },
     "comment_data": [
         {
@@ -67,7 +68,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -111,7 +113,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -155,11 +158,12 @@
                 "starred_url": "https://api.github.com/users/baltitenger/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/baltitenger/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/baltitenger"
+                "url": "https://api.github.com/users/baltitenger",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "> Note that I already reposted that issue in this repo, see https://github.com/neovim/neovim/issues/17757 for the answers and a couple workarounds.\r\n\r\n@baltitenger, I did see that issue, and actually did link to it in my OP.\r\n\r\nI should have clicked on a few more links, though. I see that neodim seems to be implementing exactly the `vim.diagnostics.handlers` monkeypatching + filtering that @lewis6991 used to have in their dotfiles: https://github.com/zbirenbaum/neodim/blob/d87470828690342d0139efc2fd56ea0b29e9ecb3/lua/neodim/init.lua#L23. Awesome!\r\n\r\n> The pyright maintainer is wrong\r\n\r\n>  We implement the LSP specification and nothing but the LSP specification. If you are not satisfied with that, lobby Microsoft to extend the protocol.\r\n\r\nI can hear the frustration in both your voices. I spent the last 5+ hours reading through issues and PRs and I've seen the herculean effort @lewis6991 went through to try to get this all sorted. Please bear with me, I only started going deep on this topic yesterday afternoon. You are literally years ahead of me. I'm just trying to understand the state of the world, and Neovim's opinions on this stuff.\r\n\r\nOne last question:\r\n\r\nIn Neovim's opinion, does the Language Server Protocol provide a mechanism for a LSP server to annotate some code as unused, *but not actually actionable*? I think this is (would be) a useful feature: I personally like having my unused variables grayed out even when I have to leave them there to satisfy the arity of some Python function.\r\n\r\nAs you know, the Pyright maintainer says \"yes\": it's by sending \"hint diagnostics\" with `DiagnosticTag.Unnecessary`. @zbirenbaum (maintainer of https://github.com/zbirenbaum/neodim) seems to agree ([relevant code here](https://github.com/zbirenbaum/neodim/blob/d87470828690342d0139efc2fd56ea0b29e9ecb3/lua/neodim/init.lua#L23-L31)).\r\n\r\nAre you saying that the LSP spec doesn't have a way to do this? Or are you saying there's a different mechanism for this (semantic tokens? something else?)?\r\n\r\nFor the record, I have filed 2 issues with Microsoft to try to understand things better. It might be useful context for this discussion:\r\n\r\n- https://github.com/microsoft/language-server-protocol/issues/2024\r\n- https://github.com/microsoft/language-server-protocol/issues/2025",
             "created_at": "2024-09-20T21:19:45Z",
             "html_url": "https://github.com/neovim/neovim/issues/30444#issuecomment-2364632441",
@@ -199,7 +203,8 @@
                 "starred_url": "https://api.github.com/users/jfly/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/jfly/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/jfly"
+                "url": "https://api.github.com/users/jfly",
+                "user_view_type": "public"
             }
         },
         {
@@ -243,7 +248,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -287,7 +293,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -331,7 +338,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -375,11 +383,12 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "> if you can point to a part we're not implementing correctly, feel free to open an issue.\r\n\r\nIIUC, I don't think that defining UI behavior is actually in scope for the Language Server Protocol. From https://github.com/microsoft/language-server-protocol/issues/1696#issuecomment-1480983199:\r\n\r\n> I will close the issue since I really don't want to enforce UI rendering in the LSP specification.\r\n\r\nI really do think that Neovim is completely following the spec by choosing to always display these \"hint diagnostics\".\r\n\r\nI also think Neovim would be following the spec if it chose to do something different (like mostly ignore them, [IIUC, that is what VS Code does](https://github.com/microsoft/language-server-protocol/issues/1696#issuecomment-1482487245)).\r\n\r\nI think I understand why y'all have chosen to have the current core-Neovim behavior, and y'all have done an admirable job of providing the Lua hooks necessary for people to do their own thing here (as @zbirenbaum has done in neodim).\r\n\r\n> My interpretation is that semantics tokens supercede tagged hints. I haven't checked, but my guess is that tagged hints were introduced before semantic tokens.\r\n\r\nYou're correct about the history (tagged hints predate semantic tokens).\r\n\r\nI don't think you're correct that semantic tokens supersede tagged hints. I wrote up my findings on this over in https://github.com/microsoft/language-server-protocol/issues/2024.\r\n\r\n> But let's not forget that the central issue here is the pyright's maintainer's refusal to respect common convention about unused values, which is completely unrelated to the LSP specification\r\n\r\nI won't deny that's how I got here. But I would not say that's the central issue. I'd instead phrase this as a feature request: I like having my editor dim out unused variables without telling me it's actionable. I want the Neovim + LSP ecosystem to support this \"out of the box\" without a plugin (meaning no disrespect to @zbirenbaum for his work on neodim, I will probably use it!).\r\n\r\nWhat I'm hearing from you is that tagged hints are not how Neovim wants to be told about this. I get it, and I get why. But I don't yet understand what the \"missing piece\" is in the ecosystem to make this work. I'll follow up with y'all if I get some answers over on https://github.com/microsoft/language-server-protocol/issues/2024.\r\n\r\nI hope this conversation has not been too triggering for anyone!",
             "created_at": "2024-09-20T21:41:18Z",
             "html_url": "https://github.com/neovim/neovim/issues/30444#issuecomment-2364654621",
@@ -419,7 +428,8 @@
                 "starred_url": "https://api.github.com/users/jfly/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/jfly/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/jfly"
+                "url": "https://api.github.com/users/jfly",
+                "user_view_type": "public"
             }
         },
         {
@@ -463,11 +473,12 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "> But working around a single server's idiosyncratic behavior is not what we want to bake into core.\r\n\r\nI hear you. I will report back if I learn anything over on ~https://github.com/microsoft/language-server-protocol/issues/2024~ (EDIT: I closed that issue in favor of this one: https://github.com/microsoft/language-server-protocol/issues/2026)",
             "created_at": "2024-09-20T21:47:23Z",
             "html_url": "https://github.com/neovim/neovim/issues/30444#issuecomment-2364661292",
@@ -507,7 +518,8 @@
                 "starred_url": "https://api.github.com/users/jfly/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/jfly/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/jfly"
+                "url": "https://api.github.com/users/jfly",
+                "user_view_type": "public"
             }
         },
         {
@@ -551,11 +563,12 @@
                 "starred_url": "https://api.github.com/users/gpanders/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/gpanders/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/gpanders"
+                "url": "https://api.github.com/users/gpanders",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "> Could you elaborate a bit on what you’re wanting here?\r\n\r\nConcretely, I want a world where a LSP server communicates information that causes an otherwise unconfirmed Neovim to behave in the following ways:\r\n\r\n- `vim.diagnostic.handlers`\r\n  - `sign`: Doesn't show anything about non-actionable unused code.\r\n  - `underline`: Continues to do the highlight work that @lewis6991 implemented in  https://github.com/neovim/neovim/pull/22747\r\n  - `virtual_text`: Doesn't show anything about non-actionable unused code.\r\n- `vim.lsp.buf.hover`: I honestly am not sure what I want here. Pretty sure I'd rather it not tell me about non-actionable unused code.\r\n- `vim.diagnostic.goto_next` and `vim.diagnostic.goto_prev`: These skip past non-actionable unused code.\r\n- (there may be other parts of the core Neovim experience I'm unfamiliar with that should also be tweaked)\r\n\r\n> that is not likely to happen unless the LSP specification implements some mechanism for this\r\n\r\nThat is now crystal clear to me =) I'll follow up with y'all if I get any traction on https://github.com/microsoft/language-server-protocol/issues/2026.\r\n\r\n>  If there is something lacking in our core APIs that prevents you from (easily) implementing that behavior then that is something we could fix.\r\n\r\nNope! To repeat myself from earlier: I think y'all have done an admirable job of providing the Lua hooks necessary for people to do their own thing here. I can definitely make Neovim behave the way I want it to here.",
             "created_at": "2024-09-21T02:11:30Z",
             "html_url": "https://github.com/neovim/neovim/issues/30444#issuecomment-2364932711",
@@ -595,7 +608,8 @@
                 "starred_url": "https://api.github.com/users/jfly/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/jfly/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/jfly"
+                "url": "https://api.github.com/users/jfly",
+                "user_view_type": "public"
             }
         },
         {
@@ -639,7 +653,8 @@
                 "starred_url": "https://api.github.com/users/bavalpey/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/bavalpey/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/bavalpey"
+                "url": "https://api.github.com/users/bavalpey",
+                "user_view_type": "public"
             }
         },
         {
@@ -683,7 +698,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -727,7 +743,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -771,7 +788,8 @@
                 "starred_url": "https://api.github.com/users/bavalpey/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/bavalpey/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/bavalpey"
+                "url": "https://api.github.com/users/bavalpey",
+                "user_view_type": "public"
             }
         },
         {
@@ -815,7 +833,8 @@
                 "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/zeertzjq"
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
             }
         },
         {
@@ -859,7 +878,8 @@
                 "starred_url": "https://api.github.com/users/bavalpey/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/bavalpey/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/bavalpey"
+                "url": "https://api.github.com/users/bavalpey",
+                "user_view_type": "public"
             }
         },
         {
@@ -903,7 +923,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -947,7 +968,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -991,7 +1013,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -1035,7 +1058,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -1079,7 +1103,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -1123,7 +1148,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -1167,7 +1193,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -1211,7 +1238,8 @@
                 "starred_url": "https://api.github.com/users/bavalpey/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/bavalpey/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/bavalpey"
+                "url": "https://api.github.com/users/bavalpey",
+                "user_view_type": "public"
             }
         }
     ],
@@ -1245,7 +1273,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 240,
+        "closed_issues": 260,
         "created_at": "2014-11-26T22:13:11Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -1265,7 +1293,8 @@
             "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/justinmk"
+            "url": "https://api.github.com/users/justinmk",
+            "user_view_type": "public"
         },
         "description": "We don't plan to work on this, but will accept high quality contributions from someone who will own the feature and follow up on bug reports.",
         "due_on": null,
@@ -1274,10 +1303,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/9/labels",
         "node_id": "MDk6TWlsZXN0b25lODgxOTc4",
         "number": 9,
-        "open_issues": 259,
+        "open_issues": 297,
         "state": "open",
         "title": "needs-owner",
-        "updated_at": "2024-09-22T10:17:50Z",
+        "updated_at": "2025-01-20T17:56:23Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/9"
     },
     "node_id": "I_kwDOAPphoM6XX_Xx",
@@ -1298,9 +1327,14 @@
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "closed",
     "state_reason": "completed",
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/30444/timeline",
     "title": "LSP: improved core support for \"hint diagnostics\"",
-    "updated_at": "2024-09-22T14:49:48Z",
+    "updated_at": "2025-01-17T15:34:10Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/30444",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/277474?v=4",
@@ -1320,6 +1354,7 @@
         "starred_url": "https://api.github.com/users/jfly/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/jfly/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/jfly"
+        "url": "https://api.github.com/users/jfly",
+        "user_view_type": "public"
     }
 }

@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/31981"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/346cdf7e0d1b92e32d4e01fb10306be325bd1d03"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/150ba7d2e7a3b084a705eb2d36a78295c891951a"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 5811,
-            "forks_count": 5811,
+            "forks": 5823,
+            "forks_count": 5823,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1839,
-            "open_issues_count": 1839,
+            "open_issues": 1843,
+            "open_issues_count": 1843,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -119,11 +119,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2025-01-13T23:17:24Z",
+            "pushed_at": "2025-01-21T00:10:15Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 303311,
+            "size": 304457,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 85218,
+            "stargazers_count": 85427,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -141,14 +141,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2025-01-14T02:06:03Z",
+            "updated_at": "2025-01-21T01:35:11Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 85218,
-            "watchers_count": 85218,
+            "watchers": 85427,
+            "watchers_count": 85427,
             "web_commit_signoff_required": false
         },
-        "sha": "34e2185022ab698827b72751d77e218a1b6b6afe",
+        "sha": "92d3bf101d07d52cfbd4c22e6e06251897adda34",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -171,8 +171,8 @@
             "user_view_type": "public"
         }
     },
-    "body": "TODO:\n\n- [x] You can specify a branch manually, but then that branch must already exist\n- [x] Remove the --pr switch\n- [x] should use vim.system for calling out to git\n- [x] remove LUV_VERSION warning\n- [x] Fix luals warnings\n- [x] move out the dependency table to a top-level table\n- [ ] remove all indirections\n- [x] don't export functions; this is not a module\n- [ ] align behavior with vim-patch (create new branch unless current branch starts with bump-, remove --branch switch, don't special-case master)\n- [x] add --list switch to print supported deps instead of baking them into the help text (which should drop the nvim -l prefix; no longer needed)\n- [ ] combine --commit and --version handling (bump-deps.lua <dep>\n  --version <ref> or <dep> --head -- just assume arg[1] is the\n  dependency, no need for a switch because...)\n- [ ] don't support bumping multiple dependencies in one call\n- [ ] don't put temp stuff under neovim/ -- use stdpath('cache') for that\n- [x] just print output, no need for nvim_echo in stand-alone scripts\n- [ ] no point in checking executables all over the place; a single top-level check for git and sed is enough (there's no functionality that does not require both).\n\nCheck https://github.com/neovim/neovim/pull/17884 for reasoning and stuff",
-    "closed_at": null,
+    "body": "Simplify usage and remove redundant flags and code.",
+    "closed_at": "2025-01-18T09:52:52Z",
     "comment_data": [
         {
             "_links": {
@@ -188,7 +188,7 @@
             },
             "author_association": "MEMBER",
             "body": "For bonus points (not in this PR), `--list` could show the latest and tracked versions...",
-            "commit_id": "346cdf7e0d1b92e32d4e01fb10306be325bd1d03",
+            "commit_id": "150ba7d2e7a3b084a705eb2d36a78295c891951a",
             "created_at": "2025-01-13T16:09:06Z",
             "diff_hunk": "@@ -200,268 +145,86 @@ local function verify_branch(new_branch_suffix)\n         .. \"' doesn't seem to start with \"\n         .. required_branch_prefix\n     )\n-    p('Checking out to bump-' .. new_branch_suffix)\n-    explicit_create_branch(new_branch_suffix)\n+    p('Checking out to bump-' .. '')\n+    run_die({ 'git', 'checkout', '-b', 'bump-' .. '' }, 'git failed to create branch')\n   end\n end\n \n-local function update_cmakelists(dependency, archive, comment)\n-  require_executable('git')\n-\n-  verify_branch(dependency.name)\n+local function update_deps_file_wrapper(name, symbol, archive, comment)\n+  checkout_branch()\n \n-  p('Updating ' .. dependency.name .. ' to ' .. archive.url .. '\\n')\n-  write_cmakelists_line(dependency.symbol, 'URL', archive.url:gsub('/', '\\\\/'))\n-  write_cmakelists_line(dependency.symbol, 'SHA256', archive.sha)\n+  p('Updating ' .. name .. ' to ' .. archive.url .. '\\n')\n+  update_deps_file(symbol, 'URL', archive.url:gsub('/', '\\\\/'))\n+  update_deps_file(symbol, 'SHA256', archive.sha)\n   run_die({\n     'git',\n     'commit',\n     deps_file,\n     '-m',\n-    commit_prefix .. 'bump ' .. dependency.name .. ' to ' .. comment,\n+    commit_prefix .. 'bump ' .. name .. ' to ' .. comment,\n   }, 'git failed to commit')\n end\n \n-local function verify_cmakelists_committed()\n-  require_executable('git')\n-\n+local function ref(dependency_name, _ref)\n+  local name, repo, symbol = get_dependency(dependency_name)\n   run_die(\n     { 'git', 'diff', '--quiet', 'HEAD', '--', deps_file },\n     deps_file .. ' has uncommitted changes'\n   )\n-end\n-\n-local function warn_luv_symbol()\n-  p('warning: ' .. get_dependency('Luv').symbol .. '_VERSION will not be updated')\n-end\n-\n--- return first 9 chars of commit\n-local function short_commit(commit)\n-  return string.sub(commit, 1, 9)\n-end\n-\n--- TODO: remove hardcoded fork\n-local function gh_pr(pr_title, pr_body)\n-  require_executable('gh')\n-\n-  local pr_url = run_die({\n-    'gh',\n-    'pr',\n-    'create',\n-    '--title',\n-    pr_title,\n-    '--body',\n-    pr_body,\n-  }, 'Failed to create PR')\n-  return pr_url\n-end\n-\n-local function find_git_remote(fork)\n-  require_executable('git')\n-\n-  local remotes = assert(run({ 'git', 'remote', '-v' }))\n-  local git_remote = ''\n-  for remote in remotes:gmatch('[^\\r\\n]+') do\n-    local words = {}\n-    for word in remote:gmatch('%w+') do\n-      table.insert(words, word)\n-    end\n-    local match = words[1]:match('/github.com[:/]neovim/neovim/')\n-    if fork == 'fork' then\n-      match = not match\n-    end\n-    if match and words[3] == '(fetch)' then\n-      git_remote = words[0]\n-      break\n-    end\n-  end\n-  if git_remote == '' then\n-    git_remote = 'origin'\n-  end\n-  return git_remote\n-end\n-\n-local function create_pr(pr_title, pr_body)\n-  require_executable('git')\n-\n-  local push_first = true\n-\n-  local checked_out_branch = run({ 'git', 'rev-parse', '--abbrev-ref', 'HEAD' })\n-  if push_first then\n-    local push_remote =\n-      run({ 'git', 'config', '--get', 'branch.' .. checked_out_branch .. '.pushRemote' })\n-    if push_remote == nil then\n-      push_remote = run({ 'git', 'config', '--get', 'remote.pushDefault' })\n-      if push_remote == nil then\n-        push_remote =\n-          run({ 'git', 'config', '--get', 'branch.' .. checked_out_branch .. '.remote' })\n-        if push_remote == nil or push_remote == find_git_remote(nil) then\n-          push_remote = find_git_remote('fork')\n-        end\n-      end\n-    end\n-\n-    p('Pushing to ' .. push_remote .. '/' .. checked_out_branch)\n-    run_die({ 'git', 'push', push_remote, checked_out_branch }, 'Git failed to push')\n-  end\n-\n-  local pr_url = gh_pr(pr_title, pr_body)\n-  p('\\nCreated PR: ' .. pr_url .. '\\n')\n-end\n-\n-function M.commit(dependency_name, commit)\n-  local dependency = assert(get_dependency(dependency_name))\n-  verify_cmakelists_committed()\n-  local commit_sha = get_gh_commit_sha(dependency.repo, commit)\n-  if commit_sha ~= commit then\n-    p('Not a commit: ' .. commit .. '. Did you mean version?')\n-    die()\n-  end\n-  local archive = get_archive_info(dependency.repo, commit)\n-  if dependency_name == 'Luv' then\n-    warn_luv_symbol()\n-  end\n-  update_cmakelists(dependency, archive, short_commit(commit))\n-end\n-\n-function M.version(dependency_name, version)\n-  vim.validate('dependency_name', dependency_name, 'string')\n-  vim.validate('version', version, 'string')\n-  local dependency = assert(get_dependency(dependency_name))\n-  verify_cmakelists_committed()\n-  local commit_sha = get_gh_commit_sha(dependency.repo, version)\n-  if commit_sha == version then\n-    p('Not a version: ' .. version .. '. Did you mean commit?')\n-    die()\n-  end\n-  local archive = get_archive_info(dependency.repo, version)\n-  if dependency_name == 'Luv' then\n-    write_cmakelists_line(dependency.symbol, 'VERSION', version)\n-  end\n-  update_cmakelists(dependency, archive, version)\n-end\n-\n-function M.head(dependency_name)\n-  local dependency = assert(get_dependency(dependency_name))\n-  verify_cmakelists_committed()\n-  local commit_sha = get_gh_commit_sha(dependency.repo, 'HEAD')\n-  local archive = get_archive_info(dependency.repo, commit_sha)\n-  if dependency_name == 'Luv' then\n-    warn_luv_symbol()\n-  end\n-  update_cmakelists(dependency, archive, 'HEAD - ' .. short_commit(commit_sha))\n-end\n-\n-function M.create_branch(dep)\n-  explicit_create_branch(dep)\n-end\n-\n-function M.submit_pr()\n-  require_executable('git')\n-\n-  verify_branch('deps')\n-\n-  local nvim_remote = find_git_remote(nil)\n-  local relevant_commit = assert(run_die({\n-    'git',\n-    'log',\n-    '--grep=' .. commit_prefix,\n-    '--reverse',\n-    \"--format='%s'\",\n-    nvim_remote .. '/master..HEAD',\n-    '-1',\n-  }, 'Failed to fetch commits'))\n-\n-  local pr_title\n-  local pr_body\n-\n-  if relevant_commit == '' then\n-    pr_title = commit_prefix .. 'bump some dependencies'\n-    pr_body = 'bump some dependencies'\n-  else\n-    relevant_commit = relevant_commit:gsub(\"'\", '')\n-    pr_title = relevant_commit\n-    pr_body = relevant_commit:gsub(commit_prefix:gsub('%(', '%%('):gsub('%)', '%%)'), '')\n-  end\n-  pr_body = pr_body .. '\\n\\n(add explanations if needed)'\n-  p(pr_title .. '\\n' .. pr_body .. '\\n')\n-  create_pr(pr_title, pr_body)\n+  local commit_sha = get_gh_commit_sha(repo, _ref)\n+  local archive = get_archive_info(repo, commit_sha)\n+  update_deps_file_wrapper(name, symbol, archive, _ref:sub(1, 9))\n end\n \n local function usage()\n-  local this_script = _G.arg[0]:match('[^/]*.lua$')\n-  print(([=[\n+  local this_script = vim.fs.basename(_G.arg[0])\n+  local help = ([=[\n     Bump Nvim dependencies\n \n     Usage:  nvim -l %s [options]\n         Bump to HEAD, tagged version, commit, or branch:\n-            nvim -l %s --dep Luv --head\n-            nvim -l %s --dep Luv --version 1.43.0-0\n-            nvim -l %s --dep Luv --commit abc123\n-            nvim -l %s --dep Luv --branch\n-        Create a PR:\n-            nvim -l %s --pr\n+            nvim -l %s --dep luv --head\n+            nvim -l %s --dep luv --ref 1.43.0-0\n+            nvim -l %s --dep luv --ref abc123\n \n     Options:\n         -h                    show this message and exit.\n-        --pr                  submit pr for bumping deps.\n-        --branch <dep>        create a branch bump-<dep> from current branch.\n         --dep <dependency>    bump to a specific release or tag.\n \n     Dependency Options:\n-        --version <tag>       bump to a specific release or tag.\n-        --commit <hash>       bump to a specific commit.\n-        --HEAD                bump to a current head.\n+        --ref <ref>           bump to a specific commit or tag.\n+        --head                bump to a current head.\n \n         <dependency> is one of:",
             "html_url": "https://github.com/neovim/neovim/pull/31981#discussion_r1913441924",
@@ -257,7 +257,7 @@
             },
             "author_association": "MEMBER",
             "body": "nah, that's not necessary. all deps are lower-case, and if you are unsure, just use `--list`. This iS n_ot NI_M.",
-            "commit_id": "346cdf7e0d1b92e32d4e01fb10306be325bd1d03",
+            "commit_id": "150ba7d2e7a3b084a705eb2d36a78295c891951a",
             "created_at": "2025-01-13T18:07:21Z",
             "diff_hunk": "@@ -178,19 +116,25 @@ local function write_cmakelists_line(symbol, kind, value)\n   }, 'Failed to write ' .. deps_file)\n end\n \n-local function explicit_create_branch(dep)\n-  require_executable('git')\n+local function ref(dependency_name, _ref)\n+  -- Allow all variations of tree-sitter, treesitter, tree_sitter_c, tree_sitter-c etc",
             "html_url": "https://github.com/neovim/neovim/pull/31981#discussion_r1913598627",
@@ -326,7 +326,7 @@
             },
             "author_association": "MEMBER",
             "body": "I meant more variations between: `treesitter` vs `tree-sitter` as well as `treesitter-c` vs `treesitter_c`. If you still think it's overkill I'll remove it",
-            "commit_id": "346cdf7e0d1b92e32d4e01fb10306be325bd1d03",
+            "commit_id": "150ba7d2e7a3b084a705eb2d36a78295c891951a",
             "created_at": "2025-01-13T18:14:26Z",
             "diff_hunk": "@@ -178,19 +116,25 @@ local function write_cmakelists_line(symbol, kind, value)\n   }, 'Failed to write ' .. deps_file)\n end\n \n-local function explicit_create_branch(dep)\n-  require_executable('git')\n+local function ref(dependency_name, _ref)\n+  -- Allow all variations of tree-sitter, treesitter, tree_sitter_c, tree_sitter-c etc",
             "html_url": "https://github.com/neovim/neovim/pull/31981#discussion_r1913609004",
@@ -396,7 +396,7 @@
             },
             "author_association": "MEMBER",
             "body": "I still think it's overkill. (It's -- now -- consistently the name of the repo in lower case; that's easy enough to remember.)",
-            "commit_id": "346cdf7e0d1b92e32d4e01fb10306be325bd1d03",
+            "commit_id": "150ba7d2e7a3b084a705eb2d36a78295c891951a",
             "created_at": "2025-01-13T18:15:17Z",
             "diff_hunk": "@@ -178,19 +116,25 @@ local function write_cmakelists_line(symbol, kind, value)\n   }, 'Failed to write ' .. deps_file)\n end\n \n-local function explicit_create_branch(dep)\n-  require_executable('git')\n+local function ref(dependency_name, _ref)\n+  -- Allow all variations of tree-sitter, treesitter, tree_sitter_c, tree_sitter-c etc",
             "html_url": "https://github.com/neovim/neovim/pull/31981#discussion_r1913610515",
@@ -413,7 +413,7 @@
             "pull_request_review_id": 2547433676,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31981",
             "reactions": {
-                "+1": 0,
+                "+1": 1,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -421,7 +421,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 0,
+                "total_count": 1,
                 "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1913610515/reactions"
             },
             "side": "RIGHT",
@@ -451,14 +451,687 @@
                 "url": "https://api.github.com/users/clason",
                 "user_view_type": "public"
             }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/31981#discussion_r1917246949"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/31981"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1917246949"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\n            %s luv --ref 1.43.0-0\n```\nAnd so on (yay shebang!)",
+            "commit_id": "150ba7d2e7a3b084a705eb2d36a78295c891951a",
+            "created_at": "2025-01-15T19:44:05Z",
+            "diff_hunk": "@@ -178,290 +106,106 @@ local function write_cmakelists_line(symbol, kind, value)\n   }, 'Failed to write ' .. deps_file)\n end\n \n-local function explicit_create_branch(dep)\n-  require_executable('git')\n+local function ref(name, _ref)\n+  local repo = dependency_table[name]\n+  local symbol = string.gsub(name, 'tree%-sitter', 'treesitter'):gsub('%-', '_'):upper()\n \n-  local checked_out_branch = run({ 'git', 'rev-parse', '--abbrev-ref', 'HEAD' })\n-  if checked_out_branch ~= 'master' then\n-    p('Not on master!')\n-    die()\n-  end\n-  run_die({ 'git', 'checkout', '-b', 'bump-' .. dep }, 'git failed to create branch')\n-end\n+  run_die(\n+    { 'git', 'diff', '--quiet', 'HEAD', '--', deps_file },\n+    deps_file .. ' has uncommitted changes'\n+  )\n+\n+  local full_repo = string.format('https://github.com/%s.git', repo)\n+  -- `git ls-remote` returning empty string means provided ref is a regular commit hash and not a\n+  -- tag nor HEAD.\n+  local sha = vim.split(assert(run_die({ 'git', 'ls-remote', full_repo, _ref })), '\\t')[1]\n+  local commit_sha = sha == '' and _ref or sha\n \n-local function verify_branch(new_branch_suffix)\n-  require_executable('git')\n+  local archive = get_archive_info(repo, commit_sha)\n+  local comment = string.sub(_ref, 1, 9)\n \n   local checked_out_branch = assert(run({ 'git', 'rev-parse', '--abbrev-ref', 'HEAD' }))\n   if not checked_out_branch:match('^' .. required_branch_prefix) then\n-    p(\n+    print(\n       \"Current branch '\"\n         .. checked_out_branch\n         .. \"' doesn't seem to start with \"\n         .. required_branch_prefix\n     )\n-    p('Checking out to bump-' .. new_branch_suffix)\n-    explicit_create_branch(new_branch_suffix)\n+    print('Checking out to bump-' .. '')\n+    run_die({ 'git', 'checkout', '-b', 'bump-' .. '' }, 'git failed to create branch')\n   end\n-end\n-\n-local function update_cmakelists(dependency, archive, comment)\n-  require_executable('git')\n-\n-  verify_branch(dependency.name)\n \n-  p('Updating ' .. dependency.name .. ' to ' .. archive.url .. '\\n')\n-  write_cmakelists_line(dependency.symbol, 'URL', archive.url:gsub('/', '\\\\/'))\n-  write_cmakelists_line(dependency.symbol, 'SHA256', archive.sha)\n+  print('Updating ' .. name .. ' to ' .. archive.url .. '\\n')\n+  update_deps_file(symbol, 'URL', archive.url:gsub('/', '\\\\/'))\n+  update_deps_file(symbol, 'SHA256', archive.sha)\n   run_die({\n     'git',\n     'commit',\n     deps_file,\n     '-m',\n-    commit_prefix .. 'bump ' .. dependency.name .. ' to ' .. comment,\n+    commit_prefix .. 'bump ' .. name .. ' to ' .. comment,\n   }, 'git failed to commit')\n end\n \n-local function verify_cmakelists_committed()\n-  require_executable('git')\n-\n-  run_die(\n-    { 'git', 'diff', '--quiet', 'HEAD', '--', deps_file },\n-    deps_file .. ' has uncommitted changes'\n-  )\n-end\n-\n-local function warn_luv_symbol()\n-  p('warning: ' .. get_dependency('Luv').symbol .. '_VERSION will not be updated')\n-end\n-\n--- return first 9 chars of commit\n-local function short_commit(commit)\n-  return string.sub(commit, 1, 9)\n-end\n-\n--- TODO: remove hardcoded fork\n-local function gh_pr(pr_title, pr_body)\n-  require_executable('gh')\n-\n-  local pr_url = run_die({\n-    'gh',\n-    'pr',\n-    'create',\n-    '--title',\n-    pr_title,\n-    '--body',\n-    pr_body,\n-  }, 'Failed to create PR')\n-  return pr_url\n-end\n-\n-local function find_git_remote(fork)\n-  require_executable('git')\n-\n-  local remotes = assert(run({ 'git', 'remote', '-v' }))\n-  local git_remote = ''\n-  for remote in remotes:gmatch('[^\\r\\n]+') do\n-    local words = {}\n-    for word in remote:gmatch('%w+') do\n-      table.insert(words, word)\n-    end\n-    local match = words[1]:match('/github.com[:/]neovim/neovim/')\n-    if fork == 'fork' then\n-      match = not match\n-    end\n-    if match and words[3] == '(fetch)' then\n-      git_remote = words[0]\n-      break\n-    end\n-  end\n-  if git_remote == '' then\n-    git_remote = 'origin'\n-  end\n-  return git_remote\n-end\n-\n-local function create_pr(pr_title, pr_body)\n-  require_executable('git')\n-\n-  local push_first = true\n-\n-  local checked_out_branch = run({ 'git', 'rev-parse', '--abbrev-ref', 'HEAD' })\n-  if push_first then\n-    local push_remote =\n-      run({ 'git', 'config', '--get', 'branch.' .. checked_out_branch .. '.pushRemote' })\n-    if push_remote == nil then\n-      push_remote = run({ 'git', 'config', '--get', 'remote.pushDefault' })\n-      if push_remote == nil then\n-        push_remote =\n-          run({ 'git', 'config', '--get', 'branch.' .. checked_out_branch .. '.remote' })\n-        if push_remote == nil or push_remote == find_git_remote(nil) then\n-          push_remote = find_git_remote('fork')\n-        end\n-      end\n-    end\n-\n-    p('Pushing to ' .. push_remote .. '/' .. checked_out_branch)\n-    run_die({ 'git', 'push', push_remote, checked_out_branch }, 'Git failed to push')\n-  end\n-\n-  local pr_url = gh_pr(pr_title, pr_body)\n-  p('\\nCreated PR: ' .. pr_url .. '\\n')\n-end\n-\n-function M.commit(dependency_name, commit)\n-  local dependency = assert(get_dependency(dependency_name))\n-  verify_cmakelists_committed()\n-  local commit_sha = get_gh_commit_sha(dependency.repo, commit)\n-  if commit_sha ~= commit then\n-    p('Not a commit: ' .. commit .. '. Did you mean version?')\n-    die()\n-  end\n-  local archive = get_archive_info(dependency.repo, commit)\n-  if dependency_name == 'Luv' then\n-    warn_luv_symbol()\n-  end\n-  update_cmakelists(dependency, archive, short_commit(commit))\n-end\n-\n-function M.version(dependency_name, version)\n-  vim.validate('dependency_name', dependency_name, 'string')\n-  vim.validate('version', version, 'string')\n-  local dependency = assert(get_dependency(dependency_name))\n-  verify_cmakelists_committed()\n-  local commit_sha = get_gh_commit_sha(dependency.repo, version)\n-  if commit_sha == version then\n-    p('Not a version: ' .. version .. '. Did you mean commit?')\n-    die()\n-  end\n-  local archive = get_archive_info(dependency.repo, version)\n-  if dependency_name == 'Luv' then\n-    write_cmakelists_line(dependency.symbol, 'VERSION', version)\n-  end\n-  update_cmakelists(dependency, archive, version)\n-end\n-\n-function M.head(dependency_name)\n-  local dependency = assert(get_dependency(dependency_name))\n-  verify_cmakelists_committed()\n-  local commit_sha = get_gh_commit_sha(dependency.repo, 'HEAD')\n-  local archive = get_archive_info(dependency.repo, commit_sha)\n-  if dependency_name == 'Luv' then\n-    warn_luv_symbol()\n-  end\n-  update_cmakelists(dependency, archive, 'HEAD - ' .. short_commit(commit_sha))\n-end\n-\n-function M.create_branch(dep)\n-  explicit_create_branch(dep)\n-end\n-\n-function M.submit_pr()\n-  require_executable('git')\n-\n-  verify_branch('deps')\n-\n-  local nvim_remote = find_git_remote(nil)\n-  local relevant_commit = assert(run_die({\n-    'git',\n-    'log',\n-    '--grep=' .. commit_prefix,\n-    '--reverse',\n-    \"--format='%s'\",\n-    nvim_remote .. '/master..HEAD',\n-    '-1',\n-  }, 'Failed to fetch commits'))\n-\n-  local pr_title\n-  local pr_body\n-\n-  if relevant_commit == '' then\n-    pr_title = commit_prefix .. 'bump some dependencies'\n-    pr_body = 'bump some dependencies'\n-  else\n-    relevant_commit = relevant_commit:gsub(\"'\", '')\n-    pr_title = relevant_commit\n-    pr_body = relevant_commit:gsub(commit_prefix:gsub('%(', '%%('):gsub('%)', '%%)'), '')\n-  end\n-  pr_body = pr_body .. '\\n\\n(add explanations if needed)'\n-  p(pr_title .. '\\n' .. pr_body .. '\\n')\n-  create_pr(pr_title, pr_body)\n-end\n-\n local function usage()\n-  local this_script = _G.arg[0]:match('[^/]*.lua$')\n-  print(([=[\n+  local this_script = vim.fs.basename(_G.arg[0])\n+  local help = ([=[\n     Bump Nvim dependencies\n \n     Usage:  nvim -l %s [options]\n         Bump to HEAD, tagged version, commit, or branch:\n-            nvim -l %s --dep Luv --head\n-            nvim -l %s --dep Luv --version 1.43.0-0\n-            nvim -l %s --dep Luv --commit abc123\n-            nvim -l %s --dep Luv --branch\n-        Create a PR:\n-            nvim -l %s --pr\n+            nvim -l %s luv --head\n+            nvim -l %s luv --ref 1.43.0-0",
+            "html_url": "https://github.com/neovim/neovim/pull/31981#discussion_r1917246949",
+            "id": 1917246949,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5yRt3l",
+            "original_commit_id": "ee5cb87d9ec3b92e8cc6ea00f8663135639bd079",
+            "original_line": 159,
+            "original_position": 446,
+            "original_start_line": null,
+            "path": "scripts/bump_deps.lua",
+            "position": null,
+            "pull_request_review_id": 2553740876,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31981",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1917246949/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-01-15T19:44:53Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1917246949",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/2361214?v=4",
+                "events_url": "https://api.github.com/users/clason/events{/privacy}",
+                "followers_url": "https://api.github.com/users/clason/followers",
+                "following_url": "https://api.github.com/users/clason/following{/other_user}",
+                "gists_url": "https://api.github.com/users/clason/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/clason",
+                "id": 2361214,
+                "login": "clason",
+                "node_id": "MDQ6VXNlcjIzNjEyMTQ=",
+                "organizations_url": "https://api.github.com/users/clason/orgs",
+                "received_events_url": "https://api.github.com/users/clason/received_events",
+                "repos_url": "https://api.github.com/users/clason/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/31981#discussion_r1917247720"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/31981"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1917247720"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Is that still needed?",
+            "commit_id": "150ba7d2e7a3b084a705eb2d36a78295c891951a",
+            "created_at": "2025-01-15T19:44:48Z",
+            "diff_hunk": "@@ -3,21 +3,38 @@\n -- Usage:\n --    ./scripts/bump_deps.lua -h\n \n-local M = {}\n+assert(vim.fn.executable('curl') == 1)\n+assert(vim.fn.executable('sed') == 1)\n+assert(vim.fn.executable('git') == 1)\n \n local _trace = false",
+            "html_url": "https://github.com/neovim/neovim/pull/31981#discussion_r1917247720",
+            "id": 1917247720,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5yRuDo",
+            "original_commit_id": "ee5cb87d9ec3b92e8cc6ea00f8663135639bd079",
+            "original_line": 10,
+            "original_position": 9,
+            "original_start_line": null,
+            "path": "scripts/bump_deps.lua",
+            "position": null,
+            "pull_request_review_id": 2553740876,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31981",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1917247720/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-01-15T19:44:53Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1917247720",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/2361214?v=4",
+                "events_url": "https://api.github.com/users/clason/events{/privacy}",
+                "followers_url": "https://api.github.com/users/clason/followers",
+                "following_url": "https://api.github.com/users/clason/following{/other_user}",
+                "gists_url": "https://api.github.com/users/clason/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/clason",
+                "id": 2361214,
+                "login": "clason",
+                "node_id": "MDQ6VXNlcjIzNjEyMTQ=",
+                "organizations_url": "https://api.github.com/users/clason/orgs",
+                "received_events_url": "https://api.github.com/users/clason/received_events",
+                "repos_url": "https://api.github.com/users/clason/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/31981#discussion_r1917276154"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/31981"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1917276154"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Technically yes, practically no. We can absolutely remove `curl` since it's available everywhere. `git` should be given. I guess we can keep `sed` as it would be a surprise for windows users?",
+            "commit_id": "150ba7d2e7a3b084a705eb2d36a78295c891951a",
+            "created_at": "2025-01-15T20:12:18Z",
+            "diff_hunk": "@@ -3,21 +3,38 @@\n -- Usage:\n --    ./scripts/bump_deps.lua -h\n \n-local M = {}\n+assert(vim.fn.executable('curl') == 1)\n+assert(vim.fn.executable('sed') == 1)\n+assert(vim.fn.executable('git') == 1)\n \n local _trace = false",
+            "html_url": "https://github.com/neovim/neovim/pull/31981#discussion_r1917276154",
+            "id": 1917276154,
+            "in_reply_to_id": 1917247720,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5yR0_6",
+            "original_commit_id": "ee5cb87d9ec3b92e8cc6ea00f8663135639bd079",
+            "original_line": 10,
+            "original_position": 9,
+            "original_start_line": null,
+            "path": "scripts/bump_deps.lua",
+            "position": null,
+            "pull_request_review_id": 2553815184,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31981",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1917276154/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-01-15T20:12:18Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1917276154",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/33953936?v=4",
+                "events_url": "https://api.github.com/users/dundargoc/events{/privacy}",
+                "followers_url": "https://api.github.com/users/dundargoc/followers",
+                "following_url": "https://api.github.com/users/dundargoc/following{/other_user}",
+                "gists_url": "https://api.github.com/users/dundargoc/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/dundargoc",
+                "id": 33953936,
+                "login": "dundargoc",
+                "node_id": "MDQ6VXNlcjMzOTUzOTM2",
+                "organizations_url": "https://api.github.com/users/dundargoc/orgs",
+                "received_events_url": "https://api.github.com/users/dundargoc/received_events",
+                "repos_url": "https://api.github.com/users/dundargoc/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/dundargoc/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/dundargoc/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/dundargoc",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/31981#discussion_r1917283606"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/31981"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1917283606"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Should I remove sed too?",
+            "commit_id": "150ba7d2e7a3b084a705eb2d36a78295c891951a",
+            "created_at": "2025-01-15T20:19:42Z",
+            "diff_hunk": "@@ -3,21 +3,38 @@\n -- Usage:\n --    ./scripts/bump_deps.lua -h\n \n-local M = {}\n+assert(vim.fn.executable('curl') == 1)\n+assert(vim.fn.executable('sed') == 1)\n+assert(vim.fn.executable('git') == 1)\n \n local _trace = false",
+            "html_url": "https://github.com/neovim/neovim/pull/31981#discussion_r1917283606",
+            "id": 1917283606,
+            "in_reply_to_id": 1917247720,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5yR20W",
+            "original_commit_id": "ee5cb87d9ec3b92e8cc6ea00f8663135639bd079",
+            "original_line": 10,
+            "original_position": 9,
+            "original_start_line": null,
+            "path": "scripts/bump_deps.lua",
+            "position": null,
+            "pull_request_review_id": 2553834987,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31981",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1917283606/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-01-15T20:19:42Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1917283606",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/33953936?v=4",
+                "events_url": "https://api.github.com/users/dundargoc/events{/privacy}",
+                "followers_url": "https://api.github.com/users/dundargoc/followers",
+                "following_url": "https://api.github.com/users/dundargoc/following{/other_user}",
+                "gists_url": "https://api.github.com/users/dundargoc/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/dundargoc",
+                "id": 33953936,
+                "login": "dundargoc",
+                "node_id": "MDQ6VXNlcjMzOTUzOTM2",
+                "organizations_url": "https://api.github.com/users/dundargoc/orgs",
+                "received_events_url": "https://api.github.com/users/dundargoc/received_events",
+                "repos_url": "https://api.github.com/users/dundargoc/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/dundargoc/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/dundargoc/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/dundargoc",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/31981#discussion_r1917286714"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/31981"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1917286714"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Sorry, I was talking about the `_trace` line.\n\nThe sed check can stay; it's the only command where failure would leave stale files around. ",
+            "commit_id": "150ba7d2e7a3b084a705eb2d36a78295c891951a",
+            "created_at": "2025-01-15T20:22:55Z",
+            "diff_hunk": "@@ -3,21 +3,38 @@\n -- Usage:\n --    ./scripts/bump_deps.lua -h\n \n-local M = {}\n+assert(vim.fn.executable('curl') == 1)\n+assert(vim.fn.executable('sed') == 1)\n+assert(vim.fn.executable('git') == 1)\n \n local _trace = false",
+            "html_url": "https://github.com/neovim/neovim/pull/31981#discussion_r1917286714",
+            "id": 1917286714,
+            "in_reply_to_id": 1917247720,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5yR3k6",
+            "original_commit_id": "ee5cb87d9ec3b92e8cc6ea00f8663135639bd079",
+            "original_line": 10,
+            "original_position": 9,
+            "original_start_line": null,
+            "path": "scripts/bump_deps.lua",
+            "position": null,
+            "pull_request_review_id": 2553842811,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31981",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1917286714/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-01-15T20:22:55Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1917286714",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/2361214?v=4",
+                "events_url": "https://api.github.com/users/clason/events{/privacy}",
+                "followers_url": "https://api.github.com/users/clason/followers",
+                "following_url": "https://api.github.com/users/clason/following{/other_user}",
+                "gists_url": "https://api.github.com/users/clason/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/clason",
+                "id": 2361214,
+                "login": "clason",
+                "node_id": "MDQ6VXNlcjIzNjEyMTQ=",
+                "organizations_url": "https://api.github.com/users/clason/orgs",
+                "received_events_url": "https://api.github.com/users/clason/received_events",
+                "repos_url": "https://api.github.com/users/clason/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/31981#discussion_r1917293742"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/31981"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1917293742"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Oh, the trace. Eh, I guess it could be useful? to see which run commands are used? Idk, Not super attached to it.",
+            "commit_id": "150ba7d2e7a3b084a705eb2d36a78295c891951a",
+            "created_at": "2025-01-15T20:28:16Z",
+            "diff_hunk": "@@ -3,21 +3,38 @@\n -- Usage:\n --    ./scripts/bump_deps.lua -h\n \n-local M = {}\n+assert(vim.fn.executable('curl') == 1)\n+assert(vim.fn.executable('sed') == 1)\n+assert(vim.fn.executable('git') == 1)\n \n local _trace = false",
+            "html_url": "https://github.com/neovim/neovim/pull/31981#discussion_r1917293742",
+            "id": 1917293742,
+            "in_reply_to_id": 1917247720,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5yR5Su",
+            "original_commit_id": "ee5cb87d9ec3b92e8cc6ea00f8663135639bd079",
+            "original_line": 10,
+            "original_position": 9,
+            "original_start_line": null,
+            "path": "scripts/bump_deps.lua",
+            "position": null,
+            "pull_request_review_id": 2553858019,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31981",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1917293742/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-01-15T20:28:17Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1917293742",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/33953936?v=4",
+                "events_url": "https://api.github.com/users/dundargoc/events{/privacy}",
+                "followers_url": "https://api.github.com/users/dundargoc/followers",
+                "following_url": "https://api.github.com/users/dundargoc/following{/other_user}",
+                "gists_url": "https://api.github.com/users/dundargoc/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/dundargoc",
+                "id": 33953936,
+                "login": "dundargoc",
+                "node_id": "MDQ6VXNlcjMzOTUzOTM2",
+                "organizations_url": "https://api.github.com/users/dundargoc/orgs",
+                "received_events_url": "https://api.github.com/users/dundargoc/received_events",
+                "repos_url": "https://api.github.com/users/dundargoc/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/dundargoc/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/dundargoc/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/dundargoc",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/31981#discussion_r1917297146"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/31981"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1917297146"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "As you can't set it from the outside, I would say \"no\". More code to yeet :)",
+            "commit_id": "150ba7d2e7a3b084a705eb2d36a78295c891951a",
+            "created_at": "2025-01-15T20:31:36Z",
+            "diff_hunk": "@@ -3,21 +3,38 @@\n -- Usage:\n --    ./scripts/bump_deps.lua -h\n \n-local M = {}\n+assert(vim.fn.executable('curl') == 1)\n+assert(vim.fn.executable('sed') == 1)\n+assert(vim.fn.executable('git') == 1)\n \n local _trace = false",
+            "html_url": "https://github.com/neovim/neovim/pull/31981#discussion_r1917297146",
+            "id": 1917297146,
+            "in_reply_to_id": 1917247720,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5yR6H6",
+            "original_commit_id": "ee5cb87d9ec3b92e8cc6ea00f8663135639bd079",
+            "original_line": 10,
+            "original_position": 9,
+            "original_start_line": null,
+            "path": "scripts/bump_deps.lua",
+            "position": null,
+            "pull_request_review_id": 2553866115,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31981",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1917297146/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-01-15T20:31:36Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1917297146",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/2361214?v=4",
+                "events_url": "https://api.github.com/users/clason/events{/privacy}",
+                "followers_url": "https://api.github.com/users/clason/followers",
+                "following_url": "https://api.github.com/users/clason/following{/other_user}",
+                "gists_url": "https://api.github.com/users/clason/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/clason",
+                "id": 2361214,
+                "login": "clason",
+                "node_id": "MDQ6VXNlcjIzNjEyMTQ=",
+                "organizations_url": "https://api.github.com/users/clason/orgs",
+                "received_events_url": "https://api.github.com/users/clason/received_events",
+                "repos_url": "https://api.github.com/users/clason/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/31981#discussion_r1918607649"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/31981"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1918607649"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "The \"branch\" variant is not documented (and implemented?) It's not really needed, though.\r\n\r\n* If it already works, just add a corresponding line to the example below;\r\n* if not, just remove \"or branch\" from this line.\r\n\r\n(Or remove in either case, if you prefer.)\r\n",
+            "commit_id": "150ba7d2e7a3b084a705eb2d36a78295c891951a",
+            "created_at": "2025-01-16T14:01:04Z",
+            "diff_hunk": "@@ -178,290 +94,107 @@ local function write_cmakelists_line(symbol, kind, value)\n   }, 'Failed to write ' .. deps_file)\n end\n \n-local function explicit_create_branch(dep)\n-  require_executable('git')\n+local function ref(name, _ref)\n+  local repo = dependency_table[name]\n+  local symbol = string.gsub(name, 'tree%-sitter', 'treesitter'):gsub('%-', '_'):upper()\n \n-  local checked_out_branch = run({ 'git', 'rev-parse', '--abbrev-ref', 'HEAD' })\n-  if checked_out_branch ~= 'master' then\n-    p('Not on master!')\n-    die()\n-  end\n-  run_die({ 'git', 'checkout', '-b', 'bump-' .. dep }, 'git failed to create branch')\n-end\n+  run_die(\n+    { 'git', 'diff', '--quiet', 'HEAD', '--', deps_file },\n+    deps_file .. ' has uncommitted changes'\n+  )\n \n-local function verify_branch(new_branch_suffix)\n-  require_executable('git')\n+  local full_repo = string.format('https://github.com/%s.git', repo)\n+  -- `git ls-remote` returning empty string means provided ref is a regular commit hash and not a\n+  -- tag nor HEAD.\n+  local sha = vim.split(assert(run_die({ 'git', 'ls-remote', full_repo, _ref })), '\\t')[1]\n+  local commit_sha = sha == '' and _ref or sha\n+\n+  local archive = get_archive_info(repo, commit_sha)\n+  local comment = string.sub(_ref, 1, 9)\n \n   local checked_out_branch = assert(run({ 'git', 'rev-parse', '--abbrev-ref', 'HEAD' }))\n   if not checked_out_branch:match('^' .. required_branch_prefix) then\n-    p(\n+    print(\n       \"Current branch '\"\n         .. checked_out_branch\n         .. \"' doesn't seem to start with \"\n         .. required_branch_prefix\n     )\n-    p('Checking out to bump-' .. new_branch_suffix)\n-    explicit_create_branch(new_branch_suffix)\n+    print('Checking out to bump-' .. name)\n+    run_die({ 'git', 'checkout', '-b', 'bump-' .. name }, 'git failed to create branch')\n   end\n-end\n-\n-local function update_cmakelists(dependency, archive, comment)\n-  require_executable('git')\n \n-  verify_branch(dependency.name)\n-\n-  p('Updating ' .. dependency.name .. ' to ' .. archive.url .. '\\n')\n-  write_cmakelists_line(dependency.symbol, 'URL', archive.url:gsub('/', '\\\\/'))\n-  write_cmakelists_line(dependency.symbol, 'SHA256', archive.sha)\n+  print('Updating ' .. name .. ' to ' .. archive.url .. '\\n')\n+  update_deps_file(symbol, 'URL', archive.url:gsub('/', '\\\\/'))\n+  update_deps_file(symbol, 'SHA256', archive.sha)\n   run_die({\n     'git',\n     'commit',\n     deps_file,\n     '-m',\n-    commit_prefix .. 'bump ' .. dependency.name .. ' to ' .. comment,\n+    commit_prefix .. 'bump ' .. name .. ' to ' .. comment,\n   }, 'git failed to commit')\n end\n \n-local function verify_cmakelists_committed()\n-  require_executable('git')\n-\n-  run_die(\n-    { 'git', 'diff', '--quiet', 'HEAD', '--', deps_file },\n-    deps_file .. ' has uncommitted changes'\n-  )\n-end\n-\n-local function warn_luv_symbol()\n-  p('warning: ' .. get_dependency('Luv').symbol .. '_VERSION will not be updated')\n-end\n-\n--- return first 9 chars of commit\n-local function short_commit(commit)\n-  return string.sub(commit, 1, 9)\n-end\n-\n--- TODO: remove hardcoded fork\n-local function gh_pr(pr_title, pr_body)\n-  require_executable('gh')\n-\n-  local pr_url = run_die({\n-    'gh',\n-    'pr',\n-    'create',\n-    '--title',\n-    pr_title,\n-    '--body',\n-    pr_body,\n-  }, 'Failed to create PR')\n-  return pr_url\n-end\n-\n-local function find_git_remote(fork)\n-  require_executable('git')\n-\n-  local remotes = assert(run({ 'git', 'remote', '-v' }))\n-  local git_remote = ''\n-  for remote in remotes:gmatch('[^\\r\\n]+') do\n-    local words = {}\n-    for word in remote:gmatch('%w+') do\n-      table.insert(words, word)\n-    end\n-    local match = words[1]:match('/github.com[:/]neovim/neovim/')\n-    if fork == 'fork' then\n-      match = not match\n-    end\n-    if match and words[3] == '(fetch)' then\n-      git_remote = words[0]\n-      break\n-    end\n-  end\n-  if git_remote == '' then\n-    git_remote = 'origin'\n-  end\n-  return git_remote\n-end\n-\n-local function create_pr(pr_title, pr_body)\n-  require_executable('git')\n-\n-  local push_first = true\n-\n-  local checked_out_branch = run({ 'git', 'rev-parse', '--abbrev-ref', 'HEAD' })\n-  if push_first then\n-    local push_remote =\n-      run({ 'git', 'config', '--get', 'branch.' .. checked_out_branch .. '.pushRemote' })\n-    if push_remote == nil then\n-      push_remote = run({ 'git', 'config', '--get', 'remote.pushDefault' })\n-      if push_remote == nil then\n-        push_remote =\n-          run({ 'git', 'config', '--get', 'branch.' .. checked_out_branch .. '.remote' })\n-        if push_remote == nil or push_remote == find_git_remote(nil) then\n-          push_remote = find_git_remote('fork')\n-        end\n-      end\n-    end\n-\n-    p('Pushing to ' .. push_remote .. '/' .. checked_out_branch)\n-    run_die({ 'git', 'push', push_remote, checked_out_branch }, 'Git failed to push')\n-  end\n-\n-  local pr_url = gh_pr(pr_title, pr_body)\n-  p('\\nCreated PR: ' .. pr_url .. '\\n')\n-end\n-\n-function M.commit(dependency_name, commit)\n-  local dependency = assert(get_dependency(dependency_name))\n-  verify_cmakelists_committed()\n-  local commit_sha = get_gh_commit_sha(dependency.repo, commit)\n-  if commit_sha ~= commit then\n-    p('Not a commit: ' .. commit .. '. Did you mean version?')\n-    die()\n-  end\n-  local archive = get_archive_info(dependency.repo, commit)\n-  if dependency_name == 'Luv' then\n-    warn_luv_symbol()\n-  end\n-  update_cmakelists(dependency, archive, short_commit(commit))\n-end\n-\n-function M.version(dependency_name, version)\n-  vim.validate('dependency_name', dependency_name, 'string')\n-  vim.validate('version', version, 'string')\n-  local dependency = assert(get_dependency(dependency_name))\n-  verify_cmakelists_committed()\n-  local commit_sha = get_gh_commit_sha(dependency.repo, version)\n-  if commit_sha == version then\n-    p('Not a version: ' .. version .. '. Did you mean commit?')\n-    die()\n-  end\n-  local archive = get_archive_info(dependency.repo, version)\n-  if dependency_name == 'Luv' then\n-    write_cmakelists_line(dependency.symbol, 'VERSION', version)\n-  end\n-  update_cmakelists(dependency, archive, version)\n-end\n-\n-function M.head(dependency_name)\n-  local dependency = assert(get_dependency(dependency_name))\n-  verify_cmakelists_committed()\n-  local commit_sha = get_gh_commit_sha(dependency.repo, 'HEAD')\n-  local archive = get_archive_info(dependency.repo, commit_sha)\n-  if dependency_name == 'Luv' then\n-    warn_luv_symbol()\n-  end\n-  update_cmakelists(dependency, archive, 'HEAD - ' .. short_commit(commit_sha))\n-end\n-\n-function M.create_branch(dep)\n-  explicit_create_branch(dep)\n-end\n-\n-function M.submit_pr()\n-  require_executable('git')\n-\n-  verify_branch('deps')\n-\n-  local nvim_remote = find_git_remote(nil)\n-  local relevant_commit = assert(run_die({\n-    'git',\n-    'log',\n-    '--grep=' .. commit_prefix,\n-    '--reverse',\n-    \"--format='%s'\",\n-    nvim_remote .. '/master..HEAD',\n-    '-1',\n-  }, 'Failed to fetch commits'))\n-\n-  local pr_title\n-  local pr_body\n-\n-  if relevant_commit == '' then\n-    pr_title = commit_prefix .. 'bump some dependencies'\n-    pr_body = 'bump some dependencies'\n-  else\n-    relevant_commit = relevant_commit:gsub(\"'\", '')\n-    pr_title = relevant_commit\n-    pr_body = relevant_commit:gsub(commit_prefix:gsub('%(', '%%('):gsub('%)', '%%)'), '')\n-  end\n-  pr_body = pr_body .. '\\n\\n(add explanations if needed)'\n-  p(pr_title .. '\\n' .. pr_body .. '\\n')\n-  create_pr(pr_title, pr_body)\n-end\n-\n local function usage()\n-  local this_script = _G.arg[0]:match('[^/]*.lua$')\n-  print(([=[\n+  local this_script = tostring(vim.fs.basename(_G.arg[0]))\n+  local script_exe = './' .. this_script\n+  local help = ([=[\n     Bump Nvim dependencies\n \n-    Usage:  nvim -l %s [options]\n+    Usage:  %s [options]\n         Bump to HEAD, tagged version, commit, or branch:",
+            "html_url": "https://github.com/neovim/neovim/pull/31981#discussion_r1918607649",
+            "id": 1918607649,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5yW6Eh",
+            "original_commit_id": "f49c5961648ce9d266c71e56fb549c464b851d57",
+            "original_line": 146,
+            "original_position": 437,
+            "original_start_line": null,
+            "path": "scripts/bump_deps.lua",
+            "position": null,
+            "pull_request_review_id": 2556235475,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31981",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1918607649/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-01-16T14:01:38Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1918607649",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/2361214?v=4",
+                "events_url": "https://api.github.com/users/clason/events{/privacy}",
+                "followers_url": "https://api.github.com/users/clason/followers",
+                "following_url": "https://api.github.com/users/clason/following{/other_user}",
+                "gists_url": "https://api.github.com/users/clason/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/clason",
+                "id": 2361214,
+                "login": "clason",
+                "node_id": "MDQ6VXNlcjIzNjEyMTQ=",
+                "organizations_url": "https://api.github.com/users/clason/orgs",
+                "received_events_url": "https://api.github.com/users/clason/received_events",
+                "repos_url": "https://api.github.com/users/clason/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/31981#discussion_r1918673606"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/31981"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1918673606"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "It's implemented (since it's just a ref). Let's remove it from docs if it's not needed.",
+            "commit_id": "150ba7d2e7a3b084a705eb2d36a78295c891951a",
+            "created_at": "2025-01-16T14:35:51Z",
+            "diff_hunk": "@@ -178,290 +94,107 @@ local function write_cmakelists_line(symbol, kind, value)\n   }, 'Failed to write ' .. deps_file)\n end\n \n-local function explicit_create_branch(dep)\n-  require_executable('git')\n+local function ref(name, _ref)\n+  local repo = dependency_table[name]\n+  local symbol = string.gsub(name, 'tree%-sitter', 'treesitter'):gsub('%-', '_'):upper()\n \n-  local checked_out_branch = run({ 'git', 'rev-parse', '--abbrev-ref', 'HEAD' })\n-  if checked_out_branch ~= 'master' then\n-    p('Not on master!')\n-    die()\n-  end\n-  run_die({ 'git', 'checkout', '-b', 'bump-' .. dep }, 'git failed to create branch')\n-end\n+  run_die(\n+    { 'git', 'diff', '--quiet', 'HEAD', '--', deps_file },\n+    deps_file .. ' has uncommitted changes'\n+  )\n \n-local function verify_branch(new_branch_suffix)\n-  require_executable('git')\n+  local full_repo = string.format('https://github.com/%s.git', repo)\n+  -- `git ls-remote` returning empty string means provided ref is a regular commit hash and not a\n+  -- tag nor HEAD.\n+  local sha = vim.split(assert(run_die({ 'git', 'ls-remote', full_repo, _ref })), '\\t')[1]\n+  local commit_sha = sha == '' and _ref or sha\n+\n+  local archive = get_archive_info(repo, commit_sha)\n+  local comment = string.sub(_ref, 1, 9)\n \n   local checked_out_branch = assert(run({ 'git', 'rev-parse', '--abbrev-ref', 'HEAD' }))\n   if not checked_out_branch:match('^' .. required_branch_prefix) then\n-    p(\n+    print(\n       \"Current branch '\"\n         .. checked_out_branch\n         .. \"' doesn't seem to start with \"\n         .. required_branch_prefix\n     )\n-    p('Checking out to bump-' .. new_branch_suffix)\n-    explicit_create_branch(new_branch_suffix)\n+    print('Checking out to bump-' .. name)\n+    run_die({ 'git', 'checkout', '-b', 'bump-' .. name }, 'git failed to create branch')\n   end\n-end\n-\n-local function update_cmakelists(dependency, archive, comment)\n-  require_executable('git')\n \n-  verify_branch(dependency.name)\n-\n-  p('Updating ' .. dependency.name .. ' to ' .. archive.url .. '\\n')\n-  write_cmakelists_line(dependency.symbol, 'URL', archive.url:gsub('/', '\\\\/'))\n-  write_cmakelists_line(dependency.symbol, 'SHA256', archive.sha)\n+  print('Updating ' .. name .. ' to ' .. archive.url .. '\\n')\n+  update_deps_file(symbol, 'URL', archive.url:gsub('/', '\\\\/'))\n+  update_deps_file(symbol, 'SHA256', archive.sha)\n   run_die({\n     'git',\n     'commit',\n     deps_file,\n     '-m',\n-    commit_prefix .. 'bump ' .. dependency.name .. ' to ' .. comment,\n+    commit_prefix .. 'bump ' .. name .. ' to ' .. comment,\n   }, 'git failed to commit')\n end\n \n-local function verify_cmakelists_committed()\n-  require_executable('git')\n-\n-  run_die(\n-    { 'git', 'diff', '--quiet', 'HEAD', '--', deps_file },\n-    deps_file .. ' has uncommitted changes'\n-  )\n-end\n-\n-local function warn_luv_symbol()\n-  p('warning: ' .. get_dependency('Luv').symbol .. '_VERSION will not be updated')\n-end\n-\n--- return first 9 chars of commit\n-local function short_commit(commit)\n-  return string.sub(commit, 1, 9)\n-end\n-\n--- TODO: remove hardcoded fork\n-local function gh_pr(pr_title, pr_body)\n-  require_executable('gh')\n-\n-  local pr_url = run_die({\n-    'gh',\n-    'pr',\n-    'create',\n-    '--title',\n-    pr_title,\n-    '--body',\n-    pr_body,\n-  }, 'Failed to create PR')\n-  return pr_url\n-end\n-\n-local function find_git_remote(fork)\n-  require_executable('git')\n-\n-  local remotes = assert(run({ 'git', 'remote', '-v' }))\n-  local git_remote = ''\n-  for remote in remotes:gmatch('[^\\r\\n]+') do\n-    local words = {}\n-    for word in remote:gmatch('%w+') do\n-      table.insert(words, word)\n-    end\n-    local match = words[1]:match('/github.com[:/]neovim/neovim/')\n-    if fork == 'fork' then\n-      match = not match\n-    end\n-    if match and words[3] == '(fetch)' then\n-      git_remote = words[0]\n-      break\n-    end\n-  end\n-  if git_remote == '' then\n-    git_remote = 'origin'\n-  end\n-  return git_remote\n-end\n-\n-local function create_pr(pr_title, pr_body)\n-  require_executable('git')\n-\n-  local push_first = true\n-\n-  local checked_out_branch = run({ 'git', 'rev-parse', '--abbrev-ref', 'HEAD' })\n-  if push_first then\n-    local push_remote =\n-      run({ 'git', 'config', '--get', 'branch.' .. checked_out_branch .. '.pushRemote' })\n-    if push_remote == nil then\n-      push_remote = run({ 'git', 'config', '--get', 'remote.pushDefault' })\n-      if push_remote == nil then\n-        push_remote =\n-          run({ 'git', 'config', '--get', 'branch.' .. checked_out_branch .. '.remote' })\n-        if push_remote == nil or push_remote == find_git_remote(nil) then\n-          push_remote = find_git_remote('fork')\n-        end\n-      end\n-    end\n-\n-    p('Pushing to ' .. push_remote .. '/' .. checked_out_branch)\n-    run_die({ 'git', 'push', push_remote, checked_out_branch }, 'Git failed to push')\n-  end\n-\n-  local pr_url = gh_pr(pr_title, pr_body)\n-  p('\\nCreated PR: ' .. pr_url .. '\\n')\n-end\n-\n-function M.commit(dependency_name, commit)\n-  local dependency = assert(get_dependency(dependency_name))\n-  verify_cmakelists_committed()\n-  local commit_sha = get_gh_commit_sha(dependency.repo, commit)\n-  if commit_sha ~= commit then\n-    p('Not a commit: ' .. commit .. '. Did you mean version?')\n-    die()\n-  end\n-  local archive = get_archive_info(dependency.repo, commit)\n-  if dependency_name == 'Luv' then\n-    warn_luv_symbol()\n-  end\n-  update_cmakelists(dependency, archive, short_commit(commit))\n-end\n-\n-function M.version(dependency_name, version)\n-  vim.validate('dependency_name', dependency_name, 'string')\n-  vim.validate('version', version, 'string')\n-  local dependency = assert(get_dependency(dependency_name))\n-  verify_cmakelists_committed()\n-  local commit_sha = get_gh_commit_sha(dependency.repo, version)\n-  if commit_sha == version then\n-    p('Not a version: ' .. version .. '. Did you mean commit?')\n-    die()\n-  end\n-  local archive = get_archive_info(dependency.repo, version)\n-  if dependency_name == 'Luv' then\n-    write_cmakelists_line(dependency.symbol, 'VERSION', version)\n-  end\n-  update_cmakelists(dependency, archive, version)\n-end\n-\n-function M.head(dependency_name)\n-  local dependency = assert(get_dependency(dependency_name))\n-  verify_cmakelists_committed()\n-  local commit_sha = get_gh_commit_sha(dependency.repo, 'HEAD')\n-  local archive = get_archive_info(dependency.repo, commit_sha)\n-  if dependency_name == 'Luv' then\n-    warn_luv_symbol()\n-  end\n-  update_cmakelists(dependency, archive, 'HEAD - ' .. short_commit(commit_sha))\n-end\n-\n-function M.create_branch(dep)\n-  explicit_create_branch(dep)\n-end\n-\n-function M.submit_pr()\n-  require_executable('git')\n-\n-  verify_branch('deps')\n-\n-  local nvim_remote = find_git_remote(nil)\n-  local relevant_commit = assert(run_die({\n-    'git',\n-    'log',\n-    '--grep=' .. commit_prefix,\n-    '--reverse',\n-    \"--format='%s'\",\n-    nvim_remote .. '/master..HEAD',\n-    '-1',\n-  }, 'Failed to fetch commits'))\n-\n-  local pr_title\n-  local pr_body\n-\n-  if relevant_commit == '' then\n-    pr_title = commit_prefix .. 'bump some dependencies'\n-    pr_body = 'bump some dependencies'\n-  else\n-    relevant_commit = relevant_commit:gsub(\"'\", '')\n-    pr_title = relevant_commit\n-    pr_body = relevant_commit:gsub(commit_prefix:gsub('%(', '%%('):gsub('%)', '%%)'), '')\n-  end\n-  pr_body = pr_body .. '\\n\\n(add explanations if needed)'\n-  p(pr_title .. '\\n' .. pr_body .. '\\n')\n-  create_pr(pr_title, pr_body)\n-end\n-\n local function usage()\n-  local this_script = _G.arg[0]:match('[^/]*.lua$')\n-  print(([=[\n+  local this_script = tostring(vim.fs.basename(_G.arg[0]))\n+  local script_exe = './' .. this_script\n+  local help = ([=[\n     Bump Nvim dependencies\n \n-    Usage:  nvim -l %s [options]\n+    Usage:  %s [options]\n         Bump to HEAD, tagged version, commit, or branch:",
+            "html_url": "https://github.com/neovim/neovim/pull/31981#discussion_r1918673606",
+            "id": 1918673606,
+            "in_reply_to_id": 1918607649,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5yXKLG",
+            "original_commit_id": "f49c5961648ce9d266c71e56fb549c464b851d57",
+            "original_line": 146,
+            "original_position": 437,
+            "original_start_line": null,
+            "path": "scripts/bump_deps.lua",
+            "position": null,
+            "pull_request_review_id": 2556356199,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31981",
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1918673606/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-01-16T14:35:52Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1918673606",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/33953936?v=4",
+                "events_url": "https://api.github.com/users/dundargoc/events{/privacy}",
+                "followers_url": "https://api.github.com/users/dundargoc/followers",
+                "following_url": "https://api.github.com/users/dundargoc/following{/other_user}",
+                "gists_url": "https://api.github.com/users/dundargoc/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/dundargoc",
+                "id": 33953936,
+                "login": "dundargoc",
+                "node_id": "MDQ6VXNlcjMzOTUzOTM2",
+                "organizations_url": "https://api.github.com/users/dundargoc/orgs",
+                "received_events_url": "https://api.github.com/users/dundargoc/received_events",
+                "repos_url": "https://api.github.com/users/dundargoc/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/dundargoc/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/dundargoc/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/dundargoc",
+                "user_view_type": "public"
+            }
         }
     ],
-    "comment_regular_data": [],
+    "comment_regular_data": [
+        {
+            "author_association": "MEMBER",
+            "body": "@clason is this in a good state? Any other fixes we should add?",
+            "created_at": "2025-01-18T09:16:22Z",
+            "html_url": "https://github.com/neovim/neovim/pull/31981#issuecomment-2599642204",
+            "id": 2599642204,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31981",
+            "node_id": "IC_kwDOAPphoM6a82Rc",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2599642204/reactions"
+            },
+            "updated_at": "2025-01-18T09:16:22Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2599642204",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/33953936?v=4",
+                "events_url": "https://api.github.com/users/dundargoc/events{/privacy}",
+                "followers_url": "https://api.github.com/users/dundargoc/followers",
+                "following_url": "https://api.github.com/users/dundargoc/following{/other_user}",
+                "gists_url": "https://api.github.com/users/dundargoc/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/dundargoc",
+                "id": 33953936,
+                "login": "dundargoc",
+                "node_id": "MDQ6VXNlcjMzOTUzOTM2",
+                "organizations_url": "https://api.github.com/users/dundargoc/orgs",
+                "received_events_url": "https://api.github.com/users/dundargoc/received_events",
+                "repos_url": "https://api.github.com/users/dundargoc/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/dundargoc/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/dundargoc/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/dundargoc",
+                "user_view_type": "public"
+            }
+        }
+    ],
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/31981/comments",
     "commits_url": "https://api.github.com/repos/neovim/neovim/pulls/31981/commits",
     "created_at": "2025-01-12T12:13:04Z",
     "diff_url": "https://github.com/neovim/neovim/pull/31981.diff",
-    "draft": true,
+    "draft": false,
     "head": {
         "label": "dundargoc:refactor/bump-deps",
         "ref": "refactor/bump-deps",
@@ -548,9 +1221,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/dundargoc/neovim/pulls{/number}",
-            "pushed_at": "2025-01-13T19:37:48Z",
+            "pushed_at": "2025-01-20T21:12:09Z",
             "releases_url": "https://api.github.com/repos/dundargoc/neovim/releases{/id}",
-            "size": 298941,
+            "size": 299798,
             "ssh_url": "git@github.com:dundargoc/neovim.git",
             "stargazers_count": 1,
             "stargazers_url": "https://api.github.com/repos/dundargoc/neovim/stargazers",
@@ -562,14 +1235,14 @@
             "teams_url": "https://api.github.com/repos/dundargoc/neovim/teams",
             "topics": [],
             "trees_url": "https://api.github.com/repos/dundargoc/neovim/git/trees{/sha}",
-            "updated_at": "2025-01-13T14:47:59Z",
+            "updated_at": "2025-01-20T21:12:21Z",
             "url": "https://api.github.com/repos/dundargoc/neovim",
             "visibility": "public",
             "watchers": 1,
             "watchers_count": 1,
             "web_commit_signoff_required": false
         },
-        "sha": "346cdf7e0d1b92e32d4e01fb10306be325bd1d03",
+        "sha": "150ba7d2e7a3b084a705eb2d36a78295c891951a",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/33953936?v=4",
             "events_url": "https://api.github.com/users/dundargoc/events{/privacy}",
@@ -607,8 +1280,8 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "26f7b8ada570eb8a0cf2ee1981f92f29c304026f",
-    "merged_at": null,
+    "merge_commit_sha": "27da6f77578c10090ad33a94ce26006a79784ee3",
+    "merged_at": "2025-01-18T09:52:52Z",
     "milestone": null,
     "node_id": "PR_kwDOAPphoM6Hc5JH",
     "number": 31981,
@@ -617,10 +1290,10 @@
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/31981/comments",
-    "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/346cdf7e0d1b92e32d4e01fb10306be325bd1d03",
-    "title": "refactor: fix bump-deps [skip ci]",
-    "updated_at": "2025-01-13T19:37:49Z",
+    "state": "closed",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/150ba7d2e7a3b084a705eb2d36a78295c891951a",
+    "title": "refactor: simplify bump_deps.lua",
+    "updated_at": "2025-01-18T09:52:53Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/31981",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/33953936?v=4",

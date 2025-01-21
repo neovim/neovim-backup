@@ -5,6 +5,7 @@
     "author_association": "NONE",
     "body": "### Problem\n\nThe nvim lsp client does not send `workspace/didCreateFiles` notifications back to the language server after performing a code action that create files (for example, the `marksman` language server supports such an action). Therefore, the language server does not receive that information and is unable to update its internal state to reflect the existence of the created files.\r\n\n\n### Steps to reproduce using \"nvim -u minimal_init.lua\"\n\nMinimal config: \r\n```lua\r\nlocal pattern = \"markdown\"\r\nlocal cmd = { \"marksman\" }\r\n-- Add files/folders here that indicate the root of a project\r\nlocal root_markers = { \".git\", \".editorconfig\", \".marksman.toml\" }\r\n-- Change to table with settings if required\r\nlocal settings = vim.empty_dict()\r\n\r\nvim.api.nvim_create_autocmd(\"FileType\", {\r\n    pattern = pattern,\r\n    callback = function(args)\r\n\tlocal match = vim.fs.find(root_markers, { path = args.file, upward = true })[1]\r\n\tlocal root_dir = match and vim.fn.fnamemodify(match, \":p:h\") or nil\r\n\tvim.lsp.start({\r\n\t    name = \"bugged-ls\",\r\n\t    cmd = cmd,\r\n\t    root_dir = root_dir,\r\n\t    settings = settings,\r\n\t})\r\n    end,\r\n})\r\n```\r\nSteps to reproduce:\r\n1. Setup: \r\n    - Create a notebook directory `mkdir notebook-test`.\r\n    - Initialize the notebook root `touch notebook-test/.marksman.toml`.\r\n2. Open a markdown file: `nvim -u minimal_init.lua notebook-test/index.md`.\r\n3. Create a link to a new file by inserting something like test `[[test]]`.\r\n4. There should be a diagnostic warning you that the `test.md` file does not exist.\r\n5. Hover your cursor on `test`.\r\n6. Perform the code action:\r\n    - `:lua vim.lsp.buf.code_action()`\r\n    - Choose the `Create test.md` option.\r\n    - The diagnostic will still be there.\r\n7. Test that the language server does not know about the file \r\n    - `:lua vim.lsp.buf.definition()`\r\n    - You will not be taken to the `test.md` file.\r\n8. Exit the file and check that the `test.md` file was indeed created with `ls notebook-test`\n\n### Expected behavior\n\nA notification is sent to the language server to reflect that files have been created. It seems that `VsCode` sends a `workspace/didCreateFiles` notification in the same scenario, so that seems like a good candidate. Some more details regarding `emacs` are described [here](https://github.com/artempyanykh/marksman/pull/239#pullrequestreview-1542292940).\n\n### Neovim version (nvim -v)\n\nTested on 0.9.4 release and 0.10.0 Nightly\n\n### Language server name/version\n\nmarksman latest\n\n### Operating system/version\n\nTested on Arch Linux and MacOs\n\n### Log file\n\n_No response_",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "NONE",
@@ -31,23 +32,24 @@
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1810810047",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/70120121?v=4",
-                "events_url": "https://api.github.com/users/raphaelchristin/events{/privacy}",
-                "followers_url": "https://api.github.com/users/raphaelchristin/followers",
-                "following_url": "https://api.github.com/users/raphaelchristin/following{/other_user}",
-                "gists_url": "https://api.github.com/users/raphaelchristin/gists{/gist_id}",
+                "events_url": "https://api.github.com/users/raph-rc/events{/privacy}",
+                "followers_url": "https://api.github.com/users/raph-rc/followers",
+                "following_url": "https://api.github.com/users/raph-rc/following{/other_user}",
+                "gists_url": "https://api.github.com/users/raph-rc/gists{/gist_id}",
                 "gravatar_id": "",
-                "html_url": "https://github.com/raphaelchristin",
+                "html_url": "https://github.com/raph-rc",
                 "id": 70120121,
-                "login": "raphaelchristin",
+                "login": "raph-rc",
                 "node_id": "MDQ6VXNlcjcwMTIwMTIx",
-                "organizations_url": "https://api.github.com/users/raphaelchristin/orgs",
-                "received_events_url": "https://api.github.com/users/raphaelchristin/received_events",
-                "repos_url": "https://api.github.com/users/raphaelchristin/repos",
+                "organizations_url": "https://api.github.com/users/raph-rc/orgs",
+                "received_events_url": "https://api.github.com/users/raph-rc/received_events",
+                "repos_url": "https://api.github.com/users/raph-rc/repos",
                 "site_admin": false,
-                "starred_url": "https://api.github.com/users/raphaelchristin/starred{/owner}{/repo}",
-                "subscriptions_url": "https://api.github.com/users/raphaelchristin/subscriptions",
+                "starred_url": "https://api.github.com/users/raph-rc/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/raph-rc/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/raphaelchristin"
+                "url": "https://api.github.com/users/raph-rc",
+                "user_view_type": "public"
             }
         },
         {
@@ -91,7 +93,8 @@
                 "starred_url": "https://api.github.com/users/MariaSolOs/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/MariaSolOs/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/MariaSolOs"
+                "url": "https://api.github.com/users/MariaSolOs",
+                "user_view_type": "public"
             }
         },
         {
@@ -119,23 +122,24 @@
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1811443299",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/70120121?v=4",
-                "events_url": "https://api.github.com/users/raphaelchristin/events{/privacy}",
-                "followers_url": "https://api.github.com/users/raphaelchristin/followers",
-                "following_url": "https://api.github.com/users/raphaelchristin/following{/other_user}",
-                "gists_url": "https://api.github.com/users/raphaelchristin/gists{/gist_id}",
+                "events_url": "https://api.github.com/users/raph-rc/events{/privacy}",
+                "followers_url": "https://api.github.com/users/raph-rc/followers",
+                "following_url": "https://api.github.com/users/raph-rc/following{/other_user}",
+                "gists_url": "https://api.github.com/users/raph-rc/gists{/gist_id}",
                 "gravatar_id": "",
-                "html_url": "https://github.com/raphaelchristin",
+                "html_url": "https://github.com/raph-rc",
                 "id": 70120121,
-                "login": "raphaelchristin",
+                "login": "raph-rc",
                 "node_id": "MDQ6VXNlcjcwMTIwMTIx",
-                "organizations_url": "https://api.github.com/users/raphaelchristin/orgs",
-                "received_events_url": "https://api.github.com/users/raphaelchristin/received_events",
-                "repos_url": "https://api.github.com/users/raphaelchristin/repos",
+                "organizations_url": "https://api.github.com/users/raph-rc/orgs",
+                "received_events_url": "https://api.github.com/users/raph-rc/received_events",
+                "repos_url": "https://api.github.com/users/raph-rc/repos",
                 "site_admin": false,
-                "starred_url": "https://api.github.com/users/raphaelchristin/starred{/owner}{/repo}",
-                "subscriptions_url": "https://api.github.com/users/raphaelchristin/subscriptions",
+                "starred_url": "https://api.github.com/users/raph-rc/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/raph-rc/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/raphaelchristin"
+                "url": "https://api.github.com/users/raph-rc",
+                "user_view_type": "public"
             }
         },
         {
@@ -179,7 +183,8 @@
                 "starred_url": "https://api.github.com/users/MariaSolOs/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/MariaSolOs/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/MariaSolOs"
+                "url": "https://api.github.com/users/MariaSolOs",
+                "user_view_type": "public"
             }
         },
         {
@@ -207,23 +212,24 @@
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1811511257",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/70120121?v=4",
-                "events_url": "https://api.github.com/users/raphaelchristin/events{/privacy}",
-                "followers_url": "https://api.github.com/users/raphaelchristin/followers",
-                "following_url": "https://api.github.com/users/raphaelchristin/following{/other_user}",
-                "gists_url": "https://api.github.com/users/raphaelchristin/gists{/gist_id}",
+                "events_url": "https://api.github.com/users/raph-rc/events{/privacy}",
+                "followers_url": "https://api.github.com/users/raph-rc/followers",
+                "following_url": "https://api.github.com/users/raph-rc/following{/other_user}",
+                "gists_url": "https://api.github.com/users/raph-rc/gists{/gist_id}",
                 "gravatar_id": "",
-                "html_url": "https://github.com/raphaelchristin",
+                "html_url": "https://github.com/raph-rc",
                 "id": 70120121,
-                "login": "raphaelchristin",
+                "login": "raph-rc",
                 "node_id": "MDQ6VXNlcjcwMTIwMTIx",
-                "organizations_url": "https://api.github.com/users/raphaelchristin/orgs",
-                "received_events_url": "https://api.github.com/users/raphaelchristin/received_events",
-                "repos_url": "https://api.github.com/users/raphaelchristin/repos",
+                "organizations_url": "https://api.github.com/users/raph-rc/orgs",
+                "received_events_url": "https://api.github.com/users/raph-rc/received_events",
+                "repos_url": "https://api.github.com/users/raph-rc/repos",
                 "site_admin": false,
-                "starred_url": "https://api.github.com/users/raphaelchristin/starred{/owner}{/repo}",
-                "subscriptions_url": "https://api.github.com/users/raphaelchristin/subscriptions",
+                "starred_url": "https://api.github.com/users/raph-rc/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/raph-rc/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/raphaelchristin"
+                "url": "https://api.github.com/users/raph-rc",
+                "user_view_type": "public"
             }
         },
         {
@@ -267,11 +273,57 @@
                 "starred_url": "https://api.github.com/users/MariaSolOs/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/MariaSolOs/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/MariaSolOs"
+                "url": "https://api.github.com/users/MariaSolOs",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "Related: https://github.com/saccarosium/netrw.vim/issues/4\n\nIf it is supported, I think I can send a pull request that integrate Netrw (Neovim's builtin file explorer) with LSP ",
+            "created_at": "2025-01-18T06:04:09Z",
+            "html_url": "https://github.com/neovim/neovim/issues/26045#issuecomment-2599570510",
+            "id": 2599570510,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/26045",
+            "node_id": "IC_kwDOAPphoM6a8kxO",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2599570510/reactions"
+            },
+            "updated_at": "2025-01-18T06:05:18Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2599570510",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/111893501?v=4",
+                "events_url": "https://api.github.com/users/brianhuster/events{/privacy}",
+                "followers_url": "https://api.github.com/users/brianhuster/followers",
+                "following_url": "https://api.github.com/users/brianhuster/following{/other_user}",
+                "gists_url": "https://api.github.com/users/brianhuster/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/brianhuster",
+                "id": 111893501,
+                "login": "brianhuster",
+                "node_id": "U_kgDOBqtb_Q",
+                "organizations_url": "https://api.github.com/users/brianhuster/orgs",
+                "received_events_url": "https://api.github.com/users/brianhuster/received_events",
+                "repos_url": "https://api.github.com/users/brianhuster/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/brianhuster/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/brianhuster/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/brianhuster",
+                "user_view_type": "public"
             }
         }
     ],
-    "comments": 6,
+    "comments": 7,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/26045/comments",
     "created_at": "2023-11-14T17:47:30Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/26045/events",
@@ -301,7 +353,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 220,
+        "closed_issues": 260,
         "created_at": "2014-11-26T22:13:11Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -321,19 +373,20 @@
             "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/justinmk"
+            "url": "https://api.github.com/users/justinmk",
+            "user_view_type": "public"
         },
-        "description": "Zero priority; no timeline. Promote an item from this state by taking ownership of it.",
+        "description": "We don't plan to work on this, but will accept high quality contributions from someone who will own the feature and follow up on bug reports.",
         "due_on": null,
         "html_url": "https://github.com/neovim/neovim/milestone/9",
         "id": 881978,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/9/labels",
         "node_id": "MDk6TWlsZXN0b25lODgxOTc4",
         "number": 9,
-        "open_issues": 236,
+        "open_issues": 297,
         "state": "open",
-        "title": "unplanned",
-        "updated_at": "2024-04-15T10:49:18Z",
+        "title": "needs-owner",
+        "updated_at": "2025-01-20T17:56:23Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/9"
     },
     "node_id": "I_kwDOAPphoM52zo9k",
@@ -354,28 +407,34 @@
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "open",
     "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/26045/timeline",
     "title": "workspace/didCreateFiles notification not sent to language server after a code action creates a file",
-    "updated_at": "2024-04-14T14:50:04Z",
+    "updated_at": "2025-01-18T06:05:18Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/26045",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/70120121?v=4",
-        "events_url": "https://api.github.com/users/raphaelchristin/events{/privacy}",
-        "followers_url": "https://api.github.com/users/raphaelchristin/followers",
-        "following_url": "https://api.github.com/users/raphaelchristin/following{/other_user}",
-        "gists_url": "https://api.github.com/users/raphaelchristin/gists{/gist_id}",
+        "events_url": "https://api.github.com/users/raph-rc/events{/privacy}",
+        "followers_url": "https://api.github.com/users/raph-rc/followers",
+        "following_url": "https://api.github.com/users/raph-rc/following{/other_user}",
+        "gists_url": "https://api.github.com/users/raph-rc/gists{/gist_id}",
         "gravatar_id": "",
-        "html_url": "https://github.com/raphaelchristin",
+        "html_url": "https://github.com/raph-rc",
         "id": 70120121,
-        "login": "raphaelchristin",
+        "login": "raph-rc",
         "node_id": "MDQ6VXNlcjcwMTIwMTIx",
-        "organizations_url": "https://api.github.com/users/raphaelchristin/orgs",
-        "received_events_url": "https://api.github.com/users/raphaelchristin/received_events",
-        "repos_url": "https://api.github.com/users/raphaelchristin/repos",
+        "organizations_url": "https://api.github.com/users/raph-rc/orgs",
+        "received_events_url": "https://api.github.com/users/raph-rc/received_events",
+        "repos_url": "https://api.github.com/users/raph-rc/repos",
         "site_admin": false,
-        "starred_url": "https://api.github.com/users/raphaelchristin/starred{/owner}{/repo}",
-        "subscriptions_url": "https://api.github.com/users/raphaelchristin/subscriptions",
+        "starred_url": "https://api.github.com/users/raph-rc/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/raph-rc/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/raphaelchristin"
+        "url": "https://api.github.com/users/raph-rc",
+        "user_view_type": "public"
     }
 }

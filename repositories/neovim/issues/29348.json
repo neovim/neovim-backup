@@ -5,6 +5,7 @@
     "author_association": "CONTRIBUTOR",
     "body": "### Problem\n\nI created `~/.config/nvim/queries/typescript/folds.scm` with the following content to override \"folds\" query for TypeScript:\r\n\r\n```\r\n[\r\n  (arrow_function)\r\n  (class_declaration)\r\n  (enum_declaration)\r\n  (function_declaration)\r\n  (function_expression)\r\n  (generator_function)\r\n  (generator_function_declaration)\r\n  (interface_declaration)\r\n  (internal_module)\r\n  (method_definition)\r\n  (type_alias_declaration)\r\n] @fold\r\n```\r\n\r\nI expected to overwrite queries provided by other plugins with my query, but that is s not the case when there is \"inherits:\" modeline present. In `nvim-treesitter` I have installed, `queries/typescript/folds.scm` is defined as follows:\r\n\r\n```\r\n; inherits: ecma\r\n\r\n[\r\n  (interface_declaration)\r\n  (internal_module)\r\n  (type_alias_declaration)\r\n  (enum_declaration)\r\n] @fold\r\n```\r\n\r\nIn this case, my query was being merged with `queries/ecma/folds.scm`. I understood this from the result of `vim.treesitter.query.get_files(\"typescript\", \"folds\")`. The problem with this function is that it does not break loading queries when a non-extension query is found.\r\n\r\nhttps://github.com/neovim/neovim/blob/61aabe0730b547b733faaf74ff181ec8c33f8b92/runtime/lua/vim/treesitter/query.lua#L115-L162\r\n\r\nIs this behavior intended? I believed that if \"extends\" modeline is not specified in the query, subsequent queries will not be loaded.\r\n\r\nfrom `:help treesitter-query`:\r\n\r\n> Nvim looks for queries as `*.scm` files in a `queries` directory under `runtimepath`, where each file contains queries for a specific language and purpose, e.g., `queries/lua/highlights.scm` for highlighting Lua files. By default, the first query on `runtimepath` is used (which usually implies that user config takes precedence over plugins, which take precedence over queries bundled with Nvim). If a query should extend other queries instead of replacing them, use |treesitter-query-modeline-extends|.\r\n\r\nRelated PR: https://github.com/neovim/neovim/pull/20117\n\n### Steps to reproduce\n\n```shell\r\nmkdir -p rp1/queries/typescript rp2/queries/{ecma,typescript}\r\ntouch rp1/queries/typescript/folds.scm\r\ntouch rp2/queries/ecma/folds.scm\r\necho ';inherits: ecma' > rp2/queries/typescript/folds.scm\r\ntree --noreport rp1 rp2\r\nnvim --clean -e -s \\\r\n  --cmd 'set runtimepath+=rp1,rp2' \\\r\n  --cmd 'verbose lua vim.print(vim.treesitter.query.get_files(\"typescript\", \"folds\"))'\r\n```\r\n\r\nOutput:\r\n\r\n```\r\nrp1\r\n└── queries\r\n    └── typescript\r\n        └── folds.scm\r\nrp2\r\n└── queries\r\n    ├── ecma\r\n    │   └── folds.scm\r\n    └── typescript\r\n        └── folds.scm\r\n{ \"rp2/queries/ecma/folds.scm\", \"rp1/queries/typescript/folds.scm\" }\r\n```\n\n### Expected behavior\n\nExpected:\r\n\r\n```\r\nrp1\r\n└── queries\r\n    └── typescript\r\n        └── folds.scm\r\nrp2\r\n└── queries\r\n    ├── ecma\r\n    │   └── folds.scm\r\n    └── typescript\r\n        └── folds.scm\r\n{ \"rp1/queries/typescript/folds.scm\" }\r\n```\n\n### Neovim version (nvim -v)\n\nNVIM v0.11.0-dev-249+g199d852d9\n\n### Vim (not Nvim) behaves the same?\n\nno\n\n### Operating system/version\n\nGentoo Linux\n\n### Terminal name/version\n\nalacritty 0.13.2\n\n### $TERM environment variable\n\nxterm-256color\n\n### Installation\n\nbuild from repo",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [],
     "comments": 0,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/29348/comments",
@@ -45,7 +46,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 624,
+        "closed_issues": 686,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -65,19 +66,20 @@
             "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/justinmk"
+            "url": "https://api.github.com/users/justinmk",
+            "user_view_type": "public"
         },
-        "description": "Low priority. Not planned for the current target, may be reassigned.",
+        "description": "Low priority items. We plan to work on this but don't have a target date.",
         "due_on": null,
         "html_url": "https://github.com/neovim/neovim/milestone/6",
         "id": 655037,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 545,
+        "open_issues": 635,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2024-06-17T21:30:13Z",
+        "updated_at": "2025-01-21T00:09:37Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM6MV794",
@@ -98,9 +100,14 @@
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "open",
     "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/29348/timeline",
     "title": "Treesitter queries specified in the \"inherits:\" modeline are always merged, even if there is an overridden query",
-    "updated_at": "2024-06-17T21:30:37Z",
+    "updated_at": "2025-01-19T11:21:04Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/29348",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/188621?v=4",
@@ -120,6 +127,7 @@
         "starred_url": "https://api.github.com/users/emonkak/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/emonkak/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/emonkak"
+        "url": "https://api.github.com/users/emonkak",
+        "user_view_type": "public"
     }
 }

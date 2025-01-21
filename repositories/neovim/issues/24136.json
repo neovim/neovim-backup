@@ -5,6 +5,7 @@
     "author_association": "CONTRIBUTOR",
     "body": "### Problem\r\n\r\nNeovim randomly crashes if any Telescope command is run as `+` command from the shell. \r\n\r\n```c++\r\n#0  finderrfunc (L=0x7fcc75317380) at lj_err.c:807\r\n#1  lj_err_run (L=L@entry=0x7fcc75317380) at lj_err.c:843\r\n#2  0x00005634e679727d in err_msgv (L=L@entry=0x7fcc75317380, em=em@entry=LJ_ERR_BADOPRV) at lj_err.c:882\r\n#3  0x00005634e6797405 in lj_err_optype (L=0x7fcc75317380, o=<optimized out>, opm=opm@entry=LJ_ERR_OPCALL)\r\n    at lj_err.c:918\r\n#4  0x00005634e67974e2 in lj_err_optype_call (L=L@entry=0x7fcc75317380, o=o@entry=0x7fcc75295ca0) at lj_err.c:946\r\n#5  0x00005634e67bd12f in lj_meta_call (L=0x7fcc75317380, func=0x7fcc75295ca0, top=0x7fcc75295cb8) at lj_meta.c:447\r\n#6  0x00005634e67b687e in lj_vmeta_call ()\r\n#7  0x00005634e67a23e5 in lua_pcall (L=0x7fcc75317380, nargs=<optimized out>, nresults=0, errfunc=<optimized out>)\r\n    at lj_api.c:1116\r\n#8  0x00005634e655b50f in nlua_pcall (lstate=0x7fcc75317380, nargs=1, nresults=0)\r\n    at .../neovim/src/nvim/lua/executor.c:164\r\n#9  0x00005634e656129e in nlua_do_ucmd (cmd=0x5634e7cf8490, eap=0x7ffe98998140, preview=false)\r\n    at .../neovim/src/nvim/lua/executor.c:2239\r\n#10 0x00005634e66e4e1d in do_ucmd (eap=0x7ffe98998140, preview=false)\r\n    at .../neovim/src/nvim/usercmd.c:1642\r\n#11 0x00005634e64eee39 in execute_cmd0 (retv=0x7ffe989980f8, eap=0x7ffe98998140, errormsg=0x7ffe98998110, \r\n    preview=false) at .../neovim/src/nvim/ex_docmd.c:1626\r\n#12 0x00005634e64f0d64 in do_one_cmd (cmdlinep=0x7ffe98998360, flags=11, cstack=0x7ffe98998470, fgetline=0x0, \r\n    cookie=0x0) at .../neovim/src/nvim/ex_docmd.c:2293\r\n#13 0x00005634e64ec8f5 in do_cmdline (cmdline=0x7ffe9899ab32 \"Telescope builtin\", fgetline=0x0, cookie=0x0, flags=11)\r\n    at .../neovim/src/nvim/ex_docmd.c:592\r\n#14 0x00005634e64ebec8 in do_cmdline_cmd (cmd=0x7ffe9899ab32 \"Telescope builtin\")\r\n    at .../neovim/src/nvim/ex_docmd.c:291\r\n#15 0x00005634e63ba6e8 in exe_commands (parmp=0x7ffe98998aa0) at .../neovim/src/nvim/main.c:1901\r\n#16 0x00005634e63b67c5 in main (argc=6, argv=0x7ffe98998d18) at .../neovim/src/nvim/main.c:579\r\n```\r\n\r\nPlugin versions:\r\n- plenary: 36aaceb6e93addd20b1b18f94d86aecc552f30c4\r\n- telescope: ffe35cb433192fcb5080b557c1aef14d37092035\r\n\r\nPlease change the title to something more accurate if you can minimize my example. \r\n\r\n### Steps to reproduce\r\n\r\n1. Create `telescope_crash.lua` with\r\n```lua\r\nlocal configDir = vim.fn.expand('<sfile>:p:h')\r\n\r\nvim.env['XDG_CONFIG_HOME'] = configDir\r\nvim.env['XDG_DATA_HOME'] = configDir .. '/.xdg/data'\r\nvim.env['XDG_STATE_HOME'] = configDir .. '/.xdg/state'\r\nvim.env['XDG_CACHE_HOME'] = configDir .. '/.xdg/cache'\r\nlocal stdPathConfig = vim.fn.stdpath('config')\r\n\r\nvim.opt.runtimepath:prepend(stdPathConfig)\r\nvim.opt.packpath:prepend(stdPathConfig)\r\nlocal plugins_path = vim.fn.fnamemodify('plugins/', ':p')\r\n\r\nfor name, url in pairs{\r\n  ['plenary.nvim'] = 'https://github.com/nvim-lua/plenary.nvim',\r\n  ['telescope.nvim'] = 'https://github.com/nvim-telescope/telescope.nvim',\r\n} do\r\n  local install_path = plugins_path .. name\r\n  if vim.fn.isdirectory(install_path) == 0 then\r\n    vim.fn.system { 'git', 'clone', '--depth=1', url, install_path }\r\n  end\r\n  vim.opt.runtimepath:append(install_path)\r\nend\r\n\r\nrequire('telescope').setup { }\r\n\r\nvim.wo.showbreak = '> '\r\nvim.go.foldlevelstart = 99\r\nvim.wo.foldcolumn = 'auto'\r\nvim.wo.foldmethod='expr'\r\nvim.wo.foldexpr = 'v:lua.vim.treesitter.foldexpr()'\r\n```\r\n2.  Make waiting for crash easier:\r\n```bash\r\ni=0; \r\ntrap '{ echo -e \"\\nInterrupted after successful $i attempts.\" ; exit 0; }' INT\r\nwhile true; do \r\n  ((i++));\r\n  nvim --clean -u telescope_crash.lua +Telescope\\ builtin +qa! || { echo ${i}-th: $?; break; };\r\n  sleep .2; \r\ndone\r\n```\r\n\r\nFor me, the loop above broke after between 1 and 14 starts. \r\n\r\n### Expected behavior\r\n\r\nNo crash.\r\n\r\n### Neovim version (nvim -v)\r\n\r\nNVIM v0.10.0-dev-567+g4dc86477b\r\n\r\n### Vim (not Nvim) behaves the same?\r\n\r\n-\r\n\r\n### Operating system/version\r\n\r\nDebian Sid\r\n\r\n### Terminal name/version\r\n\r\ntmux 3.3a-4, kitty 0.26.5\r\n\r\n### $TERM environment variable\r\n\r\ntmux-256color\r\n\r\n### Installation\r\n\r\nbuild from repo\r\n\r\n\r\nEdited to minimize the config. The backtrace above comes from the first example with nvim-treesitter plugin. ",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -47,7 +48,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -91,7 +93,8 @@
                 "starred_url": "https://api.github.com/users/przepompownia/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/przepompownia/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/przepompownia"
+                "url": "https://api.github.com/users/przepompownia",
+                "user_view_type": "public"
             }
         },
         {
@@ -135,7 +138,8 @@
                 "starred_url": "https://api.github.com/users/przepompownia/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/przepompownia/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/przepompownia"
+                "url": "https://api.github.com/users/przepompownia",
+                "user_view_type": "public"
             }
         },
         {
@@ -179,7 +183,8 @@
                 "starred_url": "https://api.github.com/users/przepompownia/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/przepompownia/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/przepompownia"
+                "url": "https://api.github.com/users/przepompownia",
+                "user_view_type": "public"
             }
         },
         {
@@ -223,7 +228,8 @@
                 "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/zeertzjq"
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
             }
         },
         {
@@ -267,7 +273,8 @@
                 "starred_url": "https://api.github.com/users/przepompownia/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/przepompownia/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/przepompownia"
+                "url": "https://api.github.com/users/przepompownia",
+                "user_view_type": "public"
             }
         },
         {
@@ -311,7 +318,8 @@
                 "starred_url": "https://api.github.com/users/przepompownia/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/przepompownia/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/przepompownia"
+                "url": "https://api.github.com/users/przepompownia",
+                "user_view_type": "public"
             }
         },
         {
@@ -355,7 +363,8 @@
                 "starred_url": "https://api.github.com/users/przepompownia/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/przepompownia/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/przepompownia"
+                "url": "https://api.github.com/users/przepompownia",
+                "user_view_type": "public"
             }
         },
         {
@@ -399,7 +408,8 @@
                 "starred_url": "https://api.github.com/users/przepompownia/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/przepompownia/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/przepompownia"
+                "url": "https://api.github.com/users/przepompownia",
+                "user_view_type": "public"
             }
         },
         {
@@ -443,7 +453,8 @@
                 "starred_url": "https://api.github.com/users/przepompownia/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/przepompownia/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/przepompownia"
+                "url": "https://api.github.com/users/przepompownia",
+                "user_view_type": "public"
             }
         }
     ],
@@ -503,9 +514,14 @@
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "open",
     "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/24136/timeline",
     "title": "Crash: telescope, treesitter, fold settings, showbreak",
-    "updated_at": "2024-04-29T12:15:12Z",
+    "updated_at": "2025-01-19T11:43:25Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/24136",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/11404453?v=4",
@@ -525,6 +541,7 @@
         "starred_url": "https://api.github.com/users/przepompownia/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/przepompownia/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/przepompownia"
+        "url": "https://api.github.com/users/przepompownia",
+        "user_view_type": "public"
     }
 }

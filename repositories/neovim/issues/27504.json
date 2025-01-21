@@ -5,9 +5,10 @@
     "author_association": "CONTRIBUTOR",
     "body": "### Problem\r\n\r\nAfter #24738 is merged, the behavior for all directives bar `#set!` is to only trigger if the capture is 1 node only. I believe there can be improvements here.\r\n\r\nAs currently, `TSMetadata` is a `{lang, range, ...}` table + `capture_id, TSMetadata` pairs. Each capture of the list of quantified captures may have different metadata (i.e. different range). Because of that, with a `capture_id->metadata` table, we cannot store the relevant information for those captures.\r\n\r\n\r\n### Expected behavior\r\n\r\nI would like to ask for some methods for, i.e., `#offset!` to be applied to all quantified captures. An example would be, again, C injections in Go:\r\n\r\n```go\r\n(\r\n  (comment)+ @injection.content \r\n  .\r\n  (import_declaration\r\n    (import_spec \r\n      path: (interpreted_string_literal) @_import_c))\r\n  (#eq? @_import_c \"\\\"C\\\"\")\r\n  (#lua-match? @injection.content \"^//\")\r\n  (#set! injection.language \"c\")\r\n  (#offset! @injection.content 0 2 0 0)\r\n  (#set! injection.combined))\r\n```\r\n\r\nThe example source code can be\r\n```go\r\n// #define FOO BAR\r\n// #define FOO BAR\r\n// #define FOO BAR\r\n// #define FOO BAR\r\n// #define FOO BAR\r\n// #define FOO BAR\r\nimport \"C\";\r\n```\r\n\r\nUpon opening a go file with go parser + the injection query above, we get the intended error\r\n```\r\nError in decoration provider treesitter/highlighter.win:                                       \r\nError executing lua: /usr/local/share/nvim/runtime/lua/vim/treesitter/query.lua:573: #offset! d\r\noes not support captures on multiple nodes                                                     \r\nstack traceback:                                                                               \r\n        [C]: in function 'assert'                                                              \r\n        /usr/local/share/nvim/runtime/lua/vim/treesitter/query.lua:573: in function 'handler'  \r\n        /usr/local/share/nvim/runtime/lua/vim/treesitter/query.lua:823: in function 'apply_dire\r\nctives'                                                                                        \r\n        /usr/local/share/nvim/runtime/lua/vim/treesitter/query.lua:966: in function '(for gener\r\nator)'                                                                                         \r\n        ...l/share/nvim/runtime/lua/vim/treesitter/languagetree.lua:849: in function 'f'       \r\n        ...l/share/nvim/runtime/lua/vim/treesitter/languagetree.lua:192: in function 'tcall'   \r\n        ...l/share/nvim/runtime/lua/vim/treesitter/languagetree.lua:383: in function '_add_inje\r\nctions'                                                                                        \r\n        ...l/share/nvim/runtime/lua/vim/treesitter/languagetree.lua:446: in function 'parse'   \r\n        ...al/share/nvim/runtime/lua/vim/treesitter/highlighter.lua:350: in function <...al/sha\r\nre/nvim/runtime/lua/vim/treesitter/highlighter.lua:345>\r\n```\r\n\r\nI think there can be a way to also handle directives to all captures, but this will require breaking the `TSMetadata` structure completely",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
-            "author_association": "CONTRIBUTOR",
+            "author_association": "MEMBER",
             "body": "Should this be implemented in the form of another directive (perhaps `#offset-each!`)? That way it would still be possible to, in the future, do something like the following:\r\nSay for some language we have\r\n```scm\r\n(variable)+ @offsetme\r\n```\r\nand our code to parse is\r\n```\r\nvar foo\r\nvar bar\r\nvar baz\r\n```\r\n\r\nwith `#offset-each! @offsetme 0 1 0 -1` we would have ranges like the following:\r\n\r\n```\r\nv*****o\r\nv*****r\r\nv*****z\r\n```\r\n\r\nthen with `#offset! @offsetme 0 1 0 -1` we can have:\r\n\r\n```\r\nv******\r\n*******\r\n******z\r\n```\r\n",
             "created_at": "2024-02-28T03:13:59Z",
             "html_url": "https://github.com/neovim/neovim/issues/27504#issuecomment-1968120000",
@@ -47,7 +48,8 @@
                 "starred_url": "https://api.github.com/users/ribru17/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ribru17/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ribru17"
+                "url": "https://api.github.com/users/ribru17",
+                "user_view_type": "public"
             }
         },
         {
@@ -91,11 +93,12 @@
                 "starred_url": "https://api.github.com/users/lucario387/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lucario387/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lucario387"
+                "url": "https://api.github.com/users/lucario387",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "CONTRIBUTOR",
+            "author_association": "MEMBER",
             "body": "Ah, I see",
             "created_at": "2024-02-28T06:02:38Z",
             "html_url": "https://github.com/neovim/neovim/issues/27504#issuecomment-1968293153",
@@ -135,7 +138,8 @@
                 "starred_url": "https://api.github.com/users/ribru17/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ribru17/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ribru17"
+                "url": "https://api.github.com/users/ribru17",
+                "user_view_type": "public"
             }
         },
         {
@@ -179,7 +183,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         }
     ],
@@ -213,7 +218,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 607,
+        "closed_issues": 686,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -233,19 +238,20 @@
             "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/justinmk"
+            "url": "https://api.github.com/users/justinmk",
+            "user_view_type": "public"
         },
-        "description": "Low priority. Not planned for the current target, may be reassigned.",
+        "description": "Low priority items. We plan to work on this but don't have a target date.",
         "due_on": null,
         "html_url": "https://github.com/neovim/neovim/milestone/6",
         "id": 655037,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 527,
+        "open_issues": 635,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2024-04-22T11:35:03Z",
+        "updated_at": "2025-01-21T00:09:37Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM5_jMSG",
@@ -266,9 +272,14 @@
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "open",
     "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/27504/timeline",
     "title": "Treesitter directives should apply to all captures.",
-    "updated_at": "2024-04-22T01:19:41Z",
+    "updated_at": "2025-01-17T15:27:10Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/27504",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/29790821?v=4",
@@ -288,6 +299,7 @@
         "starred_url": "https://api.github.com/users/lucario387/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/lucario387/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/lucario387"
+        "url": "https://api.github.com/users/lucario387",
+        "user_view_type": "public"
     }
 }

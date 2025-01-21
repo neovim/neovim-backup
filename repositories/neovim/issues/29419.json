@@ -5,6 +5,7 @@
     "author_association": "NONE",
     "body": "### Problem\n\nI have some code I'd like to run when most buffers enter a window, so I create an `autocmd` for `BufWinEnter`.  But there are some buffers on which I do not want to run this code.  I can exclude most of these cases by checking the `filetype` or `buftype`.  One case that I'd like to exclude is terminal buffers.  However when a terminal buffer is created via `:terminal` and my BufWinEnter autocmd is executed the first time, the `buftype` is still empty.  I've also checked other terminal buffer related variables: `b:term_title`, the `channel` local option and `getwininfo(buf).[1].terminal`, but these are also empty during the initial BufWinEnter.  Note: they are present in subsequent BufWinEnters.\r\n\r\nThis might be fine if I wanted to avoid this code running for any buffer that has empty buftype, filetype, event.file, event.match (as terminal buffers do during initial BufWinEnter), but I do want this code to run on normal new buffers like with `:enew` (which have the same state).\r\n\r\nMy current hack is to run the code with `vim.defer_fn()` after x ms, after which buftype has usually then been set to 'terminal'.\r\n\r\nSteps to reproduce:\r\n1. Write the below code to a file 'test.lua'\r\n2. nvim --clean test.lua\r\n3. :source %\r\n4. check the messages to see if buftype et al. have values initially and after the delay.\r\n\r\n```lua\r\nvim.api.nvim_create_autocmd({ 'BufWinEnter' }, {\r\n  group = vim.api.nvim_create_augroup('DetectTerminalBufWin', { clear = true }),\r\n  desc = 'Find a way to detect if this bufer is (or is going to be) a terminal buffer',\r\n  pattern = '*',\r\n  callback = function(evt)\r\n    vim.print(\r\n      evt.event,\r\n      ('filetype:%s'):format(vim.bo[evt.buf].filetype),\r\n      ('buftype:%s'):format(vim.bo[evt.buf].buftype),\r\n      ('b:term_title:%s'):format(vim.b.term_title),\r\n      ('channel:%s'):format(vim.bo.channel),\r\n      ('getwininfo.terminal:%s'):format(vim.fn.getwininfo(vim.api.nvim_get_current_win())[1].terminal)\r\n    )\r\n\r\n    if evt.file == '' and evt.match == '' and vim.bo[evt.buf].filetype == '' and vim.bo[evt.buf].buftype == '' then\r\n      vim.defer_fn(\r\n        function()\r\n          vim.print(\r\n            ' ',\r\n            'defered',\r\n            ('filetype:%s'):format(vim.bo[evt.buf].filetype),\r\n            ('buftype:%s'):format(vim.bo[evt.buf].buftype),\r\n            ('b:term_title:%s'):format(vim.b.term_title),\r\n            ('channel:%s'):format(vim.bo.channel),\r\n            ('getwininfo.terminal:%s'):format(vim.fn.getwininfo(vim.api.nvim_get_current_win())[1].terminal)\r\n          )\r\n        end,\r\n        200\r\n      )\r\n    end\r\n  end,\r\n})\r\nvim.cmd.terminal()\r\n```\r\n\r\nSystem: Windows 11\r\nnvim: v0.11.0\n\n### Expected behavior\n\nEither `buftype` is set to 'terminal' prior to initial BufWinEnter autocmds or there is some other variable/mechanism to detect a terminal buffer at this time.",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -47,7 +48,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -91,7 +93,8 @@
                 "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/zeertzjq"
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
             }
         }
     ],
@@ -125,7 +128,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 626,
+        "closed_issues": 686,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -145,19 +148,20 @@
             "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/justinmk"
+            "url": "https://api.github.com/users/justinmk",
+            "user_view_type": "public"
         },
-        "description": "Low priority. Not planned for the current target, may be reassigned.",
+        "description": "Low priority items. We plan to work on this but don't have a target date.",
         "due_on": null,
         "html_url": "https://github.com/neovim/neovim/milestone/6",
         "id": 655037,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 550,
+        "open_issues": 635,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2024-06-21T11:50:48Z",
+        "updated_at": "2025-01-21T00:09:37Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM6M2UFM",
@@ -178,9 +182,14 @@
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "open",
     "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/29419/timeline",
     "title": "terminal :enew buffer should set buftype=terminal before BufWinEnter autocmd",
-    "updated_at": "2024-06-20T12:37:40Z",
+    "updated_at": "2025-01-17T15:26:29Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/29419",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/77601554?v=4",
@@ -200,6 +209,7 @@
         "starred_url": "https://api.github.com/users/stringTrimmer/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/stringTrimmer/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/stringTrimmer"
+        "url": "https://api.github.com/users/stringTrimmer",
+        "user_view_type": "public"
     }
 }

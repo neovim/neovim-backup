@@ -5,6 +5,7 @@
     "author_association": "CONTRIBUTOR",
     "body": "### Problem\r\n\r\nDoing the test with a json file, I find the returned result of `TSNode:descendant_for_range` doesn't actually reflect the node to cover for that range, or the documentation isn't clear enough about columns indexing.\r\n\r\n### Steps to reproduce\r\n\r\n- minimal.lua\r\n```lua\r\n-- Run this file as `nvim --clean -u minimal.lua`\r\n\r\nfor name, url in pairs{\r\n  -- ADD PLUGINS _NECESSARY_ TO REPRODUCE THE ISSUE, e.g:\r\n  [\"nvim-treesitter\"] = 'https://github.com/nvim-treesitter/nvim-treesitter'\r\n} do\r\n  local install_path = vim.fn.fnamemodify('nvim_issue/'..name, ':p')\r\n  if vim.fn.isdirectory(install_path) == 0 then\r\n    vim.fn.system { 'git', 'clone', '--depth=1', url, install_path }\r\n  end\r\n  vim.opt.runtimepath:append(install_path)\r\nend\r\n\r\nrequire(\"nvim-treesitter.configs\").setup({\r\n  ensure_installed = { \"json\" },\r\n})\r\n\r\nvim.keymap.set(\"n\", \"qq\", function()\r\n  local lnum = 2\r\n  local parser = vim.F.npcall(vim.treesitter.get_parser, 0)\r\n  local root = parser:parse(true)[1]:root()\r\n  local line = vim.api.nvim_buf_get_lines(0, lnum, lnum + 1, false)[1] or \"\"\r\n  local scol = vim.fn.indent(lnum + 1)\r\n  local ecol = #line - 1\r\n  vim.print(root:descendant_for_range(lnum, scol, lnum, ecol):type())\r\nend)\r\n```\r\n- repro.json\r\n```json\r\n{\r\n  \"foo\": [\r\n    \"bar\",\r\n    \"baz\",\r\n  ]\r\n}\r\n```\r\n\r\n- `nvim --clean -u minimal.lua repro.json`\r\n- While in `repro.json`, press `qq`\r\n\r\n### Expected behavior\r\n\r\nI expected the node type returned to be `array`, and not `string`, as `string` node doesn't cover the final `,` at end of line 3\r\n\r\nAdditionally, if I instead do\r\n```diff\r\n-  vim.print(root:descendant_for_range(lnum, scol, lnum, ecol):type())\r\n+  vim.print(root:descendant_for_range(lnum, ecol, lnum, ecol):type())\r\n```\r\n\r\nThen I did get `,` as the node type, but spanning the entire line gives an incorrect result\r\n\r\n### Neovim version (nvim -v)\r\n\r\nv0.10.0-dev-36552adb3\r\n\r\n### Vim (not Nvim) behaves the same?\r\n\r\nN/A\r\n\r\n### Operating system/version\r\n\r\nLinux 6.6.6\r\n\r\n### Terminal name/version\r\n\r\nkitty 0.31.0\r\n\r\n### $TERM environment variable\r\n\r\nxterm-kitty\r\n\r\n### Installation\r\n\r\nBuild from source",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "CONTRIBUTOR",
@@ -47,7 +48,8 @@
                 "starred_url": "https://api.github.com/users/lucario387/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lucario387/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lucario387"
+                "url": "https://api.github.com/users/lucario387",
+                "user_view_type": "public"
             }
         },
         {
@@ -91,7 +93,8 @@
                 "starred_url": "https://api.github.com/users/wookayin/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/wookayin/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/wookayin"
+                "url": "https://api.github.com/users/wookayin",
+                "user_view_type": "public"
             }
         },
         {
@@ -135,7 +138,8 @@
                 "starred_url": "https://api.github.com/users/lucario387/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lucario387/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lucario387"
+                "url": "https://api.github.com/users/lucario387",
+                "user_view_type": "public"
             }
         },
         {
@@ -179,7 +183,8 @@
                 "starred_url": "https://api.github.com/users/lucario387/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lucario387/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lucario387"
+                "url": "https://api.github.com/users/lucario387",
+                "user_view_type": "public"
             }
         },
         {
@@ -223,7 +228,8 @@
                 "starred_url": "https://api.github.com/users/wookayin/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/wookayin/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/wookayin"
+                "url": "https://api.github.com/users/wookayin",
+                "user_view_type": "public"
             }
         },
         {
@@ -267,7 +273,8 @@
                 "starred_url": "https://api.github.com/users/lucario387/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lucario387/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lucario387"
+                "url": "https://api.github.com/users/lucario387",
+                "user_view_type": "public"
             }
         }
     ],
@@ -327,9 +334,14 @@
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "open",
     "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/26569/timeline",
     "title": "Treesitter's `descendant_for_range` inconsistencies with json parser, unsure if it's 0 or 1-based column indexing",
-    "updated_at": "2023-12-18T03:30:02Z",
+    "updated_at": "2025-01-19T11:30:11Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/26569",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/29790821?v=4",
@@ -349,6 +361,7 @@
         "starred_url": "https://api.github.com/users/lucario387/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/lucario387/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/lucario387"
+        "url": "https://api.github.com/users/lucario387",
+        "user_view_type": "public"
     }
 }

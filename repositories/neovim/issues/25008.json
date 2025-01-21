@@ -5,6 +5,7 @@
     "author_association": "CONTRIBUTOR",
     "body": "### Problem\r\n\r\nI hit this on Githubs CI, where I was setting `NVIM_APPNAME=$some_uuid` and generating long paths, not sure how applicable this is to \"real world\" use.\r\n\r\nWindows paths are capped at 260 chars. The loader generates a rfc2396 encoded string of a module path, and puts that under the cache dir, so `c:\\mod\\file.lua` is stored at `c:\\users\\the-user\\appdata\\local\\temp\\<appname>\\luac\\c%3a%3fmod%3ffile.luac`.\r\n\r\nIf `mod\\file.lua` is nested somewhere deep (say where a package manager might install it) and has some nesting of its own, and the user name is long, and/or the app_name is long, the encoded luac path can fail to write, and then the module fails to load, even if the module is loadable without the loader enabled.\r\n\r\nThere are ways to extend the path limit [here](https://learn.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation?tabs=registry), unsure if Neovim uses an application manifest though, and it requires a user registry edit.\r\n\r\nIn 0.9 the paths are just encoded as `%`, instead of `%FF`, so its possible this could be an unpleasant experience for some when upgrading in the future.\r\n\r\n### Steps to reproduce\r\n\r\n```powershell\r\n# powershell -ExecutionPolicy Bypass x.ps1\r\n\r\n$env:NVIM_APPNAME = [Guid]::NewGuid().ToString()\r\n\r\n# create file in appname dir, with a long path\r\n$appDataDir = [System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::LocalApplicationData)\r\n$luaDir = \"$appDataDir\\$env:NVIM_APPNAME\\lua\"\r\n\r\n$long = \"aaa\\aaa\\aaa\\aaa\\aaa\\aaa\\aaa\\aaa\\aaa\\aaa\\aaa\\aaa\\aaa\\aaa\\a\\a\"\r\n$modname = $long.Replace(\"\\\", \".\")\r\nmkdir \"$luaDir\\$long\"\r\n$luaFile = \"$luaDir\\$long.lua\"\r\nSet-Content -Path $luaFile -Value \"print(1)\"\r\necho $appDataDir\r\necho $luaFile\r\n\r\n# install nvim 0.10 via msi package\r\n& 'c:\\Program Files\\Neovim\\bin\\nvim' -v\r\n# works, raw path is under limits\r\n& 'c:\\Program Files\\Neovim\\bin\\nvim' $luaFile +\":lua=require('$modname')\"\r\n# fails, luac path is too long.\r\n# uses rfc2396 encoding, where \\ becomes %f2 (1 char becomes 3)\r\n& 'c:\\Program Files\\Neovim\\bin\\nvim' $luaFile +\":lua vim.loader.enable()\" +\":lua=require('$modname')\"\r\n\r\n# install nvim 0.9 via choco\r\n# uses plain \\ to % encoding (1 char becomes 1)\r\nnvim $luaFile +\":lua=require('$modname')\"\r\nnvim $luaFile +\":lua vim.loader.enable()\" +\":lua=require('$modname')\"\r\n\r\n\r\n```\r\n\r\n### Expected behavior\r\n\r\nThe module loads, or maybe a nicer warning is given telling the user or disable the loader for long paths automatically?\r\n\r\n### Neovim version (nvim -v)\r\n\r\nNVIM v0.10.0-dev-1025+g0e11bf0e1\r\n\r\n### Vim (not Nvim) behaves the same?\r\n\r\nNA\r\n\r\n### Operating system/version\r\n\r\nWindows 11\r\n\r\n### Terminal name/version\r\n\r\nWindows Terminal\r\n\r\n### $TERM environment variable\r\n\r\nNA?\r\n\r\n### Installation\r\n\r\n\"latest\" release msi package for ",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -47,7 +48,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -91,7 +93,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -135,7 +138,8 @@
                 "starred_url": "https://api.github.com/users/pappasam/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/pappasam/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/pappasam"
+                "url": "https://api.github.com/users/pappasam",
+                "user_view_type": "public"
             }
         },
         {
@@ -179,7 +183,8 @@
                 "starred_url": "https://api.github.com/users/rktjmp/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/rktjmp/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/rktjmp"
+                "url": "https://api.github.com/users/rktjmp",
+                "user_view_type": "public"
             }
         },
         {
@@ -223,7 +228,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -267,7 +273,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -311,7 +318,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         }
     ],
@@ -343,7 +351,7 @@
         {
             "color": "c5def5",
             "default": false,
-            "description": null,
+            "description": "stdlib",
             "id": 573222693,
             "name": "lua",
             "node_id": "MDU6TGFiZWw1NzMyMjI2OTM=",
@@ -354,7 +362,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 584,
+        "closed_issues": 686,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -374,19 +382,20 @@
             "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/justinmk"
+            "url": "https://api.github.com/users/justinmk",
+            "user_view_type": "public"
         },
-        "description": "Low priority. Not planned for the current target, may be reassigned.",
+        "description": "Low priority items. We plan to work on this but don't have a target date.",
         "due_on": null,
         "html_url": "https://github.com/neovim/neovim/milestone/6",
         "id": 655037,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 412,
+        "open_issues": 635,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2023-09-20T13:07:04Z",
+        "updated_at": "2025-01-21T00:09:37Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM5v_-Jb",
@@ -407,9 +416,14 @@
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "open",
     "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/25008/timeline",
     "title": "`vim.loader` luac file paths can end up too long for windows to load",
-    "updated_at": "2023-09-20T10:50:11Z",
+    "updated_at": "2025-01-19T11:32:37Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/25008",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/866010?v=4",
@@ -429,6 +443,7 @@
         "starred_url": "https://api.github.com/users/rktjmp/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/rktjmp/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/rktjmp"
+        "url": "https://api.github.com/users/rktjmp",
+        "user_view_type": "public"
     }
 }

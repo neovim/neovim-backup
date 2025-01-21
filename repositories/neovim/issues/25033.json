@@ -5,6 +5,7 @@
     "author_association": "NONE",
     "body": "### Problem\r\n\r\nFirstly I thought it was a telescope bug:\r\n\r\nSame file, `E:\\Lab\\timer.py`, got three duplicated items in the telescope oldfiles\r\n\r\n![图片](https://github.com/neovim/neovim/assets/3035071/03840964-a287-4aeb-bae2-901d1003d0ae)\r\n\r\nThen I realized to check the `v:oldfiles` variable:\r\n\r\n![图片](https://github.com/neovim/neovim/assets/3035071/91712e48-4d30-4af1-b32c-840423462d4b)\r\n\r\nAnd I found it was caused by nvim itself, which records three different records of same file in the v:oldfiles.\r\n\r\n\r\n\r\n### Steps to reproduce\r\n\r\nSometimes, I can reproduce by:\r\n\r\n1) enter nvim once:\r\n\r\n```viml\r\n:tabe e:/lab/timer.py\r\n:wq\r\n```\r\n\r\n2) enter nvim twice:\r\n\r\n```viml\r\n:tabe e:\\lab\\timer.py\r\n:wq\r\n```\r\n\r\n3) enter nvim again:\r\n\r\nsee the v:oldfiles, there would be two duplicated items .\r\n\r\nbut sometimes I can't reproduce it.\r\n\r\n\r\n### Expected behavior\r\n\r\nSame file have only one entry in the v:oldfiles\r\n\r\n### Neovim version (nvim -v)\r\n\r\n0.9.1\r\n\r\n### Vim (not Nvim) behaves the same?\r\n\r\nNo, Vim 9.0.1839\r\n\r\n### Operating system/version\r\n\r\nWindows 10\r\n\r\n### Terminal name/version\r\n\r\nnvim-qt\r\n\r\n### $TERM environment variable\r\n\r\nNone\r\n\r\n### Installation\r\n\r\nrepo",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -47,11 +48,12 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "I was having this issue (and more) with slashes on Windows, and I stumbled across this issue while looking for possible solutions. Here are my random initial observations and thoughts:\r\n\r\n1. Turning on shellslash breaks Telescope, and it appears to be a bug in plenary. If I remember correctly it seems to have some hardcoded dependency on backslashes on Windows.\r\n\r\n2. I added the following autocmd as a very hacky bandaid to just replace backslashes in buffer names with forward slashes, as well as capitalizing the drive letter:\r\n\r\n```lua\r\n-- Normalize paths for Windows buffers\r\nif vim.fn.has(\"win32\") == 1 then\r\n  vim.api.nvim_create_autocmd({ \"BufAdd\" }, {\r\n    callback = function()\r\n      local name = vim.api.nvim_buf_get_name(0)\r\n      if name:sub(2, 2) == \":\" then\r\n        name = name:gsub(\"\\\\\", \"/\"):gsub(\"^%l\", string.upper)\r\n        vim.api.nvim_buf_set_name(0, name)\r\n      end\r\n    end,\r\n  })\r\nend\r\n```\r\n\r\nThe drive letter capitalization is needed because everyone seems to do their own normalization of file paths, and for some that includes lower casing the drive letter. Some picky LSPs like taplo that appear to just do a case sensitive string comparison of paths fail when the drive letter case doesn't match.\r\n\r\nThis autocmd works somewhat, but not in all cases. Depending on how the buffer was opened I still get backslashes. I could go through all buffers and correct them before neovim exits and writes to the shada file, but it's still a big hack and not a real solution.\r\n\r\n3. This above approach does *not* break Telescope/plenary, so I'm hoping that if neovim changes all internal paths to `/`, that would also work.\r\n\r\n4. For Windows there are also UNC paths, and device prefixes like `\\\\?\\C:\\` to account for. Here is a good reference: https://learn.microsoft.com/en-us/dotnet/standard/io/file-path-formats\r\n\r\nI would be willing to try to take a look at solving this problem once and for all in neovim internally, since I use neovim on both Windows and Linux extensively. I have contributed Windows functionality to vim before, and I'm looking through the neovim codebase to familiarize myself with it as well.\r\n\r\n@justinmk are you aware of anyone else working on this? I don't want to duplicate any efforts. I agree that working internally with just `/` seems like the cleanest approach.\r\n",
             "created_at": "2023-09-13T14:03:35Z",
             "html_url": "https://github.com/neovim/neovim/issues/25033#issuecomment-1717700044",
@@ -60,15 +62,15 @@
             "node_id": "IC_kwDOAPphoM5mYgXM",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 0,
+                "+1": 5,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
                 "heart": 0,
                 "hooray": 0,
                 "laugh": 0,
-                "rocket": 1,
-                "total_count": 1,
+                "rocket": 2,
+                "total_count": 7,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1717700044/reactions"
             },
             "updated_at": "2023-09-13T14:03:35Z",
@@ -91,7 +93,8 @@
                 "starred_url": "https://api.github.com/users/sid-6581/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/sid-6581/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/sid-6581"
+                "url": "https://api.github.com/users/sid-6581",
+                "user_view_type": "public"
             }
         },
         {
@@ -135,11 +138,12 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "Sounds good! I'll go through the issues and PRs to make sure, then dig into it and see what I find. This path issue has been such a thorn in my side that it would be nice to get it solved cleanly, if possible. Right now all I'm seeing is sketchy workarounds in every plugin I've had problems with.\r\n",
             "created_at": "2023-09-13T18:49:52Z",
             "html_url": "https://github.com/neovim/neovim/issues/25033#issuecomment-1718147671",
@@ -179,7 +183,8 @@
                 "starred_url": "https://api.github.com/users/sid-6581/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/sid-6581/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/sid-6581"
+                "url": "https://api.github.com/users/sid-6581",
+                "user_view_type": "public"
             }
         },
         {
@@ -223,11 +228,12 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "I've poked around and tested a couple of things, and I think this should be doable. I also noticed other places that are completely broken on Windows, like `path_fix_case` that is hardcoded to look for `/` only.\r\n\r\nI think as part of this it makes sense to fully normalize the file path on Windows, including fixing the case of all directory names to eliminate another source of duplicate entries in various places as well as incorrect comparisons in LSPs or plugins that do case sensitive comparisons. `path_fix_case`, despite the name, only fixes the file name and not the full path, which doesn't seem to be enough on Windows.\r\n\r\nI'll keep working on it over the weekend, but initial impressions is that it shouldn't be too bad. Nothing has broken so far (including plugins) from testing out the changes, but there's more to do.\r\n",
             "created_at": "2023-09-15T20:28:55Z",
             "html_url": "https://github.com/neovim/neovim/issues/25033#issuecomment-1721830414",
@@ -236,7 +242,7 @@
             "node_id": "IC_kwDOAPphoM5moQwO",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 0,
+                "+1": 5,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -244,7 +250,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 0,
+                "total_count": 5,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1721830414/reactions"
             },
             "updated_at": "2023-09-15T20:28:55Z",
@@ -267,7 +273,8 @@
                 "starred_url": "https://api.github.com/users/sid-6581/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/sid-6581/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/sid-6581"
+                "url": "https://api.github.com/users/sid-6581",
+                "user_view_type": "public"
             }
         }
     ],
@@ -313,7 +320,7 @@
     "number": 25033,
     "performed_via_github_app": null,
     "reactions": {
-        "+1": 1,
+        "+1": 4,
         "-1": 0,
         "confused": 0,
         "eyes": 0,
@@ -321,15 +328,20 @@
         "hooray": 0,
         "laugh": 0,
         "rocket": 0,
-        "total_count": 1,
+        "total_count": 4,
         "url": "https://api.github.com/repos/neovim/neovim/issues/25033/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "open",
     "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/25033/timeline",
     "title": "[windows] duplicated items in v:oldfiles",
-    "updated_at": "2023-09-15T20:28:56Z",
+    "updated_at": "2025-01-19T11:31:38Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/25033",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/3035071?v=4",
@@ -349,6 +361,7 @@
         "starred_url": "https://api.github.com/users/skywind3000/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/skywind3000/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/skywind3000"
+        "url": "https://api.github.com/users/skywind3000",
+        "user_view_type": "public"
     }
 }

@@ -5,6 +5,7 @@
     "author_association": "CONTRIBUTOR",
     "body": "### Problem\n\nThere is no way to redraw and update a specific window without updating other windows that \"need redrawing\". Individual windows can be marked for redraw, but updates are only ever flushed to the UI via `update_screen()` which will go through *all* windows with pending updates. _In most cases_ this is either necessary (e.g. for splits, resizing, etc) or it's not a problem.\r\n\r\nHowever, there is much work being done in PR #27855 (tracking issue #27811) to externalize messages and the command line for the TUI via floating windows (also [noice.nvim](https://github.com/folke/noice.nvim)). The current high-level redrawing logic for the command line/message grid is orthogonal to that of windows, which has the following advantages:\r\n1. Visual selection is not cleared when redrawing the command line. For `:'<,'>[command]...` this is great because you can see what the ex-cmd is (presumably) operating on. Any call to `:redraw`, opening a new float, etc. will clear the visual selection highlight.\r\n2. no redrawing clash with `inccommand`. command line can be redrawn independently, without being blocked ([#9777](https://github.com/neovim/neovim/issues/9777), [#9783](https://github.com/neovim/neovim/pull/9783), [#20463](https://github.com/neovim/neovim/issues/20463)) or clearing the preview.\r\n\r\nNeither can be achieved via regular window redrawing, so if the cmdline/msg grid is externalized with a floating window we lose both of these benefits (I think #27950 somewhat addresses point (2) but still wouldn't allow properly re-updating the cmdline afterwards). Afaik this also applies to the native popup wildmenu which has its own seperate redrawing codepath.\r\n\r\nIn brief, externalized ui component providers in the TUI (specifically `ext_cmdline` and `ext_messages`, also likely `ext_popumenu` for `wildmenu`) have to use hacks and workarounds to maintain ephemeral screen state (like visual selection in cmdline, or cmdpreview) because there is no publicly exposed mechanism to redraw a window without screwing up the dirty screen state (which should be kept dirty). Some PRs have addressed this problem but in an ad-hoc/hacky manner.\n\n### Expected behavior\n\nEither:\r\n1. a function in the api/stdlib that allows redrawing a specific float without touching any other pending screen updates. I think(hope?) its reasonable to expect that the (re)drawing of ***floating*** windows can be done in isolation of other windows/the \"main\" window grid. Somewhat related: #28101 but in its current state/scope it does not fix the issue\r\n2. internal logic for keeping/restoring desirable ephemeral screen states: specifically the visual selection and command preview. I suppose the redrawing logic could check and handle each of theses cases individually, e.g. *not* removing the visual highlight, re-triggering the cmdpreview callback if needed, etc. There may be other similar \"dirty screen states\" that we want to keep though, I just can't think of any others.\r\n\r\n",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -47,7 +48,8 @@
                 "starred_url": "https://api.github.com/users/luukvbaal/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/luukvbaal/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/luukvbaal"
+                "url": "https://api.github.com/users/luukvbaal",
+                "user_view_type": "public"
             }
         },
         {
@@ -91,7 +93,8 @@
                 "starred_url": "https://api.github.com/users/theofabilous/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/theofabilous/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/theofabilous"
+                "url": "https://api.github.com/users/theofabilous",
+                "user_view_type": "public"
             }
         },
         {
@@ -135,7 +138,8 @@
                 "starred_url": "https://api.github.com/users/theofabilous/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/theofabilous/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/theofabilous"
+                "url": "https://api.github.com/users/theofabilous",
+                "user_view_type": "public"
             }
         },
         {
@@ -179,7 +183,8 @@
                 "starred_url": "https://api.github.com/users/bfredl/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/bfredl/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/bfredl"
+                "url": "https://api.github.com/users/bfredl",
+                "user_view_type": "public"
             }
         },
         {
@@ -223,7 +228,8 @@
                 "starred_url": "https://api.github.com/users/luukvbaal/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/luukvbaal/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/luukvbaal"
+                "url": "https://api.github.com/users/luukvbaal",
+                "user_view_type": "public"
             }
         },
         {
@@ -267,7 +273,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -311,7 +318,8 @@
                 "starred_url": "https://api.github.com/users/theofabilous/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/theofabilous/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/theofabilous"
+                "url": "https://api.github.com/users/theofabilous",
+                "user_view_type": "public"
             }
         },
         {
@@ -355,7 +363,8 @@
                 "starred_url": "https://api.github.com/users/theofabilous/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/theofabilous/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/theofabilous"
+                "url": "https://api.github.com/users/theofabilous",
+                "user_view_type": "public"
             }
         },
         {
@@ -399,7 +408,8 @@
                 "starred_url": "https://api.github.com/users/luukvbaal/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/luukvbaal/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/luukvbaal"
+                "url": "https://api.github.com/users/luukvbaal",
+                "user_view_type": "public"
             }
         },
         {
@@ -443,7 +453,8 @@
                 "starred_url": "https://api.github.com/users/theofabilous/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/theofabilous/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/theofabilous"
+                "url": "https://api.github.com/users/theofabilous",
+                "user_view_type": "public"
             }
         },
         {
@@ -487,7 +498,8 @@
                 "starred_url": "https://api.github.com/users/luukvbaal/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/luukvbaal/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/luukvbaal"
+                "url": "https://api.github.com/users/luukvbaal",
+                "user_view_type": "public"
             }
         },
         {
@@ -531,7 +543,8 @@
                 "starred_url": "https://api.github.com/users/theofabilous/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/theofabilous/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/theofabilous"
+                "url": "https://api.github.com/users/theofabilous",
+                "user_view_type": "public"
             }
         },
         {
@@ -575,7 +588,8 @@
                 "starred_url": "https://api.github.com/users/luukvbaal/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/luukvbaal/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/luukvbaal"
+                "url": "https://api.github.com/users/luukvbaal",
+                "user_view_type": "public"
             }
         },
         {
@@ -619,7 +633,8 @@
                 "starred_url": "https://api.github.com/users/theofabilous/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/theofabilous/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/theofabilous"
+                "url": "https://api.github.com/users/theofabilous",
+                "user_view_type": "public"
             }
         },
         {
@@ -663,7 +678,8 @@
                 "starred_url": "https://api.github.com/users/luukvbaal/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/luukvbaal/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/luukvbaal"
+                "url": "https://api.github.com/users/luukvbaal",
+                "user_view_type": "public"
             }
         },
         {
@@ -707,7 +723,8 @@
                 "starred_url": "https://api.github.com/users/theofabilous/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/theofabilous/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/theofabilous"
+                "url": "https://api.github.com/users/theofabilous",
+                "user_view_type": "public"
             }
         },
         {
@@ -751,7 +768,8 @@
                 "starred_url": "https://api.github.com/users/luukvbaal/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/luukvbaal/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/luukvbaal"
+                "url": "https://api.github.com/users/luukvbaal",
+                "user_view_type": "public"
             }
         },
         {
@@ -795,7 +813,8 @@
                 "starred_url": "https://api.github.com/users/theofabilous/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/theofabilous/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/theofabilous"
+                "url": "https://api.github.com/users/theofabilous",
+                "user_view_type": "public"
             }
         }
     ],
@@ -827,7 +846,7 @@
         {
             "color": "c5def5",
             "default": false,
-            "description": "UI extensibility, events, protocol",
+            "description": "UI extensibility, events, protocol, externalized UI",
             "id": 640132777,
             "name": "ui-extensibility",
             "node_id": "MDU6TGFiZWw2NDAxMzI3Nzc=",
@@ -855,9 +874,14 @@
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "open",
     "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/28510/timeline",
     "title": "redraw a specific floating window ignoring other pending screen updates",
-    "updated_at": "2024-04-27T13:28:47Z",
+    "updated_at": "2025-01-17T15:26:48Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/28510",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/92238946?v=4",
@@ -877,6 +901,7 @@
         "starred_url": "https://api.github.com/users/theofabilous/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/theofabilous/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/theofabilous"
+        "url": "https://api.github.com/users/theofabilous",
+        "user_view_type": "public"
     }
 }

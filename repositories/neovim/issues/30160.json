@@ -5,6 +5,27 @@
     "author_association": "NONE",
     "body": "### Problem\r\n\r\nHi there!\r\n\r\nI have a small problem when I'm using `CTRL-]` to jump-to-definition using a LSP. I noticed in some cases it's slightly inaccurate.\r\n\r\nFor context.. I have a Ruby on Rails app where we put our associations in another module e.g.\r\n\r\n```ruby\r\n# app/models/my_model.rb\r\nclass MyModel < ApplicationRecord\r\n  include MyModel::HasAssociations\r\nend\r\n```\r\n\r\n.. the problem is when I put my cursor on `HasAssociations` and press `Ctrl-]` to jump to definition, it jumps to the wrong location sometimes because it looks like neovim isn't calling the LSP quite right.\r\n\r\nI confirmed this by testing with the suggested minimal init.vim and looking in the `nvim/lsp.log` file:\r\n\r\n`:lua vim.lsp.set_log_level('DEBUG')`\r\n```\r\n[DEBUG][2024-08-28 10:30:30] ...m/lsp/client.lua:678\t\"LSP[ruby-lsp]\"\t\"client.request\"\t1\t\"workspace/symbol\"\t{  query = \"HasAssociations\"}\t<function 1>\t1\r\n[DEBUG][2024-08-28 10:30:30] .../vim/lsp/rpc.lua:286\t\"rpc.send\"\t{  id = 4,  jsonrpc = \"2.0\",  method = \"workspace/symbol\",  params = {    query = \"HasAssociations\"  }}\r\n```\r\n\r\nI can see it's using `workspace/symbol` with the query `HasAssociations` instead of using `textDocument/definition`, which ruby-lsp is able to work out the correct definition location using the fully qualified module name.\r\n\r\nThe documentation suggests it should work like I'm expecting:\r\nhttps://neovim.io/doc/user/lsp.html#vim.lsp.tagfunc()\r\n<img width=\"774\" alt=\"image\" src=\"https://github.com/user-attachments/assets/8210fa62-bea5-472c-818c-2fc9d00c6a78\">\r\n\r\nI put in some debugging inside the LSP tagfunc and I noticed that the flags being passed to the tagfunc might not be quite right:\r\n\r\nWhen I press `CTRL-]` with some debugging code inserted, I can see the `flags` argument being passed is empty, but the code looks like it's expecting it to be \"c\" for this to work as expected:\r\nhttps://github.com/neovim/neovim/blob/dad55f5e763f3f2f436a2ae4f4bb1f6c6442bb45/runtime/lua/vim/lsp/_tagfunc.lua#L76-L81\r\n\r\nWhen I look at the calling C code, I added some debugging to this file:\r\nhttps://github.com/neovim/neovim/blob/dad55f5e763f3f2f436a2ae4f4bb1f6c6442bb45/src/nvim/tag.c#L1246\r\n\r\n.. and I can confirm that `g_tag_at_cursor` is false when I press CTRL-], which is why the flags argument of `tagfunc` isn't being passed the \"c\".\r\n\r\nThat's where my  debugging skills have run out unfortunately and I need some help.. :-)\r\n\r\nIs it a bug? Or have I got something not quite right?\r\n\r\n---\r\n\r\nJust in case it's helpful, I checked the LSP server capabilities using `:lua =vim.lsp.get_clients()[1].server_capabilities` and I've attached the result.\r\n\r\n[capabilities.txt](https://github.com/user-attachments/files/16773639/capabilities.txt)\r\n\r\n### Steps to reproduce using \"nvim -u minimal_init.lua\"\r\n\r\n```\r\ngem install ruby-lsp\r\n```\r\n\r\n```ruby\r\n# app/models/my_model.rb\r\nclass MyModel < ApplicationRecord\r\n  include MyModel::HasAssociations # PROBLEM: CTRL-] with cursor on `HasAssociations` jumps to the `Aaa::HasAssociations` file.\r\nend\r\n\r\n# app/models/my_model/has_associations.rb\r\nclass MyModel\r\n  module HasAssociations\r\n  end\r\nend\r\n\r\n# app/models/aaa_model/has_associations.rb\r\nclass AaaModel\r\n  module HasAssociations\r\n  end\r\nend\r\n```\r\n\r\n```lua\r\n# minimal-init.vim\r\n--- CHANGE THESE\r\nlocal pattern = 'ruby'\r\nlocal cmd = {'ruby-lsp'}\r\n-- Add files/folders here that indicate the root of a project\r\nlocal root_markers = {'.git', '.editorconfig'}\r\n-- Change to table with settings if required\r\nlocal settings = vim.empty_dict()\r\n\r\nvim.api.nvim_create_autocmd('FileType', {\r\n  pattern = pattern,\r\n  callback = function(args)\r\n    local match = vim.fs.find(root_markers, { path = args.file, upward = true })[1]\r\n    local root_dir = match and vim.fn.fnamemodify(match, ':p:h') or nil\r\n    vim.lsp.start({\r\n      name = 'ruby-lsp',\r\n      cmd = cmd,\r\n      root_dir = root_dir,\r\n      settings = settings\r\n    })\r\n  end\r\n})\r\n```\r\n\r\n```\r\nnvim -u ~/minimal_init.lua app/models/my_model.rb\r\n```\r\n\r\nStep : Move cursor to `HasAssociations` and press `CTRL-]`\r\n\r\n### Expected behavior\r\n\r\nWhen I put my cursor on `HasAssociations` and press `Ctrl-]` to jump to definition, it jumps to the wrong location: `Aaa::HasAssociations` instead of the correct `MyModel::HasAssociations`.\r\n\r\nFrom what I can see.. it's because the LSP is called using \"workspace/symbol\" instead of \"textDocument/definition\"\r\n\r\n### Neovim version (nvim -v)\r\n\r\nTested on v0.10.1 and latest master (dad55f5e763f3f2f436a2ae4f4bb1f6c6442bb45)\r\n\r\n### Language server name/version\r\n\r\nruby_lsp\r\n\r\n### Operating system/version\r\n\r\nOSX 13.4\r\n\r\n### Log file\r\n\r\nhttps://gist.github.com/dhotson/20117e564c2e9d8678ce6eb498c9f3e5",
     "closed_at": "2024-08-29T04:08:33Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/21532?v=4",
+        "events_url": "https://api.github.com/users/dhotson/events{/privacy}",
+        "followers_url": "https://api.github.com/users/dhotson/followers",
+        "following_url": "https://api.github.com/users/dhotson/following{/other_user}",
+        "gists_url": "https://api.github.com/users/dhotson/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/dhotson",
+        "id": 21532,
+        "login": "dhotson",
+        "node_id": "MDQ6VXNlcjIxNTMy",
+        "organizations_url": "https://api.github.com/users/dhotson/orgs",
+        "received_events_url": "https://api.github.com/users/dhotson/received_events",
+        "repos_url": "https://api.github.com/users/dhotson/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/dhotson/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/dhotson/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/dhotson",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "NONE",
@@ -47,7 +68,8 @@
                 "starred_url": "https://api.github.com/users/dhotson/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/dhotson/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/dhotson"
+                "url": "https://api.github.com/users/dhotson",
+                "user_view_type": "public"
             }
         },
         {
@@ -91,7 +113,8 @@
                 "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/zeertzjq"
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
             }
         },
         {
@@ -135,7 +158,8 @@
                 "starred_url": "https://api.github.com/users/dhotson/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/dhotson/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/dhotson"
+                "url": "https://api.github.com/users/dhotson",
+                "user_view_type": "public"
             }
         },
         {
@@ -151,12 +175,12 @@
                 "+1": 0,
                 "-1": 0,
                 "confused": 0,
-                "eyes": 0,
+                "eyes": 1,
                 "heart": 0,
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 0,
+                "total_count": 1,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2314315968/reactions"
             },
             "updated_at": "2024-08-28T05:07:47Z",
@@ -179,7 +203,8 @@
                 "starred_url": "https://api.github.com/users/dhotson/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/dhotson/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/dhotson"
+                "url": "https://api.github.com/users/dhotson",
+                "user_view_type": "public"
             }
         },
         {
@@ -223,7 +248,8 @@
                 "starred_url": "https://api.github.com/users/dhotson/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/dhotson/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/dhotson"
+                "url": "https://api.github.com/users/dhotson",
+                "user_view_type": "public"
             }
         },
         {
@@ -240,11 +266,11 @@
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
-                "heart": 0,
+                "heart": 1,
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 0,
+                "total_count": 1,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2314362030/reactions"
             },
             "updated_at": "2024-08-28T05:42:05Z",
@@ -267,7 +293,8 @@
                 "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/zeertzjq"
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
             }
         },
         {
@@ -311,11 +338,57 @@
                 "starred_url": "https://api.github.com/users/dhotson/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/dhotson/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/dhotson"
+                "url": "https://api.github.com/users/dhotson",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "NONE",
+            "body": "This has frustrated me with ruby, as well. I'm happy now to have found a solution (mapping `<C-]>` to itself, as suggested above), but wanted to second dhotson's suggestion that there may be a way to improve the default experience here, such as by making lsp-based lookups take priority over older methods when available.\n\nFor this specific case, another workaround is to set `vim.g.no_ruby_maps = true`. I'm testing this out right now; we'll see if there are other mappings from the ruby ftplugin that I don't want to lose.\n\nThanks dhotson for raising and investigating this, and zeertzjq for the workaround!",
+            "created_at": "2025-01-15T17:29:07Z",
+            "html_url": "https://github.com/neovim/neovim/issues/30160#issuecomment-2593541071",
+            "id": 2593541071,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/30160",
+            "node_id": "IC_kwDOAPphoM6alkvP",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2593541071/reactions"
+            },
+            "updated_at": "2025-01-15T17:29:38Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2593541071",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/524994?v=4",
+                "events_url": "https://api.github.com/users/mmirus/events{/privacy}",
+                "followers_url": "https://api.github.com/users/mmirus/followers",
+                "following_url": "https://api.github.com/users/mmirus/following{/other_user}",
+                "gists_url": "https://api.github.com/users/mmirus/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/mmirus",
+                "id": 524994,
+                "login": "mmirus",
+                "node_id": "MDQ6VXNlcjUyNDk5NA==",
+                "organizations_url": "https://api.github.com/users/mmirus/orgs",
+                "received_events_url": "https://api.github.com/users/mmirus/received_events",
+                "repos_url": "https://api.github.com/users/mmirus/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/mmirus/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/mmirus/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/mmirus",
+                "user_view_type": "public"
             }
         }
     ],
-    "comments": 7,
+    "comments": 8,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/30160/comments",
     "created_at": "2024-08-28T01:36:41Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/30160/events",
@@ -348,7 +421,7 @@
     "number": 30160,
     "performed_via_github_app": null,
     "reactions": {
-        "+1": 0,
+        "+1": 1,
         "-1": 0,
         "confused": 0,
         "eyes": 0,
@@ -356,15 +429,20 @@
         "hooray": 0,
         "laugh": 0,
         "rocket": 0,
-        "total_count": 0,
+        "total_count": 1,
         "url": "https://api.github.com/repos/neovim/neovim/issues/30160/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "closed",
     "state_reason": "completed",
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/30160/timeline",
     "title": "LSP jump-to-definition using CTRL-] is slightly inaccurate when editing Ruby code",
-    "updated_at": "2024-08-29T04:09:05Z",
+    "updated_at": "2025-01-15T17:29:38Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/30160",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/21532?v=4",
@@ -384,6 +462,7 @@
         "starred_url": "https://api.github.com/users/dhotson/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/dhotson/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/dhotson"
+        "url": "https://api.github.com/users/dhotson",
+        "user_view_type": "public"
     }
 }

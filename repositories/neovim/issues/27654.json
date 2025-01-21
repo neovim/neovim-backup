@@ -5,6 +5,7 @@
     "author_association": "CONTRIBUTOR",
     "body": "### Problem\n\nWhen viewing diff files in a terminal buffer, I usually open the buffer, view the diff, and immediately close the buffer. Right now I'm relying completely on the terminal for colors but it'd be great if I could just tell that buffer \"Please syntax highlight this buffer as though it was a diff file\". But that doesn't seem to be possible yet.\n\n### Steps to reproduce\n\n<details>\r\n<summary>See reproduction.lua file</summary>\r\n\r\n```lua\r\n-- DO NOT change the paths and don't remove the colorscheme\r\nlocal root = vim.fn.fnamemodify(\"./.repro\", \":p\")\r\n\r\n-- set stdpaths to use .repro\r\nfor _, name in ipairs({ \"config\", \"data\", \"state\", \"cache\" }) do\r\n  vim.env[(\"XDG_%s_HOME\"):format(name:upper())] = root .. \"/\" .. name\r\nend\r\n\r\n-- bootstrap lazy\r\nlocal lazypath = root .. \"/plugins/lazy.nvim\"\r\nif not vim.loop.fs_stat(lazypath) then\r\n  vim.fn.system({ \"git\", \"clone\", \"--filter=blob:none\", \"https://github.com/folke/lazy.nvim.git\", lazypath, })\r\nend\r\nvim.opt.runtimepath:prepend(lazypath)\r\n\r\n-- install plugins\r\nlocal plugins = {\r\n    {\r\n        \"nvim-treesitter/nvim-treesitter\",\r\n        build = \":TSUpdate\",\r\n        config = function()\r\n            require(\"nvim-treesitter.configs\").setup {\r\n                ensure_installed = { \"diff\" },\r\n                highlight = {\r\n                    enable = true,\r\n                },\r\n            }\r\n        end\r\n    },\r\n}\r\nrequire(\"lazy\").setup(plugins, {\r\n  root = root .. \"/plugins\",\r\n})\r\n\r\nvim.api.nvim_create_user_command(\r\n    \"OpenDiff\",\r\n    \"terminal cat /tmp/diff.diff\",\r\n    { nargs = 0 }\r\n)\r\n\r\nvim.api.nvim_create_user_command(\r\n    'OpenDiff2',\r\n    'execute \"terminal cat /tmp/diff.diff\" | lua vim.treesitter.start(0, \"diff\")',\r\n    { nargs = 0 }\r\n)\r\n\r\nvim.api.nvim_create_autocmd(\r\n    \"TermOpen\",\r\n    { callback = function() vim.treesitter.start(0, \"diff\") end }\r\n)\r\n\r\n\r\n```\r\n</details>\r\n\r\nMake a diff file for `/tmp/diff.diff`\r\n\r\n```sh\r\necho -e \"foo\\nbar\" > /tmp/a\r\necho -e \"foot\\ntar\\nthing\" > /tmp/b\r\ndiff -u /tmp/a /tmp/b > /tmp/diff.diff\r\n```\r\n\r\nOpen nvim with `nvim -u reproduction.lua` and call `:OpenDiff` or `:OpenDiff2`, neither will have diff highlighting. However if you're in the normal mode in the terminal buffer and manually type `:lua vim.treesitter.start(0, \"diff\")` then it works\n\n### Expected behavior\n\nSetting the terminal buffer with the \"diff\" parser should apply that tree-sitter parser to the buffer. Either as a part of `TermOpen` or as a follow-up command such as `execute \"terminal cat /tmp/diff.diff\" | lua vim.treesitter.start(0, \"diff\")`\n\n### Neovim version (nvim -v)\n\nNVIM v0.10.0-dev-2465+ga7788c2e2\n\n### Vim (not Nvim) behaves the same?\n\nn/a\n\n### Operating system/version\n\nCentOS Linux 7 (Core)\n\n### Terminal name/version\n\ngnome-terminal - # GNOME Terminal 3.28.2 using VTE 0.52.4 +GNUTLS\n\n### $TERM environment variable\n\nscreen-256color\n\n### Installation\n\nCompiled from source",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [],
     "comments": 0,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/27654/comments",
@@ -62,9 +63,14 @@
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "open",
     "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/27654/timeline",
     "title": "Cannot set treesitter parser for terminal buffer on `TermOpen`",
-    "updated_at": "2024-02-29T01:05:27Z",
+    "updated_at": "2025-01-19T11:29:04Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/27654",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/10103049?v=4",
@@ -84,6 +90,7 @@
         "starred_url": "https://api.github.com/users/ColinKennedy/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/ColinKennedy/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/ColinKennedy"
+        "url": "https://api.github.com/users/ColinKennedy",
+        "user_view_type": "public"
     }
 }

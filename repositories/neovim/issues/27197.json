@@ -5,6 +5,7 @@
     "author_association": "CONTRIBUTOR",
     "body": "### Problem\r\n\r\nI use the custom sign handler from `:h diagnostic-handlers-example`. It can fail on external changes e.g. `git stash`:\r\n```\r\nError executing vim.schedule lua callback: .../nvim-from-src/share/nvim/runtime/lua/vim/diagnostic.lua:1150: Invalid 'line': out of range\r\nstack traceback:\r\n        [C]: in function 'nvim_buf_set_extmark'\r\n        .../nvim-from-src/share/nvim/runtime/lua/vim/diagnostic.lua:1150: in function 'show'\r\n        ...current/2024-01-25-20.16.00-outdated-diag-signs/init.lua:19: in function 'show'\r\n        .../nvim-from-src/share/nvim/runtime/lua/vim/diagnostic.lua:1499: in function 'show'\r\n        ...tgx/tmp/nvim-from-src/share/nvim/runtime/lua/vim/lsp.lua:374: in function <...tgx/tmp/nvim-from-src/share/nvim/runtime/lua/vim/lsp.lua:369>\r\nPress ENTER or type command to continue\r\n```\r\n\r\n\r\n### Steps to reproduce\r\n\r\n**Beware: it overrides existing local files `copy.lua` and `copy-truncated.lua` without any prompt. Please review `init.lua` contents before use!**\r\n\r\ninit.lua:\r\n```lua\r\nvim.opt.number = true\r\n\r\nlocal ns = vim.api.nvim_create_namespace('diag')\r\nlocal orig_signs_handler = vim.diagnostic.handlers.signs\r\n\r\nvim.diagnostic.handlers.signs = {\r\n  show = function(_, bufnr, _, opts)\r\n    local diagnostics = vim.diagnostic.get(bufnr)\r\n\r\n    local max_severity_per_line = {}\r\n    for _, d in pairs(diagnostics) do\r\n      local m = max_severity_per_line[d.lnum]\r\n      if not m or d.severity < m.severity then\r\n        max_severity_per_line[d.lnum] = d\r\n      end\r\n    end\r\n\r\n    local filtered_diagnostics = vim.tbl_values(max_severity_per_line)\r\n    orig_signs_handler.show(ns, bufnr, filtered_diagnostics, opts)\r\n  end,\r\n  hide = function(_, bufnr)\r\n    orig_signs_handler.hide(ns, bufnr)\r\n  end,\r\n}\r\n\r\nvim.api.nvim_create_autocmd('FileType', {\r\n  pattern = 'lua',\r\n  callback = function (args)\r\n    vim.lsp.start({\r\n      name = 'luals',\r\n      cmd = {'lua-language-server'},\r\n      root_dir = vim.uv.cwd(),\r\n      single_file_support = true,\r\n      log_level = vim.lsp.protocol.MessageType.Warning,\r\n    })\r\n  end\r\n})\r\n\r\nlocal origPath = vim.api.nvim_get_runtime_file('lua/vim/termcap.lua', false)[1]\r\nlocal newPath = 'copy-534534535.lua'\r\nlocal backupTruncated = 'copy-truncated-48560834573.lua'\r\n\r\nlocal function truncateFromEnd(file, linesToTruncate)\r\n  vim.cmd.edit(file)\r\n\r\n  local lastLine = vim.fn.line('$')\r\n  vim.api.nvim_win_set_cursor(0, {lastLine, 1})\r\n  while lastLine - vim.fn.line('$') < linesToTruncate do\r\n    vim.api.nvim_del_current_line()\r\n  end\r\n  vim.cmd.write({mods = {silent = true}})\r\n  vim.api.nvim_buf_delete(0, {})\r\nend\r\n\r\nlocal function overwriteWithTruncated()\r\n  vim.uv.fs_copyfile(backupTruncated, newPath)\r\n  vim.cmd.checktime()\r\nend\r\n\r\nvim.api.nvim_create_autocmd('UIEnter', {\r\n  once = true,\r\n  callback = function ()\r\n    vim.schedule(function ()\r\n      vim.uv.fs_copyfile(origPath, newPath)\r\n      vim.uv.fs_copyfile(origPath, backupTruncated)\r\n      truncateFromEnd(backupTruncated, 20)\r\n      vim.cmd.edit(newPath)\r\n      vim.api.nvim_win_set_cursor(0, {vim.fn.line('$'), 1})\r\n      vim.diagnostic.set(ns, vim.api.nvim_get_current_buf(), {\r\n        {\r\n          lnum = vim.fn.line('$'),\r\n          col = 1,\r\n          end_lnum = vim.fn.line('$'),\r\n          end_col = 1,\r\n          message = 'test diag',\r\n        }\r\n      })\r\n    end)\r\n\r\n  end,\r\n})\r\n\r\nvim.api.nvim_create_user_command('Truncate', overwriteWithTruncated, {nargs = 0})\r\n```\r\n- run\r\n```sh\r\nmkdir /tmp/new-nonexisting-directory\r\ncd /tmp/new-nonexisting-directory\r\nnvim -u init.lua\r\n```\r\n- wait for loading diagnostics from lua-ls or possibly edit the current buffer to get some diagnostics near the end line. \r\n![image](https://github.com/neovim/neovim/assets/11404453/e6e5ad45-6cf6-4204-90ab-a2289261e9cb)\r\n\r\n- run `:Truncate`\r\n- look for the following error\r\n![image](https://github.com/neovim/neovim/assets/11404453/172756f4-3eed-46a8-a886-e57a8b86f2af)\r\n\r\n\r\n\r\n### Expected behavior\r\n\r\nWe probably need to prevent outdated diagnostics from being sent on an external file reload. I have no idea if `on_reload` event can be used here.\r\n\r\n### Neovim version (nvim -v)\r\n\r\nv0.10.0-dev-2196+g1e0996b57\r\n\r\n### Vim (not Nvim) behaves the same?\r\n\r\n-\r\n\r\n### Operating system/version\r\n\r\nDebian Sid\r\n\r\n### Terminal name/version\r\n\r\nalacritty 0.13.1\r\n\r\n### $TERM environment variable\r\n\r\nalacritty\r\n\r\n### Installation\r\n\r\nfrom repo",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "CONTRIBUTOR",
@@ -47,7 +48,8 @@
                 "starred_url": "https://api.github.com/users/TheBlob42/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/TheBlob42/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/TheBlob42"
+                "url": "https://api.github.com/users/TheBlob42",
+                "user_view_type": "public"
             }
         },
         {
@@ -91,7 +93,8 @@
                 "starred_url": "https://api.github.com/users/przepompownia/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/przepompownia/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/przepompownia"
+                "url": "https://api.github.com/users/przepompownia",
+                "user_view_type": "public"
             }
         },
         {
@@ -135,7 +138,8 @@
                 "starred_url": "https://api.github.com/users/TheBlob42/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/TheBlob42/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/TheBlob42"
+                "url": "https://api.github.com/users/TheBlob42",
+                "user_view_type": "public"
             }
         }
     ],
@@ -178,7 +182,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 604,
+        "closed_issues": 686,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -198,19 +202,20 @@
             "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/justinmk"
+            "url": "https://api.github.com/users/justinmk",
+            "user_view_type": "public"
         },
-        "description": "Low priority. Not planned for the current target, may be reassigned.",
+        "description": "Low priority items. We plan to work on this but don't have a target date.",
         "due_on": null,
         "html_url": "https://github.com/neovim/neovim/milestone/6",
         "id": 655037,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 426,
+        "open_issues": 635,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2024-02-18T23:41:30Z",
+        "updated_at": "2025-01-21T00:09:37Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM59PjWg",
@@ -231,9 +236,14 @@
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "open",
     "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/27197/timeline",
     "title": "docs: `:h diagnostic-handlers-example` - sign handler can pass outdated diagnostics to original handler",
-    "updated_at": "2024-02-15T06:57:11Z",
+    "updated_at": "2025-01-19T11:29:14Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/27197",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/11404453?v=4",
@@ -253,6 +263,7 @@
         "starred_url": "https://api.github.com/users/przepompownia/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/przepompownia/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/przepompownia"
+        "url": "https://api.github.com/users/przepompownia",
+        "user_view_type": "public"
     }
 }

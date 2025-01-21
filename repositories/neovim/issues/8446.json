@@ -5,9 +5,10 @@
     "author_association": "MEMBER",
     "body": "[This thread](https://news.ycombinator.com/item?id=17163194) discusses CMake state-of-the-art. \r\n\r\nCurrently we use `ExternalProject_Add` combined with our own recipes for building external projects. This obviously is painful to maintain because if an upstream project changes it may break our bundled-deps build when we bump our dependency version of that project.\r\n\r\nSome recommend [hunter](https://github.com/cpp-pm/hunter) for pulling in external projects with CMake.\r\n\r\n>  Hunter aims to be a full package manager, so it strives to build a project and all of its depedendencies recursively. This is fundamentally different than just adding one external project and ignoring the depedencies (what ExternalProject_Add does). The downside is this forces Hunter to maintain many forks of original repos just to keep track of the dependency information. \r\n\r\n[Quick introduction to Hunter](https://geokon-gh.github.io/hunterintro.html):\r\n\r\n> * **Dependencies are built at configuration time:** Hunter will download the source and build all your dependencies during configuration time.\r\n> * **Dependencies are built independently:** Each dependency is configured/built/installed independently and the only thing they inherit from the parent project is the toolchain file you passed in at the command line.\r\n> * **Dependencies share their own dependencies:** If two dependencies need zlib then Hunter will install just one zlib and link both dependencies to it\r\n\r\n# Evaluation\r\n\r\n### conan\r\n\r\n- conan is missing many of our deps (libtermkey, libuv at least)\r\n- fast to install on Arch Linux (Python package)\r\n\r\n### vcpkg \r\n\r\n- vcpkg appears to provide more deps, but still also misses libtermkey, libvterm at least.\r\n- slow to install (only vcpkg-git in Arch, requires to be built)\r\n\r\n### hunter\r\n\r\n- hunter does not need to be installed really (via CMake)\r\n- [min cmake version](https://hunter.readthedocs.io/en/latest/quick-start/cmake.html)\r\n- also misses a lot of our deps, including LuaJIT: https://hunter.readthedocs.io/en/latest/packages.html\r\n\r\n### nix\r\n\r\n- ?",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "@justinmk I've not personally played with hunter at all--in my work environment, it's simply a no-go.  I do wonder about messing up people's environments though.  Having the builds all centralized into one location is nice in some respects and limiting in others, such as when we have to apply patches to workaround issues or dealing with versions mismatches (we require some version, but it's been updated out from under us, etc.).  I also have no clue how this affects packaging either--it's not clear if it'll use a system resource when available or not.\r\n\r\nHopefully someone with more experience here can chime in!",
             "created_at": "2018-05-28T13:21:24Z",
             "html_url": "https://github.com/neovim/neovim/issues/8446#issuecomment-392525525",
@@ -47,7 +48,8 @@
                 "starred_url": "https://api.github.com/users/jszakmeister/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/jszakmeister/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/jszakmeister"
+                "url": "https://api.github.com/users/jszakmeister",
+                "user_view_type": "public"
             }
         },
         {
@@ -91,7 +93,8 @@
                 "starred_url": "https://api.github.com/users/ruslo/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ruslo/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ruslo"
+                "url": "https://api.github.com/users/ruslo",
+                "user_view_type": "public"
             }
         },
         {
@@ -135,7 +138,8 @@
                 "starred_url": "https://api.github.com/users/jamessan/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/jamessan/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/jamessan"
+                "url": "https://api.github.com/users/jamessan",
+                "user_view_type": "public"
             }
         },
         {
@@ -179,11 +183,12 @@
                 "starred_url": "https://api.github.com/users/ruslo/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ruslo/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ruslo"
+                "url": "https://api.github.com/users/ruslo",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "> What do you mean by packaging?\r\n\r\nI mean does it affect our upstream maintainers who take care of packaging Neovim for various platforms?  Debian, Ubuntu, Fedora, etc. get awfully picky about their environments and we don't want to go in a direction that's going to make the job harder (it's hard enough as it is!). :-)\r\n\r\n> hunter_add_package(libuv)\r\n> find_package(libuv CONFIG REQUIRED)\r\n> target_link_libraries(... libuv::uv)\r\n\r\nThis change seems more invasive than it looks.  Currently, we have the dependencies being built separately from the main application.  This allows packagers to skip the building of the dependencies and just use CMake to drive building the app directly (they'll ensure the system libraries are there and available).\r\n\r\nDoes going this route require that we use a Hunter-supplied version versus a system-supplied one?  That's probably the biggest issue that I can see.  Many of the packaging environments don't want you to download from places on the Internet--they want you to only use packaged libraries.  If Hunter requires that we use their version, that's a bit of a problem.  We could wrap `hunter_add_package()` in a conditional and maybe that helps as long as `libuv::uv` isn't a Hunter-specific name.\r\n\r\nAlso, forking repos things a bit tougher to manage our patches since they're out of the Neovim tree.",
             "created_at": "2018-05-29T19:30:51Z",
             "html_url": "https://github.com/neovim/neovim/issues/8446#issuecomment-392912859",
@@ -223,7 +228,8 @@
                 "starred_url": "https://api.github.com/users/jszakmeister/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/jszakmeister/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/jszakmeister"
+                "url": "https://api.github.com/users/jszakmeister",
+                "user_view_type": "public"
             }
         },
         {
@@ -267,11 +273,12 @@
                 "starred_url": "https://api.github.com/users/ruslo/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ruslo/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ruslo"
+                "url": "https://api.github.com/users/ruslo",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "> If on those platforms you want to use system libraries you can turn Hunter OFF:\r\n\r\nAwesome!",
             "created_at": "2018-05-29T19:46:28Z",
             "html_url": "https://github.com/neovim/neovim/issues/8446#issuecomment-392919108",
@@ -311,7 +318,8 @@
                 "starred_url": "https://api.github.com/users/jszakmeister/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/jszakmeister/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/jszakmeister"
+                "url": "https://api.github.com/users/jszakmeister",
+                "user_view_type": "public"
             }
         },
         {
@@ -355,7 +363,8 @@
                 "starred_url": "https://api.github.com/users/mqudsi/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/mqudsi/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/mqudsi"
+                "url": "https://api.github.com/users/mqudsi",
+                "user_view_type": "public"
             }
         },
         {
@@ -399,7 +408,8 @@
                 "starred_url": "https://api.github.com/users/arecarn/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/arecarn/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/arecarn"
+                "url": "https://api.github.com/users/arecarn",
+                "user_view_type": "public"
             }
         },
         {
@@ -443,7 +453,8 @@
                 "starred_url": "https://api.github.com/users/ras0219-msft/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ras0219-msft/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ras0219-msft"
+                "url": "https://api.github.com/users/ras0219-msft",
+                "user_view_type": "public"
             }
         },
         {
@@ -487,7 +498,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -531,7 +543,8 @@
                 "starred_url": "https://api.github.com/users/ras0219-msft/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ras0219-msft/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ras0219-msft"
+                "url": "https://api.github.com/users/ras0219-msft",
+                "user_view_type": "public"
             }
         },
         {
@@ -575,11 +588,12 @@
                 "starred_url": "https://api.github.com/users/mqudsi/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/mqudsi/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/mqudsi"
+                "url": "https://api.github.com/users/mqudsi",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "Some remarks while looking into this:\r\n\r\n### conan\r\n\r\n- conan does not contain quite some of our deps (libtermkey, libuv at least)\r\n- fast to install on Arch Linux (Python package)\r\n\r\n### vcpkg \r\n\r\n- vcpkg appears to have a few more deps, but still also misses libtermkey, libvterm at least.\r\n- slow to install (only vcpkg-git in Arch, requires to be built)\r\n\r\n### hunter\r\n\r\n- hunter does not need to be installed really (via CMake)\r\n- requires CMake 3.1.2 (have not checked the others)\r\n- also misses a lot of our deps, including LuaJIT (https://docs.hunter.sh/en/latest/genindex.html)\r\n\r\nWe should probably have a table in the top comment summarizing this, and having it more structured for comparison.\r\n\r\n> meson\r\n\r\nThat would be more involved, and is out of scope I guess.\r\n\r\nbtw: it would be great if LuaRocks could also be managed through this.",
             "created_at": "2019-06-28T17:42:35Z",
             "html_url": "https://github.com/neovim/neovim/issues/8446#issuecomment-506819520",
@@ -619,7 +633,8 @@
                 "starred_url": "https://api.github.com/users/blueyed/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/blueyed/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/blueyed"
+                "url": "https://api.github.com/users/blueyed",
+                "user_view_type": "public"
             }
         },
         {
@@ -663,7 +678,8 @@
                 "starred_url": "https://api.github.com/users/ras0219-msft/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ras0219-msft/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ras0219-msft"
+                "url": "https://api.github.com/users/ras0219-msft",
+                "user_view_type": "public"
             }
         },
         {
@@ -707,7 +723,8 @@
                 "starred_url": "https://api.github.com/users/eli-schwartz/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/eli-schwartz/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/eli-schwartz"
+                "url": "https://api.github.com/users/eli-schwartz",
+                "user_view_type": "public"
             }
         },
         {
@@ -751,7 +768,8 @@
                 "starred_url": "https://api.github.com/users/dundargoc/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/dundargoc/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/dundargoc"
+                "url": "https://api.github.com/users/dundargoc",
+                "user_view_type": "public"
             }
         },
         {
@@ -795,7 +813,8 @@
                 "starred_url": "https://api.github.com/users/dundargoc/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/dundargoc/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/dundargoc"
+                "url": "https://api.github.com/users/dundargoc",
+                "user_view_type": "public"
             }
         },
         {
@@ -839,7 +858,8 @@
                 "starred_url": "https://api.github.com/users/mqudsi/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/mqudsi/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/mqudsi"
+                "url": "https://api.github.com/users/mqudsi",
+                "user_view_type": "public"
             }
         },
         {
@@ -883,7 +903,8 @@
                 "starred_url": "https://api.github.com/users/dundargoc/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/dundargoc/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/dundargoc"
+                "url": "https://api.github.com/users/dundargoc",
+                "user_view_type": "public"
             }
         }
     ],
@@ -917,7 +938,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 199,
+        "closed_issues": 260,
         "created_at": "2014-11-26T22:13:11Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -937,19 +958,20 @@
             "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/justinmk"
+            "url": "https://api.github.com/users/justinmk",
+            "user_view_type": "public"
         },
-        "description": "Zero priority; no timeline. Promote an item from this state by taking ownership of it.",
+        "description": "We don't plan to work on this, but will accept high quality contributions from someone who will own the feature and follow up on bug reports.",
         "due_on": null,
         "html_url": "https://github.com/neovim/neovim/milestone/9",
         "id": 881978,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/9/labels",
         "node_id": "MDk6TWlsZXN0b25lODgxOTc4",
         "number": 9,
-        "open_issues": 241,
+        "open_issues": 297,
         "state": "open",
-        "title": "unplanned",
-        "updated_at": "2023-12-09T09:50:36Z",
+        "title": "needs-owner",
+        "updated_at": "2025-01-20T17:56:23Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/9"
     },
     "node_id": "MDU6SXNzdWUzMjY4Mzg5MjQ=",
@@ -970,9 +992,14 @@
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "open",
     "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/8446/timeline",
     "title": "build/cmake: consider Hunter (vcpkg, ?) for bundled dependencies",
-    "updated_at": "2023-12-10T12:27:53Z",
+    "updated_at": "2025-01-17T16:02:55Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/8446",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -992,6 +1019,7 @@
         "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/justinmk"
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
     }
 }

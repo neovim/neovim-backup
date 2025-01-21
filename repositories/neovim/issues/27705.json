@@ -5,6 +5,7 @@
     "author_association": "CONTRIBUTOR",
     "body": "### Problem\r\n\r\nHaving a predicate with enough strings breaks the tree. This doesn't happen with https://github.com/tree-sitter-grammars/tree-sitter-query so I believe the problem lies here.\r\n\r\n### Steps to reproduce\r\n\r\nnvim --clean :edit \"foo.scm\" \r\n\r\n- `foo.scm`: \r\n```query\r\n; Builtin functions\r\n(function_call\r\n  function: (identifier) @function.builtin\r\n  (#any-of? @function.builtin\r\n    \"and\" \"or\" \"not\" \"eq\" \"ne\" \"lt\" \"le\" \"gt\" \"ge\" \"default\" \"required\" \"empty\" \"fail\" \"coalesce\"\r\n    \"ternary\" \"print\" \"println\" \"printf\" \"trim\" \"trimAll\" \"trimPrefix\" \"trimSuffix\" \"lower\" \"upper\"\r\n    \"title\" \"untitle\" \"repeat\" \"substr\" \"nospace\" \"trunc\" \"abbrev\" \"abbrevboth\" \"initials\"\r\n    \"randAlphaNum\" \"randAlpha\" \"randNumeric\" \"randAscii\" \"wrap\" \"wrapWith\" \"contains\" \"hasPrefix\"\r\n    \"hasSuffix\" \"quote\" \"squote\" \"cat\" \"indent\" \"nindent\" \"replace\" \"plural\" \"snakecase\" \"camelcase\"\r\n    \"kebabcase\" \"swapcase\" \"shuffle\" \"toStrings\" \"toDecimal\" \"toJson\" \"mustToJson\" \"toPrettyJson\"\r\n    \"mustToPrettyJson\" \"toRawJson\" \"mustToRawJson\" \"fromYaml\" \"fromJson\" \"fromJsonArray\"\r\n    \"fromYamlArray\" \"toYaml\" \"regexMatch\" \"mustRegexMatch\" \"regexFindAll\" \"mustRegexFinDall\"\r\n    \"regexFind\" \"mustRegexFind\" \"regexReplaceAll\" \"mustRegexReplaceAll\" \"regexReplaceAllLiteral\"\r\n    \"mustRegexReplaceAllLiteral\" \"regexSplit\" \"mustRegexSplit\" \"sha1sum\" \"sha256sum\" \"adler32sum\"\r\n    \"htpasswd\" \"derivePassword\" \"genPrivateKey\" \"buildCustomCert\" \"genCA\" \"genSelfSignedCert\"\r\n    \"genSignedCert\" \"encryptAES\" \"decryptAES\" \"now\" \"ago\" \"date\" \"dateInZone\" \"duration\"\r\n    \"durationRound\" \"unixEpoch\" \"dateModify\" \"mustDateModify\" \"htmlDate\" \"htmlDateInZone\" \"toDate\"\r\n    \"mustToDate\" \"dict\" \"get\" \"set\" \"unset\" \"hasKey\" \"pluck\" \"dig\" \"merge\" \"mustMerge\"\r\n    \"mergeOverwrite\" \"mustMergeOverwrite\" \"keys\" \"pick\" \"omit\" \"values\" \"deepCopy\" \"mustDeepCopy\"\r\n    \"b64enc\" \"b64dec\" \"b32enc\" \"b32dec\" \"list\" \"first\" \"mustFirst\" \"rest\" \"mustRest\" \"last\"\r\n    \"mustLast\" \"initial\" \"mustInitial\" \"append\" \"mustAppend\" \"prepend\" \"mustPrepend\" \"concat\"\r\n    \"reverse\" \"mustReverse\" \"uniq\" \"mustUniq\" \"without\" \"mustWithout\" \"has\" \"mustHas\" \"compact\"\r\n    \"mustCompact\" \"index\" \"slice\" \"mustSlice\" \"until\" \"untilStep\" \"seq\" \"add\" \"add1\" \"sub\" \"div\"\r\n    \"mod\" \"mul\" \"max\" \"min\" \"len\" \"addf\" \"add1f\" \"subf\" \"divf\" \"mulf\" \"maxf\" \"minf\" \"floor\" \"ceil\"\r\n    \"round\" \"getHostByName\" \"base\" \"dir\" \"clean\" \"ext\" \"isAbs\" \"kindOf\" \"kindIs\" \"typeOf\" \"typeIs\"\r\n    \"typeIsLike\" \"deepequal\" \"semver\" \"semverCompare\" \"urlParse\" \"urlJoin\" \"urlquery\" \"lookup\"\r\n    \"include\")\r\n  )\r\n```\r\n\r\n- `:InspectTree`\r\n\r\n### Expected behavior\r\n\r\nI expect the tree to be \r\n```scheme\r\n(program [1, 0] - [29, 0]\r\n  (comment [1, 0] - [1, 19])\r\n  (named_node [2, 0] - [28, 3]\r\n    name: (identifier [2, 1] - [2, 14])\r\n    (field_definition [3, 2] - [3, 42]\r\n      name: (identifier [3, 2] - [3, 10])\r\n      (named_node [3, 12] - [3, 42]\r\n        name: (identifier [3, 13] - [3, 23])\r\n        (capture [3, 25] - [3, 42]\r\n          name: (identifier [3, 26] - [3, 42]))))\r\n    (predicate [4, 2] - [27, 14]\r\n      name: (identifier [4, 4] - [4, 10])\r\n      type: (predicate_type [4, 10] - [4, 11])\r\n      parameters: (parameters [4, 12] - [27, 13]\r\n        (capture [4, 12] - [4, 29]\r\n          name: (identifier [4, 13] - [4, 29]))\r\n        (string [5, 4] - [5, 9])\r\n        ; bunch of strings here\r\n        (string [27, 4] - [27, 13])))))\r\n```\r\n\r\nInstead, with Neovim, the result is\r\n\r\n```scheme\r\n(program ; [0, 0] - [28, 0]\r\n  (comment) ; [0, 0] - [0, 19]\r\n  (list ; [1, 0] - [27, 3]\r\n    (symbol) ; [1, 1] - [1, 14]\r\n    (symbol) ; [2, 2] - [2, 11]\r\n    (list ; [2, 12] - [2, 24]\r\n      (symbol)) ; [2, 13] - [2, 23]\r\n    (symbol) ; [2, 25] - [2, 42]\r\n    (list ; [3, 2] - [26, 14]\r\n      (ERROR) ; [3, 3] - [3, 11]\r\n      (symbol) ; [3, 12] - [3, 29]\r\n      (string) ; [4, 4] - [4, 9]\r\n      ; bunch of strings\r\n      (string)))) ; [26, 4] - [26, 13]\r\n```\r\n\r\n### Neovim version (nvim -v)\r\n\r\n0.10.0 commit 0d553c83474b8d024d74e9f66b77dc62380241ef\r\n\r\n### Vim (not Nvim) behaves the same?\r\n\r\nNo\r\n\r\n### Operating system/version\r\n\r\nLinux 6.7.6\r\n\r\n### Terminal name/version\r\n\r\nkitty 0.32.2\r\n\r\n### $TERM environment variable\r\n\r\nxterm-kitty\r\n\r\n### Installation\r\n\r\nbuild from source",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [],
     "comments": 0,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/27705/comments",
@@ -36,7 +37,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 607,
+        "closed_issues": 686,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -56,19 +57,20 @@
             "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/justinmk"
+            "url": "https://api.github.com/users/justinmk",
+            "user_view_type": "public"
         },
-        "description": "Low priority. Not planned for the current target, may be reassigned.",
+        "description": "Low priority items. We plan to work on this but don't have a target date.",
         "due_on": null,
         "html_url": "https://github.com/neovim/neovim/milestone/6",
         "id": 655037,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 527,
+        "open_issues": 635,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2024-04-22T11:35:03Z",
+        "updated_at": "2025-01-21T00:09:37Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM6BCBUR",
@@ -89,9 +91,14 @@
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "open",
     "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/27705/timeline",
     "title": "Treesitter query parser incorrectly parses predicate with many strings",
-    "updated_at": "2024-04-19T15:18:04Z",
+    "updated_at": "2025-01-19T11:28:30Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/27705",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/29790821?v=4",
@@ -111,6 +118,7 @@
         "starred_url": "https://api.github.com/users/lucario387/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/lucario387/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/lucario387"
+        "url": "https://api.github.com/users/lucario387",
+        "user_view_type": "public"
     }
 }

@@ -3,8 +3,9 @@
     "assignee": null,
     "assignees": [],
     "author_association": "MEMBER",
-    "body": "# Problem:\r\n\r\n1. Nvim core could be improved to make it easier for plugins to implement reliable autocompletion.\r\n    - _via @echasnovski in https://github.com/neovim/neovim/issues/24661#issuecomment-1764712654_ :\r\n      > When it comes to auto-completion, my main struggles implementing 'mini.completion' (as far as I remember) were at least these ones:\r\n      > - Finding a good way to automatically start timer to later trigger showing completion. The best approach was to use `InsertCharPre` event, but I vaguely remember it having annoying downsides. For example, the text is not up to date as it is *before* inserting character, not after. There are also some notes in code about it being not enough to track any manual text change (it is not triggered after `<CR>`). So `InsertCharPost` might be helpful here.\r\n      > - Creating a custom completion dialog with `vim.fn.complete()` was problematic because it disappears after `<BS>`. So I had to resort to using more native `omnifunc`/`completefunc` and emulate them with `vim.api.nvim_feedkeys()`.\r\n    - How can something like LSP provide \"trigger chars\" on-demand to the completion function?\r\n    - LSP specifies a \"re-trigger\" mechanism. The server can indicate that the completion result set is incomplete. In that case the client should trigger again after the user entered more characters. [ref](https://github.com/neovim/neovim/pull/24661#pullrequestreview-1680339857)\r\n    - Do we need a new option like 'completetriggers' which is a function that \"resolves\" the trigger chars on-demand?\r\n        - Note: LSP has \"context\" fields which let the server distinguish between a auto-retrigger and a manual invocation from the user. This implies that a 'completetriggers' option is too simplistic.\r\n    - debounce to avoid server overload. [ref](https://github.com/neovim/neovim/pull/24661#pullrequestreview-1680339857)\r\n    - [more...](https://github.com/neovim/neovim/pull/20671#issuecomment-1288080374)\r\n2. Nvim doesn't have autocompletion out of the box (user must explicitly invoke `ctrl-x ctrl-o` instead of just typing \"trigger characters\" such as `.`, `->`, …).\r\n\r\n# Solution:\r\n\r\n1. Provide primitives to fix (1).\r\n2. After fixing (1), include a very minimal autocompletion plugin.\r\n    - [mini.completion](https://github.com/echasnovski/mini.completion) has been working well in my personal testing, so far.\r\n\r\nFrom https://github.com/neovim/neovim/pull/24661#issuecomment-1764776159 : \r\n\r\n> Broadly speaking, for a working decently generalizable and user-friendly auto-completion functionality in core, there should be:\r\n> \r\n> * Generalizable and user-friendly way to automatically start the completion. This can be as straightforward as a callback that is called on every user input. Inside it should take care of deciding whether to start completion (now or later) and actually starting it.\r\n> * Generalizable and user-friendly way to display completion items. There is a `complete()`, but it has downsides described earlier. So a built-in 'completefunc' approach is the only option right with the balance of being usable without too much complications. Also, custom matching would be a welcome addition. I vaguely remember some work in vim/vim for this, but not sure the status of it.\r\n\r\n",
+    "body": "# Problem:\n\n1. Nvim core could be improved to make it easier for plugins to implement reliable autocompletion.\n    - _via @echasnovski in https://github.com/neovim/neovim/issues/24661#issuecomment-1764712654_ :\n      > When it comes to auto-completion, my main struggles implementing 'mini.completion' (as far as I remember) were at least these ones:\n      > - Finding a good way to automatically start timer to later trigger showing completion. The best approach was to use `InsertCharPre` event, but I vaguely remember it having annoying downsides. For example, the text is not up to date as it is *before* inserting character, not after. There are also some notes in code about it being not enough to track any manual text change (it is not triggered after `<CR>`). So `InsertCharPost` might be helpful here.\n      > - Creating a custom completion dialog with `vim.fn.complete()` was problematic because it disappears after `<BS>`. So I had to resort to using more native `omnifunc`/`completefunc` and emulate them with `vim.api.nvim_feedkeys()`.\n    - How can something like LSP provide \"trigger chars\" on-demand to the completion function?\n    - LSP specifies a \"re-trigger\" mechanism. The server can indicate that the completion result set is incomplete. In that case the client should trigger again after the user entered more characters. [ref](https://github.com/neovim/neovim/pull/24661#pullrequestreview-1680339857)\n    - Do we need a new option like 'completetriggers' which is a function that \"resolves\" the trigger chars on-demand?\n        - Note: LSP has \"context\" fields which let the server distinguish between a auto-retrigger and a manual invocation from the user. This implies that a 'completetriggers' option is too simplistic.\n    - debounce to avoid server overload. [ref](https://github.com/neovim/neovim/pull/24661#pullrequestreview-1680339857)\n    - [more...](https://github.com/neovim/neovim/pull/20671#issuecomment-1288080374)\n2. Nvim doesn't have autocompletion out of the box (user must explicitly invoke `ctrl-x ctrl-o` instead of just typing \"trigger characters\" such as `.`, `->`, …).\n3. No standard interface for (passively) defining a \"completion source\". https://github.com/neovim/neovim/issues/32123\n\n# Solution:\n\n1. Provide primitives to fix (1).\n2. Introduce primitive for defining a \"completion source\". https://github.com/neovim/neovim/issues/32123\n3. After fixing (1), include a very minimal autocompletion plugin.    - [mini.completion](https://github.com/echasnovski/mini.completion) has been working well in my personal testing, so far.\n\nFrom https://github.com/neovim/neovim/pull/24661#issuecomment-1764776159 : \n\n> Broadly speaking, for a working decently generalizable and user-friendly auto-completion functionality in core, there should be:\n> \n> * Generalizable and user-friendly way to automatically start the completion. This can be as straightforward as a callback that is called on every user input. Inside it should take care of deciding whether to start completion (now or later) and actually starting it.\n> * Generalizable and user-friendly way to display completion items. There is a `complete()`, but it has downsides described earlier. So a built-in 'completefunc' approach is the only option right with the balance of being usable without too much complications. Also, custom matching would be a welcome addition. I vaguely remember some work in vim/vim for this, but not sure the status of it.\n\n",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "NONE",
@@ -27,7 +28,7 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1764809004/reactions"
             },
-            "updated_at": "2023-10-16T16:04:25Z",
+            "updated_at": "2025-01-20T13:55:09Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1764809004",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/1154912?v=4",
@@ -47,11 +48,12 @@
                 "starred_url": "https://api.github.com/users/heygarrett/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/heygarrett/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/heygarrett"
+                "url": "https://api.github.com/users/heygarrett",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "CONTRIBUTOR",
+            "author_association": "MEMBER",
             "body": "> I cobbled together [my own auto-completion](https://github.com/heygarrett/.config/blob/fb6a6f10c9aae5f9783809549134726f48510548/nvim/lua/my/settings/lsp/completion.lua) at one point and found solutions to some of these problems.\r\n> \r\n> > The best approach was to use InsertCharPre event, but I vaguely remember it having annoying downsides. For example, the text is not up to date as it is before inserting character, not after. There are also some notes in code about it being not enough to track any manual text change (it is not triggered after ). So InsertCharPost might be helpful here.\r\n> \r\n> I also ran into issues with InsertCharPre, but TextChangedI ended up working well.\r\n\r\nThere are at least issues with `TextChangedI`:\r\n- It doesn't only trigger when user types, which I think is the most reasonable time to trigger autocompletion. For example, it triggers on pasting and deleting text.\r\n- It doesn't provide an easy way to look into the latest type character. It is useful to implement basic rule to decide if completion should be triggered or not.\r\n\r\n> > Finding a good way to automatically start timer to later trigger showing completion.\r\n> \r\n> It's probably not the most conventional option, but I just created a global timer variable. On TextChangedI I'd stop the timer if one exists. Then, if the trigger pattern matches, I'd create a timer that triggers completion.\r\n\r\nYeah, that is a good solution for delayed triggering. Only timer might be reused with `start()` - `stop()` methods, no need to always create new timers.",
             "created_at": "2023-10-16T16:09:54Z",
             "html_url": "https://github.com/neovim/neovim/issues/25670#issuecomment-1764818903",
@@ -91,7 +93,8 @@
                 "starred_url": "https://api.github.com/users/echasnovski/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/echasnovski/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/echasnovski"
+                "url": "https://api.github.com/users/echasnovski",
+                "user_view_type": "public"
             }
         },
         {
@@ -115,7 +118,7 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1764942874/reactions"
             },
-            "updated_at": "2023-10-16T17:27:24Z",
+            "updated_at": "2025-01-20T14:02:45Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1764942874",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/27911493?v=4",
@@ -135,11 +138,12 @@
                 "starred_url": "https://api.github.com/users/mortezadadgar/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/mortezadadgar/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/mortezadadgar"
+                "url": "https://api.github.com/users/mortezadadgar",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "CONTRIBUTOR",
+            "author_association": "MEMBER",
             "body": "> I vaguely remember some work in vim/vim for this, but not sure the status of it.\r\n\r\nI was wrong. I thought about #12620.",
             "created_at": "2023-10-16T17:48:15Z",
             "html_url": "https://github.com/neovim/neovim/issues/25670#issuecomment-1764978416",
@@ -179,7 +183,8 @@
                 "starred_url": "https://api.github.com/users/echasnovski/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/echasnovski/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/echasnovski"
+                "url": "https://api.github.com/users/echasnovski",
+                "user_view_type": "public"
             }
         },
         {
@@ -223,7 +228,8 @@
                 "starred_url": "https://api.github.com/users/glepnir/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/glepnir/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/glepnir"
+                "url": "https://api.github.com/users/glepnir",
+                "user_view_type": "public"
             }
         }
     ],
@@ -266,7 +272,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 593,
+        "closed_issues": 686,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -286,26 +292,27 @@
             "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/justinmk"
+            "url": "https://api.github.com/users/justinmk",
+            "user_view_type": "public"
         },
-        "description": "Low priority. Not planned for the current target, may be reassigned.",
+        "description": "Low priority items. We plan to work on this but don't have a target date.",
         "due_on": null,
         "html_url": "https://github.com/neovim/neovim/milestone/6",
         "id": 655037,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 427,
+        "open_issues": 635,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2023-12-07T14:58:09Z",
+        "updated_at": "2025-01-21T00:09:37Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM5z9iT-",
     "number": 25670,
     "performed_via_github_app": null,
     "reactions": {
-        "+1": 0,
+        "+1": 2,
         "-1": 0,
         "confused": 0,
         "eyes": 0,
@@ -313,15 +320,20 @@
         "hooray": 0,
         "laugh": 0,
         "rocket": 0,
-        "total_count": 0,
+        "total_count": 2,
         "url": "https://api.github.com/repos/neovim/neovim/issues/25670/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "open",
     "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 2
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/25670/timeline",
     "title": "completion: better support for autocompletion (improve completion \"primitives\")",
-    "updated_at": "2023-12-15T05:47:20Z",
+    "updated_at": "2025-01-20T14:02:45Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/25670",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -341,6 +353,7 @@
         "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/justinmk"
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
     }
 }

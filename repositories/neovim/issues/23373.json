@@ -5,6 +5,7 @@
     "author_association": "NONE",
     "body": "### Problem\n\nThere is a basic problem regarding being able to override tree-sitter queries from the user configuration directory. [This](https://github.com/neovim/neovim/issues/20172) issue triggered a [PR](https://github.com/neovim/neovim/pull/20105) to add the `extends` keyword in `.scm` query files.\r\n\r\nHowever, the `extends` keyword is not sufficient when there is a conflict with old and extending queries, as I will show. The alternative is to [programmatically](https://github.com/nvim-treesitter/nvim-treesitter/issues/3058) override the query with another file.\r\n\r\nMy proposal to avoid having to use lua code to override the `nvim-treesitter` query files with user files in `after/query/*/*.scm` would be to add another keyword: `; replace` or `; override`, so the system could simply change the file loading precedence that happens in `/usr/share/nvim/runtime/lua/vim/treesitter/query.lua:M.get_files(lang,\r\nquery_name, is_included)`, which prefers the first file unless `; extends` is used in other files.\r\n\r\nThis is a simple example that shows the problematic behavior:\r\n\r\n`nvim --version` is `NVIM v0.9.1-dev-54+g66a196c95`\r\n\r\n`init.vim`\r\n```lua\r\n-- bootstrap lazy.nvim\r\nlocal lazypath = vim.fn.stdpath(\"data\") .. \"/lazy/lazy.nvim\"\r\nif not vim.loop.fs_stat(lazypath) then\r\n  vim.fn.system({\r\n    \"git\",\r\n    \"clone\",\r\n    \"--filter=blob:none\",\r\n    \"https://github.com/folke/lazy.nvim.git\",\r\n    \"--branch=stable\", -- latest stable release\r\n    lazypath,\r\n  })\r\nend\r\nvim.opt.rtp:prepend(lazypath)\r\n-- end of bootstrap\r\n\r\nlocal plugins = {\r\n  {\r\n    'nvim-treesitter/nvim-treesitter',\r\n    build = function()\r\n      pcall(require('nvim-treesitter.install').update({ with_sync = true }))\r\n    end,\r\n  },\r\n  'nvim-treesitter/playground',\r\n}\r\n\r\nlocal opts = {}\r\n\r\n-- Load plugins\r\nrequire(\"lazy\").setup(plugins, opts)\r\n\r\n-- Configuration\r\n\r\nrequire'nvim-treesitter.configs'.setup {\r\n  -- A list of parser names, or \"all\" (the five listed parsers should always be installed)\r\n  ensure_installed = { \"markdown\" },\r\n\r\n  -- Install parsers synchronously (only applied to `ensure_installed`)\r\n  sync_install = false,\r\n\r\n  -- Automatically install missing parsers when entering buffer\r\n  -- Recommendation: set to false if you don't have `tree-sitter` CLI installed locally\r\n  auto_install = true,\r\n\r\n  highlight = {\r\n    enable = true,\r\n    additional_vim_regex_highlighting = false,\r\n  },\r\n  playground = {\r\n    enable = true,\r\n    disable = {},\r\n    updatetime = 25, -- Debounced time for highlighting nodes in the playground from source code\r\n    persist_queries = false, -- Whether the query persists across vim sessions\r\n    keybindings = {\r\n      toggle_query_editor = 'o',\r\n      toggle_hl_groups = 'i',\r\n      toggle_injected_languages = 't',\r\n      toggle_anonymous_nodes = 'a',\r\n      toggle_language_display = 'I',\r\n      focus_language = 'f',\r\n      unfocus_language = 'F',\r\n      update = 'R',\r\n      goto_node = '<cr>',\r\n      show_help = '?',\r\n    },\r\n  },\r\n}\r\n\r\nvim.o.termguicolors = true\r\n\r\nvim.keymap.set('', '<F10>', '<cmd>TSHighlightCapturesUnderCursor<cr>', {desc = 'treesitter highlighting group of char under cursor'} )\r\n\r\nrequire(\"utils\").load_theme()\r\n```\r\n\r\n`~/.config/nvim/after/queries/markdown/highlights.scm`\r\n```\r\n; extends\r\n(atx_heading (atx_h1_marker)) @TSMarkdownHeaderLevel1\r\n(atx_heading (atx_h2_marker)) @TSMarkdownHeaderLevel2\r\n```\r\n\r\n`~/.config/nvim/lua/utils.lua`\r\n```lua\r\nlocal M = {}\r\n\r\nlocal function override_query(lang, query_name, file)\r\n  -- Read file into string\r\n  local f, err = io.open(file, \"r\")\r\n  if f then\r\n    local text = f:read(\"*a\")\r\n    f:close()\r\n    vim.treesitter.query.set(lang, query_name, text)\r\n  else\r\n    error(err)\r\n  end\r\nend\r\n\r\nfunction M.load_theme()\r\n  local colors = {\r\n    head1 = '#4f97d7',\r\n    head2 = '#2d9574',\r\n    title = '#ff0000',\r\n    punctuation = \"#00ff00\",\r\n  }\r\n\r\n  -- Highlight groups\r\n  vim.api.nvim_set_hl(0, \"@text.title\", { fg = colors.title })\r\n  vim.api.nvim_set_hl(0, \"@punctuation.special\", { fg = colors.punctuation })\r\n\r\n  vim.api.nvim_set_hl(0, \"@TSMarkdownHeaderLevel1\", { fg = colors.head1, bold = true })\r\n  vim.api.nvim_set_hl(0, \"@TSMarkdownHeaderLevel2\", { fg = colors.head2, bold = true })\r\nend\r\n\r\nfunction M.override_query(lang, query_name)\r\n  override_query(lang, query_name, vim.fn.stdpath(\"config\") .. \"/after/queries/\" .. lang .. \"/\" .. query_name .. \".scm\")\r\n  -- restart tree-sitter\r\n  vim.treesitter.start(vim.fn.bufnr(), lang)\r\nend\r\n\r\nreturn M\r\n```\r\n\r\n`headers.md`\r\n``` markdown\r\n# Level1\r\n\r\n## Level2\r\n```\r\n\r\nTo reproduce, run\r\n`nvim headers.md`\r\n\r\nPressing `F10` you can inspect the highlight captures, and `; extends` creates some conflicts of precedence.\r\n\r\nTo overcome this problem, you need to set the query file programmatically, like this:\r\n\r\n`:lua require('utils').override_query(\"markdown\", \"highlights\")`\r\n\n\n### Expected behavior\n\nI would like a new *keyword* like `; extends`, with a proper name, maybe `; replace` or `; override` that users can write at the top of their configuration `after/queries/*` files to replace any query file the system has loaded, being from Neovim's runtime or plugins like `nvim-treesitter`.\r\n\r\nThis should be quite simple to add and would allow users to create their own queries, for highlighting or other purposes, like `after/syntax` ft plugins work without the need to use lua.",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -47,7 +48,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -91,7 +93,8 @@
                 "starred_url": "https://api.github.com/users/NullVoxPopuli/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/NullVoxPopuli/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/NullVoxPopuli"
+                "url": "https://api.github.com/users/NullVoxPopuli",
+                "user_view_type": "public"
             }
         },
         {
@@ -135,7 +138,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         }
     ],
@@ -169,7 +173,7 @@
     "locked": true,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 601,
+        "closed_issues": 686,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -189,19 +193,20 @@
             "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/justinmk"
+            "url": "https://api.github.com/users/justinmk",
+            "user_view_type": "public"
         },
-        "description": "Low priority. Not planned for the current target, may be reassigned.",
+        "description": "Low priority items. We plan to work on this but don't have a target date.",
         "due_on": null,
         "html_url": "https://github.com/neovim/neovim/milestone/6",
         "id": 655037,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 424,
+        "open_issues": 635,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2024-02-12T15:43:47Z",
+        "updated_at": "2025-01-21T00:09:37Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM5kpR9n",
@@ -222,9 +227,14 @@
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "open",
     "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/23373/timeline",
     "title": "Keyword to override (replace) tree-sitter queries from user configuration directory",
-    "updated_at": "2024-02-08T21:12:22Z",
+    "updated_at": "2025-01-17T15:30:38Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/23373",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/47487972?v=4",
@@ -244,6 +254,7 @@
         "starred_url": "https://api.github.com/users/dawsers/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/dawsers/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/dawsers"
+        "url": "https://api.github.com/users/dawsers",
+        "user_view_type": "public"
     }
 }

@@ -2,9 +2,10 @@
     "active_lock_reason": null,
     "assignee": null,
     "assignees": [],
-    "author_association": "MEMBER",
+    "author_association": "CONTRIBUTOR",
     "body": "There is a known issue both with Vim and Neovim: if you write an endless loop inside `:lua` then it can’t be interrupted. The lua itself handles the problem by simply running the following\r\n\r\n```C\r\nstatic void lstop (lua_State *L, lua_Debug *ar) {\r\n  (void)ar;  /* unused arg. */\r\n  lua_sethook(L, NULL, 0, 0);\r\n  luaL_error(L, \"interrupted!\");\r\n}\r\n\r\n\r\nstatic void laction (int i) {\r\n  signal(i, SIG_DFL); /* if another SIGINT happens before lstop,\r\n                              terminate process (default action) */\r\n  lua_sethook(globalL, lstop, LUA_MASKCALL | LUA_MASKRET | LUA_MASKCOUNT, 1);\r\n}\r\n```\r\n\r\n\r\nat SIGINT handler: apparently lua authors are feeling lucky because this code is not really reentrant (handler should not be called in the middle of `signal()` call). We can do something similar:\r\n\r\n```\r\n/// Hook used to interrupt current lua code\r\n///\r\n/// @param[in]  lstate  Lua state.\r\n/// @param[in]  ar  Debugging information, unused.\r\nstatic void nlua_interrupt_hook(lua_State *const lstate, lua_Debug *const ar)\r\n  FUNC_ATTR_NONNULL_ALL\r\n{\r\n  lua_sethook(lstate, NULL, 0, 0);\r\n  luaL_error(lstate, \"interrupted!\");\r\n}\r\n\r\n/// Currently running lua interpreter state\r\n///\r\n/// NULL if lua is not running or if it was already interrupted.\r\nvolatile lua_State *volatile running_lstate = NULL;\r\n\r\n/// Interrupt currently running lua interpreter\r\n///\r\n/// To be used from interrupt handler. Code derived from lua signal handlers.\r\nvoid nlua_interrupt(void)\r\n{\r\n  lua_State *const lstate = (lua_State *)running_lstate;\r\n  running_lstate = NULL;\r\n  if (lstate != NULL) {\r\n    lua_sethook(lstate, nlua_interrupt_hook,\r\n                LUA_MASKCALL | LUA_MASKRET | LUA_MASKCOUNT, 1);\r\n  }\r\n}\r\n\r\n/// Like lua_pcall, but set running_lstate before entering and reset it at exit\r\n///\r\n/// Does not have errfunc argument because it is not used.\r\n///\r\n/// @param  lstate  Lua interpreter state.\r\n/// @param[in]  nargs  Number of arguments to the called function.\r\n/// @param[in]  nresults  Number of expected results.\r\n///\r\n/// @return true if errored out, false otherwise.\r\nbool nlua_pcall(lua_State *const lstate, const int nargs, const int nresults)\r\n  FUNC_ATTR_NONNULL_ALL\r\n{\r\n  lua_State *const saved_lstate = running_lstate;\r\n  assert(saved_lstate == running_lstate || saved_lstate == NULL);\r\n  running_lstate = lstate;\r\n  const bool ret = (bool)lua_pcall(lstate, nargs, nresults, 0);\r\n  running_lstate = saved_lstate;\r\n  return ret;\r\n}\r\n```\r\n\r\nand call `nlua_interrupt` in `process_interrupts`, but this is not only not reentrant this is also not thread-safe (which lua authors can’t be bothered with because their handler is for single-threaded applications). Since we are apparently not handling actual SIGINT thread safety may *partially* be protected by mutexes I think.\r\n\r\nThe question: would it be fine to work with this like the following:\r\n\r\n1. Replace all `lua_pcall` calls with `nlua_pcall`.\r\n2. Add `nlua_interrupt` call.\r\n3. Add a mutex to `nlua_interrupt` and `nlua_pcall`. Note: when I said “partially” I meant that while input thread is calling `nlua_interrupt()` main thread may call `debug.sethook` (this is why pointer semantically has two `volatile` there: volatile pointer to volatile memory) and I can protect only `running_lstate` (volatile pointer, not volatile memory) manipulations.\r\n\r\nor do somebody have other ideas? Currently I may only suggest additionally mocking `debug.sethook` to use the mutex as well, but `lua_sethook` calls can’t be protected like this. AFAIR both calls should be rare though.\r\n\r\nNote that `lua_sethook` is as simple as\r\n\r\n```C\r\n#define resethookcount(L)    (L->hookcount = L->basehookcount)\r\nLUA_API int lua_sethook (lua_State *L, lua_Hook func, int mask, int count) {\r\n  if (func == NULL || mask == 0) {  /* turn off hooks? */\r\n    mask = 0;\r\n    func = NULL;\r\n  }\r\n  L->hook = func;\r\n  L->basehookcount = count;\r\n  resethookcount(L);\r\n  L->hookmask = cast_byte(mask);\r\n  return 1;\r\n}\r\n```\r\n\r\n, though I have not checked luajit sources yet.",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -47,7 +48,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         }
     ],
@@ -99,7 +101,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 601,
+        "closed_issues": 686,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -119,19 +121,20 @@
             "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/justinmk"
+            "url": "https://api.github.com/users/justinmk",
+            "user_view_type": "public"
         },
-        "description": "Low priority. Not planned for the current target, may be reassigned.",
+        "description": "Low priority items. We plan to work on this but don't have a target date.",
         "due_on": null,
         "html_url": "https://github.com/neovim/neovim/milestone/6",
         "id": 655037,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 515,
+        "open_issues": 635,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2024-04-01T02:46:11Z",
+        "updated_at": "2025-01-21T00:09:37Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "MDU6SXNzdWUyMzA4NzU5Mzg=",
@@ -152,9 +155,14 @@
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "open",
     "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/6800/timeline",
     "title": "Lua: interrupt / cancel Lua code",
-    "updated_at": "2024-03-30T13:11:07Z",
+    "updated_at": "2025-01-17T16:03:09Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/6800",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/322097?v=4",
@@ -174,6 +182,7 @@
         "starred_url": "https://api.github.com/users/ZyX-I/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/ZyX-I/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/ZyX-I"
+        "url": "https://api.github.com/users/ZyX-I",
+        "user_view_type": "public"
     }
 }
