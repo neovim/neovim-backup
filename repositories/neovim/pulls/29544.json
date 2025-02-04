@@ -22,13 +22,13 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/29544"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/464473aad235a898cf4d69462098faeeec831ba4"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/5e0b873f8d358552c7886dfc22981ef509302555"
         }
     },
     "active_lock_reason": null,
     "assignee": null,
     "assignees": [],
-    "author_association": "FIRST_TIME_CONTRIBUTOR",
+    "author_association": "CONTRIBUTOR",
     "auto_merge": null,
     "base": {
         "label": "neovim:master",
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 5646,
-            "forks_count": 5646,
+            "forks": 5841,
+            "forks_count": 5841,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1800,
-            "open_issues_count": 1800,
+            "open_issues": 1854,
+            "open_issues_count": 1854,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -114,15 +114,16 @@
                 "starred_url": "https://api.github.com/users/neovim/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/neovim/subscriptions",
                 "type": "Organization",
-                "url": "https://api.github.com/users/neovim"
+                "url": "https://api.github.com/users/neovim",
+                "user_view_type": "public"
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2024-10-15T01:40:54Z",
+            "pushed_at": "2025-02-04T02:07:35Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 289049,
+            "size": 307298,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 82517,
+            "stargazers_count": 85859,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -140,14 +141,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2024-10-15T02:03:54Z",
+            "updated_at": "2025-02-04T02:07:39Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 82517,
-            "watchers_count": 82517,
+            "watchers": 85859,
+            "watchers_count": 85859,
             "web_commit_signoff_required": false
         },
-        "sha": "3c53e8f78511d6db9a6c804e5a479ba38c33102d",
+        "sha": "0985e784d8dce58748343207e176bf61303b7d68",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -166,11 +167,12 @@
             "starred_url": "https://api.github.com/users/neovim/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/neovim/subscriptions",
             "type": "Organization",
-            "url": "https://api.github.com/users/neovim"
+            "url": "https://api.github.com/users/neovim",
+            "user_view_type": "public"
         }
     },
     "body": "Fix #25526.\r\n\r\nProblem:\r\nAutocmd with `once=true` that calls itself would enter a recursion loop since callback runs before aucmd's deletion.\r\nThe suggested fix does not work because deletion of autocmd breaks the reference needed in the callback function.\r\n\r\nSolution:\r\nModify the aucmd's variable to have a NULL pattern. This makes it impossible to enter a recursion with once=true.\r\nAfter callback, restore the original variable and continue to the regular deletion.",
-    "closed_at": null,
+    "closed_at": "2025-02-02T00:25:38Z",
     "comment_data": [
         {
             "_links": {
@@ -186,7 +188,7 @@
             },
             "author_association": "MEMBER",
             "body": "`ac` can be invalidated by the callback at this point, access through `kv_A(*acs, apc->auidx)`.",
-            "commit_id": "464473aad235a898cf4d69462098faeeec831ba4",
+            "commit_id": "5e0b873f8d358552c7886dfc22981ef509302555",
             "created_at": "2024-07-03T13:07:55Z",
             "diff_hunk": "@@ -2104,12 +2104,20 @@ char *getnextac(int c, void *cookie, int indent, bool do_concat)\n \n   char *retval;\n   if (ac->exec.type == CALLABLE_CB) {\n+    AutoCmd ac_copy = *ac;\n+\n+    if (oneshot) {\n+      ac->pat = NULL; // Assign NULL to prevent calling autocommand with once=true again\n+    }\n+\n     // Can potentially reallocate kvec_t data and invalidate the ac pointer\n-    if (call_autocmd_callback(ac, apc)) {\n+    if (call_autocmd_callback(&ac_copy, apc)) {\n       // If an autocommand callback returns true, delete the autocommand\n       oneshot = true;\n     }\n \n+    ac->pat = ac_copy.pat; // Restore aucmd reference",
             "html_url": "https://github.com/neovim/neovim/pull/29544#discussion_r1664164853",
@@ -237,7 +239,216 @@
                 "starred_url": "https://api.github.com/users/ii14/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ii14/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ii14"
+                "url": "https://api.github.com/users/ii14",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/29544#discussion_r1938358102"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/29544"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1938358102"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "What is \"Added autocommands\"?",
+            "commit_id": "5e0b873f8d358552c7886dfc22981ef509302555",
+            "created_at": "2025-02-01T22:36:51Z",
+            "diff_hunk": "@@ -250,6 +250,23 @@ describe('autocmd', function()\n        --- Autocommands ---]]),\n       fn.execute('autocmd Tabnew')\n     )\n+\n+    --\n+    -- :autocmd does not recursively call ++once Lua handlers.\n+    --\n+    exec_lua [[\n+      vim.g.count = 0\n+      vim.api.nvim_create_autocmd('User', {\n+        once = true,\n+        pattern = nil,\n+        callback = function()\n+          vim.g.count = vim.g.count + 1\n+          vim.api.nvim_exec_autocmds('User', { pattern = nil })\n+        end,\n+      })\n+      vim.api.nvim_exec_autocmds('User', { pattern = nil })\n+    ]]\n+    eq(1, eval('g:count')) -- Added autocommands should not be executed",
+            "html_url": "https://github.com/neovim/neovim/pull/29544#discussion_r1938358102",
+            "id": 1938358102,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5ziP9W",
+            "original_commit_id": "e9655ea9346e0cfb1d86fec31be3a24340d76097",
+            "original_line": 269,
+            "original_position": 47,
+            "original_start_line": null,
+            "path": "test/functional/autocmd/autocmd_spec.lua",
+            "position": null,
+            "pull_request_review_id": 2588422957,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/29544",
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1938358102/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-02-01T22:36:51Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1938358102",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+                "followers_url": "https://api.github.com/users/zeertzjq/followers",
+                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/zeertzjq",
+                "id": 35768171,
+                "login": "zeertzjq",
+                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+                "repos_url": "https://api.github.com/users/zeertzjq/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/29544#discussion_r1938358328"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/29544"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1938358328"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "that's a copy paste. i'll cleanup this test.",
+            "commit_id": "5e0b873f8d358552c7886dfc22981ef509302555",
+            "created_at": "2025-02-01T22:38:51Z",
+            "diff_hunk": "@@ -250,6 +250,23 @@ describe('autocmd', function()\n        --- Autocommands ---]]),\n       fn.execute('autocmd Tabnew')\n     )\n+\n+    --\n+    -- :autocmd does not recursively call ++once Lua handlers.\n+    --\n+    exec_lua [[\n+      vim.g.count = 0\n+      vim.api.nvim_create_autocmd('User', {\n+        once = true,\n+        pattern = nil,\n+        callback = function()\n+          vim.g.count = vim.g.count + 1\n+          vim.api.nvim_exec_autocmds('User', { pattern = nil })\n+        end,\n+      })\n+      vim.api.nvim_exec_autocmds('User', { pattern = nil })\n+    ]]\n+    eq(1, eval('g:count')) -- Added autocommands should not be executed",
+            "html_url": "https://github.com/neovim/neovim/pull/29544#discussion_r1938358328",
+            "id": 1938358328,
+            "in_reply_to_id": 1938358102,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5ziQA4",
+            "original_commit_id": "e9655ea9346e0cfb1d86fec31be3a24340d76097",
+            "original_line": 269,
+            "original_position": 47,
+            "original_start_line": null,
+            "path": "test/functional/autocmd/autocmd_spec.lua",
+            "position": null,
+            "pull_request_review_id": 2588423354,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/29544",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1938358328/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-02-01T22:38:51Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1938358328",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/29544#discussion_r1938362794"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/29544"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1938362794"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Why is `vim.g.count = 0` run twice?",
+            "commit_id": "5e0b873f8d358552c7886dfc22981ef509302555",
+            "created_at": "2025-02-01T23:13:01Z",
+            "diff_hunk": "@@ -250,6 +250,25 @@ describe('autocmd', function()\n        --- Autocommands ---]]),\n       fn.execute('autocmd Tabnew')\n     )\n+\n+    --\n+    -- :autocmd does not recursively call ++once Lua handlers.\n+    --\n+    exec_lua [[vim.g.count = 0]]\n+    eq(0, eval('g:count'))\n+    exec_lua [[\n+      vim.g.count = 0",
+            "html_url": "https://github.com/neovim/neovim/pull/29544#discussion_r1938362794",
+            "id": 1938362794,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM5ziRGq",
+            "original_commit_id": "328a0742dfe555bcb1310ab58dd323683d5c24ab",
+            "original_line": 260,
+            "original_position": 38,
+            "original_start_line": 257,
+            "path": "test/functional/autocmd/autocmd_spec.lua",
+            "position": null,
+            "pull_request_review_id": 2588427545,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/29544",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1938362794/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2025-02-01T23:13:01Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1938362794",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+                "followers_url": "https://api.github.com/users/zeertzjq/followers",
+                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/zeertzjq",
+                "id": 35768171,
+                "login": "zeertzjq",
+                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+                "repos_url": "https://api.github.com/users/zeertzjq/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
             }
         }
     ],
@@ -283,7 +494,8 @@
                 "starred_url": "https://api.github.com/users/ii14/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ii14/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ii14"
+                "url": "https://api.github.com/users/ii14",
+                "user_view_type": "public"
             }
         },
         {
@@ -327,7 +539,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -371,7 +584,53 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "Pushed a fixup.",
+            "created_at": "2025-02-01T20:04:15Z",
+            "html_url": "https://github.com/neovim/neovim/pull/29544#issuecomment-2629092373",
+            "id": 2629092373,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/29544",
+            "node_id": "IC_kwDOAPphoM6ctMQV",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2629092373/reactions"
+            },
+            "updated_at": "2025-02-01T20:04:15Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2629092373",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         }
     ],
@@ -464,13 +723,14 @@
                 "starred_url": "https://api.github.com/users/Vinschers/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/Vinschers/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/Vinschers"
+                "url": "https://api.github.com/users/Vinschers",
+                "user_view_type": "public"
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/Vinschers/neovim/pulls{/number}",
-            "pushed_at": "2024-07-06T03:21:33Z",
+            "pushed_at": "2025-02-01T23:51:54Z",
             "releases_url": "https://api.github.com/repos/Vinschers/neovim/releases{/id}",
-            "size": 270155,
+            "size": 298407,
             "ssh_url": "git@github.com:Vinschers/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/Vinschers/neovim/stargazers",
@@ -489,7 +749,7 @@
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "464473aad235a898cf4d69462098faeeec831ba4",
+        "sha": "5e0b873f8d358552c7886dfc22981ef509302555",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/42344207?v=4",
             "events_url": "https://api.github.com/users/Vinschers/events{/privacy}",
@@ -508,7 +768,8 @@
             "starred_url": "https://api.github.com/users/Vinschers/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/Vinschers/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/Vinschers"
+            "url": "https://api.github.com/users/Vinschers",
+            "user_view_type": "public"
         }
     },
     "html_url": "https://github.com/neovim/neovim/pull/29544",
@@ -526,11 +787,11 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "d1c74eac125dab32e43775db35643842f0c6c1fe",
-    "merged_at": null,
+    "merge_commit_sha": "289c9d21cb91ec6c47496230ca49eef42a04250c",
+    "merged_at": "2025-02-02T00:25:38Z",
     "milestone": {
         "closed_at": null,
-        "closed_issues": 77,
+        "closed_issues": 151,
         "created_at": "2023-12-07T23:09:35Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -550,19 +811,20 @@
             "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/justinmk"
+            "url": "https://api.github.com/users/justinmk",
+            "user_view_type": "public"
         },
         "description": "",
-        "due_on": "2024-12-25T08:00:00Z",
+        "due_on": "2025-03-15T07:00:00Z",
         "html_url": "https://github.com/neovim/neovim/milestone/41",
         "id": 10283236,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/41/labels",
         "node_id": "MI_kwDOAPphoM4AnOjk",
         "number": 41,
-        "open_issues": 56,
+        "open_issues": 33,
         "state": "open",
         "title": "0.11",
-        "updated_at": "2024-10-13T21:06:14Z",
+        "updated_at": "2025-02-03T09:10:02Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/41"
     },
     "node_id": "PR_kwDOAPphoM50QC7w",
@@ -572,10 +834,10 @@
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/29544/comments",
-    "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/464473aad235a898cf4d69462098faeeec831ba4",
+    "state": "closed",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/5e0b873f8d358552c7886dfc22981ef509302555",
     "title": "fix(autocmds): prevent autocmds with once=true from calling itself",
-    "updated_at": "2024-10-09T11:22:59Z",
+    "updated_at": "2025-02-02T00:25:38Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/29544",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/42344207?v=4",
@@ -595,6 +857,7 @@
         "starred_url": "https://api.github.com/users/Vinschers/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/Vinschers/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/Vinschers"
+        "url": "https://api.github.com/users/Vinschers",
+        "user_view_type": "public"
     }
 }

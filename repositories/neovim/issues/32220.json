@@ -4,8 +4,28 @@
     "assignees": [],
     "author_association": "CONTRIBUTOR",
     "body": "### Problem\n\nIf a file has a modeline `vim:ft=help`, changing filetype raises E31 errors:\n```\nError detected while processing FileType Autocommands for \"*\"..function <SNR>1_LoadFTPlugin[2]..modelines[1]..FileType Autocommands for \"*\"..function <SNR>1_LoadFTPlugin:\nline    2:\nE31: No such mapping\nE31: No such mapping\n```\n\nwhich must come from https://github.com/neovim/neovim/blob/c7d4a77ff9040c8b242f9d12a98472fe6217328c/runtime/ftplugin/help.lua#L85\n\nThis does not occur when ft is set to help but not by modeline.\n\n### Steps to reproduce\n\n```\necho 'vim:ft=help' | nvim --clean -\n:set ft=\n```\n\n### Expected behavior\n\nE31 is not issued.\n\n### Nvim version (nvim -v)\n\nv0.11.0-dev-c7d4a77ff904\n\n### Vim (not Nvim) behaves the same?\n\nno, vim 9.1.1043\n\n### Operating system/version\n\nEndeavourOS\n\n### Terminal name/version\n\nGNOME Terminal 3.54.3 using VTE 0.78.3 +BIDI +GNUTLS +ICU +SYSTEMD\n\n### $TERM environment variable\n\nxterm-256color\n\n### Installation\n\nbuild from repo",
-    "closed_at": null,
-    "closed_by": null,
+    "closed_at": "2025-01-29T08:02:50Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/2361214?v=4",
+        "events_url": "https://api.github.com/users/clason/events{/privacy}",
+        "followers_url": "https://api.github.com/users/clason/followers",
+        "following_url": "https://api.github.com/users/clason/following{/other_user}",
+        "gists_url": "https://api.github.com/users/clason/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/clason",
+        "id": 2361214,
+        "login": "clason",
+        "node_id": "MDQ6VXNlcjIzNjEyMTQ=",
+        "organizations_url": "https://api.github.com/users/clason/orgs",
+        "received_events_url": "https://api.github.com/users/clason/received_events",
+        "repos_url": "https://api.github.com/users/clason/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/clason",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -54,7 +74,7 @@
         },
         {
             "author_association": "CONTRIBUTOR",
-            "body": "All the ftplugins prepend `silent!` to unmapping, except for\nhttps://github.com/neovim/neovim/blob/c7d4a77ff9040c8b242f9d12a98472fe6217328c/runtime/ftplugin/help.lua#L85\nand\nhttps://github.com/neovim/neovim/blob/c7d4a77ff9040c8b242f9d12a98472fe6217328c/runtime/ftplugin/gitrebase.vim#L45.\n\n\nnvim fails to change filetype and unmap in case of help:\n\n```\necho 'vim:ft=help' | nvim --clean -\n:nmap g==\n\" n  g==         *@<Lua 84: /tmp/nvim.CcX1Ip/share/nvim/runtime/ftplugin/help.lua:72>\n:set ft=\n:set ft?\n\"   filetype=help\n:nmap g==\n\" n  g==         *@<Lua 83: /tmp/nvim.CcX1Ip/share/nvim/runtime/ftplugin/help.lua:72>\n```\n\neven if `sil!` is prepended, say\n```diff\n--- a/runtime/ftplugin/help.lua\n+++ b/runtime/ftplugin/help.lua\n@@ -84,3 +84,3 @@ end, { buffer = true })\n vim.b.undo_ftplugin = (vim.b.undo_ftplugin or '')\n-  .. '\\n exe \"nunmap <buffer> gO\" | exe \"nunmap <buffer> g==\"'\n+  .. '\\n sil! exe \"nunmap <buffer> gO\" | sil! exe \"nunmap <buffer> g==\"'\n vim.b.undo_ftplugin = vim.b.undo_ftplugin .. ' | call v:lua.vim.treesitter.stop()'\n```\n\nHoewever, unsetting filetype of gitrebase does not raise E31, and change of filetype and unmapping are successful:\n\n```\necho '# vim:ft=gitrebase' | nvim --clean -\n:nmap <C-A>\n\" n  <C-A>       *@:<C-U><C-R>=v:count1<CR>Cycle<CR>\n:set ft=\n:set ft?\n\"  filetype=\n:nmap <C-A>\n\" No mapping found\n```",
+            "body": "All the ftplugins prepend `silent!` to unmapping, except for\nhttps://github.com/neovim/neovim/blob/c7d4a77ff9040c8b242f9d12a98472fe6217328c/runtime/ftplugin/help.lua#L85\nand\nhttps://github.com/neovim/neovim/blob/c7d4a77ff9040c8b242f9d12a98472fe6217328c/runtime/ftplugin/gitrebase.vim#L45.\n\n\nnvim fails to change filetype and unmap in case of help:\n\n```\necho 'vim:ft=help' | nvim --clean -\n:nmap g==\n\" n  g==         *@<Lua 84: /tmp/nvim.CcX1Ip/share/nvim/runtime/ftplugin/help.lua:72>\n:set ft=\n:set ft?\n\"   filetype=help\n:nmap g==\n\" n  g==         *@<Lua 83: /tmp/nvim.CcX1Ip/share/nvim/runtime/ftplugin/help.lua:72>\n```\n\neven if `sil!` is prepended, say\n```diff\n--- a/runtime/ftplugin/help.lua\n+++ b/runtime/ftplugin/help.lua\n@@ -84,3 +84,3 @@ end, { buffer = true })\n vim.b.undo_ftplugin = (vim.b.undo_ftplugin or '')\n-  .. '\\n exe \"nunmap <buffer> gO\" | exe \"nunmap <buffer> g==\"'\n+  .. '\\n sil! exe \"nunmap <buffer> gO\" | sil! exe \"nunmap <buffer> g==\"'\n vim.b.undo_ftplugin = vim.b.undo_ftplugin .. ' | call v:lua.vim.treesitter.stop()'\n```\n\nHowever, unsetting filetype of gitrebase does not raise E31, and change of filetype and unmapping are successful:\n\n```\necho '# vim:ft=gitrebase' | nvim --clean -\n:nmap <C-A>\n\" n  <C-A>       *@:<C-U><C-R>=v:count1<CR>Cycle<CR>\n:set ft=\n:set ft?\n\"  filetype=\n:nmap <C-A>\n\" No mapping found\n```",
             "created_at": "2025-01-28T02:11:11Z",
             "html_url": "https://github.com/neovim/neovim/issues/32220#issuecomment-2617576377",
             "id": 2617576377,
@@ -73,7 +93,7 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2617576377/reactions"
             },
-            "updated_at": "2025-01-28T02:11:11Z",
+            "updated_at": "2025-01-28T04:21:19Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2617576377",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/11627708?v=4",
@@ -96,9 +116,54 @@
                 "url": "https://api.github.com/users/e-kwsm",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "`vim.treesitter.stop` in `b:undo_ftplugin` invokes `TSHighlighter:destroy`, which executes `syntaxset` `FileType` autocommands.\n\nThat causes the modeline to be processed again, which sets `&filetype` back to `help`, `b:undo_ftplugin` tries to clear the mappings again but fails, and `&filetype` remains as `help` from the 2nd processing of the modeline.\n\nMaybe `modeline = false` should be added to `nvim_exec_autocmds` in `TSHighlighter:destroy` instead.",
+            "created_at": "2025-01-28T11:06:08Z",
+            "html_url": "https://github.com/neovim/neovim/issues/32220#issuecomment-2618683233",
+            "id": 2618683233,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/32220",
+            "node_id": "IC_kwDOAPphoM6cFe9h",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 3,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 3,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2618683233/reactions"
+            },
+            "updated_at": "2025-01-28T11:16:30Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2618683233",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/6256228?v=4",
+                "events_url": "https://api.github.com/users/seandewar/events{/privacy}",
+                "followers_url": "https://api.github.com/users/seandewar/followers",
+                "following_url": "https://api.github.com/users/seandewar/following{/other_user}",
+                "gists_url": "https://api.github.com/users/seandewar/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/seandewar",
+                "id": 6256228,
+                "login": "seandewar",
+                "node_id": "MDQ6VXNlcjYyNTYyMjg=",
+                "organizations_url": "https://api.github.com/users/seandewar/orgs",
+                "received_events_url": "https://api.github.com/users/seandewar/received_events",
+                "repos_url": "https://api.github.com/users/seandewar/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/seandewar/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/seandewar/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/seandewar",
+                "user_view_type": "public"
+            }
         }
     ],
-    "comments": 2,
+    "comments": 3,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/32220/comments",
     "created_at": "2025-01-27T06:48:16Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/32220/events",
@@ -137,7 +202,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 690,
+        "closed_issues": 691,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -167,10 +232,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 630,
+        "open_issues": 634,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2025-01-27T15:57:25Z",
+        "updated_at": "2025-02-03T17:13:43Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM6nnvKb",
@@ -189,8 +254,8 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/32220/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "sub_issues_summary": {
         "completed": 0,
         "percent_completed": 0,
@@ -198,7 +263,7 @@
     },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/32220/timeline",
     "title": "b:undo_ftplugin unmapping fails when filetype is changed from help set via modeline",
-    "updated_at": "2025-01-28T02:14:26Z",
+    "updated_at": "2025-01-29T08:02:51Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/32220",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/11627708?v=4",
