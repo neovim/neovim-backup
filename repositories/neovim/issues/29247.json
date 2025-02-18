@@ -186,9 +186,54 @@
                 "url": "https://api.github.com/users/har5ha",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "NONE",
+            "body": "I did some investigation into this issue, and it appears to stem from the fact that bang commands are handled in a different process than Neovim. You can test this yourself by running `nvim .` in one terminal window and `ps aux | grep nvim` in another. Note that `ps aux` lists two different processes `nvim .` and `nvim --embed .` \n\nCalling `kill -s SIGWINCH some_pid_123` on the primary `nvim .` process triggers a redraw, and Neovim will render at the full, correct width. Calling the same command, but with the PID of the `nvim --embed .` process should fail. You can doubly confirm this by calling `:!echo $PPID` from inside Neovim and cross-reference the given PID with the PID of the secondary `nvim --embed .` process.\n\nHere's a solution -- in a couple different flavors -- that I devised to resolve/work around this (I added them at the end of my config, but idk if that matters):\n\nFirst, get the parent process ID and store it in some variable\n```lua\nif not vim.env.NVIM_PARENT_PID then\n  vim.env.NVIM_PARENT_PID = tostring(vim.loop.os_getppid()) \nend\n```\nThen, call sigwinch on the parent process ID in one of the following ways\n```lua\n-- option A:\nvim.cmd 'autocmd VimEnter * :silent exec \"!kill -s SIGWINCH \" . $NVIM_PARENT_PID'\n\n-- option B: (my preference)\nvim.loop.kill(tonumber(vim.env.NVIM_PARENT_PID), \"sigwinch\")\n```\n\nThis doesn't further fix the issue natively, but hopefully helps anyone who's sick of manually resizing their terminal window like I am. ",
+            "created_at": "2025-02-17T05:12:22Z",
+            "html_url": "https://github.com/neovim/neovim/issues/29247#issuecomment-2662074968",
+            "id": 2662074968,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/29247",
+            "node_id": "IC_kwDOAPphoM6erApY",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2662074968/reactions"
+            },
+            "updated_at": "2025-02-17T15:36:28Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2662074968",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/40328432?v=4",
+                "events_url": "https://api.github.com/users/DZappala/events{/privacy}",
+                "followers_url": "https://api.github.com/users/DZappala/followers",
+                "following_url": "https://api.github.com/users/DZappala/following{/other_user}",
+                "gists_url": "https://api.github.com/users/DZappala/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/DZappala",
+                "id": 40328432,
+                "login": "DZappala",
+                "node_id": "MDQ6VXNlcjQwMzI4NDMy",
+                "organizations_url": "https://api.github.com/users/DZappala/orgs",
+                "received_events_url": "https://api.github.com/users/DZappala/received_events",
+                "repos_url": "https://api.github.com/users/DZappala/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/DZappala/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/DZappala/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/DZappala",
+                "user_view_type": "public"
+            }
         }
     ],
-    "comments": 4,
+    "comments": 5,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/29247/comments",
     "created_at": "2024-06-09T09:08:00Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/29247/events",
@@ -241,8 +286,8 @@
         "total": 0
     },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/29247/timeline",
-    "title": "Neovim(nvim) doesn't resize to full terminal width upon opening",
-    "updated_at": "2025-01-19T11:19:31Z",
+    "title": "nvim doesn't resize to full terminal width upon opening",
+    "updated_at": "2025-02-17T15:36:28Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/29247",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/135051?v=4",
