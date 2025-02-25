@@ -4,8 +4,28 @@
     "assignees": [],
     "author_association": "CONTRIBUTOR",
     "body": "### Problem\n\nWhen `foldexpr` is set to `v:lua.vim.treesitter.foldexpr()`, and the default SwapExists autocmd is disabled, a redraw while the SwapExists prompt is on screen can break treesitter highlighting and folding.\n\nSimilar to #32210, with the same bisected first bad commit of 48e2a73610ca5639408f79b3d8eebd3e5f57a327.\n\nFor context, I'm hacking on [resession.nvim](https://github.com/stevearc/resession.nvim), a session management plugin, and I'm testing whether my changes work nicely with the SwapExists prompt, which is why I'm finding these fairly edge case bugs 😄 \n\n### Steps to reproduce\n\n1. Save the below config script as `minimal.lua`\n2. Run `vim minimal.lua` (**not** using `-u minimal.lua`, this is just to create a swapfile for `minimal.lua`)\n3. Open a second terminal window, without closing the first one\n4. Run `nvim --clean -u minimal.lua` in the second terminal window\n5. Wait 1 second for the scheduled `vim.api.nvim__redraw()`  (the \"Found a swap file...\" message will disappear)\n6. Press `e` to Edit anyway (sidenote... if you hit `a` to Abort here, nvim crashes with `.../src/nvim/api/private/helpers.c:127: try_leave: Assertion '*msg_list == NULL' failed.`)\n7. Observe both treesitter highlighting and folding is broken.\n\n```lua\nvim.opt.foldmethod = \"expr\"\nvim.opt.foldexpr = \"v:lua.vim.treesitter.foldexpr()\"\n\nvim.api.nvim_del_augroup_by_name(\"nvim.swapfile\")\n\nvim.api.nvim_create_autocmd(\"VimEnter\", {\n  callback = function()\n    local bufnr1 = vim.fn.bufadd(\"README.md\")\n    local bufnr2 = vim.fn.bufadd(\"minimal.lua\")\n    -- Without this, only folds break. This is because when folds\n    -- are recalculated after the redraw, the filetype will be empty\n    -- and so the cached FoldInfo won't have a parser set.\n    -- (This is a separate issue)\n    vim.bo[bufnr2].filetype = \"lua\"\n\n    vim.cmd.edit(\"README.md\")\n    vim.defer_fn(function()\n      -- This is from runtime/lua/vim/lsp/semantic_tokens.lua:383\n      -- Commenting that line out fixes the actual issue I'm getting,\n      -- and this is emulating that without having to set up an LSP.\n      -- What happens is that the LSP sends a semantic token update\n      -- notification for the first buffer while the SwapExists message\n      -- is on screen. That then triggers this redraw, which causes\n      -- folds to be recalculated for the second buffer before it is\n      -- properly loaded in, breaking treesitter.\n      vim.api.nvim__redraw({ buf = bufnr1, valid = true })\n    end, 1000)\n    -- the pcall() is just to prevent throwing the \"Vim:E325\" error\n    pcall(vim.cmd.edit, \"minimal.lua\")\n  end,\n  nested = true,\n})\n\n```\n\n### Expected behavior\n\nHighlighting/folds should not break. The cached FoldInfo should also be invalidated when the filetype is changed, since the parser is taken from the filetype.\n\nIt also isn't ideal that a redraw hides the \"Found a swap file...\" message completely - this should remain on screen.\n\nFor the main issue, I tried this simple fix:\n```diff\ndiff --git a/runtime/lua/vim/treesitter/_fold.lua b/runtime/lua/vim/treesitter/_fold.lua\nindex 38318347a7..951db310dc 100644\n--- a/runtime/lua/vim/treesitter/_fold.lua\n+++ b/runtime/lua/vim/treesitter/_fold.lua\n@@ -377,6 +377,9 @@ end\n function M.foldexpr(lnum)\n   lnum = lnum or vim.v.lnum\n   local bufnr = api.nvim_get_current_buf()\n+  if not api.nvim_buf_is_loaded(bufnr) then\n+    return '0'\n+  end\n \n   if not foldinfos[bufnr] then\n     foldinfos[bufnr] = FoldInfo.new(bufnr)\n```\n\nBut `nvim_buf_is_loaded` seems to return true even though the `:edit minimal.lua` command has not yet returned. Not sure if that is intentional behaviour or not.\n\nFor the second FoldInfo cache invalidation issue, simply adding `FileType` to the autocmd below does the trick:\n```diff\ndiff --git a/runtime/lua/vim/treesitter/_fold.lua b/runtime/lua/vim/treesitter/_fold.lua\nindex 38318347a7..e920f3b14a 100644\n--- a/runtime/lua/vim/treesitter/_fold.lua\n+++ b/runtime/lua/vim/treesitter/_fold.lua\n@@ -380,7 +380,7 @@ function M.foldexpr(lnum)\n \n   if not foldinfos[bufnr] then\n     foldinfos[bufnr] = FoldInfo.new(bufnr)\n-    api.nvim_create_autocmd({ 'BufUnload', 'VimEnter' }, {\n+    api.nvim_create_autocmd({ 'BufUnload', 'FileType', 'VimEnter' }, {\n       buffer = bufnr,\n       once = true,\n       callback = function()\n```\n\n### Nvim version (nvim -v)\n\nv0.11.0-dev-1704+g6db830e40e\n\n### Vim (not Nvim) behaves the same?\n\nN/A\n\n### Operating system/version\n\nArch Linux\n\n### Terminal name/version\n\nalacritty 0.15.0\n\n### $TERM environment variable\n\nalacritty\n\n### Installation\n\nAUR",
-    "closed_at": null,
-    "closed_by": null,
+    "closed_at": "2025-02-19T18:11:56Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/2361214?v=4",
+        "events_url": "https://api.github.com/users/clason/events{/privacy}",
+        "followers_url": "https://api.github.com/users/clason/followers",
+        "following_url": "https://api.github.com/users/clason/following{/other_user}",
+        "gists_url": "https://api.github.com/users/clason/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/clason",
+        "id": 2361214,
+        "login": "clason",
+        "node_id": "MDQ6VXNlcjIzNjEyMTQ=",
+        "organizations_url": "https://api.github.com/users/clason/orgs",
+        "received_events_url": "https://api.github.com/users/clason/received_events",
+        "repos_url": "https://api.github.com/users/clason/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/clason",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "CONTRIBUTOR",
@@ -101,7 +121,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 157,
+        "closed_issues": 178,
         "created_at": "2023-12-07T23:09:35Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -131,10 +151,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/41/labels",
         "node_id": "MI_kwDOAPphoM4AnOjk",
         "number": 41,
-        "open_issues": 35,
+        "open_issues": 37,
         "state": "open",
         "title": "0.11",
-        "updated_at": "2025-02-10T18:21:49Z",
+        "updated_at": "2025-02-24T10:09:33Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/41"
     },
     "node_id": "I_kwDOAPphoM6pFvwW",
@@ -153,8 +173,8 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/32359/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "sub_issues_summary": {
         "completed": 0,
         "percent_completed": 0,
@@ -162,7 +182,7 @@
     },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/32359/timeline",
     "title": "Redraw during SwapExists prompt breaks treesitter highlighting and folds",
-    "updated_at": "2025-02-07T00:00:29Z",
+    "updated_at": "2025-02-19T18:11:57Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/32359",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/49614525?v=4",

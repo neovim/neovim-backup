@@ -4,8 +4,28 @@
     "assignees": [],
     "author_association": "CONTRIBUTOR",
     "body": "### Problem\n\nWhen getting `textDocument/inlayHint`s that are at the end of a line from a server it seems that when you remove that line, it will remove any inlay hints that were before the end, but then the last one at the end of the line still remains when it shouldn't.\n\n\n\n### Steps to reproduce using \"nvim -u minimal_init.lua\"\n\nYou can reproduce this, but you'd need a few things installed\n\n- The Scala language server [Metals](https://scalameta.org/metals/) (most easily done with [cs install metals](https://get-coursier.io/))\n- create a `inlay.worksheet.sc` file (the name is important so it matches the minimal conf)\n\nInside of these file you can have the following:\n\n`inlay.worksheet.sc`\n\n```scala\nval x = 3\n\nx * 3\n```\n\nThe minimal init file looks like this:\n\n```lua\nlocal pattern = 'scala'\nlocal cmd = { 'metals' }\n-- Add files/folders here that indicate the root of a project\nlocal root_markers = { 'inlay.worksheet.sc' }\n\nlocal settings = {\n  metals = {\n    enableSemanticHighlighting = false,\n    showInferredType = true\n  }\n}\n\nvim.api.nvim_create_autocmd('FileType', {\n  pattern = pattern,\n  callback = function(args)\n    local match = vim.fs.find(root_markers, { path = args.file, upward = true })[1]\n    local root_dir = match and vim.fn.fnamemodify(match, ':p:h') or nil\n    vim.lsp.start({\n      name = 'metals',\n      cmd = cmd,\n      root_dir = root_dir,\n      settings = settings\n    })\n  end\n})\n```\n\nNow open the file and let Metals fully load everything. Once completed you can do `:lua vim.lsp.inlay_hint.enable(true)` which will show you 3 inlay hints. One for the inferred type and 2 for the evaluations. It should look like this:\n\n<img width=\"253\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/12e482ba-9b42-442e-a483-4aba049ad717\" />\n\nNow, if you just delete fully the first line and save the buffer you'll see the first evaluation tied to the line that was just deleted is still there.\n\n<img width=\"194\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/1a8c58c8-3eff-4d62-952b-d112d4987a2b\" />\n\nAlso note that in this situation if you do a `:lua vim.print(vim.lsp.inlay_hint.get({bufnr = 0}))` you'll get `{}` as the result. So there shouldn't be any inlay hints still being displayed, but both evaluations are still there.\n\n### Expected behavior\n\nWhen a user deletes a line, I'd expect _all_ of the inlay hints related to that line to be removed. Also if the server responds with no inlay hints, the client shouldn't keep this stale state. I think this is the same as the other issue I created in https://github.com/neovim/neovim/issues/32248 however the differing part here is that even before saving I think if you delete a line of text from a buffer it should remove all of the inlay hints, even at the end of the line. My guess is what is happening here is that all inlay hints that fall within the range of the text is removed, however this one falls outside of that range because it's at the end of the line. But that's just a guess.\n\n### Nvim version (nvim -v)\n\nv0.11.0-dev-1666+gf3381a8b64\n\n### Language server name/version\n\nMetals 0.5.1\n\n### Operating system/version\n\nHappens on multiple OS's\n\n### Log file\n\n_No response_",
-    "closed_at": null,
-    "closed_by": null,
+    "closed_at": "2025-02-23T16:48:10Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+        "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+        "followers_url": "https://api.github.com/users/justinmk/followers",
+        "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+        "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/justinmk",
+        "id": 1359421,
+        "login": "justinmk",
+        "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+        "organizations_url": "https://api.github.com/users/justinmk/orgs",
+        "received_events_url": "https://api.github.com/users/justinmk/received_events",
+        "repos_url": "https://api.github.com/users/justinmk/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -89,8 +109,8 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/32283/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "sub_issues_summary": {
         "completed": 0,
         "percent_completed": 0,
@@ -98,7 +118,7 @@
     },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/32283/timeline",
     "title": "LSP: `textDocument/inlayHint` at the end of a line not being removed when the line is deleted",
-    "updated_at": "2025-02-02T00:45:49Z",
+    "updated_at": "2025-02-23T16:48:10Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/32283",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/13974112?v=4",
