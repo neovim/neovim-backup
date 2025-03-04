@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 5531,
-            "forks_count": 5531,
+            "forks": 5909,
+            "forks_count": 5909,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1778,
-            "open_issues_count": 1778,
+            "open_issues": 1872,
+            "open_issues_count": 1872,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -114,15 +114,16 @@
                 "starred_url": "https://api.github.com/users/neovim/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/neovim/subscriptions",
                 "type": "Organization",
-                "url": "https://api.github.com/users/neovim"
+                "url": "https://api.github.com/users/neovim",
+                "user_view_type": "public"
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2024-08-20T01:30:37Z",
+            "pushed_at": "2025-03-03T23:37:14Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 282327,
+            "size": 310907,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 80980,
+            "stargazers_count": 86843,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -140,11 +141,11 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2024-08-20T00:20:26Z",
+            "updated_at": "2025-03-04T02:27:02Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 80980,
-            "watchers_count": 80980,
+            "watchers": 86843,
+            "watchers_count": 86843,
             "web_commit_signoff_required": false
         },
         "sha": "c69ea53c9d73a29f504043cc38d4e9fac076f93b",
@@ -166,7 +167,8 @@
             "starred_url": "https://api.github.com/users/neovim/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/neovim/subscriptions",
             "type": "Organization",
-            "url": "https://api.github.com/users/neovim"
+            "url": "https://api.github.com/users/neovim",
+            "user_view_type": "public"
         }
     },
     "body": "This PR adds a single commit on top of #29632.\r\n\r\n------\r\n\r\nProblem: calling `vim.filetype.match()` has performance bottleneck in\r\n  that it has to match a lot of Lua patterns against several versions of\r\n  input file name. This might be the problem if users need to call it\r\n  synchronously a lot of times.\r\n\r\nSolution: add \"parent pattern pre-matching\" which can be used to quickly\r\n  reject several potential pattern matches at (usually rare) cost of\r\n  adding time for one extra Lua pattern match.\r\n\r\n  \"Parent pattern\" is a manually added/tracked grouping of filetype\r\n  patterns which should have two properties:\r\n    - Match at least the same set of strings as its filetype patterns.\r\n      But not too much more.\r\n    - Be fast to match.\r\n\r\n  For them to be effective, group should consist from at least three\r\n  filetype patterns.\r\n\r\n  Example: for a filetpye pattern \".*/etc/a2ps/.*%.cfg\", both \"/etc/\"\r\n  and \"%.cfg\" are good parent patterns (prefer the one which can group\r\n  more filetype patterns).\r\n\r\n  After this commit, `vim.filetype.match()` on most inputs runs ~3.4\r\n  times faster (while some inputs may see less impact if they match\r\n  many parent patterns).\r\n\r\n------\r\n\r\nNotes:\r\n- There is more description about the \"fast pattern\" approach in the new section of 'dev_vimpatch.txt'\r\n- Technically, this can already be used in filetype patterns added via `vim.filetype.add()`, but it is left intentionally undocumented. If it will be decided as a good idea to document, then I'd happily do it (but I'd imagine it is not).\r\n- This is the (almost) the best I can do to optimize performance of `vim.filetype.match()` without breaking compatibility. The only other reasonable route I can think of is to add `skip_slow` flag to `vim.filetype.match()` options which would skip all pattern matching (and possibly content matching). This will not detect filetype for *some* files, but get somewhat faster execution in return (actual speedup is less significant after this PR).\r\n\r\n------\r\n\r\nProfiling results on some different `filename` inputs (computed in debug builds by measuring 10000 calls of `vim.filetype.match({ filename = 'xxx', buf = buf_id })` with empty buffer and taking median value; executed in '/home/user/repos/neovim' directory; \"before fastpat\" is recomputed today):\r\n\r\nFilename | Before fastpat | After fastpat |\r\n--------------|-----------|--------------|\r\ninit.lua | 0.107ms  | 0.030ms |\r\nno-match | 0.128ms | 0.037ms |\r\n/home/user/.config/hello/world/no-match | 0.201ms | 0.059ms |\r\n\r\n------\r\n\r\nInteresting details:\r\n\r\n<details><summary>Motivation on why optimizing pattern matching is the bottleneck</summary>\r\n\r\nHere is what `vim.filetype.match()` currently tries (in order):\r\n\r\n- Exact match for full name. Fast with table lookup (420 entries).\r\n- Exact match for basename/tail. Fast table lookup (420 entries).\r\n- Pattern match for 355 patterns with positive priority. *Very slow*, as each match is either `string.match()` for _both_ filename as typed and full path (majority of cases) or a single match for basename.\r\n- Extension match for computed extension. Fast table lookup (even with 1092+ entries).\r\n- Similar pattern match for 94 patterns with negative priority. Same method as for positive priority.\r\n- Match based on content.\r\n\r\nAs matching by extension is (arguably) the most common real world case, reducing execution time of mandatory matching of positive priority patterns is the best way to get overall performance improvement.\r\n\r\n</details>\r\n\r\n<details><summary>Summary of actually used fast patterns, separately for regular patterns with positive/negative priority and total</summary>\r\n\r\nFast pattern | Positive priority | Negative priority | All patterns |\r\n-------------|-------------------|-------------------|--------------|\r\n'/etc/'      |         79        |         24        |      103     |\r\n''           |         62        |         29        |      91      |\r\n'/log/'      |         77        |         0         |      77      |\r\n'/conf'      |         27        |         1         |      28      |\r\n'%.conf'     |         14        |         10        |      24      |\r\n'/systemd/'  |         17        |         0         |      17      |\r\n'utt'        |         7         |         10        |      17      |\r\n'file'       |         6         |         4         |      10      |\r\n'/%.'        |         8         |         1         |      9       |\r\n'^%.'        |         7         |         2         |      9       |\r\n'/usr/'      |         4         |         5         |      9       |\r\n'git/'       |         6         |         1         |      7       |\r\n'%.cfg'      |         6         |         0         |      6       |\r\n'bash'       |         5         |         0         |      5       |\r\n's6'         |         5         |         0         |      5       |\r\n'/debian/'   |         4         |         0         |      4       |\r\n'/var/'      |         4         |         0         |      4       |\r\n'cmus/'      |         4         |         0         |      4       |\r\n'fvwm'       |         0         |         4         |      4       |\r\n'nginx'      |         4         |         0         |      4       |\r\n'calendar/'  |         0         |         3         |      3       |\r\n'proj%.user$'|         3         |         0         |      3       |\r\n'sst%.meta'  |         3         |         0         |      3       |\r\n'require'    |         3         |         0         |      3       |\r\n\r\n</details>",
@@ -237,7 +239,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -305,7 +308,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -373,7 +377,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -441,7 +446,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -510,7 +516,8 @@
                 "starred_url": "https://api.github.com/users/echasnovski/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/echasnovski/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/echasnovski"
+                "url": "https://api.github.com/users/echasnovski",
+                "user_view_type": "public"
             }
         },
         {
@@ -579,7 +586,8 @@
                 "starred_url": "https://api.github.com/users/echasnovski/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/echasnovski/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/echasnovski"
+                "url": "https://api.github.com/users/echasnovski",
+                "user_view_type": "public"
             }
         },
         {
@@ -648,7 +656,8 @@
                 "starred_url": "https://api.github.com/users/echasnovski/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/echasnovski/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/echasnovski"
+                "url": "https://api.github.com/users/echasnovski",
+                "user_view_type": "public"
             }
         },
         {
@@ -717,7 +726,8 @@
                 "starred_url": "https://api.github.com/users/echasnovski/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/echasnovski/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/echasnovski"
+                "url": "https://api.github.com/users/echasnovski",
+                "user_view_type": "public"
             }
         },
         {
@@ -786,7 +796,8 @@
                 "starred_url": "https://api.github.com/users/echasnovski/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/echasnovski/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/echasnovski"
+                "url": "https://api.github.com/users/echasnovski",
+                "user_view_type": "public"
             }
         },
         {
@@ -855,7 +866,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -924,7 +936,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -992,7 +1005,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -1061,7 +1075,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -1130,7 +1145,8 @@
                 "starred_url": "https://api.github.com/users/echasnovski/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/echasnovski/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/echasnovski"
+                "url": "https://api.github.com/users/echasnovski",
+                "user_view_type": "public"
             }
         },
         {
@@ -1199,7 +1215,8 @@
                 "starred_url": "https://api.github.com/users/echasnovski/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/echasnovski/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/echasnovski"
+                "url": "https://api.github.com/users/echasnovski",
+                "user_view_type": "public"
             }
         },
         {
@@ -1268,7 +1285,8 @@
                 "starred_url": "https://api.github.com/users/echasnovski/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/echasnovski/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/echasnovski"
+                "url": "https://api.github.com/users/echasnovski",
+                "user_view_type": "public"
             }
         },
         {
@@ -1337,7 +1355,8 @@
                 "starred_url": "https://api.github.com/users/echasnovski/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/echasnovski/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/echasnovski"
+                "url": "https://api.github.com/users/echasnovski",
+                "user_view_type": "public"
             }
         },
         {
@@ -1406,7 +1425,8 @@
                 "starred_url": "https://api.github.com/users/echasnovski/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/echasnovski/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/echasnovski"
+                "url": "https://api.github.com/users/echasnovski",
+                "user_view_type": "public"
             }
         },
         {
@@ -1474,7 +1494,8 @@
                 "starred_url": "https://api.github.com/users/gpanders/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/gpanders/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/gpanders"
+                "url": "https://api.github.com/users/gpanders",
+                "user_view_type": "public"
             }
         },
         {
@@ -1542,7 +1563,8 @@
                 "starred_url": "https://api.github.com/users/gpanders/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/gpanders/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/gpanders"
+                "url": "https://api.github.com/users/gpanders",
+                "user_view_type": "public"
             }
         },
         {
@@ -1610,7 +1632,8 @@
                 "starred_url": "https://api.github.com/users/gpanders/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/gpanders/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/gpanders"
+                "url": "https://api.github.com/users/gpanders",
+                "user_view_type": "public"
             }
         },
         {
@@ -1679,7 +1702,8 @@
                 "starred_url": "https://api.github.com/users/echasnovski/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/echasnovski/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/echasnovski"
+                "url": "https://api.github.com/users/echasnovski",
+                "user_view_type": "public"
             }
         },
         {
@@ -1748,7 +1772,8 @@
                 "starred_url": "https://api.github.com/users/echasnovski/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/echasnovski/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/echasnovski"
+                "url": "https://api.github.com/users/echasnovski",
+                "user_view_type": "public"
             }
         },
         {
@@ -1817,7 +1842,8 @@
                 "starred_url": "https://api.github.com/users/echasnovski/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/echasnovski/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/echasnovski"
+                "url": "https://api.github.com/users/echasnovski",
+                "user_view_type": "public"
             }
         },
         {
@@ -1886,7 +1912,8 @@
                 "starred_url": "https://api.github.com/users/echasnovski/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/echasnovski/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/echasnovski"
+                "url": "https://api.github.com/users/echasnovski",
+                "user_view_type": "public"
             }
         },
         {
@@ -1954,7 +1981,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -2023,7 +2051,8 @@
                 "starred_url": "https://api.github.com/users/echasnovski/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/echasnovski/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/echasnovski"
+                "url": "https://api.github.com/users/echasnovski",
+                "user_view_type": "public"
             }
         }
     ],
@@ -2069,7 +2098,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -2113,7 +2143,8 @@
                 "starred_url": "https://api.github.com/users/echasnovski/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/echasnovski/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/echasnovski"
+                "url": "https://api.github.com/users/echasnovski",
+                "user_view_type": "public"
             }
         },
         {
@@ -2157,7 +2188,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -2201,7 +2233,8 @@
                 "starred_url": "https://api.github.com/users/echasnovski/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/echasnovski/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/echasnovski"
+                "url": "https://api.github.com/users/echasnovski",
+                "user_view_type": "public"
             }
         },
         {
@@ -2245,7 +2278,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -2289,7 +2323,8 @@
                 "starred_url": "https://api.github.com/users/echasnovski/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/echasnovski/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/echasnovski"
+                "url": "https://api.github.com/users/echasnovski",
+                "user_view_type": "public"
             }
         },
         {
@@ -2333,7 +2368,8 @@
                 "starred_url": "https://api.github.com/users/echasnovski/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/echasnovski/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/echasnovski"
+                "url": "https://api.github.com/users/echasnovski",
+                "user_view_type": "public"
             }
         },
         {
@@ -2377,7 +2413,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -2421,12 +2458,13 @@
                 "starred_url": "https://api.github.com/users/echasnovski/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/echasnovski/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/echasnovski"
+                "url": "https://api.github.com/users/echasnovski",
+                "user_view_type": "public"
             }
         },
         {
             "author_association": "MEMBER",
-            "body": "Only now noticed broken Windows test about symlinks. Turns out it was due to typo (`name:match(path)` instead of `name:match(path)`). Sigh... Should be all good now.",
+            "body": "Only now noticed broken Windows test about symlinks. Turns out it was due to typo (`name:match(path)` instead of `name:match(pat)`). Sigh... Should be all good now.",
             "created_at": "2024-07-13T14:59:40Z",
             "html_url": "https://github.com/neovim/neovim/pull/29660#issuecomment-2226942359",
             "id": 2226942359,
@@ -2445,7 +2483,7 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2226942359/reactions"
             },
-            "updated_at": "2024-07-13T14:59:40Z",
+            "updated_at": "2025-02-25T08:12:29Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2226942359",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/24854248?v=4",
@@ -2465,7 +2503,8 @@
                 "starred_url": "https://api.github.com/users/echasnovski/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/echasnovski/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/echasnovski"
+                "url": "https://api.github.com/users/echasnovski",
+                "user_view_type": "public"
             }
         },
         {
@@ -2509,7 +2548,8 @@
                 "starred_url": "https://api.github.com/users/echasnovski/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/echasnovski/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/echasnovski"
+                "url": "https://api.github.com/users/echasnovski",
+                "user_view_type": "public"
             }
         },
         {
@@ -2553,7 +2593,8 @@
                 "starred_url": "https://api.github.com/users/echasnovski/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/echasnovski/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/echasnovski"
+                "url": "https://api.github.com/users/echasnovski",
+                "user_view_type": "public"
             }
         }
     ],
@@ -2587,8 +2628,8 @@
             "downloads_url": "https://api.github.com/repos/echasnovski/neovim/downloads",
             "events_url": "https://api.github.com/repos/echasnovski/neovim/events",
             "fork": true,
-            "forks": 0,
-            "forks_count": 0,
+            "forks": 1,
+            "forks_count": 1,
             "forks_url": "https://api.github.com/repos/echasnovski/neovim/forks",
             "full_name": "echasnovski/neovim",
             "git_commits_url": "https://api.github.com/repos/echasnovski/neovim/git/commits{/sha}",
@@ -2646,13 +2687,14 @@
                 "starred_url": "https://api.github.com/users/echasnovski/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/echasnovski/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/echasnovski"
+                "url": "https://api.github.com/users/echasnovski",
+                "user_view_type": "public"
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/echasnovski/neovim/pulls{/number}",
-            "pushed_at": "2024-08-18T16:45:00Z",
+            "pushed_at": "2025-02-26T14:22:43Z",
             "releases_url": "https://api.github.com/repos/echasnovski/neovim/releases{/id}",
-            "size": 277588,
+            "size": 303027,
             "ssh_url": "git@github.com:echasnovski/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/echasnovski/neovim/stargazers",
@@ -2664,7 +2706,7 @@
             "teams_url": "https://api.github.com/repos/echasnovski/neovim/teams",
             "topics": [],
             "trees_url": "https://api.github.com/repos/echasnovski/neovim/git/trees{/sha}",
-            "updated_at": "2024-08-18T12:38:40Z",
+            "updated_at": "2025-02-26T14:22:50Z",
             "url": "https://api.github.com/repos/echasnovski/neovim",
             "visibility": "public",
             "watchers": 0,
@@ -2690,7 +2732,8 @@
             "starred_url": "https://api.github.com/users/echasnovski/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/echasnovski/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/echasnovski"
+            "url": "https://api.github.com/users/echasnovski",
+            "user_view_type": "public"
         }
     },
     "html_url": "https://github.com/neovim/neovim/pull/29660",
@@ -2721,7 +2764,7 @@
     "state": "closed",
     "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/634a4dc6e66d111d67b31d1a9b02945f75d51f4f",
     "title": "perf(filetype): implement parent pattern pre-matching",
-    "updated_at": "2024-08-19T15:46:35Z",
+    "updated_at": "2025-02-25T08:12:29Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/29660",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/24854248?v=4",
@@ -2741,6 +2784,7 @@
         "starred_url": "https://api.github.com/users/echasnovski/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/echasnovski/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/echasnovski"
+        "url": "https://api.github.com/users/echasnovski",
+        "user_view_type": "public"
     }
 }

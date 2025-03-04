@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 5893,
-            "forks_count": 5893,
+            "forks": 5909,
+            "forks_count": 5909,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1874,
-            "open_issues_count": 1874,
+            "open_issues": 1872,
+            "open_issues_count": 1872,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -119,11 +119,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2025-02-25T01:17:51Z",
+            "pushed_at": "2025-03-03T23:37:14Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 309174,
+            "size": 310907,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 86583,
+            "stargazers_count": 86843,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -141,11 +141,11 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2025-02-25T02:27:01Z",
+            "updated_at": "2025-03-04T02:27:02Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 86583,
-            "watchers_count": 86583,
+            "watchers": 86843,
+            "watchers_count": 86843,
             "web_commit_signoff_required": false
         },
         "sha": "e71d2c817d1a2475551f58a98e411f6b39a5be3f",
@@ -800,6 +800,75 @@
                 "url": "https://api.github.com/users/towry",
                 "user_view_type": "public"
             }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/27855#discussion_r1970741285"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/27855"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/1970741285"
+                }
+            },
+            "author_association": "NONE",
+            "body": "trunc might be `false` or a number",
+            "commit_id": "0daaf15cab416508d86da6b1f74fd0c6c5f7b946",
+            "created_at": "2025-02-26T00:51:27Z",
+            "diff_hunk": "@@ -0,0 +1,306 @@\n+local api = vim.api\n+local ext = require('vim._extui.shared')\n+\n+---@class vim._extui.messages\n+local M = {\n+  rucol = nil, ---@type integer? Column of ruler extmark.\n+  ruler_id = nil, ---@type integer? ID of ruler extmark.\n+  showcmd_id = nil, ---@type integer? ID of showcmd extmark.\n+  prev_msg = '', -- Concatenated content of the previous message.\n+  dupe = 0, -- Number of times message is repeated.\n+}\n+\n+-- Message box window.\n+local Box = {\n+  width = 1, -- Current width of the message window.\n+  count = 0, -- Number of messages currently in the message window.\n+  timer = nil, ---@type uv.uv_timer_t Timer that removes the most recent message.\n+}\n+\n+--- Start a timer whose callback will remove the message from the message window.\n+---\n+---@param buf integer Buffer the message was written to.\n+---@param len integer Number of rows that should be removed.\n+function Box:start_timer(buf, len)\n+  self.timer = vim.defer_fn(function()\n+    if self.count == 0 or not api.nvim_buf_is_valid(buf) then\n+      return -- Messages moved to split or buffer was closed.\n+    end\n+    api.nvim_buf_set_lines(buf, 0, len, false, {})\n+    self.count = self.count - 1\n+    if self.count > 0 then\n+      M.set_pos('box')\n+    else\n+      self.width, M.prev_msg = 1, ''\n+      api.nvim_win_set_config(ext.wins[ext.tab].box, { hide = true })\n+    end\n+  end, 4000)\n+end\n+\n+local showcmd_cols = 11\n+---@alias MsgChunk [integer, string, integer]\n+---@alias MsgContent MsgChunk[]\n+---@param target 'box'|'cmd'|'more'|'prompt'\n+---@param content MsgContent\n+---@param replace_last boolean\n+function M.show_msg(target, content, replace_last)\n+  local msg = ''\n+  if target == ext.cfg.messages.pos then\n+    for _, chunk in ipairs(content) do\n+      msg = msg .. chunk[2]\n+    end\n+    M.dupe = (msg == M.prev_msg and M.dupe + 1 or 0)\n+    M.prev_msg = msg\n+  end\n+\n+  local row = target == 'cmd' and 0\n+    or api.nvim_buf_line_count(ext.bufs[target])\n+      - ((replace_last or (target == 'box' and (Box.count == 0 or M.dupe > 0))) and 1 or 0)\n+  local start_row, col = row, 0\n+  local lines, marks = {}, {} ---@type string[], [integer, integer, vim.api.keyset.set_extmark][]\n+\n+  -- Accumulate to be inserted and highlighted message chunks. or false\n+  for i, chunk in ipairs(M.dupe > 0 and {} or content) do\n+    local srow, scol = row, col\n+    -- Split at newline and concatenate first and last message chunks.\n+    for str in (chunk[2] .. '\\0'):gmatch('.-[\\n%z]') do\n+      local idx = i > 1 and row == srow and 0 or 1\n+      lines[#lines + idx] = idx > 0 and str:sub(1, -2) or lines[#lines] .. str:sub(1, -2)\n+      col = #lines[#lines]\n+      if target == 'box' then\n+        Box.width = math.max(Box.width, api.nvim_strwidth(lines[#lines]))\n+      end\n+      row = row + (str:sub(-1) == '\\0' and 0 or 1)\n+    end\n+    if chunk[3] > 0 then\n+      marks[#marks + 1] = { srow, scol }\n+      marks[#marks][3] = {\n+        end_col = col,\n+        end_row = row,\n+        hl_group = chunk[3],\n+        invalidate = true,\n+        undo_restore = false,\n+        end_right_gravity = (i == #content), -- extend highlight for dupe/trunc indicator.\n+      }\n+    end\n+  end\n+\n+  local trunc = target == 'cmd' and row + 1 - ext.cmdheight",
+            "html_url": "https://github.com/neovim/neovim/pull/27855#discussion_r1970741285",
+            "id": 1970741285,
+            "line": 88,
+            "node_id": "PRRC_kwDOAPphoM51dyAl",
+            "original_commit_id": "0daaf15cab416508d86da6b1f74fd0c6c5f7b946",
+            "original_line": 88,
+            "original_position": 88,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/_extui/messages.lua",
+            "position": 88,
+            "pull_request_review_id": 2642775055,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27855",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1970741285/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-02-26T00:51:40Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1970741285",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/40446983?v=4",
+                "events_url": "https://api.github.com/users/chemio9/events{/privacy}",
+                "followers_url": "https://api.github.com/users/chemio9/followers",
+                "following_url": "https://api.github.com/users/chemio9/following{/other_user}",
+                "gists_url": "https://api.github.com/users/chemio9/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/chemio9",
+                "id": 40446983,
+                "login": "chemio9",
+                "node_id": "MDQ6VXNlcjQwNDQ2OTgz",
+                "organizations_url": "https://api.github.com/users/chemio9/orgs",
+                "received_events_url": "https://api.github.com/users/chemio9/received_events",
+                "repos_url": "https://api.github.com/users/chemio9/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/chemio9/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/chemio9/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/chemio9",
+                "user_view_type": "public"
+            }
         }
     ],
     "comment_regular_data": [
@@ -1438,9 +1507,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/luukvbaal/neovim/pulls{/number}",
-            "pushed_at": "2025-02-24T11:37:27Z",
+            "pushed_at": "2025-03-03T23:58:57Z",
             "releases_url": "https://api.github.com/repos/luukvbaal/neovim/releases{/id}",
-            "size": 306253,
+            "size": 307631,
             "ssh_url": "git@github.com:luukvbaal/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/luukvbaal/neovim/stargazers",
@@ -1533,7 +1602,7 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "a2351d4e07eb72bcc428ad1c138144820a0890d6",
+    "merge_commit_sha": "350079cca7b15f25ddf442d9a1c0bf755c857a7a",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM5pm98U",
@@ -1546,7 +1615,7 @@
     "state": "open",
     "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/0daaf15cab416508d86da6b1f74fd0c6c5f7b946",
     "title": "feat(ui): ext_cmdline/messages for the TUI",
-    "updated_at": "2025-02-20T01:29:11Z",
+    "updated_at": "2025-02-26T00:51:40Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/27855",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/31730729?v=4",

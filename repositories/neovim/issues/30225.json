@@ -4,8 +4,28 @@
     "assignees": [],
     "author_association": "NONE",
     "body": "### Problem\r\n\r\nThis is very similar to #29037 and might be the same.\r\n\r\nI was opening a 587MB restic log file and after a few seconds neovim would crash with one of these:\r\n1. `realloc(): invalid next size`\r\n2. `malloc(): invalid next size (unsorted)`\r\n3. `corrupted size vs. prev_size`\r\n\r\nthere might be more.\r\n\r\nDisabling the `copilot.lua` plugin does seem to circumvent the issue.\r\n\r\nUnfortunately it seems this depends a lot on my full setup and the stacktraces seem to have gaps in them.\r\nA `find / -xdev -ls > large_file` + 'nvim large_file` seems to also trigger the issue, maybe it will on other machines also.\r\n\r\nMaybe this is just a luajit issue?\r\n\r\nWhat I can provide next or do to help?\r\n\r\n\r\nDetails:\r\nneovim from Arch (extra) with astronvim and a bunch of plugins.\r\n\r\n```\r\nNVIM v0.10.1\r\nBuild type: Release\r\nLuaJIT 2.1.1723675123\r\n```\r\n\r\nBacktraces:\r\n1.`realloc(): invalid next size`\r\n```\r\n#0  __pthread_kill_implementation (threadid=<optimized out>, signo=signo@entry=6, no_tid=no_tid@entry=0) at pthread_kill.c:44\r\n#1  0x00007633cdcae463 in __pthread_kill_internal (threadid=<optimized out>, signo=6) at pthread_kill.c:78\r\n#2  0x00007633cdc55120 in __GI_raise (sig=sig@entry=6) at ../sysdeps/posix/raise.c:26\r\n#3  0x00007633cdc3c4c3 in __GI_abort () at abort.c:79\r\n#4  0x00007633cdc3d354 in __libc_message_impl (fmt=fmt@entry=0x7633cddcb2f5 \"%s\\n\") at ../sysdeps/posix/libc_fatal.c:132\r\n#5  0x00007633cdcb8765 in malloc_printerr (str=str@entry=0x7633cddc9169 \"realloc(): invalid next size\") at malloc.c:5772\r\n#6  0x00007633cdcbca04 in _int_realloc (av=av@entry=0x7633cddffac0 <main_arena>, oldp=oldp@entry=0x5a2f33193650, oldsize=oldsize@entry=8192, nb=nb@entry=16384) at malloc.c:4939\r\n#7  0x00007633cdcbda15 in __GI___libc_realloc (oldmem=0x5a2f33193660, bytes=16368) at malloc.c:3508\r\n#8  0x00005a2ede3f3b9c in ?? ()\r\n#9  0x00005a2ede3f4470 in ?? ()\r\n#10 0x00005a2ede3f4470 in ?? ()\r\n#11 0x00005a2ede3f4470 in ?? ()\r\n#12 0x00005a2ede3f4b48 in ?? ()\r\n#13 0x00007633cdf60f06 in lj_BC_FUNCC () at buildvm_x86.dasc:857\r\n#14 0x00007633cdf7512a in lua_pcall (L=0x7633ce096380, nargs=<optimized out>, nresults=0, errfunc=<optimized out>) at /usr/src/debug/luajit/LuaJIT-ae4735f621d89d84758769b76432d2319dda9827/src/lj_api.c:1122\r\n#15 0x00005a2ede1e8e08 in ?? ()\r\n#16 0x00005a2ede35af18 in state_handle_k_event ()\r\n#17 0x00005a2ede270ae1 in ?? ()\r\n#18 0x00005a2ede260b67 in ?? ()\r\n#19 0x00005a2ede35acc3 in state_enter ()\r\n#20 0x00005a2ede25dd2a in normal_enter ()\r\n#21 0x00005a2eddff7b27 in main ()\r\n```\r\n\r\n2. `malloc(): invalid next size (unsorted)`\r\n```\r\n#0  __pthread_kill_implementation (threadid=<optimized out>, signo=signo@entry=6, no_tid=no_tid@entry=0) at pthread_kill.c:44\r\n#1  0x00007131068c9463 in __pthread_kill_internal (threadid=<optimized out>, signo=6) at pthread_kill.c:78\r\n#2  0x0000713106870120 in __GI_raise (sig=sig@entry=6) at ../sysdeps/posix/raise.c:26\r\n#3  0x00007131068574c3 in __GI_abort () at abort.c:79\r\n#4  0x0000713106858354 in __libc_message_impl (fmt=fmt@entry=0x7131069e62f5 \"%s\\n\") at ../sysdeps/posix/libc_fatal.c:132\r\n#5  0x00007131068d3765 in malloc_printerr (str=str@entry=0x7131069e9908 \"malloc(): invalid next size (unsorted)\") at malloc.c:5772\r\n#6  0x00007131068d6d2c in _int_malloc (av=av@entry=0x713106a1aac0 <main_arena>, bytes=bytes@entry=16369) at malloc.c:4081\r\n#7  0x00007131068d7902 in _int_realloc (av=av@entry=0x713106a1aac0 <main_arena>, oldp=oldp@entry=0x5b6b7a2a8d80, oldsize=oldsize@entry=8192, nb=nb@entry=16384) at malloc.c:4975\r\n#8  0x00007131068d8a15 in __GI___libc_realloc (oldmem=0x5b6b7a2a8d90, bytes=16368) at malloc.c:3508\r\n#9  0x00005b6b3a2b5b9c in ?? ()\r\n#10 0x00005b6b3a2b6470 in ?? ()\r\n#11 0x00005b6b3a2b6470 in ?? ()\r\n#12 0x00005b6b3a2b6470 in ?? ()\r\n#13 0x00005b6b3a2b6b48 in ?? ()\r\n#14 0x0000713106b7bf06 in lj_BC_FUNCC () at buildvm_x86.dasc:857\r\n#15 0x0000713106b9012a in lua_pcall (L=0x713106cb1380, nargs=<optimized out>, nresults=0, errfunc=<optimized out>)\r\n    at /usr/src/debug/luajit/LuaJIT-ae4735f621d89d84758769b76432d2319dda9827/src/lj_api.c:1122\r\n#16 0x00005b6b3a0aae08 in ?? ()\r\n#17 0x00005b6b3a21cf18 in state_handle_k_event ()\r\n#18 0x00005b6b3a132ae1 in ?? ()\r\n#19 0x00005b6b3a122b67 in ?? ()\r\n#20 0x00005b6b3a21ccc3 in state_enter ()\r\n#21 0x00005b6b3a11fd2a in normal_enter ()\r\n#22 0x00005b6b39eb9b27 in main ()\r\n```\r\n\r\n3.`corrupted size vs. prev_size`\r\n\r\n```\r\n#0  __pthread_kill_implementation (threadid=<optimized out>, signo=signo@entry=6, no_tid=no_tid@entry=0) at pthread_kill.c:44\r\n#1  0x00007d2f37278463 in __pthread_kill_internal (threadid=<optimized out>, signo=6) at pthread_kill.c:78\r\n#2  0x00007d2f3721f120 in __GI_raise (sig=sig@entry=6) at ../sysdeps/posix/raise.c:26\r\n#3  0x00007d2f372064c3 in __GI_abort () at abort.c:79\r\n#4  0x00007d2f37207354 in __libc_message_impl (fmt=fmt@entry=0x7d2f373952f5 \"%s\\n\") at ../sysdeps/posix/libc_fatal.c:132\r\n#5  0x00007d2f37282765 in malloc_printerr (str=str@entry=0x7d2f37392ff8 \"corrupted size vs. prev_size\") at malloc.c:5772\r\n#6  0x00007d2f372833a6 in unlink_chunk (p=p@entry=0x5fcc0a155fd0, av=0x7d2f373c9ac0 <main_arena>) at malloc.c:1611\r\n#7  0x00007d2f372869b8 in _int_realloc (av=av@entry=0x7d2f373c9ac0 <main_arena>, oldp=oldp@entry=0x5fcc0a153fd0, oldsize=oldsize@entry=8192, nb=nb@entry=16384) at malloc.c:4969\r\n#8  0x00007d2f37287a15 in __GI___libc_realloc (oldmem=0x5fcc0a153fe0, bytes=16368) at malloc.c:3508\r\n#9  0x00005fcbc5375b9c in ?? ()\r\n#10 0x00005fcbc5376470 in ?? ()\r\n#11 0x00005fcbc5376470 in ?? ()\r\n#12 0x00005fcbc5376470 in ?? ()\r\n#13 0x00005fcbc5376b48 in ?? ()\r\n#14 0x00007d2f3752af06 in lj_BC_FUNCC () at buildvm_x86.dasc:857\r\n#15 0x00007d2f3753f12a in lua_pcall (L=0x7d2f37660380, nargs=<optimized out>, nresults=0, errfunc=<optimized out>) at /usr/src/debug/luajit/LuaJIT-ae4735f621d89d84758769b76432d2319dda9827/src/lj_api.c:1122\r\n#16 0x00005fcbc516ae08 in ?? ()\r\n#17 0x00005fcbc52dcf18 in state_handle_k_event ()\r\n#18 0x00005fcbc51f2ae1 in ?? ()\r\n#19 0x00005fcbc51e2b67 in ?? ()\r\n#20 0x00005fcbc52dccc3 in state_enter ()\r\n#21 0x00005fcbc51dfd2a in normal_enter ()\r\n#22 0x00005fcbc4f79b27 in main ()\r\n```\r\n\r\n### Steps to reproduce\r\n\r\n1. Open a large text file, somewhere in the range of > 400MB\r\n2. `:lua a = vim.json.encode(table.concat(vim.api.nvim_buf_get_lines(0, 1, -1, false), \"\\n\"))`\r\n\r\n### Expected behavior\r\n\r\nno crash.\r\n\r\n### Neovim version (nvim -v)\r\n\r\nv0.10.1\r\n\r\n### Vim (not Nvim) behaves the same?\r\n\r\nunknown\r\n\r\n### Operating system/version\r\n\r\nArch\r\n\r\n### Terminal name/version\r\n\r\nwezterm 20240722-080956-7e8fdc11\r\n\r\n### $TERM environment variable\r\n\r\nxterm-256color\r\n\r\n### Installation\r\n\r\nArch (extra)",
-    "closed_at": null,
-    "closed_by": null,
+    "closed_at": "2025-02-26T08:40:29Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/2361214?v=4",
+        "events_url": "https://api.github.com/users/clason/events{/privacy}",
+        "followers_url": "https://api.github.com/users/clason/followers",
+        "following_url": "https://api.github.com/users/clason/following{/other_user}",
+        "gists_url": "https://api.github.com/users/clason/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/clason",
+        "id": 2361214,
+        "login": "clason",
+        "node_id": "MDQ6VXNlcjIzNjEyMTQ=",
+        "organizations_url": "https://api.github.com/users/clason/orgs",
+        "received_events_url": "https://api.github.com/users/clason/received_events",
+        "repos_url": "https://api.github.com/users/clason/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/clason",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -861,9 +881,54 @@
                 "url": "https://api.github.com/users/GertBurger",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "Fixed by https://github.com/neovim/neovim/pull/32114.",
+            "created_at": "2025-02-26T08:40:29Z",
+            "html_url": "https://github.com/neovim/neovim/issues/30225#issuecomment-2684293235",
+            "id": 2684293235,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/30225",
+            "node_id": "IC_kwDOAPphoM6f_xBz",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2684293235/reactions"
+            },
+            "updated_at": "2025-02-26T08:40:29Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2684293235",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/2361214?v=4",
+                "events_url": "https://api.github.com/users/clason/events{/privacy}",
+                "followers_url": "https://api.github.com/users/clason/followers",
+                "following_url": "https://api.github.com/users/clason/following{/other_user}",
+                "gists_url": "https://api.github.com/users/clason/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/clason",
+                "id": 2361214,
+                "login": "clason",
+                "node_id": "MDQ6VXNlcjIzNjEyMTQ=",
+                "organizations_url": "https://api.github.com/users/clason/orgs",
+                "received_events_url": "https://api.github.com/users/clason/received_events",
+                "repos_url": "https://api.github.com/users/clason/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
+            }
         }
     ],
-    "comments": 19,
+    "comments": 20,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/30225/comments",
     "created_at": "2024-09-01T20:13:43Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/30225/events",
@@ -920,7 +985,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 151,
+        "closed_issues": 196,
         "created_at": "2023-12-07T23:09:35Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -950,10 +1015,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/41/labels",
         "node_id": "MI_kwDOAPphoM4AnOjk",
         "number": 41,
-        "open_issues": 33,
+        "open_issues": 36,
         "state": "open",
         "title": "0.11",
-        "updated_at": "2025-02-03T09:10:02Z",
+        "updated_at": "2025-03-04T00:59:49Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/41"
     },
     "node_id": "I_kwDOAPphoM6U_dRx",
@@ -972,8 +1037,8 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/30225/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "sub_issues_summary": {
         "completed": 0,
         "percent_completed": 0,
@@ -981,7 +1046,7 @@
     },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/30225/timeline",
     "title": "lua-cjson crash after opening large log file with LSP and/or Copilot",
-    "updated_at": "2025-01-29T20:37:12Z",
+    "updated_at": "2025-02-26T08:40:29Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/30225",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/23653?v=4",
