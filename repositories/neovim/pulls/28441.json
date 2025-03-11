@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 5622,
-            "forks_count": 5622,
+            "forks": 5926,
+            "forks_count": 5926,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1788,
-            "open_issues_count": 1788,
+            "open_issues": 1872,
+            "open_issues_count": 1872,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -114,15 +114,16 @@
                 "starred_url": "https://api.github.com/users/neovim/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/neovim/subscriptions",
                 "type": "Organization",
-                "url": "https://api.github.com/users/neovim"
+                "url": "https://api.github.com/users/neovim",
+                "user_view_type": "public"
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2024-10-08T00:43:44Z",
+            "pushed_at": "2025-03-11T01:51:56Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 289510,
+            "size": 311541,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 82327,
+            "stargazers_count": 87036,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -140,11 +141,11 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2024-10-08T00:49:29Z",
+            "updated_at": "2025-03-11T02:33:20Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 82327,
-            "watchers_count": 82327,
+            "watchers": 87036,
+            "watchers_count": 87036,
             "web_commit_signoff_required": false
         },
         "sha": "5331f87f6145f705c73c5c23f365cecb9fbc5067",
@@ -166,7 +167,8 @@
             "starred_url": "https://api.github.com/users/neovim/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/neovim/subscriptions",
             "type": "Organization",
-            "url": "https://api.github.com/users/neovim"
+            "url": "https://api.github.com/users/neovim",
+            "user_view_type": "public"
         }
     },
     "body": "From https://github.com/neovim/neovim/pull/28436#issuecomment-2068036755:\r\n> The proposed change is to remove the separation, i.e. augroups are now implemented as namespaces instead of their own special, separate address space.\r\n\r\n##### Implementation details:\r\n\r\n**Deleting augroups:**\r\n*Background:*\r\nDeleting named namespaces is not allowed, while there are 2 ways of deleting augroups (normal and legacy). Legacy deleted augroups change their id to `augroup_deleted` but do not change their name, which also is not allowed for named namespaces. augroups with the id `augroup_deleted` or which don't have a name are considered deleted, have the name `\"--Deleted--\"` and error when trying to access them (most of the time). There are some other important differences which will be noted later.\r\n*Implementation:*\r\nWhen an augroup gets deleted, its id is appended to the set `deleted_augroup_map`. Any augroup in the `deleted_augroup_map` or doesn't have an associated name (e.g. an anonymous namespace) is considered deleted. When legacy deleting augroups the same steps happen as with normal deletion but all the autocmds associated with the augroup change their group to the id returned by `get_deleted_augroup_id()`. This is the special deleted augroup and has the name `\"--Deleted--\"` and there is only one of these (This is a BREAKING-CHANGE, see *Example 1*).\r\n\r\n**Creating augroups:**\r\n*Implementation:*\r\nCreating augroups will use `nvim_create_namespace()` to create augroups (This is a BREAKING-CHANGE as augroups now can't have the name `\"\"`(empty string)). If the returned id is in `deleted_augroup_map` then it will be removed from there.\r\n\r\n**Listing augroups:**\r\n*Background:*\r\nThere are two (or more) ways of listing augroups: using `:augroup` (which I will refer to as normal listing) and using `getcompletion('','augroup')` (which I will refer to as completion listing). Whether a deleted augroup gets listed depends on what listing method you use (normal or completion) and whether the augroup was normal or legacy deleted. Completion listing lists all augroups, including normal deleted ones (all deleted/legacy deleted augroups have the name `\"--Deleted--\"`). Normal listing will only list legacy deleted augroups.\r\n*Implementation:*\r\nListing augroups will also list all other named namespaces, as there is no difference between named namespaces and augroups (This might break some plugin tests). Normal deleted augroups will never be listed (not even in completion listings) and there will only be one `\"--Deleted--\"` listed after any number of augroups get legacy deleted (these are BREAKING-CHANGEs).\r\n\r\n**Other:**\r\nThe first-ever namespaces created with `nvim_create_namespace()` after initializing the runtime files will now not be 1 as the runtime files create some augroups on initialization (This might break some plugin tests).\r\n\r\n##### Examples (click to expand):\r\n<details><summary>Example 1</summary>\r\n\r\n```lua\r\nlocal group=vim.api.nvim_create_augroup('test',{})\r\nvim.api.nvim_create_autocmd('FileType',{group=group,command='',pattern='foo'})\r\nvim.cmd'augroup! test'\r\nassert(vim.api.nvim_get_autocmds({pattern='foo'})[1].group==group)\r\n```\r\n\r\n</details>",
@@ -202,7 +204,7 @@
             "pull_request_review_id": 2013444732,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/28441",
             "reactions": {
-                "+1": 0,
+                "+1": 1,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -210,7 +212,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 0,
+                "total_count": 1,
                 "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/1573763941/reactions"
             },
             "side": "RIGHT",
@@ -237,7 +239,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -305,7 +308,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         }
     ],
@@ -351,7 +355,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -395,7 +400,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -439,7 +445,8 @@
                 "starred_url": "https://api.github.com/users/altermo/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/altermo/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/altermo"
+                "url": "https://api.github.com/users/altermo",
+                "user_view_type": "public"
             }
         }
     ],
@@ -532,13 +539,14 @@
                 "starred_url": "https://api.github.com/users/altermo/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/altermo/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/altermo"
+                "url": "https://api.github.com/users/altermo",
+                "user_view_type": "public"
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/altermo/neovim-fork/pulls{/number}",
-            "pushed_at": "2024-10-01T17:38:20Z",
+            "pushed_at": "2025-03-10T12:50:28Z",
             "releases_url": "https://api.github.com/repos/altermo/neovim-fork/releases{/id}",
-            "size": 281057,
+            "size": 303676,
             "ssh_url": "git@github.com:altermo/neovim-fork.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/altermo/neovim-fork/stargazers",
@@ -576,7 +584,8 @@
             "starred_url": "https://api.github.com/users/altermo/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/altermo/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/altermo"
+            "url": "https://api.github.com/users/altermo",
+            "user_view_type": "public"
         }
     },
     "html_url": "https://github.com/neovim/neovim/pull/28441",
@@ -612,12 +621,12 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "1413e8fa10983a7dd34654e864d797143548869e",
+    "merge_commit_sha": null,
     "merged_at": null,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 69,
-        "created_at": "2023-12-07T23:09:35Z",
+        "closed_issues": 1,
+        "created_at": "2024-05-16T14:11:54Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
             "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
@@ -636,20 +645,21 @@
             "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/justinmk"
+            "url": "https://api.github.com/users/justinmk",
+            "user_view_type": "public"
         },
         "description": "",
-        "due_on": "2024-10-31T07:00:00Z",
-        "html_url": "https://github.com/neovim/neovim/milestone/41",
-        "id": 10283236,
-        "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/41/labels",
-        "node_id": "MI_kwDOAPphoM4AnOjk",
-        "number": 41,
-        "open_issues": 52,
+        "due_on": null,
+        "html_url": "https://github.com/neovim/neovim/milestone/43",
+        "id": 11063573,
+        "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/43/labels",
+        "node_id": "MI_kwDOAPphoM4AqNEV",
+        "number": 43,
+        "open_issues": 50,
         "state": "open",
-        "title": "0.11",
-        "updated_at": "2024-10-07T22:24:38Z",
-        "url": "https://api.github.com/repos/neovim/neovim/milestones/41"
+        "title": "0.12",
+        "updated_at": "2025-03-10T13:27:33Z",
+        "url": "https://api.github.com/repos/neovim/neovim/milestones/43"
     },
     "node_id": "PR_kwDOAPphoM5tRmW6",
     "number": 28441,
@@ -673,7 +683,8 @@
             "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/justinmk"
+            "url": "https://api.github.com/users/justinmk",
+            "user_view_type": "public"
         }
     ],
     "requested_teams": [],
@@ -682,7 +693,7 @@
     "state": "open",
     "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/ad36c21d5f9fa8fa11809803a1800b16daeb22ee",
     "title": "refactor!: implement augroups as namespaces",
-    "updated_at": "2024-10-02T09:34:43Z",
+    "updated_at": "2025-03-06T03:34:21Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/28441",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/107814000?v=4",
@@ -702,6 +713,7 @@
         "starred_url": "https://api.github.com/users/altermo/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/altermo/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/altermo"
+        "url": "https://api.github.com/users/altermo",
+        "user_view_type": "public"
     }
 }

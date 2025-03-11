@@ -5,6 +5,27 @@
     "author_association": "CONTRIBUTOR",
     "body": "### Problem\n\nThis is possibly the same as #25822 \r\n\r\nUsing `o`, the args passed to `on_bytes` of `nvim_buf_attach` is different from when using `A<Enter>`\r\n\r\n\n\n### Steps to reproduce\n\n- Have a test.lua file as such\r\n```lua\r\nvim.api.nvim_create_autocmd(\"BufEnter\", {\r\n  callback = function(args)\r\n    vim.api.nvim_buf_attach(args.buf, true, {\r\n      on_bytes = function(_, _, _, start_row, _, _, old_end_row, _, _, new_end_row, _, _)\r\n        print(start_row, old_end_row, new_end_row)\r\n      end\r\n    })\r\n  end\r\n})\r\n```\r\n- `nvim --clean -u test.lua test.foo` and do `o`. We get `1 0 1`\r\n- `nvim --clean -u test.lua test.foo` and do `A<Enter>`. We get `0 0 1`\n\n### Expected behavior\n\nThey should both be `0 0 1`, or be more consistent.\r\n\n\n### Neovim version (nvim -v)\n\nNVIM v0.10.0-dev-43b0e2752\n\n### Vim (not Nvim) behaves the same?\n\nunsure\n\n### Operating system/version\n\nLinux 6.6.1\n\n### Terminal name/version\n\nkitty 0.31.0\n\n### $TERM environment variable\n\nxterm-kitty\n\n### Installation\n\nBuild from source",
     "closed_at": "2023-12-07T21:07:35Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+        "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+        "followers_url": "https://api.github.com/users/zeertzjq/followers",
+        "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+        "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/zeertzjq",
+        "id": 35768171,
+        "login": "zeertzjq",
+        "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+        "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+        "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+        "repos_url": "https://api.github.com/users/zeertzjq/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/zeertzjq",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "CONTRIBUTOR",
@@ -47,7 +68,8 @@
                 "starred_url": "https://api.github.com/users/lucario387/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lucario387/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lucario387"
+                "url": "https://api.github.com/users/lucario387",
+                "user_view_type": "public"
             }
         },
         {
@@ -91,11 +113,57 @@
                 "starred_url": "https://api.github.com/users/tomtomjhj/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/tomtomjhj/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/tomtomjhj"
+                "url": "https://api.github.com/users/tomtomjhj",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "NONE",
+            "body": "I'm still encountering this issue in the latest Neovim build:\n\n```\nNVIM v0.11.0-dev-1936+g5ee62906a3\nBuild type: RelWithDebInfo\nLuaJIT 2.1.1736781742\n```\n\nI followed the reproduction steps provided by @lucario387 and observed the same behavior. Specifically, when I press `o` on the first line (index 0), the `on_bytes` callback receives a `start_row` value of 1, whereas using `A<Enter>` results in a `start_row` value of 0.\n\nThis discrepancy is causing issues in my workflow. I call `vim.api.nvim_buf_get_text` in the `on_bytes` callback using parameters like this:\n\n```lua\nvim.api.nvim_buf_get_text(\n  buf,\n  start_row, -- 0 for `A<Enter>`, 1 for `o`\n  start_col,\n  start_row + new_end_row, -- 0 + 1 for `A<Enter>`, 1 + 1 for `o`\n  (new_end_row == 0) and (start_col + new_end_col) or new_end_col,\n  {}\n)\n```\n\nHowever, pressing `o` on the last line of a buffer results in an `Index out of bounds` error due to the off-by-one error in `start_row`.\n\nIs this discrepancy intentional or is it a bug?",
+            "created_at": "2025-03-09T10:09:58Z",
+            "html_url": "https://github.com/neovim/neovim/issues/25966#issuecomment-2708777724",
+            "id": 2708777724,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/25966",
+            "node_id": "IC_kwDOAPphoM6hdKr8",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2708777724/reactions"
+            },
+            "updated_at": "2025-03-09T10:09:58Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2708777724",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/45833713?v=4",
+                "events_url": "https://api.github.com/users/Groszczu/events{/privacy}",
+                "followers_url": "https://api.github.com/users/Groszczu/followers",
+                "following_url": "https://api.github.com/users/Groszczu/following{/other_user}",
+                "gists_url": "https://api.github.com/users/Groszczu/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/Groszczu",
+                "id": 45833713,
+                "login": "Groszczu",
+                "node_id": "MDQ6VXNlcjQ1ODMzNzEz",
+                "organizations_url": "https://api.github.com/users/Groszczu/orgs",
+                "received_events_url": "https://api.github.com/users/Groszczu/received_events",
+                "repos_url": "https://api.github.com/users/Groszczu/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/Groszczu/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/Groszczu/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/Groszczu",
+                "user_view_type": "public"
             }
         }
     ],
-    "comments": 2,
+    "comments": 3,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/25966/comments",
     "created_at": "2023-11-10T07:51:47Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/25966/events",
@@ -133,9 +201,14 @@
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "closed",
     "state_reason": "completed",
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/25966/timeline",
     "title": "on_bytes args of nvim_buf_attach are different when using `o` and `A<Enter>` ",
-    "updated_at": "2023-12-07T21:07:35Z",
+    "updated_at": "2025-03-09T10:09:59Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/25966",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/29790821?v=4",
@@ -155,6 +228,7 @@
         "starred_url": "https://api.github.com/users/lucario387/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/lucario387/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/lucario387"
+        "url": "https://api.github.com/users/lucario387",
+        "user_view_type": "public"
     }
 }
