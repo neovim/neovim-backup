@@ -22,13 +22,13 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/32843"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/b36d87b68a6921a8d350638a52037c8bd7b2113d"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/12d19df45ec1491b96d55312e4c8518972f18ec5"
         }
     },
     "active_lock_reason": null,
     "assignee": null,
     "assignees": [],
-    "author_association": "FIRST_TIME_CONTRIBUTOR",
+    "author_association": "CONTRIBUTOR",
     "auto_merge": null,
     "base": {
         "label": "neovim:master",
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 5947,
-            "forks_count": 5947,
+            "forks": 5980,
+            "forks_count": 5980,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1887,
-            "open_issues_count": 1887,
+            "open_issues": 1910,
+            "open_issues_count": 1910,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -119,11 +119,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2025-03-25T00:05:23Z",
+            "pushed_at": "2025-04-01T00:41:49Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 313207,
+            "size": 314758,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 87566,
+            "stargazers_count": 88175,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -141,14 +141,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2025-03-25T02:32:27Z",
+            "updated_at": "2025-04-01T02:47:16Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 87566,
-            "watchers_count": 87566,
+            "watchers": 88175,
+            "watchers_count": 88175,
             "web_commit_signoff_required": false
         },
-        "sha": "563051a53ef92349e3bfc0c94421094396a296bf",
+        "sha": "ee143aaf65a0e662c42c636aa4a959682858b3e7",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -172,11 +172,844 @@
         }
     },
     "body": "Problem:\r\nUpon deadly signals, Neovim doesn't write to buffers even if autowriteall is set\r\nFix: #29411 \r\n\r\nSolutions:\r\n- [x] Write to all buffers upon SIGHUP/SIGQUIT\r\n- [x] Don't write upon SIGTERM\r\n- [x] Add watch for SIGTSTP (we want to write all buffers if awa on SIGTSTP)\r\n- [x] Check if VimLeave/VimLeavePre trigger on deadly signal -> they are, if the signal is caught",
-    "closed_at": null,
-    "comment_data": [],
+    "closed_at": "2025-03-31T13:14:45Z",
+    "comment_data": [
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/32843#discussion_r2018550398"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/32843"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2018550398"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "`vim.uv.kill()` should work, can you try that instead? Then we can drop `posix_kill`. \r\n\r\nAnd then some of these tests can run on Windows. I don't want to bother you with that for the old tests in this file, but at least for SIGHUP, and possibly SIGTERM in your new tests? https://docs.libuv.org/en/v1.x/signal.html\r\n\r\nTo be clear:\r\n\r\n- move your new tests above the `skip(is_os('win')` line 15\r\n- run your tests for at least a couple supported signals on Windows.",
+            "commit_id": "12d19df45ec1491b96d55312e4c8518972f18ec5",
+            "created_at": "2025-03-28T12:11:50Z",
+            "diff_hunk": "@@ -44,3 +47,64 @@ describe('autocmd Signal', function()\n     eq(nil, next_msg(500))\n   end)\n end)\n+\n+describe('autowriteall on kill', function()\n+  before_each(clear)\n+\n+  local function test_deadly_sig(signame, awa, should_write)\n+    local testfile = 'Xtest_SIG' .. signame .. (awa and '_awa' or '_noawa')\n+    local teststr = 'Testaaaaaaa'\n+\n+    if awa then\n+      command('set awa')\n+    end\n+\n+    command('edit ' .. testfile)\n+    feed('i' .. teststr)\n+    posix_kill(signame, fn.getpid())",
+            "html_url": "https://github.com/neovim/neovim/pull/32843#discussion_r2018550398",
+            "id": 2018550398,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM54UKJ-",
+            "original_commit_id": "ac15bcba41503e57f698e6c65cccdd8e128428fe",
+            "original_line": 64,
+            "original_position": 28,
+            "original_start_line": null,
+            "path": "test/functional/autocmd/signal_spec.lua",
+            "position": null,
+            "pull_request_review_id": 2725323308,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/32843",
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2018550398/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-03-28T12:12:00Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2018550398",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/32843#discussion_r2018554344"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/32843"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2018554344"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\r\ndescribe(\"'autowriteall' on signal exit\", function()\r\n```",
+            "commit_id": "12d19df45ec1491b96d55312e4c8518972f18ec5",
+            "created_at": "2025-03-28T12:15:03Z",
+            "diff_hunk": "@@ -44,3 +47,64 @@ describe('autocmd Signal', function()\n     eq(nil, next_msg(500))\n   end)\n end)\n+\n+describe('autowriteall on kill', function()",
+            "html_url": "https://github.com/neovim/neovim/pull/32843#discussion_r2018554344",
+            "id": 2018554344,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM54ULHo",
+            "original_commit_id": "ac15bcba41503e57f698e6c65cccdd8e128428fe",
+            "original_line": 51,
+            "original_position": 15,
+            "original_start_line": null,
+            "path": "test/functional/autocmd/signal_spec.lua",
+            "position": null,
+            "pull_request_review_id": 2725330787,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/32843",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2018554344/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-03-28T12:15:04Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2018554344",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/32843#discussion_r2020248453"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/32843"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2020248453"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "print() doesn't work in the test runner (AFAIK). To see values in CI, I usually just use a hack like `eq('x', read_file(testfile))` which will fail, but prints what I want in the failure.\r\n\r\nIn this case, it's clear that `read_file()` is returning nil here on windows, because of the `attempt to concatenate a nil value` error.",
+            "commit_id": "12d19df45ec1491b96d55312e4c8518972f18ec5",
+            "created_at": "2025-03-30T20:42:34Z",
+            "diff_hunk": "@@ -8,39 +8,98 @@ local fn = n.fn\n local next_msg = n.next_msg\n local is_os = t.is_os\n local skip = t.skip\n+local read_file = t.read_file\n+local feed = n.feed\n+local retry = t.retry\n+\n+describe(\"'autowriteall' on signal exit\", function()\n+  before_each(clear)\n+\n+  local function test_deadly_sig(signame, awa, should_write)\n+    local testfile = 'Xtest_SIG' .. signame .. (awa and '_awa' or '_noawa')\n+    local teststr = 'Testaaaaaaa'\n+\n+    if awa then\n+      command('set awa')\n+    end\n+\n+    command('edit ' .. testfile)\n+    feed('i' .. teststr)\n+    -- command('wa')\n+    print(vim.uv.kill(fn.getpid(), signame))\n+\n+    retry(nil, 5000, function()\n+      print(\"'\" .. read_file(testfile) .. \"'\")",
+            "html_url": "https://github.com/neovim/neovim/pull/32843#discussion_r2020248453",
+            "id": 2020248453,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM54aouF",
+            "original_commit_id": "292bf6343fbab3940ede98970acf68bcfc5fe025",
+            "original_line": 32,
+            "original_position": 25,
+            "original_start_line": null,
+            "path": "test/functional/autocmd/signal_spec.lua",
+            "position": null,
+            "pull_request_review_id": 2728002742,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/32843",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2020248453/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-03-30T20:42:34Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2020248453",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/32843#discussion_r2020249947"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/32843"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2020249947"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "Print do work in test runner, but it only print on the specific line when the test gets run, not the final output (so need to scroll back for a while)\r\n\r\nCurrently, for SIGHUP and SIGTSTP I'm getting [`ENOSYS: function not implemented`](https://github.com/neovim/neovim/actions/runs/14158773354/job/39661428649?pr=32843#step:7:1759)\r\nFor SIGQUIT, it's a very weird behavior, it timeout for [6min](https://github.com/neovim/neovim/actions/runs/14158773354/job/39661428649?pr=32843#step:7:1769) before finally completing (which causes a timeout of the CI job)\r\n\r\nNo clue why I get thoses behaviors atm, I'm either missing something obvious or the issue is deeper than expected\r\n\r\nI'm continuing to dive into this but I fear the signals could just not work on Windows (?)",
+            "commit_id": "12d19df45ec1491b96d55312e4c8518972f18ec5",
+            "created_at": "2025-03-30T20:50:47Z",
+            "diff_hunk": "@@ -8,39 +8,98 @@ local fn = n.fn\n local next_msg = n.next_msg\n local is_os = t.is_os\n local skip = t.skip\n+local read_file = t.read_file\n+local feed = n.feed\n+local retry = t.retry\n+\n+describe(\"'autowriteall' on signal exit\", function()\n+  before_each(clear)\n+\n+  local function test_deadly_sig(signame, awa, should_write)\n+    local testfile = 'Xtest_SIG' .. signame .. (awa and '_awa' or '_noawa')\n+    local teststr = 'Testaaaaaaa'\n+\n+    if awa then\n+      command('set awa')\n+    end\n+\n+    command('edit ' .. testfile)\n+    feed('i' .. teststr)\n+    -- command('wa')\n+    print(vim.uv.kill(fn.getpid(), signame))\n+\n+    retry(nil, 5000, function()\n+      print(\"'\" .. read_file(testfile) .. \"'\")",
+            "html_url": "https://github.com/neovim/neovim/pull/32843#discussion_r2020249947",
+            "id": 2020249947,
+            "in_reply_to_id": 2020248453,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM54apFb",
+            "original_commit_id": "292bf6343fbab3940ede98970acf68bcfc5fe025",
+            "original_line": 32,
+            "original_position": 25,
+            "original_start_line": null,
+            "path": "test/functional/autocmd/signal_spec.lua",
+            "position": null,
+            "pull_request_review_id": 2728004613,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/32843",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2020249947/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-03-30T21:00:02Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2020249947",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/101289702?v=4",
+                "events_url": "https://api.github.com/users/SkohTV/events{/privacy}",
+                "followers_url": "https://api.github.com/users/SkohTV/followers",
+                "following_url": "https://api.github.com/users/SkohTV/following{/other_user}",
+                "gists_url": "https://api.github.com/users/SkohTV/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/SkohTV",
+                "id": 101289702,
+                "login": "SkohTV",
+                "node_id": "U_kgDOBgmO5g",
+                "organizations_url": "https://api.github.com/users/SkohTV/orgs",
+                "received_events_url": "https://api.github.com/users/SkohTV/received_events",
+                "repos_url": "https://api.github.com/users/SkohTV/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/SkohTV/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/SkohTV/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/SkohTV",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/32843#discussion_r2020251419"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/32843"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2020251419"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Ok, let's skip on windows for now.",
+            "commit_id": "12d19df45ec1491b96d55312e4c8518972f18ec5",
+            "created_at": "2025-03-30T20:58:52Z",
+            "diff_hunk": "@@ -8,39 +8,98 @@ local fn = n.fn\n local next_msg = n.next_msg\n local is_os = t.is_os\n local skip = t.skip\n+local read_file = t.read_file\n+local feed = n.feed\n+local retry = t.retry\n+\n+describe(\"'autowriteall' on signal exit\", function()\n+  before_each(clear)\n+\n+  local function test_deadly_sig(signame, awa, should_write)\n+    local testfile = 'Xtest_SIG' .. signame .. (awa and '_awa' or '_noawa')\n+    local teststr = 'Testaaaaaaa'\n+\n+    if awa then\n+      command('set awa')\n+    end\n+\n+    command('edit ' .. testfile)\n+    feed('i' .. teststr)\n+    -- command('wa')\n+    print(vim.uv.kill(fn.getpid(), signame))\n+\n+    retry(nil, 5000, function()\n+      print(\"'\" .. read_file(testfile) .. \"'\")",
+            "html_url": "https://github.com/neovim/neovim/pull/32843#discussion_r2020251419",
+            "id": 2020251419,
+            "in_reply_to_id": 2020248453,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM54apcb",
+            "original_commit_id": "292bf6343fbab3940ede98970acf68bcfc5fe025",
+            "original_line": 32,
+            "original_position": 25,
+            "original_start_line": null,
+            "path": "test/functional/autocmd/signal_spec.lua",
+            "position": null,
+            "pull_request_review_id": 2728006471,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/32843",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2020251419/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-03-30T20:58:52Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2020251419",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/32843#discussion_r2020253877"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/32843"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2020253877"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "I believe there was a typo in the test already present (but it passed CI even though)\r\nI fixed it and it still passes CI",
+            "commit_id": "12d19df45ec1491b96d55312e4c8518972f18ec5",
+            "created_at": "2025-03-30T21:12:39Z",
+            "diff_hunk": "@@ -8,39 +8,88 @@ local fn = n.fn\n local next_msg = n.next_msg\n local is_os = t.is_os\n local skip = t.skip\n+local read_file = t.read_file\n+local feed = n.feed\n+local retry = t.retry\n \n if skip(is_os('win'), 'Only applies to POSIX systems') then\n   return\n end\n \n-local function posix_kill(signame, pid)\n-  os.execute('kill -s ' .. signame .. ' -- ' .. pid .. ' >/dev/null')\n-end\n+describe(\"'autowriteall' on signal exit\", function()\n+  before_each(clear)\n+\n+  local function test_deadly_sig(signame, awa, should_write)\n+    local testfile = 'Xtest_SIG' .. signame .. (awa and '_awa' or '_noawa')\n+    local teststr = 'Testaaaaaaa'\n+\n+    if awa then\n+      command('set awa')\n+    end\n+\n+    command('edit ' .. testfile)\n+    feed('i' .. teststr)\n+    vim.uv.kill(fn.getpid(), signame)\n+\n+    retry(nil, 5000, function()\n+      eq((should_write and (teststr .. '\\n') or nil), read_file(testfile))\n+    end)\n+  end\n+\n+  it('dont write if SIGTERM & awa on', function()\n+    test_deadly_sig('sigterm', true, false)\n+  end)\n+  it('dont write if SIGTERM & awa off', function()\n+    test_deadly_sig('sigterm', false, false)\n+  end)\n+\n+  it('write if SIGHUP & awa on', function()\n+    test_deadly_sig('sighup', true, true)\n+  end)\n+  it('dont write if SIGHUP & awa off', function()\n+    test_deadly_sig('sighup', false, false)\n+  end)\n+\n+  it('write if SIGTSTP & awa on', function()\n+    test_deadly_sig('sigtstp', true, true)\n+  end)\n+  it('dont write if SIGTSTP & awa off', function()\n+    test_deadly_sig('sigtstp', false, false)\n+  end)\n+\n+  -- Takes 6min to run, causes the CI job to timeout\n+  it('write if SIGQUIT & awa on', function()\n+    test_deadly_sig('sigquit', true, true)\n+  end)\n+  it('dont write if SIGQUIT & awa off', function()\n+    test_deadly_sig('sigquit', false, false)\n+  end)\n+end)\n \n describe('autocmd Signal', function()\n   before_each(clear)\n \n   it('matches *', function()\n     command('autocmd Signal * call rpcnotify(1, \"foo\")')\n-    posix_kill('USR1', fn.getpid())\n+    vim.uv.kill(fn.getpid(), 'sigusr1')\n     eq({ 'notification', 'foo', {} }, next_msg())\n   end)\n \n   it('matches SIGUSR1', function()\n     command('autocmd Signal SIGUSR1 call rpcnotify(1, \"foo\")')\n-    posix_kill('USR1', fn.getpid())\n+    vim.uv.kill(fn.getpid(), 'sigusr1')\n     eq({ 'notification', 'foo', {} }, next_msg())\n   end)\n \n   it('matches SIGWINCH', function()\n     command('autocmd Signal SIGWINCH call rpcnotify(1, \"foo\")')\n-    posix_kill('WINCH', fn.getpid())\n+    vim.uv.kill(fn.getpid(), 'sigwinch')\n     eq({ 'notification', 'foo', {} }, next_msg())\n   end)\n \n   it('does not match unknown patterns', function()\n     command('autocmd Signal SIGUSR2 call rpcnotify(1, \"foo\")')\n-    posix_kill('USR1', fn.getpid())\n+    vim.uv.kill(fn.getpid(), 'sigusr2')",
+            "html_url": "https://github.com/neovim/neovim/pull/32843#discussion_r2020253877",
+            "id": 2020253877,
+            "line": 94,
+            "node_id": "PRRC_kwDOAPphoM54aqC1",
+            "original_commit_id": "8faf1972434fc36af081fb9c509ad4396fd4e1c4",
+            "original_line": 92,
+            "original_position": 92,
+            "original_start_line": null,
+            "path": "test/functional/autocmd/signal_spec.lua",
+            "position": 94,
+            "pull_request_review_id": 2728009371,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/32843",
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2020253877/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-03-30T21:12:39Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2020253877",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/101289702?v=4",
+                "events_url": "https://api.github.com/users/SkohTV/events{/privacy}",
+                "followers_url": "https://api.github.com/users/SkohTV/followers",
+                "following_url": "https://api.github.com/users/SkohTV/following{/other_user}",
+                "gists_url": "https://api.github.com/users/SkohTV/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/SkohTV",
+                "id": 101289702,
+                "login": "SkohTV",
+                "node_id": "U_kgDOBgmO5g",
+                "organizations_url": "https://api.github.com/users/SkohTV/orgs",
+                "received_events_url": "https://api.github.com/users/SkohTV/received_events",
+                "repos_url": "https://api.github.com/users/SkohTV/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/SkohTV/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/SkohTV/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/SkohTV",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/32843#discussion_r2020261674"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/32843"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2020261674"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "is the comment still relevant?",
+            "commit_id": "12d19df45ec1491b96d55312e4c8518972f18ec5",
+            "created_at": "2025-03-30T21:53:01Z",
+            "diff_hunk": "@@ -8,39 +8,88 @@ local fn = n.fn\n local next_msg = n.next_msg\n local is_os = t.is_os\n local skip = t.skip\n+local read_file = t.read_file\n+local feed = n.feed\n+local retry = t.retry\n \n if skip(is_os('win'), 'Only applies to POSIX systems') then\n   return\n end\n \n-local function posix_kill(signame, pid)\n-  os.execute('kill -s ' .. signame .. ' -- ' .. pid .. ' >/dev/null')\n-end\n+describe(\"'autowriteall' on signal exit\", function()\n+  before_each(clear)\n+\n+  local function test_deadly_sig(signame, awa, should_write)\n+    local testfile = 'Xtest_SIG' .. signame .. (awa and '_awa' or '_noawa')\n+    local teststr = 'Testaaaaaaa'\n+\n+    if awa then\n+      command('set awa')\n+    end\n+\n+    command('edit ' .. testfile)\n+    feed('i' .. teststr)\n+    vim.uv.kill(fn.getpid(), signame)\n+\n+    retry(nil, 5000, function()\n+      eq((should_write and (teststr .. '\\n') or nil), read_file(testfile))\n+    end)\n+  end\n+\n+  it('dont write if SIGTERM & awa on', function()\n+    test_deadly_sig('sigterm', true, false)\n+  end)\n+  it('dont write if SIGTERM & awa off', function()\n+    test_deadly_sig('sigterm', false, false)\n+  end)\n+\n+  it('write if SIGHUP & awa on', function()\n+    test_deadly_sig('sighup', true, true)\n+  end)\n+  it('dont write if SIGHUP & awa off', function()\n+    test_deadly_sig('sighup', false, false)\n+  end)\n+\n+  it('write if SIGTSTP & awa on', function()\n+    test_deadly_sig('sigtstp', true, true)\n+  end)\n+  it('dont write if SIGTSTP & awa off', function()\n+    test_deadly_sig('sigtstp', false, false)\n+  end)\n+\n+  -- Takes 6min to run, causes the CI job to timeout",
+            "html_url": "https://github.com/neovim/neovim/pull/32843#discussion_r2020261674",
+            "id": 2020261674,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM54ar8q",
+            "original_commit_id": "8faf1972434fc36af081fb9c509ad4396fd4e1c4",
+            "original_line": 60,
+            "original_position": 56,
+            "original_start_line": null,
+            "path": "test/functional/autocmd/signal_spec.lua",
+            "position": null,
+            "pull_request_review_id": 2728017297,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/32843",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2020261674/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-03-30T21:53:01Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2020261674",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/32843#discussion_r2020261705"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/32843"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2020261705"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\r\n      command('set autowriteall')\r\n```",
+            "commit_id": "12d19df45ec1491b96d55312e4c8518972f18ec5",
+            "created_at": "2025-03-30T21:53:09Z",
+            "diff_hunk": "@@ -8,39 +8,88 @@ local fn = n.fn\n local next_msg = n.next_msg\n local is_os = t.is_os\n local skip = t.skip\n+local read_file = t.read_file\n+local feed = n.feed\n+local retry = t.retry\n \n if skip(is_os('win'), 'Only applies to POSIX systems') then\n   return\n end\n \n-local function posix_kill(signame, pid)\n-  os.execute('kill -s ' .. signame .. ' -- ' .. pid .. ' >/dev/null')\n-end\n+describe(\"'autowriteall' on signal exit\", function()\n+  before_each(clear)\n+\n+  local function test_deadly_sig(signame, awa, should_write)\n+    local testfile = 'Xtest_SIG' .. signame .. (awa and '_awa' or '_noawa')\n+    local teststr = 'Testaaaaaaa'\n+\n+    if awa then\n+      command('set awa')",
+            "html_url": "https://github.com/neovim/neovim/pull/32843#discussion_r2020261705",
+            "id": 2020261705,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM54ar9J",
+            "original_commit_id": "8faf1972434fc36af081fb9c509ad4396fd4e1c4",
+            "original_line": 27,
+            "original_position": 23,
+            "original_start_line": null,
+            "path": "test/functional/autocmd/signal_spec.lua",
+            "position": null,
+            "pull_request_review_id": 2728017331,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/32843",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2020261705/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-03-30T21:53:10Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2020261705",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/32843#discussion_r2020261913"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/32843"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2020261913"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "can we combine each pair of tests like this:\r\n```suggestion\r\n  it('SIGTERM', function()\r\n    test_deadly_sig('sigterm', true, false)\r\n    test_deadly_sig('sigterm', false, false)\r\n  end)\r\n```",
+            "commit_id": "12d19df45ec1491b96d55312e4c8518972f18ec5",
+            "created_at": "2025-03-30T21:54:27Z",
+            "diff_hunk": "@@ -8,39 +8,88 @@ local fn = n.fn\n local next_msg = n.next_msg\n local is_os = t.is_os\n local skip = t.skip\n+local read_file = t.read_file\n+local feed = n.feed\n+local retry = t.retry\n \n if skip(is_os('win'), 'Only applies to POSIX systems') then\n   return\n end\n \n-local function posix_kill(signame, pid)\n-  os.execute('kill -s ' .. signame .. ' -- ' .. pid .. ' >/dev/null')\n-end\n+describe(\"'autowriteall' on signal exit\", function()\n+  before_each(clear)\n+\n+  local function test_deadly_sig(signame, awa, should_write)\n+    local testfile = 'Xtest_SIG' .. signame .. (awa and '_awa' or '_noawa')\n+    local teststr = 'Testaaaaaaa'\n+\n+    if awa then\n+      command('set awa')\n+    end\n+\n+    command('edit ' .. testfile)\n+    feed('i' .. teststr)\n+    vim.uv.kill(fn.getpid(), signame)\n+\n+    retry(nil, 5000, function()\n+      eq((should_write and (teststr .. '\\n') or nil), read_file(testfile))\n+    end)\n+  end\n+\n+  it('dont write if SIGTERM & awa on', function()\n+    test_deadly_sig('sigterm', true, false)\n+  end)\n+  it('dont write if SIGTERM & awa off', function()\n+    test_deadly_sig('sigterm', false, false)\n+  end)",
+            "html_url": "https://github.com/neovim/neovim/pull/32843#discussion_r2020261913",
+            "id": 2020261913,
+            "line": 47,
+            "node_id": "PRRC_kwDOAPphoM54asAZ",
+            "original_commit_id": "8faf1972434fc36af081fb9c509ad4396fd4e1c4",
+            "original_line": 44,
+            "original_position": 40,
+            "original_start_line": 39,
+            "path": "test/functional/autocmd/signal_spec.lua",
+            "position": 43,
+            "pull_request_review_id": 2728017576,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/32843",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2020261913/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 42,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2025-03-30T21:54:27Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2020261913",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/32843#discussion_r2020262243"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/32843"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2020262243"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "no, indeed",
+            "commit_id": "12d19df45ec1491b96d55312e4c8518972f18ec5",
+            "created_at": "2025-03-30T21:55:41Z",
+            "diff_hunk": "@@ -8,39 +8,88 @@ local fn = n.fn\n local next_msg = n.next_msg\n local is_os = t.is_os\n local skip = t.skip\n+local read_file = t.read_file\n+local feed = n.feed\n+local retry = t.retry\n \n if skip(is_os('win'), 'Only applies to POSIX systems') then\n   return\n end\n \n-local function posix_kill(signame, pid)\n-  os.execute('kill -s ' .. signame .. ' -- ' .. pid .. ' >/dev/null')\n-end\n+describe(\"'autowriteall' on signal exit\", function()\n+  before_each(clear)\n+\n+  local function test_deadly_sig(signame, awa, should_write)\n+    local testfile = 'Xtest_SIG' .. signame .. (awa and '_awa' or '_noawa')\n+    local teststr = 'Testaaaaaaa'\n+\n+    if awa then\n+      command('set awa')\n+    end\n+\n+    command('edit ' .. testfile)\n+    feed('i' .. teststr)\n+    vim.uv.kill(fn.getpid(), signame)\n+\n+    retry(nil, 5000, function()\n+      eq((should_write and (teststr .. '\\n') or nil), read_file(testfile))\n+    end)\n+  end\n+\n+  it('dont write if SIGTERM & awa on', function()\n+    test_deadly_sig('sigterm', true, false)\n+  end)\n+  it('dont write if SIGTERM & awa off', function()\n+    test_deadly_sig('sigterm', false, false)\n+  end)\n+\n+  it('write if SIGHUP & awa on', function()\n+    test_deadly_sig('sighup', true, true)\n+  end)\n+  it('dont write if SIGHUP & awa off', function()\n+    test_deadly_sig('sighup', false, false)\n+  end)\n+\n+  it('write if SIGTSTP & awa on', function()\n+    test_deadly_sig('sigtstp', true, true)\n+  end)\n+  it('dont write if SIGTSTP & awa off', function()\n+    test_deadly_sig('sigtstp', false, false)\n+  end)\n+\n+  -- Takes 6min to run, causes the CI job to timeout",
+            "html_url": "https://github.com/neovim/neovim/pull/32843#discussion_r2020262243",
+            "id": 2020262243,
+            "in_reply_to_id": 2020261674,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM54asFj",
+            "original_commit_id": "8faf1972434fc36af081fb9c509ad4396fd4e1c4",
+            "original_line": 60,
+            "original_position": 56,
+            "original_start_line": null,
+            "path": "test/functional/autocmd/signal_spec.lua",
+            "position": null,
+            "pull_request_review_id": 2728017815,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/32843",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2020262243/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-03-30T21:55:41Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2020262243",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/101289702?v=4",
+                "events_url": "https://api.github.com/users/SkohTV/events{/privacy}",
+                "followers_url": "https://api.github.com/users/SkohTV/followers",
+                "following_url": "https://api.github.com/users/SkohTV/following{/other_user}",
+                "gists_url": "https://api.github.com/users/SkohTV/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/SkohTV",
+                "id": 101289702,
+                "login": "SkohTV",
+                "node_id": "U_kgDOBgmO5g",
+                "organizations_url": "https://api.github.com/users/SkohTV/orgs",
+                "received_events_url": "https://api.github.com/users/SkohTV/received_events",
+                "repos_url": "https://api.github.com/users/SkohTV/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/SkohTV/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/SkohTV/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/SkohTV",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/32843#discussion_r2020262493"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/32843"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2020262493"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "can do this to ensure the `testfile` is deleted after the test is finished (this is a feature of the \"busted\" test framework):\r\n\r\n\r\n\r\n```suggestion\r\n    local teststr = 'Testaaaaaaa'\r\n    finally(function()\r\n      os.remove(testfile)\r\n    end)\r\n```",
+            "commit_id": "12d19df45ec1491b96d55312e4c8518972f18ec5",
+            "created_at": "2025-03-30T21:57:04Z",
+            "diff_hunk": "@@ -8,39 +8,88 @@ local fn = n.fn\n local next_msg = n.next_msg\n local is_os = t.is_os\n local skip = t.skip\n+local read_file = t.read_file\n+local feed = n.feed\n+local retry = t.retry\n \n if skip(is_os('win'), 'Only applies to POSIX systems') then\n   return\n end\n \n-local function posix_kill(signame, pid)\n-  os.execute('kill -s ' .. signame .. ' -- ' .. pid .. ' >/dev/null')\n-end\n+describe(\"'autowriteall' on signal exit\", function()\n+  before_each(clear)\n+\n+  local function test_deadly_sig(signame, awa, should_write)\n+    local testfile = 'Xtest_SIG' .. signame .. (awa and '_awa' or '_noawa')\n+    local teststr = 'Testaaaaaaa'",
+            "html_url": "https://github.com/neovim/neovim/pull/32843#discussion_r2020262493",
+            "id": 2020262493,
+            "line": 24,
+            "node_id": "PRRC_kwDOAPphoM54asJd",
+            "original_commit_id": "e00cdc85fb7154c4c5d949f7fd4d092588925a5c",
+            "original_line": 24,
+            "original_position": 20,
+            "original_start_line": null,
+            "path": "test/functional/autocmd/signal_spec.lua",
+            "position": 20,
+            "pull_request_review_id": 2728018063,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/32843",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2020262493/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-03-30T21:57:04Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2020262493",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/32843#discussion_r2020264446"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/32843"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2020264446"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "Since `test_deadly_sig()` terminate the neovim instance, I don't think we can easly combine them",
+            "commit_id": "12d19df45ec1491b96d55312e4c8518972f18ec5",
+            "created_at": "2025-03-30T22:09:09Z",
+            "diff_hunk": "@@ -8,39 +8,88 @@ local fn = n.fn\n local next_msg = n.next_msg\n local is_os = t.is_os\n local skip = t.skip\n+local read_file = t.read_file\n+local feed = n.feed\n+local retry = t.retry\n \n if skip(is_os('win'), 'Only applies to POSIX systems') then\n   return\n end\n \n-local function posix_kill(signame, pid)\n-  os.execute('kill -s ' .. signame .. ' -- ' .. pid .. ' >/dev/null')\n-end\n+describe(\"'autowriteall' on signal exit\", function()\n+  before_each(clear)\n+\n+  local function test_deadly_sig(signame, awa, should_write)\n+    local testfile = 'Xtest_SIG' .. signame .. (awa and '_awa' or '_noawa')\n+    local teststr = 'Testaaaaaaa'\n+\n+    if awa then\n+      command('set awa')\n+    end\n+\n+    command('edit ' .. testfile)\n+    feed('i' .. teststr)\n+    vim.uv.kill(fn.getpid(), signame)\n+\n+    retry(nil, 5000, function()\n+      eq((should_write and (teststr .. '\\n') or nil), read_file(testfile))\n+    end)\n+  end\n+\n+  it('dont write if SIGTERM & awa on', function()\n+    test_deadly_sig('sigterm', true, false)\n+  end)\n+  it('dont write if SIGTERM & awa off', function()\n+    test_deadly_sig('sigterm', false, false)\n+  end)",
+            "html_url": "https://github.com/neovim/neovim/pull/32843#discussion_r2020264446",
+            "id": 2020264446,
+            "in_reply_to_id": 2020261913,
+            "line": 47,
+            "node_id": "PRRC_kwDOAPphoM54asn-",
+            "original_commit_id": "8faf1972434fc36af081fb9c509ad4396fd4e1c4",
+            "original_line": 44,
+            "original_position": 40,
+            "original_start_line": 39,
+            "path": "test/functional/autocmd/signal_spec.lua",
+            "position": 43,
+            "pull_request_review_id": 2728020602,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/32843",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2020264446/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 42,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2025-03-31T09:44:33Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2020264446",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/101289702?v=4",
+                "events_url": "https://api.github.com/users/SkohTV/events{/privacy}",
+                "followers_url": "https://api.github.com/users/SkohTV/followers",
+                "following_url": "https://api.github.com/users/SkohTV/following{/other_user}",
+                "gists_url": "https://api.github.com/users/SkohTV/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/SkohTV",
+                "id": 101289702,
+                "login": "SkohTV",
+                "node_id": "U_kgDOBgmO5g",
+                "organizations_url": "https://api.github.com/users/SkohTV/orgs",
+                "received_events_url": "https://api.github.com/users/SkohTV/received_events",
+                "repos_url": "https://api.github.com/users/SkohTV/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/SkohTV/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/SkohTV/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/SkohTV",
+                "user_view_type": "public"
+            }
+        }
+    ],
     "comment_regular_data": [
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "Does this needs a mention in news.txt ?\r\nI'm unsure if it's really a breaking change or not\r\nAlso not sure if I should add some tests to assert the behavior",
             "created_at": "2025-03-15T10:10:16Z",
             "html_url": "https://github.com/neovim/neovim/pull/32843#issuecomment-2726413191",
@@ -221,7 +1054,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "@justinmk \r\n\r\n(Sorry for the ping, I don't know if I'm allowed to ping maintainers, but I've been waiting for an answer for a week)",
             "created_at": "2025-03-22T20:26:37Z",
             "html_url": "https://github.com/neovim/neovim/pull/32843#issuecomment-2745591223",
@@ -266,7 +1099,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "Any other change before it can be merged ?",
             "created_at": "2025-03-24T13:06:18Z",
             "html_url": "https://github.com/neovim/neovim/pull/32843#issuecomment-2748073030",
@@ -352,6 +1185,96 @@
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
                 "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "I added a test `autowriteall on kill` in `test/functional/autocmd/signal_spec.lua` to ensure the required behavior for SIGHUP, SIGQUIT, SIGTSTP, SIGTERM and SIGKILL\r\nI'll rebase this regularly until it gets merged :+1: ",
+            "created_at": "2025-03-25T11:45:44Z",
+            "html_url": "https://github.com/neovim/neovim/pull/32843#issuecomment-2750992237",
+            "id": 2750992237,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/32843",
+            "node_id": "IC_kwDOAPphoM6j-M9t",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2750992237/reactions"
+            },
+            "updated_at": "2025-03-25T11:45:44Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2750992237",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/101289702?v=4",
+                "events_url": "https://api.github.com/users/SkohTV/events{/privacy}",
+                "followers_url": "https://api.github.com/users/SkohTV/followers",
+                "following_url": "https://api.github.com/users/SkohTV/following{/other_user}",
+                "gists_url": "https://api.github.com/users/SkohTV/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/SkohTV",
+                "id": 101289702,
+                "login": "SkohTV",
+                "node_id": "U_kgDOBgmO5g",
+                "organizations_url": "https://api.github.com/users/SkohTV/orgs",
+                "received_events_url": "https://api.github.com/users/SkohTV/received_events",
+                "repos_url": "https://api.github.com/users/SkohTV/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/SkohTV/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/SkohTV/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/SkohTV",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "Back to the \"skip tests for Windows\" state\r\nLet's let the CI run one more time to make sure I didn't mess up something",
+            "created_at": "2025-03-30T21:11:45Z",
+            "html_url": "https://github.com/neovim/neovim/pull/32843#issuecomment-2764747826",
+            "id": 2764747826,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/32843",
+            "node_id": "IC_kwDOAPphoM6kyrQy",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2764747826/reactions"
+            },
+            "updated_at": "2025-03-30T21:11:45Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2764747826",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/101289702?v=4",
+                "events_url": "https://api.github.com/users/SkohTV/events{/privacy}",
+                "followers_url": "https://api.github.com/users/SkohTV/followers",
+                "following_url": "https://api.github.com/users/SkohTV/following{/other_user}",
+                "gists_url": "https://api.github.com/users/SkohTV/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/SkohTV",
+                "id": 101289702,
+                "login": "SkohTV",
+                "node_id": "U_kgDOBgmO5g",
+                "organizations_url": "https://api.github.com/users/SkohTV/orgs",
+                "received_events_url": "https://api.github.com/users/SkohTV/received_events",
+                "repos_url": "https://api.github.com/users/SkohTV/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/SkohTV/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/SkohTV/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/SkohTV",
                 "user_view_type": "public"
             }
         }
@@ -450,9 +1373,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/SkohTV/neovim/pulls{/number}",
-            "pushed_at": "2025-03-24T12:42:19Z",
+            "pushed_at": "2025-03-30T23:06:13Z",
             "releases_url": "https://api.github.com/repos/SkohTV/neovim/releases{/id}",
-            "size": 305237,
+            "size": 306602,
             "ssh_url": "git@github.com:SkohTV/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/SkohTV/neovim/stargazers",
@@ -464,14 +1387,14 @@
             "teams_url": "https://api.github.com/repos/SkohTV/neovim/teams",
             "topics": [],
             "trees_url": "https://api.github.com/repos/SkohTV/neovim/git/trees{/sha}",
-            "updated_at": "2025-03-21T12:34:42Z",
+            "updated_at": "2025-03-29T20:09:10Z",
             "url": "https://api.github.com/repos/SkohTV/neovim",
             "visibility": "public",
             "watchers": 0,
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "b36d87b68a6921a8d350638a52037c8bd7b2113d",
+        "sha": "12d19df45ec1491b96d55312e4c8518972f18ec5",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/101289702?v=4",
             "events_url": "https://api.github.com/users/SkohTV/events{/privacy}",
@@ -497,13 +1420,23 @@
     "html_url": "https://github.com/neovim/neovim/pull/32843",
     "id": 2386384487,
     "issue_url": "https://api.github.com/repos/neovim/neovim/issues/32843",
-    "labels": [],
+    "labels": [
+        {
+            "color": "F3A62E",
+            "default": false,
+            "description": "community: Google Summer of Code project",
+            "id": 834483397,
+            "name": "gsoc",
+            "node_id": "MDU6TGFiZWw4MzQ0ODMzOTc=",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/gsoc"
+        }
+    ],
     "locked": false,
-    "merge_commit_sha": "d1edc5dc34452d40ed54841909bfcb660e234982",
-    "merged_at": null,
+    "merge_commit_sha": "4dabeff308222307ede8e74a2bd341713a7f7d81",
+    "merged_at": "2025-03-31T13:14:45Z",
     "milestone": {
         "closed_at": null,
-        "closed_issues": 2,
+        "closed_issues": 10,
         "created_at": "2024-05-16T14:11:54Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -536,7 +1469,7 @@
         "open_issues": 72,
         "state": "open",
         "title": "0.12",
-        "updated_at": "2025-03-24T18:47:55Z",
+        "updated_at": "2025-03-31T13:15:01Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/43"
     },
     "node_id": "PR_kwDOAPphoM6OPVZn",
@@ -546,10 +1479,10 @@
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/32843/comments",
-    "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/b36d87b68a6921a8d350638a52037c8bd7b2113d",
-    "title": "feat(autowrite): autowrite buffers on deadly signal",
-    "updated_at": "2025-03-24T19:07:18Z",
+    "state": "closed",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/12d19df45ec1491b96d55312e4c8518972f18ec5",
+    "title": "feat(editor): 'autowriteall' on SIGHUP/SIGQUIT",
+    "updated_at": "2025-03-31T13:14:54Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/32843",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/101289702?v=4",
