@@ -5,6 +5,27 @@
     "author_association": "CONTRIBUTOR",
     "body": "### Problem\n\nText edits returned from the LSP that have the same start position are being applied in reverse. For example:\r\n\r\nFor the following dummy text,\r\n```elixir\r\ndefmodule Dummy do\r\n  alias B\r\n  alias A\r\n\r\n  def hello do\r\n  end\r\nend\r\n```\r\n\r\nand following edits:\r\n```\r\n[DEBUG][2024-06-02 08:39:45] .../vim/lsp/rpc.lua:387\t\"rpc.receive\"\t{\r\n  id = 10,\r\n  jsonrpc = \"2.0\",\r\n  result = { {\r\n      edit = {\r\n        changes = {\r\n          [\"file:///Users/scottming/Code/dummy/lib/dummy.ex\"] = { {\r\n              newText = \"\",\r\n              range = {\r\n                [\"end\"] = {\r\n                  character = 0,\r\n                  line = 3\r\n                },\r\n                start = {\r\n                  character = 0,\r\n                  line = 2\r\n                }\r\n              }\r\n            }, {\r\n              newText = \"\\n\",\r\n              range = {\r\n                [\"end\"] = {\r\n                  character = 0,\r\n                  line = 2\r\n                },\r\n                start = {\r\n                  character = 0,\r\n                  line = 1\r\n                }\r\n              }\r\n            }, {\r\n              newText = \"  alias A\\n  alias B\",\r\n              range = {\r\n                [\"end\"] = {\r\n                  character = 0,\r\n                  line = 1\r\n                },\r\n                start = {\r\n                  character = 0,\r\n                  line = 1\r\n                }\r\n              }\r\n            } }\r\n        }\r\n      },\r\n      kind = \"source.organizeImports\",\r\n      title = \"Organize aliases\"\r\n    } }\r\n}\r\n```\r\n\r\nResults in the following:\r\n```elixir\r\ndefmodule Dummy do\r\n\r\n  alias B  alias B\r\n\r\n  def hello do\r\n  end\r\nend\r\n```\r\n\r\nAccording to the [spec](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textEditArray), text edits with the same start position should be applied in the order received.\r\n\r\nAlso, in the [vscode implementation](https://github.com/microsoft/vscode-languageserver-node/blob/main/textDocument/src/main.ts#L371), similar start position text edits aren't sorted in reverse order\r\n\r\nAdditional context can be found on an issue filed on the lexical repo\r\nhttps://github.com/lexical-lsp/lexical/issues/765\r\n\n\n### Steps to reproduce using \"nvim -u minimal_init.lua\"\n\nUsing this minimal init,\r\n```lua\r\n--- CHANGE THESE\r\nlocal pattern = { 'elixir', 'eelixir' }\r\nlocal cmd = { '/path/to/lexical/_build/dev/package/lexical/bin/start_lexical.sh' }\r\n-- Add files/folders here that indicate the root of a project\r\nlocal root_markers = { '.git', '.editorconfig' }\r\n-- Change to table with settings if required\r\nlocal settings = vim.empty_dict()\r\n\r\nvim.api.nvim_create_autocmd('FileType', {\r\n  pattern = pattern,\r\n  callback = function(args)\r\n    local match = vim.fs.find(root_markers, { path = args.file, upward = true })[1]\r\n    local root_dir = match and vim.fn.fnamemodify(match, ':p:h') or nil\r\n    vim.lsp.start({\r\n      name = 'bugged-ls',\r\n      cmd = cmd,\r\n      root_dir = root_dir,\r\n      settings = settings,\r\n    })\r\n  end,\r\n})\r\n```\r\n\r\nand this dummy file:\r\n```elixir\r\n# dummy.exs\r\ndefmodule Dummy do\r\n  alias B\r\n  alias A\r\n\r\n  def hello do\r\n  end\r\nend\r\n```\r\n\r\n1. Open up the dummy file with the command `nvim -u minimal_init.lua dummy.exs`\r\n2. Navigate to the first alias and run the command `:lua vim.lsp.buf.code_action()`\r\n3. Run the `Organize aliases` code action to sort the aliases\r\n\n\n### Expected behavior\n\nThe code action should result in the file:\r\n```elixir\r\n# dummy.exs\r\ndefmodule Dummy do\r\n  alias A\r\n  alias B\r\n\r\n  def hello do\r\n  end\r\nend\r\n```\r\n\n\n### Neovim version (nvim -v)\n\nv0.10.0 release\n\n### Language server name/version\n\nlexical v0.6.1\n\n### Operating system/version\n\nmacos 14.4.1\n\n### Log file\n\nhttps://gist.github.com/alcolmenar/fd784a80a8f91c6a254e74cb3c1ed3b6",
     "closed_at": "2024-06-07T09:54:44Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/38700?v=4",
+        "events_url": "https://api.github.com/users/mfussenegger/events{/privacy}",
+        "followers_url": "https://api.github.com/users/mfussenegger/followers",
+        "following_url": "https://api.github.com/users/mfussenegger/following{/other_user}",
+        "gists_url": "https://api.github.com/users/mfussenegger/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/mfussenegger",
+        "id": 38700,
+        "login": "mfussenegger",
+        "node_id": "MDQ6VXNlcjM4NzAw",
+        "organizations_url": "https://api.github.com/users/mfussenegger/orgs",
+        "received_events_url": "https://api.github.com/users/mfussenegger/received_events",
+        "repos_url": "https://api.github.com/users/mfussenegger/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/mfussenegger/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/mfussenegger/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/mfussenegger",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "CONTRIBUTOR",
@@ -47,7 +68,8 @@
                 "starred_url": "https://api.github.com/users/alcolmenar/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/alcolmenar/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/alcolmenar"
+                "url": "https://api.github.com/users/alcolmenar",
+                "user_view_type": "public"
             }
         },
         {
@@ -91,7 +113,8 @@
                 "starred_url": "https://api.github.com/users/mfussenegger/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/mfussenegger/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/mfussenegger"
+                "url": "https://api.github.com/users/mfussenegger",
+                "user_view_type": "public"
             }
         },
         {
@@ -135,7 +158,8 @@
                 "starred_url": "https://api.github.com/users/scohen/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/scohen/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/scohen"
+                "url": "https://api.github.com/users/scohen",
+                "user_view_type": "public"
             }
         },
         {
@@ -179,7 +203,8 @@
                 "starred_url": "https://api.github.com/users/scohen/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/scohen/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/scohen"
+                "url": "https://api.github.com/users/scohen",
+                "user_view_type": "public"
             }
         },
         {
@@ -223,7 +248,8 @@
                 "starred_url": "https://api.github.com/users/hrsh7th/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/hrsh7th/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/hrsh7th"
+                "url": "https://api.github.com/users/hrsh7th",
+                "user_view_type": "public"
             }
         },
         {
@@ -267,7 +293,8 @@
                 "starred_url": "https://api.github.com/users/kyoh86/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/kyoh86/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/kyoh86"
+                "url": "https://api.github.com/users/kyoh86",
+                "user_view_type": "public"
             }
         },
         {
@@ -311,7 +338,8 @@
                 "starred_url": "https://api.github.com/users/scohen/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/scohen/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/scohen"
+                "url": "https://api.github.com/users/scohen",
+                "user_view_type": "public"
             }
         },
         {
@@ -355,7 +383,8 @@
                 "starred_url": "https://api.github.com/users/kyoh86/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/kyoh86/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/kyoh86"
+                "url": "https://api.github.com/users/kyoh86",
+                "user_view_type": "public"
             }
         },
         {
@@ -399,20 +428,21 @@
                 "starred_url": "https://api.github.com/users/bangalcat/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/bangalcat/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/bangalcat"
+                "url": "https://api.github.com/users/bangalcat",
+                "user_view_type": "public"
             }
         },
         {
             "author_association": "NONE",
-            "body": "fwiw, I've been running without reordering with no issues on either Lexical or typescript-tools (tsserver).\r\n\r\n```patch\r\ndiff --git a/runtime/lua/vim/lsp/util.lua b/runtime/lua/vim/lsp/util.lua\r\nindex b0fd25af3..f59674059 100644\r\n--- a/runtime/lua/vim/lsp/util.lua\r\n+++ b/runtime/lua/vim/lsp/util.lua\r\n@@ -396,9 +396,6 @@ function M.apply_text_edits(text_edits, bufnr, offset_encoding)\r\n     if a.range.start.character ~= b.range.start.character then\r\n       return a.range.start.character > b.range.start.character\r\n     end\r\n-    if a._index ~= b._index then\r\n-      return a._index < b._index\r\n-    end\r\n     return false\r\n   end)\r\n \r\ndiff --git a/test/functional/plugin/lsp_spec.lua b/test/functional/plugin/lsp_spec.lua\r\nindex 2b8a7aed9..a7e1f5f3f 100644\r\n--- a/test/functional/plugin/lsp_spec.lua\r\n+++ b/test/functional/plugin/lsp_spec.lua\r\n@@ -1794,9 +1794,9 @@ describe('LSP', function()\r\n       }\r\n       exec_lua('vim.lsp.util.apply_text_edits(...)', edits, 1, 'utf-16')\r\n       eq({\r\n-        '3',\r\n-        'foo',\r\n-        '12Fbar',\r\n+        '',\r\n+        '123',\r\n+        'fooFbar',\r\n         '123irst guy',\r\n         'baz line of text',\r\n         'The next line of text',\r\n@@ -1818,9 +1818,9 @@ describe('LSP', function()\r\n       }\r\n       exec_lua('vim.lsp.util.apply_text_edits(...)', edits, 1, 'utf-16')\r\n       eq({\r\n-        '3',\r\n-        'foo',\r\n-        '12Fbar',\r\n+        '',\r\n+        '123',\r\n+        'fooFbar',\r\n         '123irst guy',\r\n         'baz line of text',\r\n         'The next line of text',\r\n```",
-            "created_at": "2024-07-12T16:16:46Z",
-            "html_url": "https://github.com/neovim/neovim/issues/29202#issuecomment-2225910304",
-            "id": 2225910304,
+            "body": "Hi there. I was also having some issues with `basedpyright` language server. I totally forgotten about this until I re encountered the same issue. Seems like swapping the order of sorting fixes the issue. But I am pretty sure it may will introduce new issues. Could anyone please check this? [#31655](https://github.com/neovim/neovim/issues/31655)",
+            "created_at": "2025-04-03T12:52:28Z",
+            "html_url": "https://github.com/neovim/neovim/issues/29202#issuecomment-2775694190",
+            "id": 2775694190,
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/29202",
-            "node_id": "IC_kwDOAPphoM6ErLIg",
+            "node_id": "IC_kwDOAPphoM6lcbtu",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 1,
+                "+1": 0,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -420,30 +450,31 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 1,
-                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2225910304/reactions"
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2775694190/reactions"
             },
-            "updated_at": "2024-07-12T16:16:46Z",
-            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2225910304",
+            "updated_at": "2025-04-03T12:52:28Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2775694190",
             "user": {
-                "avatar_url": "https://avatars.githubusercontent.com/u/20242530?v=4",
-                "events_url": "https://api.github.com/users/iurimateus/events{/privacy}",
-                "followers_url": "https://api.github.com/users/iurimateus/followers",
-                "following_url": "https://api.github.com/users/iurimateus/following{/other_user}",
-                "gists_url": "https://api.github.com/users/iurimateus/gists{/gist_id}",
+                "avatar_url": "https://avatars.githubusercontent.com/u/92540820?v=4",
+                "events_url": "https://api.github.com/users/Rid1FZ/events{/privacy}",
+                "followers_url": "https://api.github.com/users/Rid1FZ/followers",
+                "following_url": "https://api.github.com/users/Rid1FZ/following{/other_user}",
+                "gists_url": "https://api.github.com/users/Rid1FZ/gists{/gist_id}",
                 "gravatar_id": "",
-                "html_url": "https://github.com/iurimateus",
-                "id": 20242530,
-                "login": "iurimateus",
-                "node_id": "MDQ6VXNlcjIwMjQyNTMw",
-                "organizations_url": "https://api.github.com/users/iurimateus/orgs",
-                "received_events_url": "https://api.github.com/users/iurimateus/received_events",
-                "repos_url": "https://api.github.com/users/iurimateus/repos",
+                "html_url": "https://github.com/Rid1FZ",
+                "id": 92540820,
+                "login": "Rid1FZ",
+                "node_id": "U_kgDOBYQPlA",
+                "organizations_url": "https://api.github.com/users/Rid1FZ/orgs",
+                "received_events_url": "https://api.github.com/users/Rid1FZ/received_events",
+                "repos_url": "https://api.github.com/users/Rid1FZ/repos",
                 "site_admin": false,
-                "starred_url": "https://api.github.com/users/iurimateus/starred{/owner}{/repo}",
-                "subscriptions_url": "https://api.github.com/users/iurimateus/subscriptions",
+                "starred_url": "https://api.github.com/users/Rid1FZ/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/Rid1FZ/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/iurimateus"
+                "url": "https://api.github.com/users/Rid1FZ",
+                "user_view_type": "public"
             }
         }
     ],
@@ -494,9 +525,15 @@
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "closed",
     "state_reason": "completed",
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/29202/timeline",
     "title": "Text edits with the same start position are applied in reverse",
-    "updated_at": "2024-07-12T16:16:46Z",
+    "type": null,
+    "updated_at": "2025-04-03T21:58:16Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/29202",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/57642956?v=4",
@@ -516,6 +553,7 @@
         "starred_url": "https://api.github.com/users/alcolmenar/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/alcolmenar/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/alcolmenar"
+        "url": "https://api.github.com/users/alcolmenar",
+        "user_view_type": "public"
     }
 }

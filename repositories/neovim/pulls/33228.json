@@ -22,13 +22,13 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/33228"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/468112bec4f33c3f13295cd726fb0e8671a51c8a"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/511c618543655d8d2ace8fcafebe1d233e655620"
         }
     },
     "active_lock_reason": null,
     "assignee": null,
     "assignees": [],
-    "author_association": "FIRST_TIME_CONTRIBUTOR",
+    "author_association": "CONTRIBUTOR",
     "auto_merge": null,
     "base": {
         "label": "neovim:master",
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 5980,
-            "forks_count": 5980,
+            "forks": 6002,
+            "forks_count": 6002,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1910,
-            "open_issues_count": 1910,
+            "open_issues": 1923,
+            "open_issues_count": 1923,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -119,11 +119,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2025-04-01T00:41:49Z",
+            "pushed_at": "2025-04-08T00:52:19Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 314758,
+            "size": 315764,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 88175,
+            "stargazers_count": 88451,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -141,14 +141,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2025-04-01T02:47:16Z",
+            "updated_at": "2025-04-08T02:13:00Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 88175,
-            "watchers_count": 88175,
+            "watchers": 88451,
+            "watchers_count": 88451,
             "web_commit_signoff_required": false
         },
-        "sha": "2ee896201c463f57395cffd12a83c18a9a7bfd9b",
+        "sha": "7e8b7bba21cfb0a35e442c27aec0ced1b32ce14d",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -172,7 +172,7 @@
         }
     },
     "body": "Problem: When `nvim_set_keymap` tries to overwrite a `<unique>` mapping, it throws an error even when called in `pcall`.\r\nSolution: src/nvim/mapping.c:buf_do_map no longer calls `semsg`. Its callers now decide whether to ignore the error, or use `semsg` (not caught)/`api_set_error` (caught by `pcall`).\r\n\r\nFixes #33128",
-    "closed_at": null,
+    "closed_at": "2025-04-01T12:30:01Z",
     "comment_data": [
         {
             "_links": {
@@ -188,7 +188,7 @@
             },
             "author_association": "MEMBER",
             "body": "This isn't correct. \"global\" should only appear in the error message when a buffer-local mapping conflicts with a global one.",
-            "commit_id": "468112bec4f33c3f13295cd726fb0e8671a51c8a",
+            "commit_id": "511c618543655d8d2ace8fcafebe1d233e655620",
             "created_at": "2025-03-31T14:45:17Z",
             "diff_hunk": "@@ -2798,15 +2820,21 @@ void modify_keymap(uint64_t channel_id, Buffer buffer, bool is_unmap, String mod\n   case 0:\n     break;\n   case 1:\n-    api_set_error(err, kErrorTypeException, e_invarg, 0);\n+    api_set_error(err, kErrorTypeException, _(e_invarg), 0);\n     goto fail_and_free;\n   case 2:\n-    api_set_error(err, kErrorTypeException, e_nomap, 0);\n+    api_set_error(err, kErrorTypeException, _(e_nomap), 0);\n     goto fail_and_free;\n   case 5:\n-    api_set_error(err, kErrorTypeException,\n-                  is_abbrev ? e_abbreviation_already_exists_for_str\n-                            : e_mapping_already_exists_for_str, lhs.data);\n+    if (parsed_args.buffer) {\n+      api_set_error(err, kErrorTypeException,\n+                    is_abbrev ? _(e_abbreviation_already_exists_for_str)\n+                              : _(e_mapping_already_exists_for_str), lhs.data);\n+    } else {\n+      api_set_error(err, kErrorTypeException,\n+                    is_abbrev ? _(e_global_abbreviation_already_exists_for_str)\n+                              : _(e_global_mapping_already_exists_for_str), lhs.data);\n+    }",
             "html_url": "https://github.com/neovim/neovim/pull/33228#discussion_r2021196533",
@@ -255,9 +255,9 @@
                     "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2021261307"
                 }
             },
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "You're right. This can be fixed if `buf_do_map` returns a different error code (say 6) for the global vs local case. Since this error code is returned by `do_map`, which is exported, I can either keep it backwards compatible by converting the new error code back to 5, or change the behaviour of `do_map`. Which option is preferred?",
-            "commit_id": "468112bec4f33c3f13295cd726fb0e8671a51c8a",
+            "commit_id": "511c618543655d8d2ace8fcafebe1d233e655620",
             "created_at": "2025-03-31T15:23:19Z",
             "diff_hunk": "@@ -2798,15 +2820,21 @@ void modify_keymap(uint64_t channel_id, Buffer buffer, bool is_unmap, String mod\n   case 0:\n     break;\n   case 1:\n-    api_set_error(err, kErrorTypeException, e_invarg, 0);\n+    api_set_error(err, kErrorTypeException, _(e_invarg), 0);\n     goto fail_and_free;\n   case 2:\n-    api_set_error(err, kErrorTypeException, e_nomap, 0);\n+    api_set_error(err, kErrorTypeException, _(e_nomap), 0);\n     goto fail_and_free;\n   case 5:\n-    api_set_error(err, kErrorTypeException,\n-                  is_abbrev ? e_abbreviation_already_exists_for_str\n-                            : e_mapping_already_exists_for_str, lhs.data);\n+    if (parsed_args.buffer) {\n+      api_set_error(err, kErrorTypeException,\n+                    is_abbrev ? _(e_abbreviation_already_exists_for_str)\n+                              : _(e_mapping_already_exists_for_str), lhs.data);\n+    } else {\n+      api_set_error(err, kErrorTypeException,\n+                    is_abbrev ? _(e_global_abbreviation_already_exists_for_str)\n+                              : _(e_global_mapping_already_exists_for_str), lhs.data);\n+    }",
             "html_url": "https://github.com/neovim/neovim/pull/33228#discussion_r2021261307",
@@ -325,9 +325,9 @@
                     "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2021454636"
                 }
             },
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "For now, I've changed `buf_do_map` to return 6 when a unique buflocal conflicts with a global mapping. `do_map` reverts its return value to 5. If this is too ugly and `do_map`'s contract can be changed, I can let it return 6.",
-            "commit_id": "468112bec4f33c3f13295cd726fb0e8671a51c8a",
+            "commit_id": "511c618543655d8d2ace8fcafebe1d233e655620",
             "created_at": "2025-03-31T17:37:40Z",
             "diff_hunk": "@@ -2798,15 +2820,21 @@ void modify_keymap(uint64_t channel_id, Buffer buffer, bool is_unmap, String mod\n   case 0:\n     break;\n   case 1:\n-    api_set_error(err, kErrorTypeException, e_invarg, 0);\n+    api_set_error(err, kErrorTypeException, _(e_invarg), 0);\n     goto fail_and_free;\n   case 2:\n-    api_set_error(err, kErrorTypeException, e_nomap, 0);\n+    api_set_error(err, kErrorTypeException, _(e_nomap), 0);\n     goto fail_and_free;\n   case 5:\n-    api_set_error(err, kErrorTypeException,\n-                  is_abbrev ? e_abbreviation_already_exists_for_str\n-                            : e_mapping_already_exists_for_str, lhs.data);\n+    if (parsed_args.buffer) {\n+      api_set_error(err, kErrorTypeException,\n+                    is_abbrev ? _(e_abbreviation_already_exists_for_str)\n+                              : _(e_mapping_already_exists_for_str), lhs.data);\n+    } else {\n+      api_set_error(err, kErrorTypeException,\n+                    is_abbrev ? _(e_global_abbreviation_already_exists_for_str)\n+                              : _(e_global_mapping_already_exists_for_str), lhs.data);\n+    }",
             "html_url": "https://github.com/neovim/neovim/pull/33228#discussion_r2021454636",
@@ -397,7 +397,7 @@
             },
             "author_association": "MEMBER",
             "body": "> If this is too ugly and `do_map`'s contract can be changed, I can let it return 6.\r\n\r\nYes, you can.",
-            "commit_id": "468112bec4f33c3f13295cd726fb0e8671a51c8a",
+            "commit_id": "511c618543655d8d2ace8fcafebe1d233e655620",
             "created_at": "2025-04-01T00:39:50Z",
             "diff_hunk": "@@ -2798,15 +2820,21 @@ void modify_keymap(uint64_t channel_id, Buffer buffer, bool is_unmap, String mod\n   case 0:\n     break;\n   case 1:\n-    api_set_error(err, kErrorTypeException, e_invarg, 0);\n+    api_set_error(err, kErrorTypeException, _(e_invarg), 0);\n     goto fail_and_free;\n   case 2:\n-    api_set_error(err, kErrorTypeException, e_nomap, 0);\n+    api_set_error(err, kErrorTypeException, _(e_nomap), 0);\n     goto fail_and_free;\n   case 5:\n-    api_set_error(err, kErrorTypeException,\n-                  is_abbrev ? e_abbreviation_already_exists_for_str\n-                            : e_mapping_already_exists_for_str, lhs.data);\n+    if (parsed_args.buffer) {\n+      api_set_error(err, kErrorTypeException,\n+                    is_abbrev ? _(e_abbreviation_already_exists_for_str)\n+                              : _(e_mapping_already_exists_for_str), lhs.data);\n+    } else {\n+      api_set_error(err, kErrorTypeException,\n+                    is_abbrev ? _(e_global_abbreviation_already_exists_for_str)\n+                              : _(e_global_mapping_already_exists_for_str), lhs.data);\n+    }",
             "html_url": "https://github.com/neovim/neovim/pull/33228#discussion_r2021952968",
@@ -452,9 +452,511 @@
                 "url": "https://api.github.com/users/zeertzjq",
                 "user_view_type": "public"
             }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/33228#discussion_r2022234426"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/33228"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2022234426"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "Done.",
+            "commit_id": "511c618543655d8d2ace8fcafebe1d233e655620",
+            "created_at": "2025-04-01T06:35:10Z",
+            "diff_hunk": "@@ -2798,15 +2820,21 @@ void modify_keymap(uint64_t channel_id, Buffer buffer, bool is_unmap, String mod\n   case 0:\n     break;\n   case 1:\n-    api_set_error(err, kErrorTypeException, e_invarg, 0);\n+    api_set_error(err, kErrorTypeException, _(e_invarg), 0);\n     goto fail_and_free;\n   case 2:\n-    api_set_error(err, kErrorTypeException, e_nomap, 0);\n+    api_set_error(err, kErrorTypeException, _(e_nomap), 0);\n     goto fail_and_free;\n   case 5:\n-    api_set_error(err, kErrorTypeException,\n-                  is_abbrev ? e_abbreviation_already_exists_for_str\n-                            : e_mapping_already_exists_for_str, lhs.data);\n+    if (parsed_args.buffer) {\n+      api_set_error(err, kErrorTypeException,\n+                    is_abbrev ? _(e_abbreviation_already_exists_for_str)\n+                              : _(e_mapping_already_exists_for_str), lhs.data);\n+    } else {\n+      api_set_error(err, kErrorTypeException,\n+                    is_abbrev ? _(e_global_abbreviation_already_exists_for_str)\n+                              : _(e_global_mapping_already_exists_for_str), lhs.data);\n+    }",
+            "html_url": "https://github.com/neovim/neovim/pull/33228#discussion_r2022234426",
+            "id": 2022234426,
+            "in_reply_to_id": 2021196533,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM54iNk6",
+            "original_commit_id": "732dd2185eb1a1c433133cbcd434426ded3a6938",
+            "original_line": 2837,
+            "original_position": 99,
+            "original_start_line": 2829,
+            "path": "src/nvim/mapping.c",
+            "position": null,
+            "pull_request_review_id": 2731406974,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/33228",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2022234426/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2025-04-01T06:35:11Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2022234426",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/41282711?v=4",
+                "events_url": "https://api.github.com/users/tstsrt/events{/privacy}",
+                "followers_url": "https://api.github.com/users/tstsrt/followers",
+                "following_url": "https://api.github.com/users/tstsrt/following{/other_user}",
+                "gists_url": "https://api.github.com/users/tstsrt/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/tstsrt",
+                "id": 41282711,
+                "login": "tstsrt",
+                "node_id": "MDQ6VXNlcjQxMjgyNzEx",
+                "organizations_url": "https://api.github.com/users/tstsrt/orgs",
+                "received_events_url": "https://api.github.com/users/tstsrt/received_events",
+                "repos_url": "https://api.github.com/users/tstsrt/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/tstsrt/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/tstsrt/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/tstsrt",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/33228#discussion_r2022258684"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/33228"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2022258684"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "This is now the same as what `do_map()` does, so you can change back to the original code with just `case 5` and `case 6` added.",
+            "commit_id": "511c618543655d8d2ace8fcafebe1d233e655620",
+            "created_at": "2025-04-01T06:56:28Z",
+            "diff_hunk": "@@ -2637,16 +2628,47 @@ static void do_exmap(exarg_T *eap, int isabbrev)\n   char *cmdp = eap->cmd;\n   int mode = get_map_mode(&cmdp, eap->forceit || isabbrev);\n \n-  switch (do_map((*cmdp == 'n') ? MAPTYPE_NOREMAP\n-                                : (*cmdp == 'u') ? MAPTYPE_UNMAP : MAPTYPE_MAP,\n-                 eap->arg, mode, isabbrev)) {\n+  int maptype;\n+  if (*cmdp == 'n') {\n+    maptype = MAPTYPE_NOREMAP;\n+  } else if (*cmdp == 'u') {\n+    maptype = MAPTYPE_UNMAP;\n+  } else {\n+    maptype = MAPTYPE_MAP;\n+  }\n+  MapArguments parsed_args;\n+  int result = str_to_mapargs(eap->arg, maptype == MAPTYPE_UNMAP, &parsed_args);\n+  switch (result) {\n+  case 0:\n+    break;\n+  case 1:\n+    emsg(_(e_invarg));\n+    goto free_rhs;\n+    break;\n+  default:\n+    assert(false && \"Unknown return code from str_to_mapargs!\");\n+    goto free_rhs;\n+  }\n+  switch (buf_do_map(maptype, &parsed_args, mode, isabbrev, curbuf)) {",
+            "html_url": "https://github.com/neovim/neovim/pull/33228#discussion_r2022258684",
+            "id": 2022258684,
+            "line": 2652,
+            "node_id": "PRRC_kwDOAPphoM54iTf8",
+            "original_commit_id": "bdc1604fa3271b3e59694e44f3b835f8a18ec5f2",
+            "original_line": 2652,
+            "original_position": 62,
+            "original_start_line": 2631,
+            "path": "src/nvim/mapping.c",
+            "position": 62,
+            "pull_request_review_id": 2731587354,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/33228",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2022258684/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 2631,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2025-04-01T06:57:53Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2022258684",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+                "followers_url": "https://api.github.com/users/zeertzjq/followers",
+                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/zeertzjq",
+                "id": 35768171,
+                "login": "zeertzjq",
+                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+                "repos_url": "https://api.github.com/users/zeertzjq/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/33228#discussion_r2022272048"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/33228"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2022272048"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "Not quite, since we need `parsed_args.lhs` for the error message, which `do_map` doesn't return.",
+            "commit_id": "511c618543655d8d2ace8fcafebe1d233e655620",
+            "created_at": "2025-04-01T07:06:59Z",
+            "diff_hunk": "@@ -2637,16 +2628,47 @@ static void do_exmap(exarg_T *eap, int isabbrev)\n   char *cmdp = eap->cmd;\n   int mode = get_map_mode(&cmdp, eap->forceit || isabbrev);\n \n-  switch (do_map((*cmdp == 'n') ? MAPTYPE_NOREMAP\n-                                : (*cmdp == 'u') ? MAPTYPE_UNMAP : MAPTYPE_MAP,\n-                 eap->arg, mode, isabbrev)) {\n+  int maptype;\n+  if (*cmdp == 'n') {\n+    maptype = MAPTYPE_NOREMAP;\n+  } else if (*cmdp == 'u') {\n+    maptype = MAPTYPE_UNMAP;\n+  } else {\n+    maptype = MAPTYPE_MAP;\n+  }\n+  MapArguments parsed_args;\n+  int result = str_to_mapargs(eap->arg, maptype == MAPTYPE_UNMAP, &parsed_args);\n+  switch (result) {\n+  case 0:\n+    break;\n+  case 1:\n+    emsg(_(e_invarg));\n+    goto free_rhs;\n+    break;\n+  default:\n+    assert(false && \"Unknown return code from str_to_mapargs!\");\n+    goto free_rhs;\n+  }\n+  switch (buf_do_map(maptype, &parsed_args, mode, isabbrev, curbuf)) {",
+            "html_url": "https://github.com/neovim/neovim/pull/33228#discussion_r2022272048",
+            "id": 2022272048,
+            "in_reply_to_id": 2022258684,
+            "line": 2652,
+            "node_id": "PRRC_kwDOAPphoM54iWww",
+            "original_commit_id": "bdc1604fa3271b3e59694e44f3b835f8a18ec5f2",
+            "original_line": 2652,
+            "original_position": 62,
+            "original_start_line": 2631,
+            "path": "src/nvim/mapping.c",
+            "position": 62,
+            "pull_request_review_id": 2731666359,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/33228",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2022272048/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 2631,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2025-04-01T07:06:59Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2022272048",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/41282711?v=4",
+                "events_url": "https://api.github.com/users/tstsrt/events{/privacy}",
+                "followers_url": "https://api.github.com/users/tstsrt/followers",
+                "following_url": "https://api.github.com/users/tstsrt/following{/other_user}",
+                "gists_url": "https://api.github.com/users/tstsrt/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/tstsrt",
+                "id": 41282711,
+                "login": "tstsrt",
+                "node_id": "MDQ6VXNlcjQxMjgyNzEx",
+                "organizations_url": "https://api.github.com/users/tstsrt/orgs",
+                "received_events_url": "https://api.github.com/users/tstsrt/received_events",
+                "repos_url": "https://api.github.com/users/tstsrt/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/tstsrt/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/tstsrt/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/tstsrt",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/33228#discussion_r2022282300"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/33228"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2022282300"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Oh, right.",
+            "commit_id": "511c618543655d8d2ace8fcafebe1d233e655620",
+            "created_at": "2025-04-01T07:14:44Z",
+            "diff_hunk": "@@ -2637,16 +2628,47 @@ static void do_exmap(exarg_T *eap, int isabbrev)\n   char *cmdp = eap->cmd;\n   int mode = get_map_mode(&cmdp, eap->forceit || isabbrev);\n \n-  switch (do_map((*cmdp == 'n') ? MAPTYPE_NOREMAP\n-                                : (*cmdp == 'u') ? MAPTYPE_UNMAP : MAPTYPE_MAP,\n-                 eap->arg, mode, isabbrev)) {\n+  int maptype;\n+  if (*cmdp == 'n') {\n+    maptype = MAPTYPE_NOREMAP;\n+  } else if (*cmdp == 'u') {\n+    maptype = MAPTYPE_UNMAP;\n+  } else {\n+    maptype = MAPTYPE_MAP;\n+  }\n+  MapArguments parsed_args;\n+  int result = str_to_mapargs(eap->arg, maptype == MAPTYPE_UNMAP, &parsed_args);\n+  switch (result) {\n+  case 0:\n+    break;\n+  case 1:\n+    emsg(_(e_invarg));\n+    goto free_rhs;\n+    break;\n+  default:\n+    assert(false && \"Unknown return code from str_to_mapargs!\");\n+    goto free_rhs;\n+  }\n+  switch (buf_do_map(maptype, &parsed_args, mode, isabbrev, curbuf)) {",
+            "html_url": "https://github.com/neovim/neovim/pull/33228#discussion_r2022282300",
+            "id": 2022282300,
+            "in_reply_to_id": 2022258684,
+            "line": 2652,
+            "node_id": "PRRC_kwDOAPphoM54iZQ8",
+            "original_commit_id": "bdc1604fa3271b3e59694e44f3b835f8a18ec5f2",
+            "original_line": 2652,
+            "original_position": 62,
+            "original_start_line": 2631,
+            "path": "src/nvim/mapping.c",
+            "position": 62,
+            "pull_request_review_id": 2731703335,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/33228",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2022282300/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 2631,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2025-04-01T07:14:44Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2022282300",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+                "followers_url": "https://api.github.com/users/zeertzjq/followers",
+                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/zeertzjq",
+                "id": 35768171,
+                "login": "zeertzjq",
+                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+                "repos_url": "https://api.github.com/users/zeertzjq/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/33228#discussion_r2022303085"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/33228"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2022303085"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "API errors should not be translated. See https://github.com/neovim/neovim/issues/18128#issuecomment-1107946770",
+            "commit_id": "511c618543655d8d2ace8fcafebe1d233e655620",
+            "created_at": "2025-04-01T07:29:20Z",
+            "diff_hunk": "@@ -2798,15 +2820,21 @@ void modify_keymap(uint64_t channel_id, Buffer buffer, bool is_unmap, String mod\n   case 0:\n     break;\n   case 1:\n-    api_set_error(err, kErrorTypeException, e_invarg, 0);\n+    api_set_error(err, kErrorTypeException, _(e_invarg), 0);\n     goto fail_and_free;\n   case 2:\n-    api_set_error(err, kErrorTypeException, e_nomap, 0);\n+    api_set_error(err, kErrorTypeException, _(e_nomap), 0);\n     goto fail_and_free;\n   case 5:\n     api_set_error(err, kErrorTypeException,\n-                  is_abbrev ? e_abbreviation_already_exists_for_str\n-                            : e_mapping_already_exists_for_str, lhs.data);\n+                  is_abbrev ? _(e_abbreviation_already_exists_for_str)\n+                            : _(e_mapping_already_exists_for_str), lhs.data);\n+    goto fail_and_free;\n+    break;\n+  case 6:\n+    api_set_error(err, kErrorTypeException,\n+                  is_abbrev ? _(e_global_abbreviation_already_exists_for_str)\n+                            : _(e_global_mapping_already_exists_for_str), lhs.data);\n     goto fail_and_free;",
+            "html_url": "https://github.com/neovim/neovim/pull/33228#discussion_r2022303085",
+            "id": 2022303085,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM54ieVt",
+            "original_commit_id": "bdc1604fa3271b3e59694e44f3b835f8a18ec5f2",
+            "original_line": 2838,
+            "original_position": 108,
+            "original_start_line": 2801,
+            "path": "src/nvim/mapping.c",
+            "position": null,
+            "pull_request_review_id": 2731737556,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/33228",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2022303085/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "LEFT",
+            "subject_type": "line",
+            "updated_at": "2025-04-01T07:29:20Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2022303085",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+                "followers_url": "https://api.github.com/users/zeertzjq/followers",
+                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/zeertzjq",
+                "id": 35768171,
+                "login": "zeertzjq",
+                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+                "repos_url": "https://api.github.com/users/zeertzjq/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/33228#discussion_r2022323679"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/33228"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2022323679"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "Oh, that makes sense. Fixed.",
+            "commit_id": "511c618543655d8d2ace8fcafebe1d233e655620",
+            "created_at": "2025-04-01T07:42:09Z",
+            "diff_hunk": "@@ -2798,15 +2820,21 @@ void modify_keymap(uint64_t channel_id, Buffer buffer, bool is_unmap, String mod\n   case 0:\n     break;\n   case 1:\n-    api_set_error(err, kErrorTypeException, e_invarg, 0);\n+    api_set_error(err, kErrorTypeException, _(e_invarg), 0);\n     goto fail_and_free;\n   case 2:\n-    api_set_error(err, kErrorTypeException, e_nomap, 0);\n+    api_set_error(err, kErrorTypeException, _(e_nomap), 0);\n     goto fail_and_free;\n   case 5:\n     api_set_error(err, kErrorTypeException,\n-                  is_abbrev ? e_abbreviation_already_exists_for_str\n-                            : e_mapping_already_exists_for_str, lhs.data);\n+                  is_abbrev ? _(e_abbreviation_already_exists_for_str)\n+                            : _(e_mapping_already_exists_for_str), lhs.data);\n+    goto fail_and_free;\n+    break;\n+  case 6:\n+    api_set_error(err, kErrorTypeException,\n+                  is_abbrev ? _(e_global_abbreviation_already_exists_for_str)\n+                            : _(e_global_mapping_already_exists_for_str), lhs.data);\n     goto fail_and_free;",
+            "html_url": "https://github.com/neovim/neovim/pull/33228#discussion_r2022323679",
+            "id": 2022323679,
+            "in_reply_to_id": 2022303085,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM54ijXf",
+            "original_commit_id": "bdc1604fa3271b3e59694e44f3b835f8a18ec5f2",
+            "original_line": 2838,
+            "original_position": 108,
+            "original_start_line": 2801,
+            "path": "src/nvim/mapping.c",
+            "position": null,
+            "pull_request_review_id": 2731780724,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/33228",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2022323679/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "LEFT",
+            "subject_type": "line",
+            "updated_at": "2025-04-01T07:42:09Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2022323679",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/41282711?v=4",
+                "events_url": "https://api.github.com/users/tstsrt/events{/privacy}",
+                "followers_url": "https://api.github.com/users/tstsrt/followers",
+                "following_url": "https://api.github.com/users/tstsrt/following{/other_user}",
+                "gists_url": "https://api.github.com/users/tstsrt/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/tstsrt",
+                "id": 41282711,
+                "login": "tstsrt",
+                "node_id": "MDQ6VXNlcjQxMjgyNzEx",
+                "organizations_url": "https://api.github.com/users/tstsrt/orgs",
+                "received_events_url": "https://api.github.com/users/tstsrt/received_events",
+                "repos_url": "https://api.github.com/users/tstsrt/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/tstsrt/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/tstsrt/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/tstsrt",
+                "user_view_type": "public"
+            }
         }
     ],
-    "comment_regular_data": [],
+    "comment_regular_data": [
+        {
+            "author_association": "NONE",
+            "body": "Successfully created backport PR for `release-0.11`:\n- #33253",
+            "created_at": "2025-04-01T12:30:22Z",
+            "html_url": "https://github.com/neovim/neovim/pull/33228#issuecomment-2769201825",
+            "id": 2769201825,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/33228",
+            "node_id": "IC_kwDOAPphoM6lDqqh",
+            "performed_via_github_app": {
+                "client_id": "Iv23lig4DyAliuVagKSN",
+                "created_at": "2024-07-16T09:59:15Z",
+                "description": "",
+                "events": [],
+                "external_url": "https://neovim.io/",
+                "html_url": "https://github.com/apps/neovim-backports",
+                "id": 946290,
+                "name": "neovim backports",
+                "node_id": "A_kwHOAGK_Pc4ADnBy",
+                "owner": {
+                    "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
+                    "events_url": "https://api.github.com/users/neovim/events{/privacy}",
+                    "followers_url": "https://api.github.com/users/neovim/followers",
+                    "following_url": "https://api.github.com/users/neovim/following{/other_user}",
+                    "gists_url": "https://api.github.com/users/neovim/gists{/gist_id}",
+                    "gravatar_id": "",
+                    "html_url": "https://github.com/neovim",
+                    "id": 6471485,
+                    "login": "neovim",
+                    "node_id": "MDEyOk9yZ2FuaXphdGlvbjY0NzE0ODU=",
+                    "organizations_url": "https://api.github.com/users/neovim/orgs",
+                    "received_events_url": "https://api.github.com/users/neovim/received_events",
+                    "repos_url": "https://api.github.com/users/neovim/repos",
+                    "site_admin": false,
+                    "starred_url": "https://api.github.com/users/neovim/starred{/owner}{/repo}",
+                    "subscriptions_url": "https://api.github.com/users/neovim/subscriptions",
+                    "type": "Organization",
+                    "url": "https://api.github.com/users/neovim",
+                    "user_view_type": "public"
+                },
+                "permissions": {
+                    "contents": "write",
+                    "metadata": "read",
+                    "pull_requests": "write"
+                },
+                "slug": "neovim-backports",
+                "updated_at": "2024-09-11T10:04:42Z"
+            },
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2769201825/reactions"
+            },
+            "updated_at": "2025-04-01T12:30:22Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2769201825",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/in/946290?v=4",
+                "events_url": "https://api.github.com/users/neovim-backports%5Bbot%5D/events{/privacy}",
+                "followers_url": "https://api.github.com/users/neovim-backports%5Bbot%5D/followers",
+                "following_url": "https://api.github.com/users/neovim-backports%5Bbot%5D/following{/other_user}",
+                "gists_url": "https://api.github.com/users/neovim-backports%5Bbot%5D/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/apps/neovim-backports",
+                "id": 175700243,
+                "login": "neovim-backports[bot]",
+                "node_id": "BOT_kgDOCnj5Ew",
+                "organizations_url": "https://api.github.com/users/neovim-backports%5Bbot%5D/orgs",
+                "received_events_url": "https://api.github.com/users/neovim-backports%5Bbot%5D/received_events",
+                "repos_url": "https://api.github.com/users/neovim-backports%5Bbot%5D/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/neovim-backports%5Bbot%5D/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/neovim-backports%5Bbot%5D/subscriptions",
+                "type": "Bot",
+                "url": "https://api.github.com/users/neovim-backports%5Bbot%5D",
+                "user_view_type": "public"
+            }
+        }
+    ],
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/33228/comments",
     "commits_url": "https://api.github.com/repos/neovim/neovim/pulls/33228/commits",
     "created_at": "2025-03-31T14:26:04Z",
@@ -549,9 +1051,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/tstsrt/neovim/pulls{/number}",
-            "pushed_at": "2025-03-31T18:01:16Z",
+            "pushed_at": "2025-04-06T13:32:56Z",
             "releases_url": "https://api.github.com/repos/tstsrt/neovim/releases{/id}",
-            "size": 306743,
+            "size": 307600,
             "ssh_url": "git@github.com:tstsrt/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/tstsrt/neovim/stargazers",
@@ -563,14 +1065,14 @@
             "teams_url": "https://api.github.com/repos/tstsrt/neovim/teams",
             "topics": [],
             "trees_url": "https://api.github.com/repos/tstsrt/neovim/git/trees{/sha}",
-            "updated_at": "2025-03-31T18:01:20Z",
+            "updated_at": "2025-04-06T13:33:00Z",
             "url": "https://api.github.com/repos/tstsrt/neovim",
             "visibility": "public",
             "watchers": 0,
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "468112bec4f33c3f13295cd726fb0e8671a51c8a",
+        "sha": "511c618543655d8d2ace8fcafebe1d233e655620",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/41282711?v=4",
             "events_url": "https://api.github.com/users/tstsrt/events{/privacy}",
@@ -605,11 +1107,20 @@
             "name": "api",
             "node_id": "MDU6TGFiZWwxMDM4MTk2NzE=",
             "url": "https://api.github.com/repos/neovim/neovim/labels/api"
+        },
+        {
+            "color": "0052CC",
+            "default": false,
+            "description": "",
+            "id": 6959860626,
+            "name": "ci:backport release-0.11",
+            "node_id": "LA_kwDOAPphoM8AAAABntcLkg",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/ci:backport%20release-0.11"
         }
     ],
     "locked": false,
-    "merge_commit_sha": "48fe338c8c50b57ff7d446d75492f644168e56d1",
-    "merged_at": null,
+    "merge_commit_sha": "ec18ebcb417bb9f2afc81d247db6993eaa48701f",
+    "merged_at": "2025-04-01T12:30:01Z",
     "milestone": null,
     "node_id": "PR_kwDOAPphoM6QyUg4",
     "number": 33228,
@@ -618,10 +1129,10 @@
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/33228/comments",
-    "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/468112bec4f33c3f13295cd726fb0e8671a51c8a",
+    "state": "closed",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/511c618543655d8d2ace8fcafebe1d233e655620",
     "title": "fix(api): `nvim_set_keymap` throws error even when called in `pcall`",
-    "updated_at": "2025-04-01T00:39:50Z",
+    "updated_at": "2025-04-01T12:45:44Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/33228",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/41282711?v=4",
