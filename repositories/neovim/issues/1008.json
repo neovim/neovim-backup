@@ -3,7 +3,7 @@
     "assignee": null,
     "assignees": [],
     "author_association": "MEMBER",
-    "body": "Followup of https://github.com/neovim/neovim/pull/978#issuecomment-49671122 . \n\nIn Neovim we are mostly using pipes instead of temp files for reliability and [performance](https://github.com/neovim/neovim/pull/978#issuecomment-50092527).\n\nBut there's an edge that mentioned in Vim `:help 'shelltemp'`:\n\n```\n    The advantage of using a temp file is that the file type and encoding\n    can be detected.\n```\n\nWe need to verify that this edge is not present in Neovim, or find a workaround, or update the documentation. [A vim-sensible issue](https://github.com/tpope/vim-sensible/issues/73) gives a couple examples of plugins that seem to be affected by this edge case.\n\nVim source and [unanswered question on vim_dev](https://groups.google.com/forum/#!msg/vim_dev/EHMfNBsdvrg/vVth0Wv90QcJ) do not give any more explanation about the edge case.\n\nHowever [this SO post](http://stackoverflow.com/a/17177904/152142) gives insight into the behavior of encodings on Windows.\n\n> if a string is not in the UTF-16LE encoding to begin with, a Win32 program must pass the correct codepage to MultiByteToWideChar. Also, WriteConsoleW will not work if the program’s output is redirected; more fiddling is needed in that case.\n\nThat post and the vim-sensible issue report suggest that this issue may be Windows-only, and possibly specific to cmd.exe. \n\nNext steps:\n- reproduce edge case in Vim, then try the same steps in Neovim\n- these plugins were [reported](https://github.com/tpope/vim-sensible/issues/73#issuecomment-49541650) to mess up with `set noshelltemp` and [`chcp 850`](https://github.com/tpope/vim-sensible/issues/73#issuecomment-50536097):\n  - https://github.com/mileszs/ack.vim\n  - https://github.com/dyng/ctrlsf.vim\n- is it Windows-only?\n  - if so, is it specific to cmd.exe?\n    - if so, perhaps we can avoid the issue entirely by using syscalls instead of building shell commands (@aktau's work achieves this [except for `do_filter`](https://github.com/neovim/neovim/pull/978#issuecomment-49699155)).\n\n---\n\nThe more I stare at the help text, the more I think this is related to Vim autocmds rather than some mysterious OS behavior. \n- Detecting the file type is _almost certainly_ a reference the `ftdetect` Vim mechanism.\n- Detecting the encoding _could_ refer to some feature of Vim that tries to infer the encoding based on the BOM or the presence of UTF8 sequences.\n\n---\n\nNotes on Windows:\n\nhttp://blogs.msdn.com/b/oldnewthing/archive/2005/03/08/389527.aspx\n- there are typically two 8-bit code pages active, the so-called \"ANSI\" code page and the so-called \"OEM\" code page\n- cmd.exe `/U` forces Unicode for piped/redirected output\n",
+    "body": "Followup of https://github.com/neovim/neovim/pull/978#issuecomment-49671122 . \n\nIn Neovim we are mostly using pipes instead of temp files for reliability and [performance](https://github.com/neovim/neovim/pull/978#issuecomment-50092527).\n\nBut there's an edge that mentioned in Vim `:help 'shelltemp'`:\n\n```\n    The advantage of using a temp file is that the file type and encoding\n    can be detected.\n```\n\nWe need to verify that this edge is not present in Neovim, or find a workaround, or update the documentation. [A vim-sensible issue](https://github.com/tpope/vim-sensible/issues/73) gives a couple examples of plugins that seem to be affected by this edge case.\n\nVim source and [unanswered question on vim_dev](https://groups.google.com/forum/#!msg/vim_dev/EHMfNBsdvrg/vVth0Wv90QcJ) do not give any more explanation about the edge case.\n\nHowever [this SO post](http://stackoverflow.com/a/17177904/152142) gives insight into the behavior of encodings on Windows.\n\n> if a string is not in the UTF-16LE encoding to begin with, a Win32 program must pass the correct codepage to MultiByteToWideChar. Also, WriteConsoleW will not work if the program’s output is redirected; more fiddling is needed in that case.\n\nThat post and the vim-sensible issue report suggest that this issue may be Windows-only, and possibly specific to cmd.exe. \n\nNext steps:\n- reproduce edge case in Vim, then try the same steps in Neovim\n- these plugins were [reported](https://github.com/tpope/vim-sensible/issues/73#issuecomment-49541650) to mess up with `set noshelltemp` and [`chcp 850`](https://github.com/tpope/vim-sensible/issues/73#issuecomment-50536097):\n  - https://github.com/mileszs/ack.vim\n  - https://github.com/dyng/ctrlsf.vim\n- is it Windows-only?\n  - if so, is it specific to cmd.exe?\n    - if so, perhaps we can avoid the issue entirely by using syscalls instead of building shell commands (@aktau's work achieves this [except for `do_filter`](https://github.com/neovim/neovim/pull/978#issuecomment-49699155)).\n\n---\n\nThe more I stare at the help text, the more I think this is related to Vim autocmds rather than some mysterious OS behavior. \n- Detecting the file type is _almost certainly_ a reference the `ftdetect` Vim mechanism.\n- Detecting the encoding _could_ refer to some feature of Vim that tries to infer the encoding based on the BOM or the presence of UTF8 sequences.\n\n---\n\nNotes on Windows:\n\nhttp://blogs.msdn.com/b/oldnewthing/archive/2005/03/08/389527.aspx\n- there are typically two 8-bit code pages active, the so-called \"ANSI\" code page and the so-called \"OEM\" code page\n- cmd.exe `/U` forces Unicode (UTF-16LE) for piped/redirected output\n    - can use `chcp 65001` to force the console codepage to utf8 for that session.\n- By default, PowerShell Core (`pwsh`) uses UTF-8 without BOM for redirected output.\n",
     "closed_at": null,
     "closed_by": null,
     "comment_data": [
@@ -48,7 +48,8 @@
                 "starred_url": "https://api.github.com/users/tarruda/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/tarruda/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/tarruda"
+                "url": "https://api.github.com/users/tarruda",
+                "user_view_type": "public"
             }
         },
         {
@@ -92,7 +93,8 @@
                 "starred_url": "https://api.github.com/users/aktau/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/aktau/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/aktau"
+                "url": "https://api.github.com/users/aktau",
+                "user_view_type": "public"
             }
         },
         {
@@ -136,7 +138,8 @@
                 "starred_url": "https://api.github.com/users/splinterofchaos/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/splinterofchaos/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/splinterofchaos"
+                "url": "https://api.github.com/users/splinterofchaos",
+                "user_view_type": "public"
             }
         },
         {
@@ -180,7 +183,8 @@
                 "starred_url": "https://api.github.com/users/aktau/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/aktau/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/aktau"
+                "url": "https://api.github.com/users/aktau",
+                "user_view_type": "public"
             }
         },
         {
@@ -224,7 +228,8 @@
                 "starred_url": "https://api.github.com/users/aktau/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/aktau/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/aktau"
+                "url": "https://api.github.com/users/aktau",
+                "user_view_type": "public"
             }
         },
         {
@@ -248,7 +253,7 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/961308901/reactions"
             },
-            "updated_at": "2021-11-04T18:29:17Z",
+            "updated_at": "2025-04-11T09:40:24Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/961308901",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/1234956?v=4",
@@ -268,11 +273,57 @@
                 "starred_url": "https://api.github.com/users/n8henrie/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/n8henrie/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/n8henrie"
+                "url": "https://api.github.com/users/n8henrie",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "## Status\n\nhttps://github.com/neovim/neovim/pull/33012 takes the first step: default to 'noshelltemp'.\n\nThis will help narrow the surface area of potential problems on Windows.\n\n## Next steps\n\nEven if it regresses something, we can continue with [this next step](https://github.com/neovim/neovim/issues/1008#issuecomment-50602022):\n\n> Find the code vim uses to detect encoding using temporary files\n> Refactor to enable usage of byte strings, and always apply it to the data read by filters\n\nThis may just mean \"ensure `readfile()` is called by `do_filter()` where necessary\", or it may mean we need to explicitly detect encoding in `do_filter()` by some other means.\n\nIf 'shelltemp' becomes a no-op, then these events are also no-ops/deprecated:\n\n> The |FilterReadPre|, |FilterReadPost| and |FilterWritePre|, |FilterWritePost| autocommands event are not triggered when 'shelltemp' is off.",
+            "created_at": "2025-04-12T15:21:29Z",
+            "html_url": "https://github.com/neovim/neovim/issues/1008#issuecomment-2798872917",
+            "id": 2798872917,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/1008",
+            "node_id": "IC_kwDOAPphoM6m02lV",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2798872917/reactions"
+            },
+            "updated_at": "2025-04-12T15:40:57Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2798872917",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         }
     ],
-    "comments": 6,
+    "comments": 7,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/1008/comments",
     "created_at": "2014-07-29T22:44:11Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/1008/events",
@@ -329,7 +380,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 645,
+        "closed_issues": 709,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -349,7 +400,8 @@
             "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/justinmk"
+            "url": "https://api.github.com/users/justinmk",
+            "user_view_type": "public"
         },
         "description": "Low priority items. We plan to work on this but don't have a target date.",
         "due_on": null,
@@ -358,10 +410,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 566,
+        "open_issues": 637,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2024-09-09T18:06:19Z",
+        "updated_at": "2025-04-12T17:52:52Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "MDU6SXNzdWUzOTA0NDAwNA==",
@@ -382,9 +434,15 @@
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "open",
     "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/1008/timeline",
     "title": "remove 'shelltemp'",
-    "updated_at": "2024-09-04T13:46:42Z",
+    "type": null,
+    "updated_at": "2025-04-12T15:40:58Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/1008",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -404,6 +462,7 @@
         "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/justinmk"
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
     }
 }

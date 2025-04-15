@@ -3,7 +3,7 @@
     "assignee": null,
     "assignees": [],
     "author_association": "MEMBER",
-    "body": "## Problem\n\n`b:undo_ftplugin` is a fragile and error-prone way to \"restore\" temporary filetype-local options, mappings, etc. It also requires extra boilerplate.\n\n## Expected behavior\n\n- Enhance `vim._with()` so that it provides a way for the \"restorable\" to be executed later.\n    - Idea: currently `vim._with()` returns a value. Instead, it could return a closure, which returns a value when executed.\n        - Callers that want to restore immediately can do this: `vim._with()()`.\n        - Callers (such as ftplugins) that want to restore later can do `local restore = vim._with()` and call `restore()` later.\n- Use `vim._with()` instead of `b:undo_ftplugin`.\n    - Only in Nvim-owned `ftplugin/*.lua`, initially...\n\n\n### Example\n\nHere's a random ftplugin example: https://github.com/neovim/neovim/blob/6ef5dd5266822960d254b8acd5ab0934cc2b117e/runtime/ftplugin/8th.vim#L21-L27\n\nHere's what it would look like as Lua using `vim._with()`. Note:\n\n- the `b:undo_ftplugin` undo logic does not need to be manually specified. \n- \"append\" to `vim.o.matchpairs` is awkward. Blocked until https://github.com/neovim/neovim/issues/20107 provides a way to \"append\" to `vim.o` and friends.\n\n```lua\nvim.b.undo_ftplugin = vim._with({ bo = {\n  ts=2, sts=2, sw=2, et=true,\n  com=[[s1:/*,mb:*,ex:*/,b:--,be:\\\\]],\n  fo='tcrqol',\n  matchpairs= vim.o.matchpairs .. [[\\::;]],\n  iskeyword='!,@,33-35,%,$,38-64,A-Z,91-96,a-z,123-126,128-255',\n  suffixesadd='.8th',\n} }, function()\nend)\n```",
+    "body": "## Problem\n\n`b:undo_ftplugin` is a fragile and error-prone way to \"restore\" temporary filetype-local options, mappings, etc. It requires extra (manually-maintained) boilerplate. And `:set foo<` resets to the current option global, it doesn't restore the (possibly local) option value.\n\n## Expected behavior\n\n- Enhance `vim._with()` so that it provides a way for the \"restorable\" to be executed later.\n    - Idea: currently `vim._with()` returns a value. Instead, it could return a closure, which returns a value when executed.\n        - Callers that want to restore immediately can do this: `vim._with()()`.\n        - Callers (such as ftplugins) that want to restore later can do `local restore = vim._with()` and call `restore()` later.\n- Use `vim._with()` instead of `b:undo_ftplugin`.\n    - Only in Nvim-owned `ftplugin/*.lua`, initially...\n\n\n### Example\n\nHere's a random ftplugin example: https://github.com/neovim/neovim/blob/6ef5dd5266822960d254b8acd5ab0934cc2b117e/runtime/ftplugin/8th.vim#L21-L27\n\nHere's what it would look like as Lua using `vim._with()`. Note:\n\n- the `b:undo_ftplugin` undo logic does not need to be manually specified. \n- \"append\" to `vim.o.matchpairs` is awkward. Blocked until https://github.com/neovim/neovim/issues/20107 provides a way to \"append\" to `vim.o` and friends.\n\n```lua\nvim.b.undo_ftplugin = vim._with({ bo = {\n  ts=2, sts=2, sw=2, et=true,\n  com=[[s1:/*,mb:*,ex:*/,b:--,be:\\\\]],\n  fo='tcrqol',\n  matchpairs= vim.o.matchpairs .. [[\\::;]],\n  iskeyword='!,@,33-35,%,$,38-64,A-Z,91-96,a-z,123-126,128-255',\n  suffixesadd='.8th',\n} }, function()\nend)\n```",
     "closed_at": null,
     "closed_by": null,
     "comment_data": [
@@ -96,9 +96,54 @@
                 "url": "https://api.github.com/users/echasnovski",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "> I don't think it is a valid replacement for the `b:undo_ftplugin` because it fundamentally limits (to what `vim._with` supports as a context) of what ftplugin can set and later unset.\n\nThat limitation only matters for a few ftplugins, which can simply elect not to use `vim._with`.\n\nOTOH, `b:undo_ftplugin` has its own limitation: it resets to the current option global value, it doesn't restore the actual (possibly local) option value.",
+            "created_at": "2025-04-09T10:07:07Z",
+            "html_url": "https://github.com/neovim/neovim/issues/33160#issuecomment-2789129945",
+            "id": 2789129945,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/33160",
+            "node_id": "IC_kwDOAPphoM6mPr7Z",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2789129945/reactions"
+            },
+            "updated_at": "2025-04-09T10:07:07Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2789129945",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
         }
     ],
-    "comments": 2,
+    "comments": 3,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/33160/comments",
     "created_at": "2025-03-29T14:23:09Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/33160/events",
@@ -137,7 +182,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 267,
+        "closed_issues": 272,
         "created_at": "2014-11-26T22:13:11Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -167,10 +212,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/9/labels",
         "node_id": "MDk6TWlsZXN0b25lODgxOTc4",
         "number": 9,
-        "open_issues": 317,
+        "open_issues": 322,
         "state": "open",
         "title": "needs-owner",
-        "updated_at": "2025-03-31T13:05:33Z",
+        "updated_at": "2025-04-14T11:08:54Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/9"
     },
     "node_id": "I_kwDOAPphoM6wUD_M",
@@ -208,7 +253,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyv",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2025-03-29T15:47:42Z",
+    "updated_at": "2025-04-09T10:08:46Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/33160",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
