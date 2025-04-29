@@ -4,8 +4,28 @@
     "assignees": [],
     "author_association": "MEMBER",
     "body": "### Describe the bug\n\nThe `screenstring()` executed inside child Neovim process through RPC doesn't recognize floating windows.\r\n\r\nThis seems to have the same root cause as #21886. When applying the workaround from that issue (spawn another process to attach a UI), it works locally, but probably has the same problems as in that issue.\r\n\r\nThis might also be related to #19020, which actually made `screenstring()` recognize floating windows.\n\n### Steps to reproduce\n\n- Create 'init-child-screenstring_floating.lua' with the following content:\r\n\r\n    <details>\r\n    <summary>init-child-screenstring_floating.lua</summary>\r\n\r\n    ```lua\r\n    _G.new_child = function(nvim_executable)\r\n      -- Create new child process\r\n      local stdin = vim.loop.new_pipe(true)\r\n      local stdout = vim.loop.new_pipe(true)\r\n      local stderr = vim.loop.new_pipe(true)\r\n\r\n      local address = vim.fn.tempname()\r\n\r\n      vim.loop.spawn(nvim_executable or 'nvim', {\r\n        stdio = { stdin, stdout, stderr },\r\n        args = { '--clean', '--listen', address },\r\n      }, function() end)\r\n\r\n      -- Wait for Neovim to open\r\n      vim.loop.sleep(200)\r\n\r\n      -- Connect\r\n      local channel = vim.fn.sockconnect('pipe', address, { rpc = true })\r\n\r\n      -- Follow advice from https://github.com/neovim/neovim/issues/21630\r\n      stdin:close()\r\n      stdout:close()\r\n      stderr:close()\r\n\r\n      -- Create helper methods for easier demonstration\r\n      local child = { channel = channel }\r\n\r\n      -- Call `screenstring()` inside child process\r\n      child.screenstring = function(row, col)\r\n        return vim.rpcrequest(channel, 'nvim_exec_lua', 'return vim.fn.screenstring(...)', { row, col })\r\n      end\r\n\r\n      -- Main setup: some normal text and floating window partially covering it\r\n      child.setup_text_with_float = function()\r\n        vim.rpcrequest(channel, 'nvim_buf_set_lines', 0, 0, -1, true, { 'aaaa' })\r\n\r\n        local buf_id = vim.rpcrequest(channel, 'nvim_create_buf', true, true)\r\n        vim.rpcrequest(channel, 'nvim_buf_set_lines', buf_id, 0, -1, true, { 'bb ' })\r\n\r\n        vim.rpcrequest(\r\n          channel,\r\n          'nvim_open_win',\r\n          buf_id,\r\n          false,\r\n          { relative = 'editor', width = 3, height = 1, row = 0, col = 0 }\r\n        )\r\n      end\r\n\r\n      return child\r\n    end\r\n    ```\r\n\r\n    </details>\r\n\r\n    It is basically a creation-connection to full child process (following advice from #21630) and then a couple helper wrappers to get and set information in child process through RPC requests.\r\n\r\n- Assuming `nvim_nightly_g825` is the executable for latest nightly, run `nvim_nightly_g825 -u init-child-screenstring_floating.lua`.\r\n- `:lua child = new_child('nvim_nightly_g825')`. This should create and connect to child process running latest nightly.\r\n- `:lua child.setup_text_with_float()`. This should add normal text `aaaa` covered by `bb ` text in floating window. In total, `bb a` should be a visible text.\r\n- Execute `:lua print(child.screenstring(1, 1))`. It prints `a`, but should print `b`.\n\n### Expected behavior\n\nAlways prints actually visible screen string.\r\n\r\nThere are three notes here:\r\n\r\n- It works in Neovim 0.8.2 (with `new_child('nvim')`, assuming `nvim` is Neovim 0.8.2).\r\n- It works if applied the workaround from #21886. So adding these lines before `local channel = ...` makes it work **locally**:\r\n\r\n    ```lua\r\n    vim.loop.spawn(nvim_executable or 'nvim', {\r\n      args = { '--remote-ui', '--server', address },\r\n    }, function() end)\r\n    ```\r\n\r\n- It works if executed not in child process, but in \"normal\" one:\r\n    - Create 'init-screenstring_floating.lua' with the following content:\r\n\r\n    ```lua\r\n    vim.api.nvim_buf_set_lines(0, 0, -1, true, { 'aaaa' })\r\n\r\n    local buf_id = vim.api.nvim_create_buf(true, true)\r\n    vim.api.nvim_buf_set_lines(buf_id, 0, -1, true, { 'bb ' })\r\n\r\n    vim.api.nvim_open_win(buf_id, false, { relative = 'editor', width = 3, height = 1, row = 0, col = 0 })\r\n    ```\r\n\r\n    - Run `nvim_nightly_g825 -u init-screenstring_floating.lua`.\r\n    - `:echo screenstring(1, 1)`. It indeed prints `b`.\n\n### Neovim version (nvim -v)\n\nNVIM v0.9.0-dev-825+g843c9025a\n\n### Vim (not Nvim) behaves the same?\n\nNo (doesn't have this functionality)\n\n### Operating system/version\n\nEndeavourOS Linux x86_64 (6.1.7-arch1-1)\n\n### Terminal name/version\n\nst-0.9\n\n### $TERM environment variable\n\nst-256color\n\n### Installation\n\nappimage",
-    "closed_at": null,
-    "closed_by": null,
+    "closed_at": "2025-04-26T20:39:14Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+        "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+        "followers_url": "https://api.github.com/users/justinmk/followers",
+        "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+        "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/justinmk",
+        "id": 1359421,
+        "login": "justinmk",
+        "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+        "organizations_url": "https://api.github.com/users/justinmk/orgs",
+        "received_events_url": "https://api.github.com/users/justinmk/received_events",
+        "repos_url": "https://api.github.com/users/justinmk/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -137,7 +157,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 2,
+        "closed_issues": 33,
         "created_at": "2024-05-16T14:11:54Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -167,10 +187,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/43/labels",
         "node_id": "MI_kwDOAPphoM4AqNEV",
         "number": 43,
-        "open_issues": 72,
+        "open_issues": 68,
         "state": "open",
         "title": "0.12",
-        "updated_at": "2025-03-24T18:47:55Z",
+        "updated_at": "2025-04-28T13:01:46Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/43"
     },
     "node_id": "I_kwDOAPphoM5c904O",
@@ -189,8 +209,8 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/22018/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "sub_issues_summary": {
         "completed": 0,
         "percent_completed": 0,
@@ -208,7 +228,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyr",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2025-03-21T05:19:07Z",
+    "updated_at": "2025-04-26T20:39:14Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/22018",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/24854248?v=4",
