@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6078,
-            "forks_count": 6078,
+            "forks": 6092,
+            "forks_count": 6092,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1941,
-            "open_issues_count": 1941,
+            "open_issues": 1968,
+            "open_issues_count": 1968,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -119,11 +119,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2025-05-13T02:35:42Z",
+            "pushed_at": "2025-05-20T02:44:26Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 322833,
+            "size": 323650,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 89461,
+            "stargazers_count": 89644,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -141,11 +141,11 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2025-05-13T02:46:10Z",
+            "updated_at": "2025-05-20T02:49:00Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 89461,
-            "watchers_count": 89461,
+            "watchers": 89644,
+            "watchers_count": 89644,
             "web_commit_signoff_required": false
         },
         "sha": "69d04ee99fe42ca6999bd66278d0f76820f6760a",
@@ -171,7 +171,7 @@
             "user_view_type": "public"
         }
     },
-    "body": "This PR introduces a minimal `vim.net.download()` implementation as a simple wrapper around `curl`, following the approach suggested in [this comment](https://github.com/neovim/neovim/pull/29104#issuecomment-2165443624).\r\n\r\nThe goal is to start small and provide the foundational download functionality first and then add more advanced features (e.g. authentication, headers, proxy support) in future PRs.\r\n\r\nThis PR is related to issue #23232 \r\n\r\n### Implementation\r\n\r\n- Uses `vim.system()` with `curl` to perform the download.\r\n- Supports basic `url`, `download_location`, and an optional `on_exit` callback.\r\n\r\n### Proposed API Usage\r\n\r\n1. **Basic Download**:\r\n   ```lua\r\n   vim.net.download(\"https://httpbingo.org/anything\", \"./anything.txt\")\r\n    ```\r\n    \r\n2. **Download with on_exit callback**:\r\n    ```lua\r\n   vim.net.download(\"https://httpbingo.org/anything\", \"./anything.txt\", {\r\n       on_exit = function(err)\r\n           if err then\r\n               print(\"Download failed:\", err)\r\n           else\r\n               print(\"Download successful!\")\r\n           end\r\n       end\r\n    })\r\n    ```\r\n### Next Steps\r\n\r\nAfter initial feedback, the implementation can be extended incrementally, adding `vim.net.request()` or broader `curl` options support in follow-up PRs.\r\n\r\n",
+    "body": "This PR introduces a minimal `vim.net.download()` implementation as a simple wrapper around `curl`, following the approach suggested in [this comment](https://github.com/neovim/neovim/pull/29104#issuecomment-2165443624).\r\n\r\nThe goal is to start small and provide the foundational download functionality first and then add more advanced features (e.g. authentication, headers, proxy support) in future PRs.\r\n\r\nThis PR is related to issue #23232 \r\n\r\n### Implementation\r\n\r\n- Uses `vim.system()` with `curl` to perform the download.\r\n- Automatically adds --retry <n>, --location (follow redirects) and --output <file> plus the URL.\r\n- Accepts an `opts` table and an optional `on_exit` callback.\r\n- If you pass an `on_exit` callback, it runs in the background and invokes `on_exit(err or nil)` when done.\r\n- If no callback is given, it blocks until completion and returns `true` on success or `false, errmsg` on failure.\r\n\r\n### Proposed API Usage\r\n\r\n1. **Basic synchronous download**:\r\n   ```lua\r\n    local ok, err = vim.net.download(\"https://httpbingo.org/anything\", \"./anything.txt\")\r\n    if not ok then\r\n      print(\"Download failed:\", err)\r\n    end\r\n    ```\r\n    \r\n2. **Synchronous with custom options**:\r\n    ```lua\r\n   local ok, err = vim.net.download(\"https://httpbingo.org/anything\", \"./anything.txt\", {\r\n       verbose = true,\r\n       retry = 5,\r\n       }\r\n   )\r\n   if ok then\r\n      print(\"Done\")\r\n    else\r\n      print(\"Error:\", err)\r\n    end\r\n    ```\r\n   \r\n3. **Asynchronous with callback**\r\n    ```lua\r\n    vim.net.download(\"https://httpbingo.org/anything\", \"./anything.txt\", { retry = 2 }, function(err)\r\n        if err then\r\n            print(\"Download failed:\", err)\r\n        else\r\n            print(\"Download successful!\")\r\n        end\r\n    end)\r\n    ```\r\n    \r\n### Next Steps\r\n\r\nAfter initial feedback, the implementation can be extended incrementally, adding `vim.net.request()` or broader `curl` options support in follow-up PRs.",
     "closed_at": null,
     "comment_data": [
         {
@@ -1169,7 +1169,7 @@
             "node_id": "IC_kwDOAPphoM6rJkSJ",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 3,
+                "+1": 2,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -1177,7 +1177,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 3,
+                "total_count": 2,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2871411849/reactions"
             },
             "updated_at": "2025-05-12T08:30:27Z",
@@ -1270,7 +1270,7 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2874680884/reactions"
             },
-            "updated_at": "2025-05-13T00:49:58Z",
+            "updated_at": "2025-05-13T06:13:02Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2874680884",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/111893501?v=4",
@@ -1448,7 +1448,7 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "6092eb935dc7ac06c8b9eb346f4e1fca1f12c84f",
+    "merge_commit_sha": "8d825b36d491327b86a2c47621d403ca1a441ac2",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM6Vupfq",
@@ -1475,6 +1475,27 @@
             "type": "User",
             "url": "https://api.github.com/users/lewis6991",
             "user_view_type": "public"
+        },
+        {
+            "avatar_url": "https://avatars.githubusercontent.com/u/2361214?v=4",
+            "events_url": "https://api.github.com/users/clason/events{/privacy}",
+            "followers_url": "https://api.github.com/users/clason/followers",
+            "following_url": "https://api.github.com/users/clason/following{/other_user}",
+            "gists_url": "https://api.github.com/users/clason/gists{/gist_id}",
+            "gravatar_id": "",
+            "html_url": "https://github.com/clason",
+            "id": 2361214,
+            "login": "clason",
+            "node_id": "MDQ6VXNlcjIzNjEyMTQ=",
+            "organizations_url": "https://api.github.com/users/clason/orgs",
+            "received_events_url": "https://api.github.com/users/clason/received_events",
+            "repos_url": "https://api.github.com/users/clason/repos",
+            "site_admin": false,
+            "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
+            "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
+            "type": "User",
+            "url": "https://api.github.com/users/clason",
+            "user_view_type": "public"
         }
     ],
     "requested_teams": [],
@@ -1483,7 +1504,7 @@
     "state": "open",
     "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/c5530b7bac71807642e9203ccb0e581bd75dbab4",
     "title": "feat(lua): add minimal vim.net.download wrapper using curl",
-    "updated_at": "2025-05-13T00:49:59Z",
+    "updated_at": "2025-05-16T08:01:56Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/33964",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/46233260?v=4",
