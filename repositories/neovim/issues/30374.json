@@ -2,7 +2,7 @@
     "active_lock_reason": null,
     "assignee": null,
     "assignees": [],
-    "author_association": "NONE",
+    "author_association": "CONTRIBUTOR",
     "body": "### Problem\n\nIf you use the neovim terminal and zoom the terminal out too far. Then when you run a command with a large horizontal output, you will get a SIGSEGV (out of bounds memory access).\r\n\r\nI'm gonna take a stab at diving into this issue to see if I can fix it this weekend but I wanted to report it too.\n\n### Steps to reproduce\n\n```\r\nnvim --clean\r\n:term\r\n# Zoom all the way out in alacritty with ctrl&- (Any terminal with far enough zoomout)\r\n\r\n# In any posix-ish compliant shell (You just need to generate long enough horizontal lines)\r\nfor i in $(seq 1 10000); do echo -n $i; done\r\n# This reliably causes a SIGSEGV (out of bounds memory access) independent of shell.\r\n```\n\n### Expected behavior\n\nI would expect nvim to not segfault (even just killing the term instead of all of nvim would be better).\r\n\r\nAlso, this may seem like a niche edge case, but I frequently do this when logging buffers while debugging. \n\n### Neovim version (nvim -v)\n\nNVIM v0.10.1 Build type: Release LuaJIT 2.1.1723675123\n\n### Vim (not Nvim) behaves the same?\n\nno, 9.1.707 (It seems like vim just limits term size)\n\n### Operating system/version\n\nArch Linux\n\n### Terminal name/version\n\nAlacritty\n\n### $TERM environment variable\n\nalacritty\n\n### Installation\n\npacman (release version)",
     "closed_at": null,
     "closed_by": null,
@@ -53,7 +53,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "I can reliably reproduce (every single time I've tried) at 1274 cols, and 262 lines, if I zoom back in to 959x233 then it does not crash. Let me see if I can grab a debug build so I can upload a core dump and get you a line it happens on.\r\n\r\nTry alacritty, most terminals definitely cap your zoom out earlier than that. (I'm also on a 3840x2160 display @ 1x scale so I may be able to zoom out further). ",
             "created_at": "2024-09-15T01:24:42Z",
             "html_url": "https://github.com/neovim/neovim/issues/30374#issuecomment-2351273283",
@@ -98,7 +98,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "When running a debug build in gdb on latest master I found that this assert fails.\r\n```\r\n/neovim/src/nvim/ui_compositor.c:546: ui_comp_raw_line: Assertion `attrs[i] >= 0' failed.\r\n```\r\n\r\nHeres a link to the line: https://github.com/neovim/neovim/blob/3b54adc6c6d25dd146fa1eac21321f6bd612f50a/src/nvim/ui_compositor.c#L546",
             "created_at": "2024-09-15T01:39:41Z",
             "html_url": "https://github.com/neovim/neovim/issues/30374#issuecomment-2351278990",
@@ -141,9 +141,54 @@
                 "url": "https://api.github.com/users/The-Briel-Deal",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "When I first reported this my understanding wasn't complete, the actual issue here is resizing with large horizontal output it seems. Here's a functional test that reliably reproduces this issue. I'm going to see if I can spend some time over the next few days trying find the issue here.\n\nhttps://github.com/neovim/neovim/commit/8541a0839a16b52b714328b35ebdc437dd6d9b36\n\n```\n  it('does not crash on zoomout with large output #30374', function()\n    skip(is_os('win'))\n\n    feed([[:terminal<cr>]])\n    -- Start terminal smaller.\n    screen:try_resize(100, 100)\n    command('call jobresize(b:terminal_job_id, 100, 100)')\n\n    -- Generate very wide output.\n    feed(\"ifor i in $(seq 1 1000); do echo -n $i; done\\r\\n\")\n\n    -- Make terminal big.\n    screen:try_resize(2000, 2000)\n    command('call jobresize(b:terminal_job_id, 2000, 2000)')\n\n    assert_alive()\n  end)\n```",
+            "created_at": "2025-05-26T23:32:27Z",
+            "html_url": "https://github.com/neovim/neovim/issues/30374#issuecomment-2910764548",
+            "id": 2910764548,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/30374",
+            "node_id": "IC_kwDOAPphoM6tfr4E",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2910764548/reactions"
+            },
+            "updated_at": "2025-05-26T23:32:27Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2910764548",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/86860060?v=4",
+                "events_url": "https://api.github.com/users/The-Briel-Deal/events{/privacy}",
+                "followers_url": "https://api.github.com/users/The-Briel-Deal/followers",
+                "following_url": "https://api.github.com/users/The-Briel-Deal/following{/other_user}",
+                "gists_url": "https://api.github.com/users/The-Briel-Deal/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/The-Briel-Deal",
+                "id": 86860060,
+                "login": "The-Briel-Deal",
+                "node_id": "MDQ6VXNlcjg2ODYwMDYw",
+                "organizations_url": "https://api.github.com/users/The-Briel-Deal/orgs",
+                "received_events_url": "https://api.github.com/users/The-Briel-Deal/received_events",
+                "repos_url": "https://api.github.com/users/The-Briel-Deal/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/The-Briel-Deal/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/The-Briel-Deal/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/The-Briel-Deal",
+                "user_view_type": "public"
+            }
         }
     ],
-    "comments": 3,
+    "comments": 4,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/30374/comments",
     "created_at": "2024-09-14T03:46:26Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/30374/events",
@@ -182,7 +227,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 686,
+        "closed_issues": 719,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -212,10 +257,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 635,
+        "open_issues": 633,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2025-01-21T00:09:37Z",
+        "updated_at": "2025-05-22T12:38:56Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM6Wj0eD",
@@ -243,7 +288,17 @@
     },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/30374/timeline",
     "title": "Out of bounds memory access in large `:term` sessions.",
-    "updated_at": "2025-01-19T11:43:10Z",
+    "type": {
+        "color": "red",
+        "created_at": "2024-01-25T10:10:19Z",
+        "description": "An unexpected problem or behavior",
+        "id": 597163,
+        "is_enabled": true,
+        "name": "Bug",
+        "node_id": "IT_kwDOAGK_Pc4ACRyr",
+        "updated_at": "2024-07-26T10:12:30Z"
+    },
+    "updated_at": "2025-05-26T23:32:29Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/30374",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/86860060?v=4",
