@@ -4,8 +4,28 @@
     "assignees": [],
     "author_association": "CONTRIBUTOR",
     "body": "### Problem\n\ntesting with 0.10.4/0.11.1\n\nopen terminal inside nvim by :terminal \n\ncat a big patch file (which contains some binary diff by accident)\n\nnvim crash with following stacktrace:\n\n\n```\n#0  0x00007f6ed32969fc in pthread_kill () from /lib/x86_64-linux-gnu/libc.so.6\n(gdb) bt\n#0  0x00007f6ed32969fc in pthread_kill () from /lib/x86_64-linux-gnu/libc.so.6\n#1  0x00007f6ed3242476 in raise () from /lib/x86_64-linux-gnu/libc.so.6\n#2  0x00007f6ed32287f3 in abort () from /lib/x86_64-linux-gnu/libc.so.6\n#3  0x00007f6ed3289677 in ?? () from /lib/x86_64-linux-gnu/libc.so.6\n#4  0x00007f6ed32a0cfc in ?? () from /lib/x86_64-linux-gnu/libc.so.6\n#5  0x00007f6ed32a4c7c in ?? () from /lib/x86_64-linux-gnu/libc.so.6\n#6  0x00007f6ed32a5909 in realloc () from /lib/x86_64-linux-gnu/libc.so.6\n#7  0x000055766ce7a5cf in xrealloc (ptr=0x5576926913c0, size=0) at /home/xwang/project/neovim/src/nvim/memory.c:178\n#8  0x000055766cfc9e2e in term_settermprop (prop=VTERM_PROP_TITLE, val=0x7fff21498120, data=0x55769260c270) at /home/xwang/project/neovim/src/nvim/terminal.c:1309\n#9  0x000055766d034105 in settermprop (prop=VTERM_PROP_TITLE, val=0x7fff21498120, user=0x55769267c040) at /home/xwang/project/neovim/src/nvim/vterm/screen.c:439\n#10 0x000055766d0367c2 in vterm_state_set_termprop (state=0x557692f520d0, prop=VTERM_PROP_TITLE, val=0x7fff21498120) at /home/xwang/project/neovim/src/nvim/vterm/state.c:2375\n#11 0x000055766d03d3dc in settermprop_string (state=0x557692f520d0, prop=VTERM_PROP_TITLE, frag=...) at /home/xwang/project/neovim/src/nvim/vterm/state.c:545\n#12 0x000055766d03b141 in on_osc (command=0, frag=..., user=0x557692f520d0) at /home/xwang/project/neovim/src/nvim/vterm/state.c:1950\n#13 0x000055766d0306b7 in string_fragment (vt=0x557692ad7e70, str=0x55769445f9d7 \"\", len=0, final=false) at /home/xwang/project/neovim/src/nvim/vterm/parser.c:89\n#14 0x000055766d02fc4d in vterm_input_write (vt=0x557692ad7e70, bytes=0x55769445f240 \"\", len=4095) at /home/xwang/project/neovim/src/nvim/vterm/parser.c:165\n#15 0x000055766cfc7814 in terminal_receive (term=0x55769260c270, data=0x55769445f240 \"\", len=4095) at /home/xwang/project/neovim/src/nvim/terminal.c:1114\n#16 0x000055766ccc369e in on_channel_output (stream=0x55769266f418, chan=0x55769266f230, buf=0x55769445f240 \"\", count=4095, eof=false, reader=0x55769266f918) at /home/xwang/project/neovim/src/nvim/channel.c:681\n#17 0x000055766ccc2e21 in on_channel_data (stream=0x55769266f418, buf=0x55769445f240 \"\", count=4095, data=0x55769266f230, eof=false) at /home/xwang/project/neovim/src/nvim/channel.c:653\n#18 0x000055766cd797bf in read_event (argv=0x7fff21498468) at /home/xwang/project/neovim/src/nvim/event/rstream.c:180\n#19 0x000055766cd79715 in invoke_read_cb (stream=0x55769266f418, eof=false) at /home/xwang/project/neovim/src/nvim/event/rstream.c:233\n#20 0x000055766cd79173 in read_cb (uvstream=0x55769266f420, cnt=4095, buf=0x7fff21498570) at /home/xwang/project/neovim/src/nvim/event/rstream.c:135\n#21 0x000055766d13f22c in uv.read ()\n#22 0x000055766d13fb78 in uv.stream_io ()\n#23 0x000055766d148551 in uv.io_poll ()\n#24 0x000055766d1342af in uv_run ()\n#25 0x000055766cd765a2 in loop_uv_run (loop=0x55766d2ea358 <main_loop>, ms=0) at /home/xwang/project/neovim/src/nvim/event/loop.c:61\n#26 0x000055766cd764dd in loop_poll_events (loop=0x55766d2ea358 <main_loop>, ms=0) at /home/xwang/project/neovim/src/nvim/event/loop.c:82\n#27 0x000055766ceeace9 in os_breakcheck () at /home/xwang/project/neovim/src/nvim/os/input.c:207\n#28 0x000055766cf9d9bf in state_handle_k_event () at /home/xwang/project/neovim/src/nvim/state.c:131\n#29 0x000055766cfc8568 in terminal_execute (state=0x7fff2149c730, key=-26365) at /home/xwang/project/neovim/src/nvim/terminal.c:894\n#30 0x000055766cf9d919 in state_enter (s=0x7fff2149c730) at /home/xwang/project/neovim/src/nvim/state.c:102\n#31 0x000055766cfc7ea4 in terminal_enter () at /home/xwang/project/neovim/src/nvim/terminal.c:740\n#32 0x000055766ccfff23 in edit (cmdchar=105, startln=false, count=1) at /home/xwang/project/neovim/src/nvim/edit.c:1284\n#33 0x000055766ceaddfa in invoke_edit (cap=0x7fff2149c970, repl=0, cmd=105, startln=0) at /home/xwang/project/neovim/src/nvim/normal.c:6282\n#34 0x000055766cea8617 in nv_edit (cap=0x7fff2149c970) at /home/xwang/project/neovim/src/nvim/normal.c:6254\n#35 0x000055766cea5b84 in normal_execute (state=0x7fff2149c900, key=105) at /home/xwang/project/neovim/src/nvim/normal.c:1244\n#36 0x000055766cf9d919 in state_enter (s=0x7fff2149c900) at /home/xwang/project/neovim/src/nvim/state.c:102\n#37 0x000055766cea0fc4 in normal_enter (cmdwin=false, noexmode=false) at /home/xwang/project/neovim/src/nvim/normal.c:523\n#38 0x000055766ce3c8a9 in main (argc=2, argv=0x7fff2149cd58) at /home/xwang/project/neovim/src/nvim/main.c:651\n```\n\n### Steps to reproduce\n\ncat use following big patch, I got it 100 % reproducible \n\n[out.tar.xz.log](https://github.com/user-attachments/files/20220558/out.tar.xz.log)\n\n(note: unpack as tar.xz because github doesn't allow tar.xz attachment)\n\n### Expected behavior\n\nnot crash\n\n### Nvim version (nvim -v)\n\n0.11.1/0.10.4\n\n### Vim (not Nvim) behaves the same?\n\nnot tried\n\n### Operating system/version\n\nubuntu 22.04\n\n### Terminal name/version\n\nkitty/neovide remote\n\n### $TERM environment variable\n\nxterm-kitty\n\n### Installation\n\nbuild from repo",
-    "closed_at": null,
-    "closed_by": null,
+    "closed_at": "2025-05-29T18:29:18Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/8965202?v=4",
+        "events_url": "https://api.github.com/users/gpanders/events{/privacy}",
+        "followers_url": "https://api.github.com/users/gpanders/followers",
+        "following_url": "https://api.github.com/users/gpanders/following{/other_user}",
+        "gists_url": "https://api.github.com/users/gpanders/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/gpanders",
+        "id": 8965202,
+        "login": "gpanders",
+        "node_id": "MDQ6VXNlcjg5NjUyMDI=",
+        "organizations_url": "https://api.github.com/users/gpanders/orgs",
+        "received_events_url": "https://api.github.com/users/gpanders/received_events",
+        "repos_url": "https://api.github.com/users/gpanders/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/gpanders/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/gpanders/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/gpanders",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -422,8 +442,8 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/34028/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "sub_issues_summary": {
         "completed": 0,
         "percent_completed": 0,
@@ -441,7 +461,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyr",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2025-05-26T13:40:02Z",
+    "updated_at": "2025-05-29T18:29:18Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/34028",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/4547108?v=4",
