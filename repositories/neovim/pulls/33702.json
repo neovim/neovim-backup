@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6062,
-            "forks_count": 6062,
+            "forks": 6116,
+            "forks_count": 6116,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1916,
-            "open_issues_count": 1916,
+            "open_issues": 1969,
+            "open_issues_count": 1969,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -119,11 +119,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2025-05-06T02:05:16Z",
+            "pushed_at": "2025-06-10T00:47:14Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 321796,
+            "size": 327001,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 89216,
+            "stargazers_count": 90210,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -141,11 +141,11 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2025-05-06T02:05:21Z",
+            "updated_at": "2025-06-10T02:19:20Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 89216,
-            "watchers_count": 89216,
+            "watchers": 90210,
+            "watchers_count": 90210,
             "web_commit_signoff_required": false
         },
         "sha": "0ab0cdb2dabc551f836851aa85d06e927c42d92a",
@@ -451,6 +451,705 @@
                 "url": "https://api.github.com/users/jfly",
                 "user_view_type": "public"
             }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/33702#discussion_r2128539018"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/33702"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2128539018"
+                }
+            },
+            "author_association": "NONE",
+            "body": "This change causes the first buffer opened by Neovim to not get a filetype if a user has the following configuration\r\n```lua\r\n{\r\n\t\t\t\"neovim/nvim-lspconfig\",\r\n\t\t\tevent = \"BufReadPost\",\r\n\t\t\tconfig = function()\r\n\t\t\t\t\tvim.lsp.enable({ \"lua_ls\" })\r\n\t\t\tend,\r\n\t\t},\r\n```\r\nIf the call above is `vim.schedule`d or `vim.api.nvim_command('doautoall nvim.lsp.enable FileType')` is `vim.schedule`d, then it works correctly. I'm not sure what the desired behavior should be, that's why I'm asking here first instead of just creating an issue.\r\n\r\ncc @justinmk (apologies for the ping, I just saw that you were mainly involved in this PR from Neovim core team). I'm just asking for how this should be dealt.",
+            "commit_id": "ab35e412bf71475d613b4e46c8c3f596b480c567",
+            "created_at": "2025-06-05T10:43:25Z",
+            "diff_hunk": "@@ -577,21 +577,32 @@ function lsp.enable(name, enable)\n   end\n \n   if not next(lsp._enabled_configs) then\n+    -- If there are no remaining LSPs enabled, remove the enable autocmd.\n     if lsp_enable_autocmd_id then\n       api.nvim_del_autocmd(lsp_enable_autocmd_id)\n       lsp_enable_autocmd_id = nil\n     end\n-    return\n+  else\n+    -- Only ever create autocmd once to reuse computation of config merging.\n+    lsp_enable_autocmd_id = lsp_enable_autocmd_id\n+      or api.nvim_create_autocmd('FileType', {\n+        group = api.nvim_create_augroup('nvim.lsp.enable', {}),\n+        callback = function(args)\n+          lsp_enable_callback(args.buf)\n+        end,\n+      })\n   end\n \n-  -- Only ever create autocmd once to reuse computation of config merging.\n-  lsp_enable_autocmd_id = lsp_enable_autocmd_id\n-    or api.nvim_create_autocmd('FileType', {\n-      group = api.nvim_create_augroup('nvim.lsp.enable', {}),\n-      callback = function(args)\n-        lsp_enable_callback(args.buf)\n-      end,\n-    })\n+  -- Ensure any pre-existing buffers start/stop their LSP clients.\n+  if enable ~= false then\n+    vim.api.nvim_command('doautoall nvim.lsp.enable FileType')",
+            "html_url": "https://github.com/neovim/neovim/pull/33702#discussion_r2128539018",
+            "id": 2128539018,
+            "line": 598,
+            "node_id": "PRRC_kwDOAPphoM5-3u2K",
+            "original_commit_id": "ab35e412bf71475d613b4e46c8c3f596b480c567",
+            "original_line": 598,
+            "original_position": 31,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/lsp.lua",
+            "position": 31,
+            "pull_request_review_id": 2899798581,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/33702",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2128539018/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-06-05T10:43:25Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2128539018",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/12776461?v=4",
+                "events_url": "https://api.github.com/users/dpetka2001/events{/privacy}",
+                "followers_url": "https://api.github.com/users/dpetka2001/followers",
+                "following_url": "https://api.github.com/users/dpetka2001/following{/other_user}",
+                "gists_url": "https://api.github.com/users/dpetka2001/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/dpetka2001",
+                "id": 12776461,
+                "login": "dpetka2001",
+                "node_id": "MDQ6VXNlcjEyNzc2NDYx",
+                "organizations_url": "https://api.github.com/users/dpetka2001/orgs",
+                "received_events_url": "https://api.github.com/users/dpetka2001/received_events",
+                "repos_url": "https://api.github.com/users/dpetka2001/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/dpetka2001/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/dpetka2001/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/dpetka2001",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/33702#discussion_r2131192653"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/33702"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2131192653"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "> This change causes the first buffer opened by Neovim to not get a filetype if a user has the following configuration\r\n\r\nHave you been able to root cause why this is?\r\n\r\n@dpetka2001, you shouldn't be calling `vim.lsp.enable` in a `BufReadPost`. It's meant to happen once early on when your neovim starts up.",
+            "commit_id": "ab35e412bf71475d613b4e46c8c3f596b480c567",
+            "created_at": "2025-06-06T01:00:55Z",
+            "diff_hunk": "@@ -577,21 +577,32 @@ function lsp.enable(name, enable)\n   end\n \n   if not next(lsp._enabled_configs) then\n+    -- If there are no remaining LSPs enabled, remove the enable autocmd.\n     if lsp_enable_autocmd_id then\n       api.nvim_del_autocmd(lsp_enable_autocmd_id)\n       lsp_enable_autocmd_id = nil\n     end\n-    return\n+  else\n+    -- Only ever create autocmd once to reuse computation of config merging.\n+    lsp_enable_autocmd_id = lsp_enable_autocmd_id\n+      or api.nvim_create_autocmd('FileType', {\n+        group = api.nvim_create_augroup('nvim.lsp.enable', {}),\n+        callback = function(args)\n+          lsp_enable_callback(args.buf)\n+        end,\n+      })\n   end\n \n-  -- Only ever create autocmd once to reuse computation of config merging.\n-  lsp_enable_autocmd_id = lsp_enable_autocmd_id\n-    or api.nvim_create_autocmd('FileType', {\n-      group = api.nvim_create_augroup('nvim.lsp.enable', {}),\n-      callback = function(args)\n-        lsp_enable_callback(args.buf)\n-      end,\n-    })\n+  -- Ensure any pre-existing buffers start/stop their LSP clients.\n+  if enable ~= false then\n+    vim.api.nvim_command('doautoall nvim.lsp.enable FileType')",
+            "html_url": "https://github.com/neovim/neovim/pull/33702#discussion_r2131192653",
+            "id": 2131192653,
+            "in_reply_to_id": 2128539018,
+            "line": 598,
+            "node_id": "PRRC_kwDOAPphoM5_B2tN",
+            "original_commit_id": "ab35e412bf71475d613b4e46c8c3f596b480c567",
+            "original_line": 598,
+            "original_position": 31,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/lsp.lua",
+            "position": 31,
+            "pull_request_review_id": 2903362875,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/33702",
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2131192653/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-06-06T01:00:55Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2131192653",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/277474?v=4",
+                "events_url": "https://api.github.com/users/jfly/events{/privacy}",
+                "followers_url": "https://api.github.com/users/jfly/followers",
+                "following_url": "https://api.github.com/users/jfly/following{/other_user}",
+                "gists_url": "https://api.github.com/users/jfly/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/jfly",
+                "id": 277474,
+                "login": "jfly",
+                "node_id": "MDQ6VXNlcjI3NzQ3NA==",
+                "organizations_url": "https://api.github.com/users/jfly/orgs",
+                "received_events_url": "https://api.github.com/users/jfly/received_events",
+                "repos_url": "https://api.github.com/users/jfly/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/jfly/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/jfly/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/jfly",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/33702#discussion_r2131616817"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/33702"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2131616817"
+                }
+            },
+            "author_association": "NONE",
+            "body": "The previous commit https://github.com/neovim/neovim/commit/fae4abd2f4bd8f97167ea9f7a327d69c9f0afbfd does not have this problem. The problem was introduced because of calling directly `vim.api.nvim_command('doautoall nvim.lsp.enable FileType')`.\r\n\r\nFrom its help it mentions\r\n> enable({name}, {enable})                                    *vim.lsp.enable()*\r\n    Auto-starts LSP when a buffer is opened, based on the |lsp-config|\r\n    `filetypes`, `root_markers`, and `root_dir` fields.\r\n\r\n`BufReadPost` gets emitted when a buffer is opened. The problem is that the filetype detection fails with the first buffer, whereas that wasn't the case previously.\r\n\r\nIn the previous commit the autocmd would still get created and left up to Neovim when it would execute.",
+            "commit_id": "ab35e412bf71475d613b4e46c8c3f596b480c567",
+            "created_at": "2025-06-06T06:51:18Z",
+            "diff_hunk": "@@ -577,21 +577,32 @@ function lsp.enable(name, enable)\n   end\n \n   if not next(lsp._enabled_configs) then\n+    -- If there are no remaining LSPs enabled, remove the enable autocmd.\n     if lsp_enable_autocmd_id then\n       api.nvim_del_autocmd(lsp_enable_autocmd_id)\n       lsp_enable_autocmd_id = nil\n     end\n-    return\n+  else\n+    -- Only ever create autocmd once to reuse computation of config merging.\n+    lsp_enable_autocmd_id = lsp_enable_autocmd_id\n+      or api.nvim_create_autocmd('FileType', {\n+        group = api.nvim_create_augroup('nvim.lsp.enable', {}),\n+        callback = function(args)\n+          lsp_enable_callback(args.buf)\n+        end,\n+      })\n   end\n \n-  -- Only ever create autocmd once to reuse computation of config merging.\n-  lsp_enable_autocmd_id = lsp_enable_autocmd_id\n-    or api.nvim_create_autocmd('FileType', {\n-      group = api.nvim_create_augroup('nvim.lsp.enable', {}),\n-      callback = function(args)\n-        lsp_enable_callback(args.buf)\n-      end,\n-    })\n+  -- Ensure any pre-existing buffers start/stop their LSP clients.\n+  if enable ~= false then\n+    vim.api.nvim_command('doautoall nvim.lsp.enable FileType')",
+            "html_url": "https://github.com/neovim/neovim/pull/33702#discussion_r2131616817",
+            "id": 2131616817,
+            "in_reply_to_id": 2128539018,
+            "line": 598,
+            "node_id": "PRRC_kwDOAPphoM5_DeQx",
+            "original_commit_id": "ab35e412bf71475d613b4e46c8c3f596b480c567",
+            "original_line": 598,
+            "original_position": 31,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/lsp.lua",
+            "position": 31,
+            "pull_request_review_id": 2903963969,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/33702",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2131616817/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-06-06T06:53:33Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2131616817",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/12776461?v=4",
+                "events_url": "https://api.github.com/users/dpetka2001/events{/privacy}",
+                "followers_url": "https://api.github.com/users/dpetka2001/followers",
+                "following_url": "https://api.github.com/users/dpetka2001/following{/other_user}",
+                "gists_url": "https://api.github.com/users/dpetka2001/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/dpetka2001",
+                "id": 12776461,
+                "login": "dpetka2001",
+                "node_id": "MDQ6VXNlcjEyNzc2NDYx",
+                "organizations_url": "https://api.github.com/users/dpetka2001/orgs",
+                "received_events_url": "https://api.github.com/users/dpetka2001/received_events",
+                "repos_url": "https://api.github.com/users/dpetka2001/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/dpetka2001/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/dpetka2001/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/dpetka2001",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/33702#discussion_r2132157490"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/33702"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2132157490"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "> From its help it mentions\r\n> \r\n> > enable({name}, {enable})                                    _vim.lsp.enable()_\r\n> > Auto-starts LSP when a buffer is opened, based on the |lsp-config|\r\n> > `filetypes`, `root_markers`, and `root_dir` fields.\r\n\r\nThat help doc is explaining that enable() sets up the filetype-detection. \r\n\r\n> The problem is that the filetype detection fails with the first buffer, \r\n\r\nThat doesn't sound related to enable() in particular.\r\n\r\nAFAICT, your setup expects BufReadPost to happen after 'filetype' is set. But on startup for buffer 1, that isn't the case:\r\n\r\n    nvim --clean --cmd \"au BufReadPost * echom 'ft=' &filetype\" .tmux.conf\r\n\r\nThat has nothing to do with vim.lsp.enable(). The fact that your setup accidentally worked before seems irrelevant. The core issue is that the ordering of BufReadPost and FileType are different during startup vs after startup.",
+            "commit_id": "ab35e412bf71475d613b4e46c8c3f596b480c567",
+            "created_at": "2025-06-06T13:02:00Z",
+            "diff_hunk": "@@ -577,21 +577,32 @@ function lsp.enable(name, enable)\n   end\n \n   if not next(lsp._enabled_configs) then\n+    -- If there are no remaining LSPs enabled, remove the enable autocmd.\n     if lsp_enable_autocmd_id then\n       api.nvim_del_autocmd(lsp_enable_autocmd_id)\n       lsp_enable_autocmd_id = nil\n     end\n-    return\n+  else\n+    -- Only ever create autocmd once to reuse computation of config merging.\n+    lsp_enable_autocmd_id = lsp_enable_autocmd_id\n+      or api.nvim_create_autocmd('FileType', {\n+        group = api.nvim_create_augroup('nvim.lsp.enable', {}),\n+        callback = function(args)\n+          lsp_enable_callback(args.buf)\n+        end,\n+      })\n   end\n \n-  -- Only ever create autocmd once to reuse computation of config merging.\n-  lsp_enable_autocmd_id = lsp_enable_autocmd_id\n-    or api.nvim_create_autocmd('FileType', {\n-      group = api.nvim_create_augroup('nvim.lsp.enable', {}),\n-      callback = function(args)\n-        lsp_enable_callback(args.buf)\n-      end,\n-    })\n+  -- Ensure any pre-existing buffers start/stop their LSP clients.\n+  if enable ~= false then\n+    vim.api.nvim_command('doautoall nvim.lsp.enable FileType')",
+            "html_url": "https://github.com/neovim/neovim/pull/33702#discussion_r2132157490",
+            "id": 2132157490,
+            "in_reply_to_id": 2128539018,
+            "line": 598,
+            "node_id": "PRRC_kwDOAPphoM5_FiQy",
+            "original_commit_id": "ab35e412bf71475d613b4e46c8c3f596b480c567",
+            "original_line": 598,
+            "original_position": 31,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/lsp.lua",
+            "position": 31,
+            "pull_request_review_id": 2904856995,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/33702",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2132157490/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-06-06T13:03:32Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2132157490",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/33702#discussion_r2132380726"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/33702"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2132380726"
+                }
+            },
+            "author_association": "NONE",
+            "body": "With the following repro\r\n```lua\r\nvim.api.nvim_create_autocmd(\"BufReadPost\", {\r\n\tcallback = function()\r\n\t\tvim.lsp.enable({ \"lua_ls\" })\r\n\tend,\r\n})\r\n```\r\nThe problem occurs when you do `nvim --clean -u repro.lua` and then from the Neovim startup page you do `:e repro.lua` to open the buffer. If you then do `set ft?` you will see it prints out `filetype=`.\r\n\r\nIf you do `nvim --clean -u repro.lua repro.lua` directly and then you do `set ft?` you will see it prints `filetype=lua`. So, no problem if you open Neovim with a file argument.\r\n\r\nIf you comment out that specific line that does `doautocmdall` (or even `vim.schedule` the `doautocmdall`) the first case where you do `nvim --clean -u repro.lua` will also detect correctly the filetype. \r\n\r\nThe line that was added `vim.api.nvim_command('doautoall nvim.lsp.enable FileType')` causes a different behavior for the filetype detection of the first buffer in the 2 cases above.\r\n\r\nYou can verify what I said with the `repro.lua` provided and the steps mentioned. I also `vim.schedule`d the call to `vim.api.nvim_command('doautoall nvim.lsp.enable FileType')` and the filetype detection occurred correctly in the first case with `nvim --clean -u repro.lua` and then `:e repro.lua` and `:set ft?`.\r\n\r\nIs the behavior in the 2 aforementioned cases expected? With commit https://github.com/neovim/neovim/commit/fae4abd2f4bd8f97167ea9f7a327d69c9f0afbfd this didn't happen. ",
+            "commit_id": "ab35e412bf71475d613b4e46c8c3f596b480c567",
+            "created_at": "2025-06-06T15:12:00Z",
+            "diff_hunk": "@@ -577,21 +577,32 @@ function lsp.enable(name, enable)\n   end\n \n   if not next(lsp._enabled_configs) then\n+    -- If there are no remaining LSPs enabled, remove the enable autocmd.\n     if lsp_enable_autocmd_id then\n       api.nvim_del_autocmd(lsp_enable_autocmd_id)\n       lsp_enable_autocmd_id = nil\n     end\n-    return\n+  else\n+    -- Only ever create autocmd once to reuse computation of config merging.\n+    lsp_enable_autocmd_id = lsp_enable_autocmd_id\n+      or api.nvim_create_autocmd('FileType', {\n+        group = api.nvim_create_augroup('nvim.lsp.enable', {}),\n+        callback = function(args)\n+          lsp_enable_callback(args.buf)\n+        end,\n+      })\n   end\n \n-  -- Only ever create autocmd once to reuse computation of config merging.\n-  lsp_enable_autocmd_id = lsp_enable_autocmd_id\n-    or api.nvim_create_autocmd('FileType', {\n-      group = api.nvim_create_augroup('nvim.lsp.enable', {}),\n-      callback = function(args)\n-        lsp_enable_callback(args.buf)\n-      end,\n-    })\n+  -- Ensure any pre-existing buffers start/stop their LSP clients.\n+  if enable ~= false then\n+    vim.api.nvim_command('doautoall nvim.lsp.enable FileType')",
+            "html_url": "https://github.com/neovim/neovim/pull/33702#discussion_r2132380726",
+            "id": 2132380726,
+            "in_reply_to_id": 2128539018,
+            "line": 598,
+            "node_id": "PRRC_kwDOAPphoM5_GYw2",
+            "original_commit_id": "ab35e412bf71475d613b4e46c8c3f596b480c567",
+            "original_line": 598,
+            "original_position": 31,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/lsp.lua",
+            "position": 31,
+            "pull_request_review_id": 2905232549,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/33702",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2132380726/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-06-06T15:15:14Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2132380726",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/12776461?v=4",
+                "events_url": "https://api.github.com/users/dpetka2001/events{/privacy}",
+                "followers_url": "https://api.github.com/users/dpetka2001/followers",
+                "following_url": "https://api.github.com/users/dpetka2001/following{/other_user}",
+                "gists_url": "https://api.github.com/users/dpetka2001/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/dpetka2001",
+                "id": 12776461,
+                "login": "dpetka2001",
+                "node_id": "MDQ6VXNlcjEyNzc2NDYx",
+                "organizations_url": "https://api.github.com/users/dpetka2001/orgs",
+                "received_events_url": "https://api.github.com/users/dpetka2001/received_events",
+                "repos_url": "https://api.github.com/users/dpetka2001/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/dpetka2001/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/dpetka2001/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/dpetka2001",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/33702#discussion_r2132389854"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/33702"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2132389854"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "That's not how it's supposed to be used, so no wonder this doesn't work.",
+            "commit_id": "ab35e412bf71475d613b4e46c8c3f596b480c567",
+            "created_at": "2025-06-06T15:17:48Z",
+            "diff_hunk": "@@ -577,21 +577,32 @@ function lsp.enable(name, enable)\n   end\n \n   if not next(lsp._enabled_configs) then\n+    -- If there are no remaining LSPs enabled, remove the enable autocmd.\n     if lsp_enable_autocmd_id then\n       api.nvim_del_autocmd(lsp_enable_autocmd_id)\n       lsp_enable_autocmd_id = nil\n     end\n-    return\n+  else\n+    -- Only ever create autocmd once to reuse computation of config merging.\n+    lsp_enable_autocmd_id = lsp_enable_autocmd_id\n+      or api.nvim_create_autocmd('FileType', {\n+        group = api.nvim_create_augroup('nvim.lsp.enable', {}),\n+        callback = function(args)\n+          lsp_enable_callback(args.buf)\n+        end,\n+      })\n   end\n \n-  -- Only ever create autocmd once to reuse computation of config merging.\n-  lsp_enable_autocmd_id = lsp_enable_autocmd_id\n-    or api.nvim_create_autocmd('FileType', {\n-      group = api.nvim_create_augroup('nvim.lsp.enable', {}),\n-      callback = function(args)\n-        lsp_enable_callback(args.buf)\n-      end,\n-    })\n+  -- Ensure any pre-existing buffers start/stop their LSP clients.\n+  if enable ~= false then\n+    vim.api.nvim_command('doautoall nvim.lsp.enable FileType')",
+            "html_url": "https://github.com/neovim/neovim/pull/33702#discussion_r2132389854",
+            "id": 2132389854,
+            "in_reply_to_id": 2128539018,
+            "line": 598,
+            "node_id": "PRRC_kwDOAPphoM5_Ga_e",
+            "original_commit_id": "ab35e412bf71475d613b4e46c8c3f596b480c567",
+            "original_line": 598,
+            "original_position": 31,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/lsp.lua",
+            "position": 31,
+            "pull_request_review_id": 2905248053,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/33702",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2132389854/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-06-06T15:17:49Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2132389854",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/2361214?v=4",
+                "events_url": "https://api.github.com/users/clason/events{/privacy}",
+                "followers_url": "https://api.github.com/users/clason/followers",
+                "following_url": "https://api.github.com/users/clason/following{/other_user}",
+                "gists_url": "https://api.github.com/users/clason/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/clason",
+                "id": 2361214,
+                "login": "clason",
+                "node_id": "MDQ6VXNlcjIzNjEyMTQ=",
+                "organizations_url": "https://api.github.com/users/clason/orgs",
+                "received_events_url": "https://api.github.com/users/clason/received_events",
+                "repos_url": "https://api.github.com/users/clason/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/33702#discussion_r2132412537"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/33702"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2132412537"
+                }
+            },
+            "author_association": "NONE",
+            "body": "Yes, I'm trying to understand why this happens. I did not insinuate this is an issue. I myself wasn't sure if this was an issue or not, that's why I did not create an unnecessary issue and instead preferred to ask here. \r\n\r\nWhy does the line `vim.api.nvim_command('doautoall nvim.lsp.enable FileType')` affect the filetype detection as opposed to how it used to work.\r\n\r\nI used a Vimscript script to log the execution of the events when Neovim opens. The script is available in this [gist](https://gist.github.com/dpetka2001/afb03d807c15252adf64a25b1eb10e87). I'm not saying someone should check it.\r\n\r\nBut with the above script and opening Neovim with `nvim -c \"LogAutocmds\"` I can see that the `FileType` event occurs before `BufReadPost`. Whereas if I open Neovim with `nvim -c \"LogAutocmds\" some_file.lua` I can see that there's only a `FileType` event after a `BufNew` event and no `BufReadPost` event in this case.\r\nThis is just to show how I tried to understand how the order of the 2 events gets executed when you open Neovim with a file argument or not.\r\n\r\nAgain my question here is why does the addition of line `vim.api.nvim_command('doautoall nvim.lsp.enable FileType')` cause different behavior with regards to filetype detection. \r\n\r\nI would appreciate if someone can shed some light. I'm genuinely asking for information to understand. I totally understand that I'm asking for some of your personal time, so if nobody can give additional info that's totally acceptable as you can only interact with so many Neovim users.",
+            "commit_id": "ab35e412bf71475d613b4e46c8c3f596b480c567",
+            "created_at": "2025-06-06T15:31:59Z",
+            "diff_hunk": "@@ -577,21 +577,32 @@ function lsp.enable(name, enable)\n   end\n \n   if not next(lsp._enabled_configs) then\n+    -- If there are no remaining LSPs enabled, remove the enable autocmd.\n     if lsp_enable_autocmd_id then\n       api.nvim_del_autocmd(lsp_enable_autocmd_id)\n       lsp_enable_autocmd_id = nil\n     end\n-    return\n+  else\n+    -- Only ever create autocmd once to reuse computation of config merging.\n+    lsp_enable_autocmd_id = lsp_enable_autocmd_id\n+      or api.nvim_create_autocmd('FileType', {\n+        group = api.nvim_create_augroup('nvim.lsp.enable', {}),\n+        callback = function(args)\n+          lsp_enable_callback(args.buf)\n+        end,\n+      })\n   end\n \n-  -- Only ever create autocmd once to reuse computation of config merging.\n-  lsp_enable_autocmd_id = lsp_enable_autocmd_id\n-    or api.nvim_create_autocmd('FileType', {\n-      group = api.nvim_create_augroup('nvim.lsp.enable', {}),\n-      callback = function(args)\n-        lsp_enable_callback(args.buf)\n-      end,\n-    })\n+  -- Ensure any pre-existing buffers start/stop their LSP clients.\n+  if enable ~= false then\n+    vim.api.nvim_command('doautoall nvim.lsp.enable FileType')",
+            "html_url": "https://github.com/neovim/neovim/pull/33702#discussion_r2132412537",
+            "id": 2132412537,
+            "in_reply_to_id": 2128539018,
+            "line": 598,
+            "node_id": "PRRC_kwDOAPphoM5_Ggh5",
+            "original_commit_id": "ab35e412bf71475d613b4e46c8c3f596b480c567",
+            "original_line": 598,
+            "original_position": 31,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/lsp.lua",
+            "position": 31,
+            "pull_request_review_id": 2905284853,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/33702",
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2132412537/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-06-06T15:32:00Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2132412537",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/12776461?v=4",
+                "events_url": "https://api.github.com/users/dpetka2001/events{/privacy}",
+                "followers_url": "https://api.github.com/users/dpetka2001/followers",
+                "following_url": "https://api.github.com/users/dpetka2001/following{/other_user}",
+                "gists_url": "https://api.github.com/users/dpetka2001/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/dpetka2001",
+                "id": 12776461,
+                "login": "dpetka2001",
+                "node_id": "MDQ6VXNlcjEyNzc2NDYx",
+                "organizations_url": "https://api.github.com/users/dpetka2001/orgs",
+                "received_events_url": "https://api.github.com/users/dpetka2001/received_events",
+                "repos_url": "https://api.github.com/users/dpetka2001/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/dpetka2001/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/dpetka2001/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/dpetka2001",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/33702#discussion_r2132888876"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/33702"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2132888876"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "Totally appreciate the curiosity here, @dpetka2001. I do not know what's going on here.",
+            "commit_id": "ab35e412bf71475d613b4e46c8c3f596b480c567",
+            "created_at": "2025-06-06T20:45:48Z",
+            "diff_hunk": "@@ -577,21 +577,32 @@ function lsp.enable(name, enable)\n   end\n \n   if not next(lsp._enabled_configs) then\n+    -- If there are no remaining LSPs enabled, remove the enable autocmd.\n     if lsp_enable_autocmd_id then\n       api.nvim_del_autocmd(lsp_enable_autocmd_id)\n       lsp_enable_autocmd_id = nil\n     end\n-    return\n+  else\n+    -- Only ever create autocmd once to reuse computation of config merging.\n+    lsp_enable_autocmd_id = lsp_enable_autocmd_id\n+      or api.nvim_create_autocmd('FileType', {\n+        group = api.nvim_create_augroup('nvim.lsp.enable', {}),\n+        callback = function(args)\n+          lsp_enable_callback(args.buf)\n+        end,\n+      })\n   end\n \n-  -- Only ever create autocmd once to reuse computation of config merging.\n-  lsp_enable_autocmd_id = lsp_enable_autocmd_id\n-    or api.nvim_create_autocmd('FileType', {\n-      group = api.nvim_create_augroup('nvim.lsp.enable', {}),\n-      callback = function(args)\n-        lsp_enable_callback(args.buf)\n-      end,\n-    })\n+  -- Ensure any pre-existing buffers start/stop their LSP clients.\n+  if enable ~= false then\n+    vim.api.nvim_command('doautoall nvim.lsp.enable FileType')",
+            "html_url": "https://github.com/neovim/neovim/pull/33702#discussion_r2132888876",
+            "id": 2132888876,
+            "in_reply_to_id": 2128539018,
+            "line": 598,
+            "node_id": "PRRC_kwDOAPphoM5_IU0s",
+            "original_commit_id": "ab35e412bf71475d613b4e46c8c3f596b480c567",
+            "original_line": 598,
+            "original_position": 31,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/lsp.lua",
+            "position": 31,
+            "pull_request_review_id": 2906110847,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/33702",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2132888876/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-06-06T20:45:54Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2132888876",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/277474?v=4",
+                "events_url": "https://api.github.com/users/jfly/events{/privacy}",
+                "followers_url": "https://api.github.com/users/jfly/followers",
+                "following_url": "https://api.github.com/users/jfly/following{/other_user}",
+                "gists_url": "https://api.github.com/users/jfly/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/jfly",
+                "id": 277474,
+                "login": "jfly",
+                "node_id": "MDQ6VXNlcjI3NzQ3NA==",
+                "organizations_url": "https://api.github.com/users/jfly/orgs",
+                "received_events_url": "https://api.github.com/users/jfly/received_events",
+                "repos_url": "https://api.github.com/users/jfly/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/jfly/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/jfly/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/jfly",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/33702#discussion_r2132914236"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/33702"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2132914236"
+                }
+            },
+            "author_association": "NONE",
+            "body": "@jfly If you do\r\n```lua\r\nvim.schedule(function()\r\n  vim.api.nvim_command('doautoall nvim.lsp.enable FileType')\r\nend)\r\n```\r\nDoes it have any negative effect for the reason that you created this PR? Because if you use `vim.schedule` then the filetype detection works as expected.",
+            "commit_id": "ab35e412bf71475d613b4e46c8c3f596b480c567",
+            "created_at": "2025-06-06T21:11:49Z",
+            "diff_hunk": "@@ -577,21 +577,32 @@ function lsp.enable(name, enable)\n   end\n \n   if not next(lsp._enabled_configs) then\n+    -- If there are no remaining LSPs enabled, remove the enable autocmd.\n     if lsp_enable_autocmd_id then\n       api.nvim_del_autocmd(lsp_enable_autocmd_id)\n       lsp_enable_autocmd_id = nil\n     end\n-    return\n+  else\n+    -- Only ever create autocmd once to reuse computation of config merging.\n+    lsp_enable_autocmd_id = lsp_enable_autocmd_id\n+      or api.nvim_create_autocmd('FileType', {\n+        group = api.nvim_create_augroup('nvim.lsp.enable', {}),\n+        callback = function(args)\n+          lsp_enable_callback(args.buf)\n+        end,\n+      })\n   end\n \n-  -- Only ever create autocmd once to reuse computation of config merging.\n-  lsp_enable_autocmd_id = lsp_enable_autocmd_id\n-    or api.nvim_create_autocmd('FileType', {\n-      group = api.nvim_create_augroup('nvim.lsp.enable', {}),\n-      callback = function(args)\n-        lsp_enable_callback(args.buf)\n-      end,\n-    })\n+  -- Ensure any pre-existing buffers start/stop their LSP clients.\n+  if enable ~= false then\n+    vim.api.nvim_command('doautoall nvim.lsp.enable FileType')",
+            "html_url": "https://github.com/neovim/neovim/pull/33702#discussion_r2132914236",
+            "id": 2132914236,
+            "in_reply_to_id": 2128539018,
+            "line": 598,
+            "node_id": "PRRC_kwDOAPphoM5_IbA8",
+            "original_commit_id": "ab35e412bf71475d613b4e46c8c3f596b480c567",
+            "original_line": 598,
+            "original_position": 31,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/lsp.lua",
+            "position": 31,
+            "pull_request_review_id": 2906154879,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/33702",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2132914236/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-06-06T21:11:49Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2132914236",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/12776461?v=4",
+                "events_url": "https://api.github.com/users/dpetka2001/events{/privacy}",
+                "followers_url": "https://api.github.com/users/dpetka2001/followers",
+                "following_url": "https://api.github.com/users/dpetka2001/following{/other_user}",
+                "gists_url": "https://api.github.com/users/dpetka2001/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/dpetka2001",
+                "id": 12776461,
+                "login": "dpetka2001",
+                "node_id": "MDQ6VXNlcjEyNzc2NDYx",
+                "organizations_url": "https://api.github.com/users/dpetka2001/orgs",
+                "received_events_url": "https://api.github.com/users/dpetka2001/received_events",
+                "repos_url": "https://api.github.com/users/dpetka2001/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/dpetka2001/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/dpetka2001/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/dpetka2001",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/33702#discussion_r2133139557"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/33702"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2133139557"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "we can try that change, feel free to send a pr. with a concise and clear Problem/Solution explanation. not the wall of text above.",
+            "commit_id": "ab35e412bf71475d613b4e46c8c3f596b480c567",
+            "created_at": "2025-06-07T01:02:27Z",
+            "diff_hunk": "@@ -577,21 +577,32 @@ function lsp.enable(name, enable)\n   end\n \n   if not next(lsp._enabled_configs) then\n+    -- If there are no remaining LSPs enabled, remove the enable autocmd.\n     if lsp_enable_autocmd_id then\n       api.nvim_del_autocmd(lsp_enable_autocmd_id)\n       lsp_enable_autocmd_id = nil\n     end\n-    return\n+  else\n+    -- Only ever create autocmd once to reuse computation of config merging.\n+    lsp_enable_autocmd_id = lsp_enable_autocmd_id\n+      or api.nvim_create_autocmd('FileType', {\n+        group = api.nvim_create_augroup('nvim.lsp.enable', {}),\n+        callback = function(args)\n+          lsp_enable_callback(args.buf)\n+        end,\n+      })\n   end\n \n-  -- Only ever create autocmd once to reuse computation of config merging.\n-  lsp_enable_autocmd_id = lsp_enable_autocmd_id\n-    or api.nvim_create_autocmd('FileType', {\n-      group = api.nvim_create_augroup('nvim.lsp.enable', {}),\n-      callback = function(args)\n-        lsp_enable_callback(args.buf)\n-      end,\n-    })\n+  -- Ensure any pre-existing buffers start/stop their LSP clients.\n+  if enable ~= false then\n+    vim.api.nvim_command('doautoall nvim.lsp.enable FileType')",
+            "html_url": "https://github.com/neovim/neovim/pull/33702#discussion_r2133139557",
+            "id": 2133139557,
+            "in_reply_to_id": 2128539018,
+            "line": 598,
+            "node_id": "PRRC_kwDOAPphoM5_JSBl",
+            "original_commit_id": "ab35e412bf71475d613b4e46c8c3f596b480c567",
+            "original_line": 598,
+            "original_position": 31,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/lsp.lua",
+            "position": 31,
+            "pull_request_review_id": 2906504261,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/33702",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2133139557/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-06-07T01:02:27Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2133139557",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
         }
     ],
     "comment_regular_data": [
@@ -632,9 +1331,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/jfly/neovim/pulls{/number}",
-            "pushed_at": "2025-05-03T22:14:03Z",
+            "pushed_at": "2025-05-08T01:04:45Z",
             "releases_url": "https://api.github.com/repos/jfly/neovim/releases{/id}",
-            "size": 312179,
+            "size": 313020,
             "ssh_url": "git@github.com:jfly/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/jfly/neovim/stargazers",
@@ -713,7 +1412,7 @@
     "state": "closed",
     "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/ab35e412bf71475d613b4e46c8c3f596b480c567",
     "title": "Start and stop LSPs as necessary during `vim.lsp.enable`",
-    "updated_at": "2025-05-01T01:16:45Z",
+    "updated_at": "2025-06-07T01:02:27Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/33702",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/277474?v=4",

@@ -28,7 +28,7 @@
     "active_lock_reason": null,
     "assignee": null,
     "assignees": [],
-    "author_association": "CONTRIBUTOR",
+    "author_association": "MEMBER",
     "auto_merge": null,
     "base": {
         "label": "neovim:master",
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 5523,
-            "forks_count": 5523,
+            "forks": 6116,
+            "forks_count": 6116,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1775,
-            "open_issues_count": 1775,
+            "open_issues": 1969,
+            "open_issues_count": 1969,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -114,15 +114,16 @@
                 "starred_url": "https://api.github.com/users/neovim/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/neovim/subscriptions",
                 "type": "Organization",
-                "url": "https://api.github.com/users/neovim"
+                "url": "https://api.github.com/users/neovim",
+                "user_view_type": "public"
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2024-08-13T01:54:54Z",
+            "pushed_at": "2025-06-10T00:47:14Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 282602,
+            "size": 327001,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 80732,
+            "stargazers_count": 90210,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -140,11 +141,11 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2024-08-13T01:58:29Z",
+            "updated_at": "2025-06-10T02:19:20Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 80732,
-            "watchers_count": 80732,
+            "watchers": 90210,
+            "watchers_count": 90210,
             "web_commit_signoff_required": false
         },
         "sha": "e5ff3020330e7c961299b991448653a46817188f",
@@ -166,15 +167,16 @@
             "starred_url": "https://api.github.com/users/neovim/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/neovim/subscriptions",
             "type": "Organization",
-            "url": "https://api.github.com/users/neovim"
+            "url": "https://api.github.com/users/neovim",
+            "user_view_type": "public"
         }
     },
     "body": "Allows injection ranges to span quantified node captures. I had made this PR mostly for the sake of convenience but I have also noticed it's made injections more robust in certain ways:\r\n\r\n- Empty injection ranges are ignored (see the modification in `parser_spec`; previously, the ranges were not counted before because they were empty, so I had to change the offset amount)\r\n- Most use cases for `injection.combined` are now obsolete\r\n  - The only cases where it would still be necessary (that I can think of) are when you really need a combined injection range and you cannot capture both nodes for that combination in just a single query.\r\n- Combined injection ranges span the in-between area more accurately. See the below images:\r\n\r\nBefore:\r\n![beforeinjection](https://github.com/neovim/neovim/assets/55766287/f9f8e90c-96a6-493c-8554-881646276326)\r\n\r\nAfter:\r\n![afterinjection](https://github.com/neovim/neovim/assets/55766287/6b618f6c-b844-491f-a31f-70b10bb1fbeb)\r\n\r\n**Question:** Was the previous behavior intended? Perhaps there are cases where parsing the content in-between the combined range (rather than just combining the nodes themselves and parsing only those) leads to undesirable highlighting? I couldn't find an answer to that question from the documentation, but it is very specific. Perhaps a reviewer wiser than myself can answer it\r\n\r\n---\r\n\r\nI will add tests later, if this PR is deemed acceptable",
-    "closed_at": null,
+    "closed_at": "2025-06-07T13:51:35Z",
     "comment_data": [],
     "comment_regular_data": [
         {
-            "author_association": "CONTRIBUTOR",
+            "author_association": "MEMBER",
             "body": "Ok, some more thoughts. Currently, `injection.combined` is pretty buggy. If I wanted to have the following type of injection:\r\n```scheme\r\n(arguments\r\n  (string\r\n    (string_content) @injection.content)\r\n  (#set! injection.combined)\r\n  (#set! injection.language \"c\"))\r\n```\r\nthe entire injection has the same range, leading to highlights bleeding into other areas, which is undesirable. See the following image:\r\n\r\n![buggyinjection](https://github.com/neovim/neovim/assets/55766287/32ba480c-648a-46ee-b85a-c84a66ccbbdb)\r\n\r\nHowever, as this PR stands now, there is no easy way to achieve injection ranges for the above. #27504 would help, but it would still only be giving an ugly way to solve this problem (we would have to calculate an offset for everything, and this can be bad because who knows if, e.g. the strings above will or will not have a trailing comma?). In my opinion, the proper way forward would be to use quantified captures in place of what `injection.combined` used to be needed for, and keep `injection.combined` for special cases.\r\n\r\nSpecial cases would apply to, e.g., the `html_tag` injection shown in the PR description. In the `lua` arguments example, we don't want to inject the range in-between each node, since that would mean the string delimiters and trailing commas also get injected. However, we do want the text in-between to be part of the injection for the HTML tags in Markdown, because then we get a nice highlight for the text inside the tags (which doesn't exist now).\r\n\r\n---\r\n\r\n**TLDR:** I would like to propose a new meaning for `injection.combined`. For\r\n\r\n```\r\nother NODETYPE other\r\nother NODETYPE other\r\n```\r\n\r\nThe query\r\n\r\n```scheme\r\n(NODETYPE)+ @injection.content\r\n```\r\n\r\nshould inject:\r\n\r\n```\r\nother ******** other\r\nother ******** other\r\n```\r\nand\r\n\r\n```scheme\r\n((NODETYPE)+ @injection.content (#set! injection.combined))\r\n```\r\nshould inject:\r\n\r\n```\r\nother **************\r\n************** other\r\n```\r\n\r\n@clason @justinmk @lewis6991 does this sound like an acceptable change?",
             "created_at": "2024-07-08T01:18:27Z",
             "html_url": "https://github.com/neovim/neovim/pull/29601#issuecomment-2212737235",
@@ -214,7 +216,8 @@
                 "starred_url": "https://api.github.com/users/ribru17/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ribru17/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ribru17"
+                "url": "https://api.github.com/users/ribru17",
+                "user_view_type": "public"
             }
         },
         {
@@ -258,7 +261,8 @@
                 "starred_url": "https://api.github.com/users/lucario387/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lucario387/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lucario387"
+                "url": "https://api.github.com/users/lucario387",
+                "user_view_type": "public"
             }
         },
         {
@@ -302,7 +306,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -346,7 +351,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -390,11 +396,12 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "CONTRIBUTOR",
+            "author_association": "MEMBER",
             "body": "Sure, but how should the behavior be handled? Should consecutive nodes have their injection ranges merged (e.g. text between two tags)? Or separate?",
             "created_at": "2024-08-05T12:55:26Z",
             "html_url": "https://github.com/neovim/neovim/pull/29601#issuecomment-2269010629",
@@ -434,7 +441,8 @@
                 "starred_url": "https://api.github.com/users/ribru17/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ribru17/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ribru17"
+                "url": "https://api.github.com/users/ribru17",
+                "user_view_type": "public"
             }
         },
         {
@@ -478,11 +486,12 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "CONTRIBUTOR",
+            "author_association": "MEMBER",
             "body": "Cool I can do that. One last thing to mention: if I do that and if the injection.combined changes ever get merged, it would require another change to the quantified captures to go from a combined range to a non-combined range (just the sum of the individual node ranges). Since the range combination would be handled by the predicate. I don't know if that change would qualify as breaking though, or if it is it's at least low impact hopefully. Still ok to go through with this PR?",
             "created_at": "2024-08-05T13:02:41Z",
             "html_url": "https://github.com/neovim/neovim/pull/29601#issuecomment-2269026081",
@@ -522,7 +531,8 @@
                 "starred_url": "https://api.github.com/users/ribru17/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ribru17/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ribru17"
+                "url": "https://api.github.com/users/ribru17",
+                "user_view_type": "public"
             }
         },
         {
@@ -566,7 +576,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -610,7 +621,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -654,11 +666,12 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "CONTRIBUTOR",
+            "author_association": "MEMBER",
             "body": "Sounds good, I'll get on it. As for the later point, at that point maybe the bespoke solution would render my initial injection.combined proposal unnecessary. Gonna postpone giving it more thought for now",
             "created_at": "2024-08-06T04:04:04Z",
             "html_url": "https://github.com/neovim/neovim/pull/29601#issuecomment-2270339130",
@@ -698,11 +711,12 @@
                 "starred_url": "https://api.github.com/users/ribru17/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ribru17/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ribru17"
+                "url": "https://api.github.com/users/ribru17",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "CONTRIBUTOR",
+            "author_association": "MEMBER",
             "body": "Ok, I think this will require more effort. Looks like there is no notion of a global or local injection scope right now, `injection.combined` just makes it so that the ranges are themselves all combined (which incidentally parses it as the same document, and also leads to the highlighting artifacts). Some scope implementation will have to be added for this to work",
             "created_at": "2024-08-10T16:58:43Z",
             "html_url": "https://github.com/neovim/neovim/pull/29601#issuecomment-2282209736",
@@ -742,7 +756,8 @@
                 "starred_url": "https://api.github.com/users/ribru17/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ribru17/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ribru17"
+                "url": "https://api.github.com/users/ribru17",
+                "user_view_type": "public"
             }
         },
         {
@@ -786,11 +801,12 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "CONTRIBUTOR",
+            "author_association": "MEMBER",
             "body": "It works differently in the CLI though. Something like `\"injecthere${butnothere}injecthere\"` would have the two \"injecthere\" strings (with `injection.combined`) parsed as one document, and the `${}` block will retain its own highlights. I.e., document combination is attained without range combination. In neovim the whole range gets combined and `${}` gets weird highlights",
             "created_at": "2024-08-10T17:27:32Z",
             "html_url": "https://github.com/neovim/neovim/pull/29601#issuecomment-2282218692",
@@ -830,7 +846,8 @@
                 "starred_url": "https://api.github.com/users/ribru17/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ribru17/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ribru17"
+                "url": "https://api.github.com/users/ribru17",
+                "user_view_type": "public"
             }
         },
         {
@@ -874,11 +891,12 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "CONTRIBUTOR",
+            "author_association": "MEMBER",
             "body": "Yeah. But this is how it is already for non-combined injections. So the only notion of injection combination right now is whether the actual range is contiguous. So for that to work there needs to be some scoping or some other index to refer to different trees of the same language (I think)",
             "created_at": "2024-08-10T17:34:45Z",
             "html_url": "https://github.com/neovim/neovim/pull/29601#issuecomment-2282220793",
@@ -918,7 +936,8 @@
                 "starred_url": "https://api.github.com/users/ribru17/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ribru17/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ribru17"
+                "url": "https://api.github.com/users/ribru17",
+                "user_view_type": "public"
             }
         },
         {
@@ -962,11 +981,12 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "CONTRIBUTOR",
+            "author_association": "MEMBER",
             "body": "Not sure, I'll investigate",
             "created_at": "2024-08-10T17:40:47Z",
             "html_url": "https://github.com/neovim/neovim/pull/29601#issuecomment-2282222520",
@@ -1006,7 +1026,8 @@
                 "starred_url": "https://api.github.com/users/ribru17/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ribru17/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ribru17"
+                "url": "https://api.github.com/users/ribru17",
+                "user_view_type": "public"
             }
         }
     ],
@@ -1099,13 +1120,14 @@
                 "starred_url": "https://api.github.com/users/ribru17/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ribru17/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ribru17"
+                "url": "https://api.github.com/users/ribru17",
+                "user_view_type": "public"
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/ribru17/neovim/pulls{/number}",
-            "pushed_at": "2024-08-12T05:30:46Z",
+            "pushed_at": "2025-06-09T17:24:01Z",
             "releases_url": "https://api.github.com/repos/ribru17/neovim/releases{/id}",
-            "size": 275080,
+            "size": 320765,
             "ssh_url": "git@github.com:ribru17/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/ribru17/neovim/stargazers",
@@ -1117,7 +1139,7 @@
             "teams_url": "https://api.github.com/repos/ribru17/neovim/teams",
             "topics": [],
             "trees_url": "https://api.github.com/repos/ribru17/neovim/git/trees{/sha}",
-            "updated_at": "2024-08-05T01:49:11Z",
+            "updated_at": "2025-06-09T17:22:32Z",
             "url": "https://api.github.com/repos/ribru17/neovim",
             "visibility": "public",
             "watchers": 0,
@@ -1143,7 +1165,8 @@
             "starred_url": "https://api.github.com/users/ribru17/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/ribru17/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/ribru17"
+            "url": "https://api.github.com/users/ribru17",
+            "user_view_type": "public"
         }
     },
     "html_url": "https://github.com/neovim/neovim/pull/29601",
@@ -1161,7 +1184,7 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "e9a5ad04fbaf521cba39d84ec9d5eac8442e3e26",
+    "merge_commit_sha": null,
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM50nn2M",
@@ -1171,10 +1194,10 @@
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/29601/comments",
-    "state": "open",
+    "state": "closed",
     "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/0f663ae5812db5e81d2a3ca48a00670ec181de8c",
     "title": "feat(treesitter): handle quantified nodes for injection ranges",
-    "updated_at": "2024-08-10T17:40:49Z",
+    "updated_at": "2025-06-07T13:51:35Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/29601",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/55766287?v=4",
@@ -1194,6 +1217,7 @@
         "starred_url": "https://api.github.com/users/ribru17/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/ribru17/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/ribru17"
+        "url": "https://api.github.com/users/ribru17",
+        "user_view_type": "public"
     }
 }
