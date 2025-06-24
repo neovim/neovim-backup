@@ -3,7 +3,7 @@
     "assignee": null,
     "assignees": [],
     "author_association": "NONE",
-    "body": "### Feature already in Vim?\n\nNo.\n\n### Feature description\n\nThe requested feature would entail providing a lua API and some extra editor behavior to create readonly sections of text in a buffer, via use of extmarks. In principle, this could be boolean `readonly` key passed to the `opts` parameter of `nvim_buf_set_extmark`. It would default to false, for compatibility, and could be toggled to add special behavior to the section.\r\n\r\n### Details\r\n\r\nThe aforementioned extra behavior is to prevent modification of the marked areas, by either disabling actions that can change them or redirecting the action to a non-readonly section. As an example, picture the following:\r\n\r\n```\r\n    <I am read|only.> I am not.\r\n``` \r\n\r\nIf `<` and `>` mark the beginning and end of the extmark, plus the cursor is at the pipe's position above, then pressing <kbd>x</kbd> in normal mode to delete a character could do one of two things (this is to be discussed, and could possibly be configurable):\r\n\r\n- Nothing.\r\n- Remove the next non-readonly character in the buffer (the space before `I am not.` in this case).\r\n\r\nSimilarly, pressing <kbd>i</kbd> to enter insert mode could do either:\r\n\r\n- Nothing.\r\n- Enter insert mode before the readonly section (in this case before where the `<` is). Typing some text here would move the extmark, such that the text inside it is kept. Note that if `right_gravity` is `false`, the cursor would have to be one character before to be able to type, whereas with `right_gravity = true` being on the first character allows insert. (This behavior is to prevent the user from being able to write at the beginning of the buffer, before any extmarks)\r\n\r\nNavigating with the arrow keys in insert mode could do:\r\n\r\n- Nothing (requiring the user to be in normal mode to go through the readonly text).\r\n- Skip to the next character in the direction of movement.\r\n\r\n### Use case\r\n\r\nThere are plugins (Neogit, nvim-tree, dapui, to name some) that create a special buffer that shouldn't be edited directly by the user, instead containing machine generated content that reflects the functionality of the plugin. Managing such a buffer can be troublesome at times, in particular if you can't get away with disabling insert mode and handling keybinds manually. Most of the plugins I mentioned can, indeed, get away with that, but I think I found a use case that can't be implemented without either some support for readonly content  or a lot of hackery witchcraft.\r\n\r\nIt's a project search and replace plugin, that would work like the following:\r\n\r\n1. The user  types a command to get into the search and replace buffer.\r\n2. On top, the user can enter their search patterns in the proper location (but should not be able to edit the instructions on the buffer).\r\n3. As they stop typing, the section below the search field is dynamically populated with matched file contents.\r\n4.  Once the query is finished, they can press enter to lock the search. Now the search field vanishes and only the matches remain (with optionally some lines of context around them and origin file annotations).\r\n5. Now the user can edit the matches (but not the context) and the changes are applied to the respective files on enter.\r\n\r\nThe user could also run a regex substitution to change many at a time, and only the matches should be touchable, not the context. This last bit seem to not be possible currently, and preventing regular editing from messing up the buffer is also quite hard and unreliable.\r\n\r\nThis is only my own use case for the proposed feature, but it seems like something generally desirable from a UI perspective, and could allow smarter, less error prone plugins without the author having to think of every corner case and escape mechanism.\r\n\r\n### Alternatives\r\n\r\nI've considered virtual text for this, but it seems to not be right choice, because 1) its not real text, so the user wouldn't be able to do motions, put the cursor over or search through it; 2) From my understanding, you're not supposed to (and maybe you can't even) make a buffer entirely or almost entirely with virtual text, there has to be some content, and if only the matches were text we'd have weird jumpy behavior due to 1.\r\n\r\nAs for why this can't be a plugin or an external feature of some sort, that's because it doesn't seem to be possible that way. In my plugin I tried to do it, but it is over complicated and could break easily.\r\n\r\n### Implementation\r\n\r\nI think I can provide a start to this myself, though since I'm inexperienced in the project's codebase I'd appreciate some pointers. Also, everything I've proposed here is up for discussion, in fact, there are design decisions still to be made that need discussion.\r\n\r\nSide note: The plugin I mentioned is not public yet, but if requested I can provide the partial implementation as an example.",
+    "body": "\n### Feature description\n\nThe requested feature would entail providing a lua API and some extra editor behavior to create readonly sections of text in a buffer, via use of extmarks. In principle, this could be boolean `readonly` key passed to the `opts` parameter of `nvim_buf_set_extmark`. It would default to false, for compatibility, and could be toggled to add special behavior to the section.\n\n### Details\n\nThe aforementioned extra behavior is to prevent modification of the marked areas, by either disabling actions that can change them or redirecting the action to a non-readonly section. As an example, picture the following:\n\n```\n    <I am read|only.> I am not.\n``` \n\nIf `<` and `>` mark the beginning and end of the extmark, plus the cursor is at the pipe's position above, then pressing <kbd>x</kbd> in normal mode to delete a character could do one of two things (this is to be discussed, and could possibly be configurable):\n\n- Nothing.\n- Remove the next non-readonly character in the buffer (the space before `I am not.` in this case).\n\nSimilarly, pressing <kbd>i</kbd> to enter insert mode could do either:\n\n- Nothing.\n- Enter insert mode before the readonly section (in this case before where the `<` is). Typing some text here would move the extmark, such that the text inside it is kept. Note that if `right_gravity` is `false`, the cursor would have to be one character before to be able to type, whereas with `right_gravity = true` being on the first character allows insert. (This behavior is to prevent the user from being able to write at the beginning of the buffer, before any extmarks)\n\nNavigating with the arrow keys in insert mode could do:\n\n- Nothing (requiring the user to be in normal mode to go through the readonly text).\n- Skip to the next character in the direction of movement.\n\n### Use case\n\nThere are plugins (Neogit, nvim-tree, dapui, to name some) that create a special buffer that shouldn't be edited directly by the user, instead containing machine generated content that reflects the functionality of the plugin. Managing such a buffer can be troublesome at times, in particular if you can't get away with disabling insert mode and handling keybinds manually. Most of the plugins I mentioned can, indeed, get away with that, but I think I found a use case that can't be implemented without either some support for readonly content  or a lot of hackery witchcraft.\n\nIt's a project search and replace plugin, that would work like the following:\n\n1. The user  types a command to get into the search and replace buffer.\n2. On top, the user can enter their search patterns in the proper location (but should not be able to edit the instructions on the buffer).\n3. As they stop typing, the section below the search field is dynamically populated with matched file contents.\n4.  Once the query is finished, they can press enter to lock the search. Now the search field vanishes and only the matches remain (with optionally some lines of context around them and origin file annotations).\n5. Now the user can edit the matches (but not the context) and the changes are applied to the respective files on enter.\n\nThe user could also run a regex substitution to change many at a time, and only the matches should be touchable, not the context. This last bit seem to not be possible currently, and preventing regular editing from messing up the buffer is also quite hard and unreliable.\n\nThis is only my own use case for the proposed feature, but it seems like something generally desirable from a UI perspective, and could allow smarter, less error prone plugins without the author having to think of every corner case and escape mechanism.\n\n### Alternatives\n\nI've considered virtual text for this, but it seems to not be right choice, because 1) its not real text, so the user wouldn't be able to do motions, put the cursor over or search through it; 2) From my understanding, you're not supposed to (and maybe you can't even) make a buffer entirely or almost entirely with virtual text, there has to be some content, and if only the matches were text we'd have weird jumpy behavior due to 1.\n\nAs for why this can't be a plugin or an external feature of some sort, that's because it doesn't seem to be possible that way. In my plugin I tried to do it, but it is over complicated and could break easily.\n\n### Implementation\n\nI think I can provide a start to this myself, though since I'm inexperienced in the project's codebase I'd appreciate some pointers. Also, everything I've proposed here is up for discussion, in fact, there are design decisions still to be made that need discussion.\n\nSide note: The plugin I mentioned is not public yet, but if requested I can provide the partial implementation as an example.",
     "closed_at": null,
     "closed_by": null,
     "comment_data": [
@@ -96,9 +96,54 @@
                 "url": "https://api.github.com/users/danilevy1212",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "related:\n\n- https://github.com/neovim/neovim/issues/30463",
+            "created_at": "2025-06-18T17:14:40Z",
+            "html_url": "https://github.com/neovim/neovim/issues/17061#issuecomment-2985104805",
+            "id": 2985104805,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/17061",
+            "node_id": "IC_kwDOAPphoM6x7RWl",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2985104805/reactions"
+            },
+            "updated_at": "2025-06-18T17:14:40Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2985104805",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
         }
     ],
-    "comments": 2,
+    "comments": 3,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/17061/comments",
     "created_at": "2022-01-12T17:12:25Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/17061/events",
@@ -115,20 +160,47 @@
             "url": "https://api.github.com/repos/neovim/neovim/labels/enhancement"
         },
         {
+            "color": "FBCA04",
+            "default": false,
+            "description": "needs a clear design proposal",
+            "id": 124510010,
+            "name": "needs:design",
+            "node_id": "MDU6TGFiZWwxMjQ1MTAwMTA=",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/needs:design"
+        },
+        {
+            "color": "BFDADC",
+            "default": false,
+            "description": "High-risk, potential for delicate/cascading effects",
+            "id": 407247013,
+            "name": "complexity:high",
+            "node_id": "MDU6TGFiZWw0MDcyNDcwMTM=",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/complexity:high"
+        },
+        {
             "color": "c5def5",
             "default": false,
-            "description": "marks, extmarks, decorations, virtual text, namespaces",
+            "description": "marks, extmarks, decorations, virtual text",
             "id": 1680119719,
             "name": "marks",
             "node_id": "MDU6TGFiZWwxNjgwMTE5NzE5",
             "url": "https://api.github.com/repos/neovim/neovim/labels/marks"
+        },
+        {
+            "color": "C5DEF5",
+            "default": false,
+            "description": "buftype=prompt",
+            "id": 8140369188,
+            "name": "prompt-buffer",
+            "node_id": "LA_kwDOAPphoM8AAAAB5TQtJA",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/prompt-buffer"
         }
     ],
     "labels_url": "https://api.github.com/repos/neovim/neovim/issues/17061/labels{/name}",
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 260,
+        "closed_issues": 284,
         "created_at": "2014-11-26T22:13:11Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -158,17 +230,17 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/9/labels",
         "node_id": "MDk6TWlsZXN0b25lODgxOTc4",
         "number": 9,
-        "open_issues": 297,
+        "open_issues": 332,
         "state": "open",
         "title": "needs-owner",
-        "updated_at": "2025-01-20T17:56:23Z",
+        "updated_at": "2025-06-23T14:24:08Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/9"
     },
     "node_id": "I_kwDOAPphoM5BmaoD",
     "number": 17061,
     "performed_via_github_app": null,
     "reactions": {
-        "+1": 13,
+        "+1": 15,
         "-1": 0,
         "confused": 0,
         "eyes": 0,
@@ -176,7 +248,7 @@
         "hooray": 0,
         "laugh": 0,
         "rocket": 0,
-        "total_count": 13,
+        "total_count": 15,
         "url": "https://api.github.com/repos/neovim/neovim/issues/17061/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
@@ -188,8 +260,18 @@
         "total": 0
     },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/17061/timeline",
-    "title": "Proposal: readonly text with extmarks",
-    "updated_at": "2025-01-17T15:59:05Z",
+    "title": "readonly text region with extmarks",
+    "type": {
+        "color": "blue",
+        "created_at": "2024-01-25T10:10:19Z",
+        "description": "A request, idea, or new functionality",
+        "id": 597167,
+        "is_enabled": true,
+        "name": "Enhancement",
+        "node_id": "IT_kwDOAGK_Pc4ACRyv",
+        "updated_at": "2024-07-26T10:12:30Z"
+    },
+    "updated_at": "2025-06-18T17:16:49Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/17061",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/31187340?v=4",

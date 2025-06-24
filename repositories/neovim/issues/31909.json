@@ -2,7 +2,7 @@
     "active_lock_reason": null,
     "assignee": null,
     "assignees": [],
-    "author_association": "NONE",
+    "author_association": "CONTRIBUTOR",
     "body": "### Problem\n\nWhen writing or configuring plugins, it's often useful to see the output of functions or variables in a buffer where you can navigate with `/` and `%` and other vim motions. Since lua is the core config language of neovim, this would be a great built-in feature.\n\nYou can achieve something like this with `:new | put =luaeval('vim.inspect(value_to_inspect)')` but it's awkward, not a proper scratch buffer, and it doesn't autocomplete (since the target lua command is inside a string).\n\nProposed solution: Similar to `:lua=` to print a lua expression, add `:lua>` to dump an expression into a scratch buffer.\n\n\nEssentially, bind it to this function:\n```lua\n-- Dump a lua value to a buffer for inspection.\nfunction View(v)\n    -- Use a unique filename to avoid opening an existing buffer.\n    vim.cmd.vnew(\"lua output \".. os.time())\n    vim.bo.buftype = \"nofile\"\n    vim.bo.bufhidden = \"delete\"\n    vim.bo.swapfile = false\n    vim.cmd.setfiletype(\"lua\")\n\n    local start_line = 0\n    local bufnr = vim.fn.bufnr()\n    for i=1,select('#', ...) do\n        local val = select(i, ...)\n        local lines = vim.split(vim.inspect(val), \"\\n\")\n        if i == 1 then\n            lines[1] = \"output = \".. lines[1]  -- make buffer closer to valid lua\n        else\n            lines[1] = \", \".. lines[1]\n        end\n        vim.api.nvim_buf_set_lines(bufnr, start_line, -1, false, lines)\n        start_line = -1\n    end \nend\n```\n\nI picked `>` to be like redirecting it to a buffer. I'm not sure if there's another symbol that's both easy to implement in the parser and has an association with buffers. Maybe `lua^` or `lua!` could work too.\n\n### Expected behavior\n\nWith this command, if you want to inspect the active lsp config, you can dump it into a buffer to examine:\n```vim\n:lua> vim.lsp.get_active_clients()\n```\n\nOr even browse the entire vim api:\n```vim\n:lua> vim\n```\n\nBoth of these commands would create a new scratch buffer (that's destroyed on close and with no backing file) and populate it with the pretty-printed output of those lua values. Another complete example using multiple values:\n\n```vim\n:lua> vim.cmd, vim.bo\n```\n\nSplits to create a scratch buffer with this content:\n```lua\noutput = {\n  autocmd = <function 1>,\n  file = <function 2>,\n  new = <function 3>,\n  setfiletype = <function 4>,\n  vnew = <function 5>,\n  <metatable> = {\n    __call = <function 6>,\n    __index = <function 7>\n  }\n}\n, {\n  <metatable> = {\n    __index = <function 1>,\n    __newindex = <function 2>\n  }\n}\n```\n\n",
     "closed_at": null,
     "closed_by": null,
@@ -17,7 +17,7 @@
             "node_id": "IC_kwDOAPphoM6Zmugv",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 3,
+                "+1": 4,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -25,7 +25,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 3,
+                "total_count": 4,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2577066031/reactions"
             },
             "updated_at": "2025-01-08T08:33:45Z",
@@ -188,7 +188,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "> No objection, but is there any reason this wouldn't be covered by the planned `:read :foo` enhancement? [#30628](https://github.com/neovim/neovim/pull/30628) This is intended to support reading output of any Ex command into a buffer.\n\nThat sounds great! But the possible [limitation of no double quotes](https://github.com/neovim/neovim/pull/30628#discussion_r1818963700) would be limiting for Lua code. Possible to live without them, but that inconsistency with `:lua=` wouldn't feel right.",
             "created_at": "2025-02-08T16:53:57Z",
             "html_url": "https://github.com/neovim/neovim/issues/31909#issuecomment-2645841970",
@@ -276,9 +276,54 @@
                 "url": "https://api.github.com/users/justinmk",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "With the `require('vim._extui').enable({})` [feature](https://github.com/neovim/neovim/issues/27811) in Nvim 0.12, messages are available in a buffer by default.\n\n",
+            "created_at": "2025-06-17T14:06:09Z",
+            "html_url": "https://github.com/neovim/neovim/issues/31909#issuecomment-2980523818",
+            "id": 2980523818,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31909",
+            "node_id": "IC_kwDOAPphoM6xpy8q",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2980523818/reactions"
+            },
+            "updated_at": "2025-06-17T14:06:09Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2980523818",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
         }
     ],
-    "comments": 6,
+    "comments": 7,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/31909/comments",
     "created_at": "2025-01-08T05:27:34Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/31909/events",
@@ -308,7 +353,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 261,
+        "closed_issues": 284,
         "created_at": "2014-11-26T22:13:11Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -338,10 +383,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/9/labels",
         "node_id": "MDk6TWlsZXN0b25lODgxOTc4",
         "number": 9,
-        "open_issues": 303,
+        "open_issues": 332,
         "state": "open",
         "title": "needs-owner",
-        "updated_at": "2025-02-06T07:38:20Z",
+        "updated_at": "2025-06-23T14:24:08Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/9"
     },
     "node_id": "I_kwDOAPphoM6lXPbG",
@@ -369,7 +414,17 @@
     },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/31909/timeline",
     "title": "`:lua>` command to dump Lua values to a buffer",
-    "updated_at": "2025-02-08T18:17:01Z",
+    "type": {
+        "color": "blue",
+        "created_at": "2024-01-25T10:10:19Z",
+        "description": "A request, idea, or new functionality",
+        "id": 597167,
+        "is_enabled": true,
+        "name": "Enhancement",
+        "node_id": "IT_kwDOAGK_Pc4ACRyv",
+        "updated_at": "2024-07-26T10:12:30Z"
+    },
+    "updated_at": "2025-06-17T14:06:10Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/31909",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/43559?v=4",

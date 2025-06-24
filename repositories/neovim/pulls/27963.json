@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/27963"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/2b478986193e3d902bbaa11f5a5fe73146238f74"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/cb9076267f41b2f955857bf272324770a2eeccf5"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 5841,
-            "forks_count": 5841,
+            "forks": 6140,
+            "forks_count": 6140,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1854,
-            "open_issues_count": 1854,
+            "open_issues": 1958,
+            "open_issues_count": 1958,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -119,11 +119,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2025-02-04T02:07:35Z",
+            "pushed_at": "2025-06-23T23:51:21Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 307298,
+            "size": 329345,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 85859,
+            "stargazers_count": 90542,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -141,14 +141,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2025-02-04T02:07:39Z",
+            "updated_at": "2025-06-24T01:55:09Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 85859,
-            "watchers_count": 85859,
+            "watchers": 90542,
+            "watchers_count": 90542,
             "web_commit_signoff_required": false
         },
-        "sha": "f7e32fb6e626ab198bf401765236783890f3a0d6",
+        "sha": "d0aedd36dfe0ac4ed45ea93f471379c77f0c7905",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -171,9 +171,79 @@
             "user_view_type": "public"
         }
     },
-    "body": "Problem:  Nvim cannot know whether an ext_messages handler requires to\r\n          clear and re-emit \"still visable\" messages upon redraw. The\r\n          \"replace_last\" suggestion and \"hit-enter-prompt\" are also\r\n          naively emitted without knowing whether it is wanted or\r\n          implemented by the handler.\r\nSolution: Stop emitting \"msg_clear\" event, \"still visable\" messages,\r\n          the \"replace_last\" suggestion and \"hit-enter-prompt\".\r\n\r\nResolve #20416",
+    "body": "Problem:  ext_messages is implemented to mimic the message grid\r\n          implementation w.r.t. scrolling messages, clearing scrolled\r\n          messages, hit-enter-prompts and replacing a previous message.\r\n          Meanwhile, an ext_messages UI may not be implemented in a way\r\n          where these events are wanted. Moreover, correctness of these\r\n          events even assuming a \"scrolled message\" implementation\r\n          depends on fragile \"currently visible messages\" global state,\r\n          which already isn't correct after a previous message was\r\n          supposed to have been overwritten (because that should not only\r\n          happen when `msg_scroll == false`).\r\n\r\nSolution: \r\n- No longer attempt to keep track of the currently visible\r\n            messages: remove the `msg_ext(_history)_visible` variables.\r\n            UIs may remove messages pre-emptively (timer based), or never\r\n            show messages that don't fit a certain area in the first place.\r\n- No longer emit the `msg(_history)_clear` events to clear\r\n            \"scrolled\" messages. This opens up the `msg_clear` event to\r\n            be emitted when messages should actually be cleared (e.g.\r\n            when the screen is cleared). May also be useful to emit before\r\n            the first message in an event loop cycle as a hint to the UI\r\n            that it is a new batch of messages (vim._extui currently\r\n            schedules an event to determine that).\r\n- Set `replace_last` explicitly at the few callsites that want\r\n            this to be set to true to replace an incomplete status message.\r\n- Don't store a \"keep\" message to be re-emitted.\r\n\r\nResolve #20416",
     "closed_at": null,
-    "comment_data": [],
+    "comment_data": [
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/27963#discussion_r2162079583"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/27963"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2162079583"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\r\n  `msg_history_clear` events. Performance benefit: reduces UI events traffic.\r\n```",
+            "commit_id": "cb9076267f41b2f955857bf272324770a2eeccf5",
+            "created_at": "2025-06-23T17:05:55Z",
+            "diff_hunk": "@@ -67,7 +67,8 @@ EDITOR\n \n EVENTS\n \n-• todo\n+• |ui-messages| no longer emits the `msg_show.return_prompt`, `msg_clear` and\n+  `msg_history_clear` events.",
+            "html_url": "https://github.com/neovim/neovim/pull/27963#discussion_r2162079583",
+            "id": 2162079583,
+            "line": 71,
+            "node_id": "PRRC_kwDOAPphoM6A3rdf",
+            "original_commit_id": "cb9076267f41b2f955857bf272324770a2eeccf5",
+            "original_line": 71,
+            "original_position": 6,
+            "original_start_line": null,
+            "path": "runtime/doc/news.txt",
+            "position": 6,
+            "pull_request_review_id": 2950824327,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27963",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2162079583/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-06-23T17:05:56Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2162079583",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        }
+    ],
     "comment_regular_data": [
         {
             "author_association": "MEMBER",
@@ -185,7 +255,7 @@
             "node_id": "IC_kwDOAPphoM537XSZ",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 0,
+                "+1": 1,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -193,7 +263,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 0,
+                "total_count": 1,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2012050585/reactions"
             },
             "updated_at": "2024-03-21T17:02:19Z",
@@ -759,13 +829,58 @@
                 "url": "https://api.github.com/users/folke",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "After looking into this again to resolve #34035, I found that \"currently visible messages\", which is used to determine when to emit these events, can already get out-of-sync with what it would be on the message grid. The fact that it doesn't work properly in it's current form increased my confidence in making a breaking change here (are there any UIs that tried to implement this exactly as the message grid or do they all just implement `msg_set_pos` events?), so I've rebased and reworked this.",
+            "created_at": "2025-06-20T15:27:53Z",
+            "html_url": "https://github.com/neovim/neovim/pull/27963#issuecomment-2992041921",
+            "id": 2992041921,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/27963",
+            "node_id": "IC_kwDOAPphoM6yVu_B",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2992041921/reactions"
+            },
+            "updated_at": "2025-06-20T15:27:53Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2992041921",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/31730729?v=4",
+                "events_url": "https://api.github.com/users/luukvbaal/events{/privacy}",
+                "followers_url": "https://api.github.com/users/luukvbaal/followers",
+                "following_url": "https://api.github.com/users/luukvbaal/following{/other_user}",
+                "gists_url": "https://api.github.com/users/luukvbaal/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/luukvbaal",
+                "id": 31730729,
+                "login": "luukvbaal",
+                "node_id": "MDQ6VXNlcjMxNzMwNzI5",
+                "organizations_url": "https://api.github.com/users/luukvbaal/orgs",
+                "received_events_url": "https://api.github.com/users/luukvbaal/received_events",
+                "repos_url": "https://api.github.com/users/luukvbaal/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/luukvbaal/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/luukvbaal/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/luukvbaal",
+                "user_view_type": "public"
+            }
         }
     ],
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/27963/comments",
     "commits_url": "https://api.github.com/repos/neovim/neovim/pulls/27963/commits",
     "created_at": "2024-03-21T11:41:46Z",
     "diff_url": "https://github.com/neovim/neovim/pull/27963.diff",
-    "draft": true,
+    "draft": false,
     "head": {
         "label": "luukvbaal:extnoclear",
         "ref": "extnoclear",
@@ -855,9 +970,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/luukvbaal/neovim/pulls{/number}",
-            "pushed_at": "2025-01-31T16:18:09Z",
+            "pushed_at": "2025-06-23T17:35:20Z",
             "releases_url": "https://api.github.com/repos/luukvbaal/neovim/releases{/id}",
-            "size": 303915,
+            "size": 326541,
             "ssh_url": "git@github.com:luukvbaal/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/luukvbaal/neovim/stargazers",
@@ -869,14 +984,14 @@
             "teams_url": "https://api.github.com/repos/luukvbaal/neovim/teams",
             "topics": [],
             "trees_url": "https://api.github.com/repos/luukvbaal/neovim/git/trees{/sha}",
-            "updated_at": "2025-01-27T23:54:52Z",
+            "updated_at": "2025-05-31T10:19:39Z",
             "url": "https://api.github.com/repos/luukvbaal/neovim",
             "visibility": "public",
             "watchers": 0,
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "2b478986193e3d902bbaa11f5a5fe73146238f74",
+        "sha": "cb9076267f41b2f955857bf272324770a2eeccf5",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/31730729?v=4",
             "events_url": "https://api.github.com/users/luukvbaal/events{/privacy}",
@@ -923,7 +1038,7 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": null,
+    "merge_commit_sha": "b24913b2a965a49b87ed5a25ae8fc79c0da1761a",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM5qWh4h",
@@ -977,9 +1092,9 @@
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/27963/comments",
     "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/2b478986193e3d902bbaa11f5a5fe73146238f74",
-    "title": "feat(messages)!: reduce emitted events for ext_messages",
-    "updated_at": "2025-01-28T16:31:31Z",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/cb9076267f41b2f955857bf272324770a2eeccf5",
+    "title": "fix(messages)!: decouple ext_messages from message grid",
+    "updated_at": "2025-06-23T17:05:56Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/27963",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/31730729?v=4",

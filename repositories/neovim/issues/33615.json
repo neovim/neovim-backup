@@ -4,8 +4,28 @@
     "assignees": [],
     "author_association": "NONE",
     "body": "### Problem\n\n`vim.lsp.config(...)` expects `config.cmd` to be:\n\n```lua\n--- @type string[]|fun(dispatchers: vim.lsp.rpc.Dispatchers) : vim.lsp.rpc.PublicClient\n```\n\nProposed change:\n\n```lua\n--- @type string[]|fun() : string[]|fun(dispatchers: vim.lsp.rpc.Dispatchers) : vim.lsp.rpc.PublicClient\n```\n\nSetting `config.cmd` to a function that returns a table with command and args results in a silent error with no logs in `:LspLog`.  This approach previously worked with `require('lspconfig')[server_name].setup(...)`.\n\nExample config,\n\n```lua\n-- init.lua\n-- Custom LSP Server Configs:\n-- Servers not managed by mason-lspconfig\nlocal custom_servers = {\n    tblgen_lsp_server = {\n        cmd = function()\n            return {\n                'tblgen-lsp-server',\n                '--tablegen-compilation-database=' ..\n                    vim.fs.root(0, \"build\") ..\n                    '/build/tablegen_compile_commands.yml'\n            }\n        end,\n    },\n}\n\nfor server_name, config in pairs(custom_servers) do\n    vim.lsp.config(server_name, config)\n    vim.lsp.enable(server_name)\nend\n```\n\n### Expected behavior\n\n```lua\n-- init.lua\n-- Custom LSP Server Configs:\n-- Servers not managed by mason-lspconfig\nlocal custom_servers = {\n    mlir_lsp_server = {\n        cmd = { \"mlir_lsp_server\" },\n    },\n    tblgen_lsp_server = {\n        cmd = function()\n            return {\n                'tblgen-lsp-server',\n                '--tablegen-compilation-database=' ..\n                    vim.fs.root(0, \"build\") ..\n                    '/build/tablegen_compile_commands.yml'\n            }\n        end,\n    },\n    low_level_config = {\n        --- @param dispatchers vim.lsp.rpc.Dispatchers\n        --- @return vim.lsp.rpc.PublicClient\n        cmd = function(dispatchers)\n            return {\n\t        --- @type fun(method: string, params: table?, callback: fun(err?: lsp.ResponseError, result: any), notify_reply_callback?: fun(message_id: integer)) : boolean, integer?\n\t        request = function(method, params, callback, notify_reply_callback) end,\n\t        notify = function(method, params) end,\n\t        is_closing = function() end,\n\t        terminate = function() end,\n            }\n        end\n    }\n}\n\nfor server_name, config in pairs(custom_servers) do\n    vim.lsp.config(server_name, config)\n    vim.lsp.enable(server_name)\nend\n```\n\nAll three server config variants above should be accepted by `vim.lsp.config()`. Seems to follow convention more closely. \n\n__Possible Fix:__\n\n```lua\n-- nvim/runtime/lua/vim/lsp.lua\n\n--- @return string[]|fun(dispatchers: vim.lsp.rpc.Dispatchers): vim.lsp.rpc.PublicClient\nlocal function resolve_config_cmd(v)\n    if type(v) == \"function\" then\n        --- @type  boolean, string[]|table\n        local ok, res = pcall(v)\n        if ok and type(res[1]) == 'string' and vim.fn.executable(res[1]) == 1 then\n            return res\n        end\n    end\n\n    return v\nend\n\nlsp.config = setmetatable({ _config = {} }, {\n    __index = function(self, name)\n        -- ...\n\t \n        if not rconfig.resolved_config then\n            -- ...\n\t\t\n            local config_cmd = rconfig.resolved_config.cmd\n\t    rconfig.resolved_config.cmd = resolve_config_cmd(config_cmd)\n        end\n\t\t\n        return rconfig.resolved_config\n    end,\n\n    -- ...\n})\n```\n\nThe above change correctly handles all three cases where `config.cmd` is either a table, a function returning a table, or a function returning `vim.lsp.rpc.PublicClient`. Possible fix should not break existing functionality, since downstream, `vim.lsp.rpc.start(cmd: string[], ...)` already supports `config.cmd` as a table containing the command and args. \n\n__Neovim Version:__\nv0.11.0",
-    "closed_at": null,
-    "closed_by": null,
+    "closed_at": "2025-06-17T14:02:41Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+        "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+        "followers_url": "https://api.github.com/users/justinmk/followers",
+        "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+        "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/justinmk",
+        "id": 1359421,
+        "login": "justinmk",
+        "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+        "organizations_url": "https://api.github.com/users/justinmk/orgs",
+        "received_events_url": "https://api.github.com/users/justinmk/received_events",
+        "repos_url": "https://api.github.com/users/justinmk/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "CONTRIBUTOR",
@@ -54,7 +74,7 @@
         },
         {
             "author_association": "MEMBER",
-            "body": "Alternative: https://github.com/neovim/neovim/issues/32287#issuecomment-2835155023",
+            "body": "Alternative:\n\n- https://github.com/neovim/neovim/issues/32287#issuecomment-2835155023\n- https://github.com/neovim/neovim/issues/34547",
             "created_at": "2025-04-30T11:36:18Z",
             "html_url": "https://github.com/neovim/neovim/issues/33615#issuecomment-2841696628",
             "id": 2841696628,
@@ -73,8 +93,53 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2841696628/reactions"
             },
-            "updated_at": "2025-04-30T11:36:18Z",
+            "updated_at": "2025-06-17T14:00:31Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2841696628",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "> This approach previously worked with `require('lspconfig')[server_name].setup(...)`.\n\nIf that's the only motiviation, I'm going to consider this a wontfix. Need a stronger use-case.\n\n`cmd` already supports a function form, it just requires that you call `vim.lsp.rpc.start()`.\n\nHowever, see https://github.com/neovim/neovim/issues/34547 which proposes a different but maybe related idea.",
+            "created_at": "2025-06-17T14:02:41Z",
+            "html_url": "https://github.com/neovim/neovim/issues/33615#issuecomment-2980511823",
+            "id": 2980511823,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/33615",
+            "node_id": "IC_kwDOAPphoM6xpwBP",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2980511823/reactions"
+            },
+            "updated_at": "2025-06-17T14:03:00Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2980511823",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
                 "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
@@ -98,7 +163,7 @@
             }
         }
     ],
-    "comments": 2,
+    "comments": 3,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/33615/comments",
     "created_at": "2025-04-24T21:51:24Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/33615/events",
@@ -119,7 +184,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 6,
+        "closed_issues": 35,
         "created_at": "2025-05-30T23:27:41Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
@@ -149,10 +214,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/51/labels",
         "node_id": "MI_kwDOAPphoM4Axi66",
         "number": 51,
-        "open_issues": 25,
+        "open_issues": 22,
         "state": "open",
         "title": "0.11.3",
-        "updated_at": "2025-06-02T20:35:55Z",
+        "updated_at": "2025-06-22T23:47:07Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/51"
     },
     "node_id": "I_kwDOAPphoM6z6z2z",
@@ -171,8 +236,8 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/33615/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "not_planned",
     "sub_issues_summary": {
         "completed": 0,
         "percent_completed": 0,
@@ -190,7 +255,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyv",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2025-05-30T23:29:49Z",
+    "updated_at": "2025-06-17T14:03:00Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/33615",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/4326621?v=4",

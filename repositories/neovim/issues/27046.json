@@ -5,6 +5,27 @@
     "author_association": "CONTRIBUTOR",
     "body": "### Problem\r\n\r\nFrom few days I get crashes when updating the buffer e.g. undo. \r\n\r\n```cpp\r\n#0  __pthread_kill_implementation (threadid=<optimized out>, signo=signo@entry=6, no_tid=no_tid@entry=0) at ./nptl/pthread_kill.c:44\r\n#1  0x00007fea9eef315f in __pthread_kill_internal (signo=6, threadid=<optimized out>) at ./nptl/pthread_kill.c:78\r\n#2  0x00007fea9eea5472 in __GI_raise (sig=sig@entry=6) at ../sysdeps/posix/raise.c:26\r\n#3  0x00007fea9ee8f4b2 in __GI_abort () at ./stdlib/abort.c:79\r\n#4  0x00007fea9ee8f3d5 in __assert_fail_base (fmt=0x7fea9f003dc8 \"%s%s%s:%u: %s%sAssertion `%s' failed.\\n%n\", assertion=assertion@entry=0x5565767fe960 \"buf->b_signcols.count[width - 1] >= 0\",\r\n    file=file@entry=0x5565767fe748 \".../src/nvim/decoration.c\", line=line@entry=848, function=function@entry=0x55657679f310 <__PRETTY_FUNCTION__.1.lto_priv.8> \"buf_signcols_count_range\") at ./assert/assert.c:92\r\n#5  0x00007fea9ee9e3a2 in __assert_fail (assertion=assertion@entry=0x5565767fe960 \"buf->b_signcols.count[width - 1] >= 0\", file=file@entry=0x5565767fe748 \".../src/nvim/decoration.c\", line=line@entry=848,\r\n    function=function@entry=0x55657679f310 <__PRETTY_FUNCTION__.1.lto_priv.8> \"buf_signcols_count_range\") at ./assert/assert.c:101\r\n#6  0x00005565764923be in buf_signcols_count_range (buf=0x55657a5cb7f0, row1=20, row2=20, add=-1, clear=kFalse) at .../src/nvim/decoration.c:848\r\n#7  0x000055657648f9c0 in buf_remove_decor_sh (buf=buf@entry=0x55657a5cb7f0, row1=row1@entry=20, row2=row2@entry=20, sh=sh@entry=0x556578824ac0) at .../src/nvim/decoration.c:258\r\n#8  0x000055657648fa46 in buf_decor_remove (buf=0x55657a5cb7f0, row1=20, row2=20, decor=..., free=true) at .../src/nvim/decoration.c:227\r\n#9  0x0000556576516e98 in extmark_del (buf=buf@entry=0x55657a5cb7f0, itr=itr@entry=0x7fff47f5d040, key=..., restore=restore@entry=true) at .../src/nvim/extmark.c:153\r\n#10 0x0000556576517558 in extmark_clear (buf=0x55657a5cb7f0, ns_id=53, l_row=0, l_col=<optimized out>, u_row=2147483646, u_col=2147483647) at .../src/nvim/extmark.c:189\r\n#11 0x0000556576444f04 in nvim_buf_clear_namespace (buffer=<optimized out>, ns_id=53, line_start=0, line_end=2147483647, err=0x7fff47f5d190) at .../src/nvim/api/extmark.c:973\r\n#12 0x0000556576429c02 in nlua_api_nvim_buf_clear_namespace (lstate=0x7fea8a4ac5f0) at .../build/src/nvim/auto/lua_api_c_bindings.generated.c:2922\r\n#13 0x0000556576726ed6 in lj_BC_FUNCC ()\r\n#14 0x0000556576727d32 in lj_ff_coroutine_resume ()\r\n#15 0x00005565767132a5 in lua_pcall (L=L@entry=0x7fea9ee47380, nargs=nargs@entry=0, nresults=nresults@entry=0, errfunc=errfunc@entry=-2) at lj_api.c:1121\r\n#16 0x000055657654d077 in nlua_pcall (lstate=lstate@entry=0x7fea9ee47380, nargs=nargs@entry=0, nresults=nresults@entry=0) at .../src/nvim/lua/executor.c:172\r\n#17 0x0000556576550cbc in nlua_schedule_event (argv=<optimized out>) at .../src/nvim/lua/executor.c:367\r\n#18 0x0000556576639898 in state_handle_k_event () at .../src/nvim/state.c:119\r\n#19 0x00005565765a1c99 in nv_event (cap=0x7fff47f5d460) at .../src/nvim/normal.c:6613\r\n#20 0x000055657659d9d1 in normal_execute (state=0x7fff47f5d3f0, key=<optimized out>) at .../src/nvim/normal.c:1227\r\n#21 0x000055657663973b in state_enter (s=0x7fff47f5d3f0) at .../src/nvim/state.c:101\r\n#22 0x000055657659735d in normal_enter (cmdwin=<optimized out>, noexmode=<optimized out>) at .../src/nvim/normal.c:516\r\n#23 0x00005565765601bd in main (argc=2, argv=<optimized out>) at .../src/nvim/main.c:651\r\n```\r\n\r\n@luukvbaal it looks like from https://github.com/neovim/neovim/commit/967c7abde3c6fa3210a4920a5848a54dc913d851#diff-6e7593afe2030cd8628b9a5a900e49accd4a9d7f3ff4b73ee022f06b4bd0f237R848\r\n\r\n### Steps to reproduce\r\n\r\nAt the moment I have no idea how to reproduce this bug. I use statuscol nvim on branch 0.10 with \r\n```lua\r\nlocal builtin = require('statuscol.builtin')\r\nrequire('statuscol').setup({\r\n  relculright = true,\r\n  segments = {\r\n    {\r\n      text = {builtin.foldfunc},\r\n      condition = {true},\r\n      click = 'v:lua.ScFa',\r\n    },\r\n    {\r\n      sign = {namespace = {'gitsigns*'}, maxwidth = 1, colwidth = 1, auto = true},\r\n      click = 'v:lua.ScSa',\r\n    },\r\n    {\r\n      sign = {namespace = {'arctgx.diagnostic.signs/diagnostic/signs'}, maxwidth = 2, colwidth = 2, auto = true},\r\n      click = 'v:lua.ScSa'\r\n    },\r\n    {\r\n      sign = {name = {'Dap.*'}, maxwidth = 2, colwidth = 2, auto = true},\r\n      click = 'v:lua.ScLa'\r\n    },\r\n    {\r\n      sign = {name = {'.*'}, maxwidth = 1, colwidth = 1, auto = true},\r\n      click = 'v:lua.ScSa'\r\n    },\r\n    {text = {builtin.lnumfunc, ' '}, click = 'v:lua.ScLa',},\r\n  },\r\n  ft_ignore = {\r\n    'NvimTree',\r\n  },\r\n})\r\n```\r\n\r\n### Expected behavior\r\n\r\nNo crash\r\n\r\n### Neovim version (nvim -v)\r\n\r\nNVIM v0.10.0-dev-2104+gfd2ed024c\r\n\r\n### Vim (not Nvim) behaves the same?\r\n\r\n-\r\n\r\n### Operating system/version\r\n\r\nDebian Sid\r\n\r\n### Terminal name/version\r\n\r\nalacritty 0.13.1\r\n\r\n### $TERM environment variable\r\n\r\nalacritty\r\n\r\n### Installation\r\n\r\nfrom repo",
     "closed_at": "2024-02-23T12:37:12Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/1363104?v=4",
+        "events_url": "https://api.github.com/users/bfredl/events{/privacy}",
+        "followers_url": "https://api.github.com/users/bfredl/followers",
+        "following_url": "https://api.github.com/users/bfredl/following{/other_user}",
+        "gists_url": "https://api.github.com/users/bfredl/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/bfredl",
+        "id": 1363104,
+        "login": "bfredl",
+        "node_id": "MDQ6VXNlcjEzNjMxMDQ=",
+        "organizations_url": "https://api.github.com/users/bfredl/orgs",
+        "received_events_url": "https://api.github.com/users/bfredl/received_events",
+        "repos_url": "https://api.github.com/users/bfredl/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/bfredl/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/bfredl/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/bfredl",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -47,7 +68,8 @@
                 "starred_url": "https://api.github.com/users/wookayin/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/wookayin/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/wookayin"
+                "url": "https://api.github.com/users/wookayin",
+                "user_view_type": "public"
             }
         },
         {
@@ -91,7 +113,8 @@
                 "starred_url": "https://api.github.com/users/przepompownia/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/przepompownia/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/przepompownia"
+                "url": "https://api.github.com/users/przepompownia",
+                "user_view_type": "public"
             }
         },
         {
@@ -135,7 +158,8 @@
                 "starred_url": "https://api.github.com/users/przepompownia/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/przepompownia/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/przepompownia"
+                "url": "https://api.github.com/users/przepompownia",
+                "user_view_type": "public"
             }
         },
         {
@@ -179,7 +203,8 @@
                 "starred_url": "https://api.github.com/users/luukvbaal/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/luukvbaal/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/luukvbaal"
+                "url": "https://api.github.com/users/luukvbaal",
+                "user_view_type": "public"
             }
         },
         {
@@ -223,7 +248,8 @@
                 "starred_url": "https://api.github.com/users/przepompownia/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/przepompownia/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/przepompownia"
+                "url": "https://api.github.com/users/przepompownia",
+                "user_view_type": "public"
             }
         },
         {
@@ -267,7 +293,8 @@
                 "starred_url": "https://api.github.com/users/b0o/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/b0o/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/b0o"
+                "url": "https://api.github.com/users/b0o",
+                "user_view_type": "public"
             }
         },
         {
@@ -311,7 +338,8 @@
                 "starred_url": "https://api.github.com/users/przepompownia/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/przepompownia/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/przepompownia"
+                "url": "https://api.github.com/users/przepompownia",
+                "user_view_type": "public"
             }
         },
         {
@@ -355,7 +383,8 @@
                 "starred_url": "https://api.github.com/users/przepompownia/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/przepompownia/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/przepompownia"
+                "url": "https://api.github.com/users/przepompownia",
+                "user_view_type": "public"
             }
         },
         {
@@ -399,7 +428,8 @@
                 "starred_url": "https://api.github.com/users/luukvbaal/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/luukvbaal/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/luukvbaal"
+                "url": "https://api.github.com/users/luukvbaal",
+                "user_view_type": "public"
             }
         },
         {
@@ -443,7 +473,8 @@
                 "starred_url": "https://api.github.com/users/przepompownia/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/przepompownia/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/przepompownia"
+                "url": "https://api.github.com/users/przepompownia",
+                "user_view_type": "public"
             }
         },
         {
@@ -487,7 +518,8 @@
                 "starred_url": "https://api.github.com/users/wookayin/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/wookayin/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/wookayin"
+                "url": "https://api.github.com/users/wookayin",
+                "user_view_type": "public"
             }
         },
         {
@@ -531,7 +563,8 @@
                 "starred_url": "https://api.github.com/users/luukvbaal/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/luukvbaal/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/luukvbaal"
+                "url": "https://api.github.com/users/luukvbaal",
+                "user_view_type": "public"
             }
         },
         {
@@ -575,7 +608,8 @@
                 "starred_url": "https://api.github.com/users/Armadillidiid/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/Armadillidiid/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/Armadillidiid"
+                "url": "https://api.github.com/users/Armadillidiid",
+                "user_view_type": "public"
             }
         },
         {
@@ -619,7 +653,8 @@
                 "starred_url": "https://api.github.com/users/przepompownia/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/przepompownia/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/przepompownia"
+                "url": "https://api.github.com/users/przepompownia",
+                "user_view_type": "public"
             }
         },
         {
@@ -663,7 +698,8 @@
                 "starred_url": "https://api.github.com/users/bassamsdata/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/bassamsdata/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/bassamsdata"
+                "url": "https://api.github.com/users/bassamsdata",
+                "user_view_type": "public"
             }
         },
         {
@@ -707,7 +743,8 @@
                 "starred_url": "https://api.github.com/users/bassamsdata/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/bassamsdata/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/bassamsdata"
+                "url": "https://api.github.com/users/bassamsdata",
+                "user_view_type": "public"
             }
         },
         {
@@ -751,7 +788,8 @@
                 "starred_url": "https://api.github.com/users/luukvbaal/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/luukvbaal/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/luukvbaal"
+                "url": "https://api.github.com/users/luukvbaal",
+                "user_view_type": "public"
             }
         },
         {
@@ -795,7 +833,8 @@
                 "starred_url": "https://api.github.com/users/luukvbaal/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/luukvbaal/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/luukvbaal"
+                "url": "https://api.github.com/users/luukvbaal",
+                "user_view_type": "public"
             }
         },
         {
@@ -839,7 +878,8 @@
                 "starred_url": "https://api.github.com/users/przepompownia/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/przepompownia/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/przepompownia"
+                "url": "https://api.github.com/users/przepompownia",
+                "user_view_type": "public"
             }
         },
         {
@@ -883,7 +923,8 @@
                 "starred_url": "https://api.github.com/users/stagnation/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/stagnation/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/stagnation"
+                "url": "https://api.github.com/users/stagnation",
+                "user_view_type": "public"
             }
         },
         {
@@ -927,7 +968,8 @@
                 "starred_url": "https://api.github.com/users/luukvbaal/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/luukvbaal/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/luukvbaal"
+                "url": "https://api.github.com/users/luukvbaal",
+                "user_view_type": "public"
             }
         },
         {
@@ -971,7 +1013,8 @@
                 "starred_url": "https://api.github.com/users/stagnation/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/stagnation/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/stagnation"
+                "url": "https://api.github.com/users/stagnation",
+                "user_view_type": "public"
             }
         },
         {
@@ -1015,7 +1058,8 @@
                 "starred_url": "https://api.github.com/users/stagnation/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/stagnation/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/stagnation"
+                "url": "https://api.github.com/users/stagnation",
+                "user_view_type": "public"
             }
         },
         {
@@ -1059,7 +1103,8 @@
                 "starred_url": "https://api.github.com/users/luukvbaal/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/luukvbaal/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/luukvbaal"
+                "url": "https://api.github.com/users/luukvbaal",
+                "user_view_type": "public"
             }
         },
         {
@@ -1103,11 +1148,12 @@
                 "starred_url": "https://api.github.com/users/stagnation/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/stagnation/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/stagnation"
+                "url": "https://api.github.com/users/stagnation",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "@bfredl [your fix for this](https://github.com/neovim/neovim/commit/cb5ae22eab1fbb3162d0f7440a48ad49c7b3c48e) was merged in 0.10 already, but I have this crash consistently on neovim version 0.11:\r\n\r\n```\r\n$ nvim --version\r\nNVIM v0.11.0-dev-164+g3a1515bfe\r\nBuild type: RelWithDebInfo\r\nLuaJIT 2.1.1716656478\r\nRun \"nvim -V1 -v\" for more info\r\n```\r\n\r\nIt seems I can reproduce this consistently, by searching using this [ctrlsf](https://github.com/dyng/ctrlsf.vim) binding and then switching to the opened search window:\r\n\r\n```\r\nvmap <Leader>8 <Plug>CtrlSFVwordPath\r\n```\r\n\r\nBut I've done these same steps before with the same NeoVim and config, without it crashing. Let me know soon if you want more info, so I can do that before it magically disappears.",
             "created_at": "2024-06-06T16:25:54Z",
             "html_url": "https://github.com/neovim/neovim/issues/27046#issuecomment-2152936372",
@@ -1147,7 +1193,8 @@
                 "starred_url": "https://api.github.com/users/TamaMcGlinn/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/TamaMcGlinn/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/TamaMcGlinn"
+                "url": "https://api.github.com/users/TamaMcGlinn",
+                "user_view_type": "public"
             }
         },
         {
@@ -1191,11 +1238,12 @@
                 "starred_url": "https://api.github.com/users/luukvbaal/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/luukvbaal/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/luukvbaal"
+                "url": "https://api.github.com/users/luukvbaal",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "After updating to the latest nightly, I can still reproduce. Unfortunately, not just when I have that search plugin - I need to do some bisecting in my vimrc to find which part of the config is necessary. However, I do have 9 coredump files of the crash, if that helps.",
             "created_at": "2024-06-06T17:20:40Z",
             "html_url": "https://github.com/neovim/neovim/issues/27046#issuecomment-2153039123",
@@ -1235,7 +1283,8 @@
                 "starred_url": "https://api.github.com/users/TamaMcGlinn/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/TamaMcGlinn/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/TamaMcGlinn"
+                "url": "https://api.github.com/users/TamaMcGlinn",
+                "user_view_type": "public"
             }
         },
         {
@@ -1279,11 +1328,12 @@
                 "starred_url": "https://api.github.com/users/luukvbaal/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/luukvbaal/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/luukvbaal"
+                "url": "https://api.github.com/users/luukvbaal",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "After building from source and manually bisecting, it seems that [perf(column): only invalidate lines affected by added sign](https://github.com/neovim/neovim/commit/f4001d27efae44c6c07678ad2c72eed5f1a25ea8) introduces the problem, as I can reliably reproduce the issue on that commit, but not on its parent (Merge pull request #26292 from luukvbaal/decor).",
             "created_at": "2024-06-10T11:10:36Z",
             "html_url": "https://github.com/neovim/neovim/issues/27046#issuecomment-2158054315",
@@ -1323,7 +1373,8 @@
                 "starred_url": "https://api.github.com/users/TamaMcGlinn/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/TamaMcGlinn/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/TamaMcGlinn"
+                "url": "https://api.github.com/users/TamaMcGlinn",
+                "user_view_type": "public"
             }
         },
         {
@@ -1367,11 +1418,12 @@
                 "starred_url": "https://api.github.com/users/luukvbaal/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/luukvbaal/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/luukvbaal"
+                "url": "https://api.github.com/users/luukvbaal",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "Ok, I'll open a new issue since the steps to reproduce are different. But the reason I was commenting is that the exact same assert is failing as in this issue, so I was thinking that maybe it also has the same cause as in this issue.",
             "created_at": "2024-06-10T13:56:05Z",
             "html_url": "https://github.com/neovim/neovim/issues/27046#issuecomment-2158447962",
@@ -1411,7 +1463,8 @@
                 "starred_url": "https://api.github.com/users/TamaMcGlinn/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/TamaMcGlinn/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/TamaMcGlinn"
+                "url": "https://api.github.com/users/TamaMcGlinn",
+                "user_view_type": "public"
             }
         },
         {
@@ -1424,7 +1477,7 @@
             "node_id": "IC_kwDOAPphoM6AqJIF",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 0,
+                "+1": 1,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -1432,7 +1485,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 0,
+                "total_count": 1,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2158531077/reactions"
             },
             "updated_at": "2024-06-10T14:42:41Z",
@@ -1455,11 +1508,147 @@
                 "starred_url": "https://api.github.com/users/luukvbaal/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/luukvbaal/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/luukvbaal"
+                "url": "https://api.github.com/users/luukvbaal",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "NONE",
+            "body": "![Image](https://github.com/user-attachments/assets/db938b38-1d56-4e90-af5d-ef65209788ed)\nI have this issue again with save action\nthis is my nvim version\n```\nNVIM v0.12.0-dev-571+g7aafbca510\nBuild type: RelWithDebInfo\nLuaJIT 2.1.1748459687\nRun \"nvim -V1 -v\" for more info\n```",
+            "created_at": "2025-06-18T10:19:51Z",
+            "html_url": "https://github.com/neovim/neovim/issues/27046#issuecomment-2983614966",
+            "id": 2983614966,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/27046",
+            "node_id": "IC_kwDOAPphoM6x1ln2",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2983614966/reactions"
+            },
+            "updated_at": "2025-06-18T10:19:51Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2983614966",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/71458213?v=4",
+                "events_url": "https://api.github.com/users/fm39hz/events{/privacy}",
+                "followers_url": "https://api.github.com/users/fm39hz/followers",
+                "following_url": "https://api.github.com/users/fm39hz/following{/other_user}",
+                "gists_url": "https://api.github.com/users/fm39hz/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/fm39hz",
+                "id": 71458213,
+                "login": "fm39hz",
+                "node_id": "MDQ6VXNlcjcxNDU4MjEz",
+                "organizations_url": "https://api.github.com/users/fm39hz/orgs",
+                "received_events_url": "https://api.github.com/users/fm39hz/received_events",
+                "repos_url": "https://api.github.com/users/fm39hz/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/fm39hz/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/fm39hz/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/fm39hz",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "@fm39hz would you mind trying latest nightly? There was a change very recently to adjust the assert.",
+            "created_at": "2025-06-18T11:26:20Z",
+            "html_url": "https://github.com/neovim/neovim/issues/27046#issuecomment-2983802407",
+            "id": 2983802407,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/27046",
+            "node_id": "IC_kwDOAPphoM6x2TYn",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2983802407/reactions"
+            },
+            "updated_at": "2025-06-18T11:26:20Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2983802407",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1363104?v=4",
+                "events_url": "https://api.github.com/users/bfredl/events{/privacy}",
+                "followers_url": "https://api.github.com/users/bfredl/followers",
+                "following_url": "https://api.github.com/users/bfredl/following{/other_user}",
+                "gists_url": "https://api.github.com/users/bfredl/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/bfredl",
+                "id": 1363104,
+                "login": "bfredl",
+                "node_id": "MDQ6VXNlcjEzNjMxMDQ=",
+                "organizations_url": "https://api.github.com/users/bfredl/orgs",
+                "received_events_url": "https://api.github.com/users/bfredl/received_events",
+                "repos_url": "https://api.github.com/users/bfredl/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/bfredl/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/bfredl/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/bfredl",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "NONE",
+            "body": "It seems like `v0.12.0-dev-630+g8af2aea24f` didn't have this issue anymore!\nGlad that it has been fixed",
+            "created_at": "2025-06-18T12:43:26Z",
+            "html_url": "https://github.com/neovim/neovim/issues/27046#issuecomment-2984047468",
+            "id": 2984047468,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/27046",
+            "node_id": "IC_kwDOAPphoM6x3PNs",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2984047468/reactions"
+            },
+            "updated_at": "2025-06-18T12:43:26Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2984047468",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/71458213?v=4",
+                "events_url": "https://api.github.com/users/fm39hz/events{/privacy}",
+                "followers_url": "https://api.github.com/users/fm39hz/followers",
+                "following_url": "https://api.github.com/users/fm39hz/following{/other_user}",
+                "gists_url": "https://api.github.com/users/fm39hz/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/fm39hz",
+                "id": 71458213,
+                "login": "fm39hz",
+                "node_id": "MDQ6VXNlcjcxNDU4MjEz",
+                "organizations_url": "https://api.github.com/users/fm39hz/orgs",
+                "received_events_url": "https://api.github.com/users/fm39hz/received_events",
+                "repos_url": "https://api.github.com/users/fm39hz/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/fm39hz/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/fm39hz/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/fm39hz",
+                "user_view_type": "public"
             }
         }
     ],
-    "comments": 33,
+    "comments": 36,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/27046/comments",
     "created_at": "2024-01-16T16:50:20Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/27046/events",
@@ -1487,7 +1676,7 @@
         {
             "color": "c5def5",
             "default": false,
-            "description": "marks, extmarks, decorations, virtual text, namespaces",
+            "description": "marks, extmarks, decorations, virtual text",
             "id": 1680119719,
             "name": "marks",
             "node_id": "MDU6TGFiZWwxNjgwMTE5NzE5",
@@ -1498,7 +1687,7 @@
     "locked": false,
     "milestone": {
         "closed_at": "2024-05-16T14:11:42Z",
-        "closed_issues": 435,
+        "closed_issues": 440,
         "created_at": "2023-02-02T14:11:43Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1363104?v=4",
@@ -1518,7 +1707,8 @@
             "starred_url": "https://api.github.com/users/bfredl/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/bfredl/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/bfredl"
+            "url": "https://api.github.com/users/bfredl",
+            "user_view_type": "public"
         },
         "description": "",
         "due_on": "2024-05-12T07:00:00Z",
@@ -1530,7 +1720,7 @@
         "open_issues": 0,
         "state": "closed",
         "title": "0.10",
-        "updated_at": "2024-05-31T05:45:58Z",
+        "updated_at": "2025-01-05T13:24:13Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/36"
     },
     "node_id": "I_kwDOAPphoM58PdXV",
@@ -1551,9 +1741,15 @@
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "closed",
     "state_reason": "completed",
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/27046/timeline",
     "title": "Assertion `buf->b_signcols.count[width - 1] >= 0` failed",
-    "updated_at": "2024-06-10T14:42:41Z",
+    "type": null,
+    "updated_at": "2025-06-18T12:43:26Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/27046",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/11404453?v=4",
@@ -1573,6 +1769,7 @@
         "starred_url": "https://api.github.com/users/przepompownia/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/przepompownia/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/przepompownia"
+        "url": "https://api.github.com/users/przepompownia",
+        "user_view_type": "public"
     }
 }
