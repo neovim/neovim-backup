@@ -4,7 +4,7 @@
     "assignees": [],
     "author_association": "NONE",
     "body": "\r\n\r\nIt would be so nice if neovim came with a build in package manager. Currently I'm using vim-plug but this has to be installed before my vimrc works. \r\n\r\nhttps://github.com/junegunn/vim-plug",
-    "closed_at": null,
+    "closed_at": "2025-07-04T22:04:43Z",
     "closed_by": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
         "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
@@ -164,7 +164,7 @@
         },
         {
             "author_association": "MEMBER",
-            "body": "# Problem\r\n\r\n1. Currently users must look for a plugin manager and figure out how to install it.\r\n    - Nvim documentation should be able to give a one-liner to install (non-builtin) plugin managers and plugins.\r\n2. Lack of a _declarative_ way to specify plugins.\r\n    - Lets Nvim reason about dependency ordering / transitivity.\r\n    - Lets crawlers build a [package index](https://github.com/neovim/neovim/issues/24221).\r\n    - [packspec](https://github.com/neovim/packspec/) adds potential to leverage NPM tooling (and possibly infrastructure).\r\n\r\n# Goals\r\n\r\nThese problems are in-scope (everything else is out of scope):\r\n\r\n1. Include a _minimal_ builtin plugin manager.\r\n    - Users shouldn't need to look for a plugin manager online and install it.\r\n    - Users can easily install _another plugin manager_ with a one-liner.\r\n1. Must be _minimal_. One file, 500-1000 lines of code.\r\n    - If users want advanced features they must install an advanced plugin manager.\r\n1. Supports packspec (**declarative way** to fetch plugins) + hooks.\r\n    - Need to finish the packspec story... https://github.com/neovim/packspec/\r\n    - Define a convention for _hooks_:\r\n        - post-install: one-time, just after a plugin is installed.\r\n        - pre-activate: per-session, just before a plugin is loaded/required.\r\n        - post-activate\r\n2. \"Provider\" model: other plugin managers can [provide](https://neovim.io/doc/user/develop.html#dev-provider) plugin management (`:packinstall`, `vim.plugins()`, etc/whatever).\r\n2. Future goals (not required for initial implementation):\r\n    1. Nvim should be able to list plugins from a [plugin index](https://github.com/neovim/neovim/issues/24221#issuecomment-1616009906) like https://dotfyle.com/neovim/plugins/trending or whatever.\r\n        - See also https://github.com/neovim/neovim/issues/24221\r\n\r\n## Counterpoints\r\n\r\n- This could discourage the use of https://luarocks.org/ which is an actual, real package manager.\r\n\r\n# Proposal\r\n\r\n- Probably _shouldn't_ use pack/start, just use plain old 'rtp' (based on feedback from folke/lewis; needs discussion).\r\n    - Reference: https://github.com/lewis6991/pckr.nvim/blob/main/lua%2Fpckr%2Floader.lua contains all of the logic that improves upon `pack` and specifically `start`.\r\n- Use `curl` or `vim.fetch()` (which uses `curl`). This doesn't need to be perfect initially, we just need a way of downloading a file.\r\n- Requires `git`.\r\n- Inline https://github.com/savq/paq-nvim or [mini.deps](https://github.com/echasnovski/mini.nvim/blob/main/readmes/mini-deps.md), clean it up, fix some parts of it.\r\n    - mini.deps vs paq: https://github.com/echasnovski/mini.nvim/blob/6a1a44220b3b9ee9856059686fd47b15c8ed83db/doc/mini-deps.txt#L75-L79\r\n- Introduce something like `:packinstall`.\r\n    - It is handled by the default plugin manager. Can be overidden by another \"provider\".\r\n",
+            "body": "# Problem\n\n1. New users must look for a plugin manager and figure out how to install it.\n    - Nvim documentation should be able to give a one-liner to install (non-builtin) plugin managers and plugins.\n2. Lack of a _declarative_ way to specify plugins.\n    - Lets Nvim reason about dependency ordering / transitivity.\n    - Lets crawlers build a [package index](https://github.com/neovim/neovim/issues/24221).\n    - [packspec](https://github.com/neovim/packspec/) adds potential to leverage NPM tooling (and possibly infrastructure).\n\n# Goals\n\nThese problems are in-scope (everything else is out of scope):\n\n1. ✅ ([#34009](https://github.com/neovim/neovim/pull/34009)) Include a _minimal_ builtin plugin manager.\n    - Users shouldn't need to look for a plugin manager online and install it.\n    - Users can easily install _another plugin manager_ with a one-liner.\n1. ✅ Must be _minimal_. One file, 500-1000 lines of code.\n    - If users want advanced features they must install an advanced plugin manager.\n1. Supports packspec (**declarative way** to fetch plugins) + hooks.\n    - Need to finish the packspec story... https://github.com/neovim/packspec/\n    - Define a convention for _hooks_:\n        - post-install: one-time, just after a plugin is installed.\n        - pre-activate: per-session, just before a plugin is loaded/required.\n        - post-activate\n1. [NEEDS DISCUSSION] \"Provider\" model: other plugin managers can [provide](https://neovim.io/doc/user/develop.html#dev-provider) plugin management (`:packinstall`, `vim.plugins()`, etc/whatever).\n1. Future goals (not required for initial implementation):\n    1. Nvim should be able to list plugins from a [plugin index](https://github.com/neovim/neovim/issues/24221#issuecomment-1616009906) like https://dotfyle.com/neovim/plugins/trending or whatever. https://github.com/neovim/neovim/issues/24221\n\n## Counterpoints\n\n- This could discourage the use of https://luarocks.org/ which is an actual, real package manager.\n\n# Proposal\n\n- Probably _shouldn't_ use pack/start, just use plain old 'rtp' (based on feedback from folke/lewis; needs discussion).\n    - Reference: https://github.com/lewis6991/pckr.nvim/blob/main/lua%2Fpckr%2Floader.lua contains all of the logic that improves upon `pack` and specifically `start`.\n- Use `curl` or `vim.fetch()` (which uses `curl`). This doesn't need to be perfect initially, we just need a way of downloading a file.\n- Requires `git`.\n- Inline https://github.com/savq/paq-nvim or [mini.deps](https://github.com/echasnovski/mini.nvim/blob/main/readmes/mini-deps.md), clean it up, fix some parts of it.\n    - mini.deps vs paq: https://github.com/echasnovski/mini.nvim/blob/6a1a44220b3b9ee9856059686fd47b15c8ed83db/doc/mini-deps.txt#L75-L79\n- Introduce something like `:packinstall`.\n    - It is handled by the default plugin manager. Can be overidden by another \"provider\".\n",
             "created_at": "2023-09-18T13:48:34Z",
             "html_url": "https://github.com/neovim/neovim/issues/20893#issuecomment-1723453602",
             "id": 1723453602,
@@ -183,7 +183,7 @@
                 "total_count": 3,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1723453602/reactions"
             },
-            "updated_at": "2024-02-18T13:59:48Z",
+            "updated_at": "2025-07-04T22:01:59Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/1723453602",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -251,9 +251,54 @@
                 "url": "https://api.github.com/users/llllvvuu",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "Closed by https://github.com/neovim/neovim/pull/34009 , followup work tracked in https://github.com/neovim/neovim/issues/34763",
+            "created_at": "2025-07-04T22:04:43Z",
+            "html_url": "https://github.com/neovim/neovim/issues/20893#issuecomment-3037303445",
+            "id": 3037303445,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/20893",
+            "node_id": "IC_kwDOAPphoM61CZKV",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3037303445/reactions"
+            },
+            "updated_at": "2025-07-04T22:04:43Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3037303445",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
         }
     ],
-    "comments": 5,
+    "comments": 6,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/20893/comments",
     "created_at": "2022-10-31T20:53:44Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/20893/events",
@@ -261,18 +306,9 @@
     "id": 1430482373,
     "labels": [
         {
-            "color": "c2e0c6",
-            "default": true,
-            "description": "feature request",
-            "id": 77997476,
-            "name": "enhancement",
-            "node_id": "MDU6TGFiZWw3Nzk5NzQ3Ng==",
-            "url": "https://api.github.com/repos/neovim/neovim/labels/enhancement"
-        },
-        {
             "color": "c5def5",
             "default": false,
-            "description": "plugins and Vim \"pack\"",
+            "description": "",
             "id": 117905553,
             "name": "plugin",
             "node_id": "MDU6TGFiZWwxMTc5MDU1NTM=",
@@ -283,8 +319,8 @@
     "locked": true,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 686,
-        "created_at": "2014-05-10T20:43:04Z",
+        "closed_issues": 90,
+        "created_at": "2024-05-16T14:11:54Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
             "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
@@ -306,18 +342,18 @@
             "url": "https://api.github.com/users/justinmk",
             "user_view_type": "public"
         },
-        "description": "Low priority items. We plan to work on this but don't have a target date.",
+        "description": "",
         "due_on": null,
-        "html_url": "https://github.com/neovim/neovim/milestone/6",
-        "id": 655037,
-        "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
-        "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
-        "number": 6,
-        "open_issues": 635,
+        "html_url": "https://github.com/neovim/neovim/milestone/43",
+        "id": 11063573,
+        "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/43/labels",
+        "node_id": "MI_kwDOAPphoM4AqNEV",
+        "number": 43,
+        "open_issues": 70,
         "state": "open",
-        "title": "backlog",
-        "updated_at": "2025-01-21T00:09:37Z",
-        "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
+        "title": "0.12",
+        "updated_at": "2025-07-07T17:05:04Z",
+        "url": "https://api.github.com/repos/neovim/neovim/milestones/43"
     },
     "node_id": "I_kwDOAPphoM5VQ23F",
     "number": 20893,
@@ -335,8 +371,8 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/20893/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": "reopened",
+    "state": "closed",
+    "state_reason": "completed",
     "sub_issues_summary": {
         "completed": 0,
         "percent_completed": 0,
@@ -344,7 +380,17 @@
     },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/20893/timeline",
     "title": "Builtin package manager for plugins",
-    "updated_at": "2025-01-17T15:32:42Z",
+    "type": {
+        "color": "blue",
+        "created_at": "2024-01-25T10:10:19Z",
+        "description": "A request, idea, or new functionality",
+        "id": 597167,
+        "is_enabled": true,
+        "name": "Enhancement",
+        "node_id": "IT_kwDOAGK_Pc4ACRyv",
+        "updated_at": "2024-07-26T10:12:30Z"
+    },
+    "updated_at": "2025-07-04T22:04:44Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/20893",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/3178666?v=4",
