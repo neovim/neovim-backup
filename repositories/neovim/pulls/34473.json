@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6150,
-            "forks_count": 6150,
+            "forks": 6179,
+            "forks_count": 6179,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1963,
-            "open_issues_count": 1963,
+            "open_issues": 1956,
+            "open_issues_count": 1956,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -119,11 +119,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2025-06-30T23:58:06Z",
+            "pushed_at": "2025-07-14T22:14:00Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 330464,
+            "size": 332755,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 90708,
+            "stargazers_count": 91117,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -141,11 +141,11 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2025-07-01T02:27:30Z",
+            "updated_at": "2025-07-15T02:58:55Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 90708,
-            "watchers_count": 90708,
+            "watchers": 91117,
+            "watchers_count": 91117,
             "web_commit_signoff_required": false
         },
         "sha": "ed7ff848a02d37975dd56c2d67e0fe23e75f68dd",
@@ -1075,6 +1075,145 @@
                 "url": "https://api.github.com/users/echasnovski",
                 "user_view_type": "public"
             }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/34473#discussion_r2195507321"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/34473"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2195507321"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "[This post](https://gregorias.github.io/posts/using-coroutines-in-neovim-lua/) mentions that plenary [can't nest two \"coroutine functions\"](https://github.com/nvim-lua/plenary.nvim/issues/395). Is that what this test covers / does this PR address that ?",
+            "commit_id": "1db96da6c5ba2ca9495f84f88ce50a94efb35989",
+            "created_at": "2025-07-09T16:56:19Z",
+            "diff_hunk": "@@ -0,0 +1,412 @@\n+local t = require('test.testutil')\n+local n = require('test.functional.testnvim')()\n+local exec_lua = n.exec_lua\n+\n+-- TODO: test error message has correct stack trace when:\n+-- task finishes with no continuation\n+-- task finishes with synchronous wait\n+-- nil in results\n+\n+--- @param s string\n+--- @param f fun()\n+local function it_exec(s, f)\n+  it(s, function()\n+    exec_lua(f)\n+  end)\n+end\n+\n+describe('async', function()\n+  before_each(function()\n+    n.clear()\n+    exec_lua('package.path = ...', package.path)\n+\n+    exec_lua(function()\n+      _G.Async = require('vim.async')\n+      _G.await = Async.await\n+      _G.run = Async.run\n+      _G.wrap = Async.wrap\n+\n+      function _G.check_timer(weak)\n+        assert(weak.timer and weak.timer:is_closing(), 'Timer is not closing')\n+        collectgarbage('collect')\n+        assert(not next(weak), 'Resources not collected')\n+      end\n+\n+      function _G.check_task_err(task, pat)\n+        local ok, err = pcall(task.wait, task, 10)\n+        assert(not ok and err:match(pat), task:traceback(err))\n+      end\n+\n+      function _G.eq(expected, actual)\n+        assert(\n+          vim.deep_equal(expected, actual),\n+          ('%s does not equal %s'):format(vim.inspect(actual), vim.inspect(expected))\n+        )\n+      end\n+    end)\n+  end)\n+\n+  it_exec('can await a uv callback function', function()\n+    local weak = setmetatable({}, { __mode = 'v' })\n+\n+    local done = false\n+\n+    --- @param path string\n+    --- @param options uv.spawn.options\n+    --- @param on_exit fun(code: integer, signal: integer)\n+    --- @return uv.uv_process_t handle\n+    local function spawn(path, options, on_exit)\n+      local obj = vim.uv.spawn(path, options, on_exit)\n+      table.insert(weak, obj)\n+      return obj\n+    end\n+\n+    run(function()\n+      local code1 = await(3, spawn, 'echo', { args = { 'foo' } })\n+      assert(code1 == 0)\n+\n+      local code2 = await(3, spawn, 'echo', { args = { 'bar' } })\n+      assert(code2 == 0)\n+\n+      done = true\n+    end):wait(1000)\n+\n+    assert(done)\n+\n+    collectgarbage('collect')\n+    assert(not next(weak), 'Resources not collected')\n+  end)\n+\n+  it_exec('callback function can be closed', function()\n+    local weak = setmetatable({}, { __mode = 'v' })\n+\n+    local task = run(function()\n+      await(1, function(_callback)\n+        -- Never call callback\n+        local timer = vim.uv.new_timer()\n+        weak.timer = timer\n+        return timer --[[@as async.Closable]]\n+      end)\n+    end)\n+\n+    task:close()\n+\n+    check_task_err(task, 'closed')\n+    check_timer(weak)\n+  end)\n+\n+  it_exec('callback function can be double closed', function()\n+    --- @type { timer: uv.uv_timer_t? }\n+    local weak = setmetatable({}, { __mode = 'v' })\n+\n+    local task = run(function()\n+      await(1, function(callback)\n+        -- Never call callback\n+        local timer = assert(vim.uv.new_timer())\n+        weak.timer = timer\n+\n+        -- prematurely close the timer\n+        timer:close(callback)\n+        return timer --[[@as async.Closable]]\n+      end)\n+\n+      return 'FINISH'\n+    end)\n+\n+    check_task_err(task, 'handle .* is already closing')\n+    check_timer(weak)\n+  end)\n+\n+  -- Same as test above but uses async and wrap\n+  it_exec('callback function can be closed (2)', function()\n+    local weak = setmetatable({}, { __mode = 'v' })\n+\n+    local wfn = wrap(1, function(_callback)\n+      -- Never call callback\n+      local timer = vim.uv.new_timer()\n+      weak.timer = timer\n+      return timer --[[@as async.Closable]]\n+    end)\n+\n+    local task = run(function()\n+      wfn()\n+    end)\n+\n+    task:close()\n+\n+    check_task_err(task, 'closed')\n+    check_timer(weak)\n+  end)\n+\n+  it_exec('callback function can be closed (nested)', function()",
+            "html_url": "https://github.com/neovim/neovim/pull/34473#discussion_r2195507321",
+            "id": 2195507321,
+            "line": 141,
+            "node_id": "PRRC_kwDOAPphoM6C3Mh5",
+            "original_commit_id": "1db96da6c5ba2ca9495f84f88ce50a94efb35989",
+            "original_line": 141,
+            "original_position": 141,
+            "original_start_line": null,
+            "path": "test/functional/lua/async_spec.lua",
+            "position": 141,
+            "pull_request_review_id": 3002310375,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/34473",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2195507321/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-07-09T16:56:19Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2195507321",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/34473#discussion_r2195520184"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/34473"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2195520184"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "I don't know, you'd have to be more specific, I don't really understand the point. You certainly would have to be careful about how you use coroutines in an async context. This library explicitly prevents calling `coroutine.yield` in an async context.\n\nThe post does have:\n\n> async uses a complicated machinery that is hard to understand. It’s unnecessary, because native coroutines work just fine.\n\nWhich I fundamentally disagree with. It's like saying C is too complicated, ASM is just fine.\n\nThe code in this issue https://github.com/nvim-lua/plenary.nvim/issues/395 doesn't make any sense. It's running two `async.runs` and then using their result in a callback without waiting for the results. If the code was corrected, then it could work with this library.",
+            "commit_id": "1db96da6c5ba2ca9495f84f88ce50a94efb35989",
+            "created_at": "2025-07-09T17:02:53Z",
+            "diff_hunk": "@@ -0,0 +1,412 @@\n+local t = require('test.testutil')\n+local n = require('test.functional.testnvim')()\n+local exec_lua = n.exec_lua\n+\n+-- TODO: test error message has correct stack trace when:\n+-- task finishes with no continuation\n+-- task finishes with synchronous wait\n+-- nil in results\n+\n+--- @param s string\n+--- @param f fun()\n+local function it_exec(s, f)\n+  it(s, function()\n+    exec_lua(f)\n+  end)\n+end\n+\n+describe('async', function()\n+  before_each(function()\n+    n.clear()\n+    exec_lua('package.path = ...', package.path)\n+\n+    exec_lua(function()\n+      _G.Async = require('vim.async')\n+      _G.await = Async.await\n+      _G.run = Async.run\n+      _G.wrap = Async.wrap\n+\n+      function _G.check_timer(weak)\n+        assert(weak.timer and weak.timer:is_closing(), 'Timer is not closing')\n+        collectgarbage('collect')\n+        assert(not next(weak), 'Resources not collected')\n+      end\n+\n+      function _G.check_task_err(task, pat)\n+        local ok, err = pcall(task.wait, task, 10)\n+        assert(not ok and err:match(pat), task:traceback(err))\n+      end\n+\n+      function _G.eq(expected, actual)\n+        assert(\n+          vim.deep_equal(expected, actual),\n+          ('%s does not equal %s'):format(vim.inspect(actual), vim.inspect(expected))\n+        )\n+      end\n+    end)\n+  end)\n+\n+  it_exec('can await a uv callback function', function()\n+    local weak = setmetatable({}, { __mode = 'v' })\n+\n+    local done = false\n+\n+    --- @param path string\n+    --- @param options uv.spawn.options\n+    --- @param on_exit fun(code: integer, signal: integer)\n+    --- @return uv.uv_process_t handle\n+    local function spawn(path, options, on_exit)\n+      local obj = vim.uv.spawn(path, options, on_exit)\n+      table.insert(weak, obj)\n+      return obj\n+    end\n+\n+    run(function()\n+      local code1 = await(3, spawn, 'echo', { args = { 'foo' } })\n+      assert(code1 == 0)\n+\n+      local code2 = await(3, spawn, 'echo', { args = { 'bar' } })\n+      assert(code2 == 0)\n+\n+      done = true\n+    end):wait(1000)\n+\n+    assert(done)\n+\n+    collectgarbage('collect')\n+    assert(not next(weak), 'Resources not collected')\n+  end)\n+\n+  it_exec('callback function can be closed', function()\n+    local weak = setmetatable({}, { __mode = 'v' })\n+\n+    local task = run(function()\n+      await(1, function(_callback)\n+        -- Never call callback\n+        local timer = vim.uv.new_timer()\n+        weak.timer = timer\n+        return timer --[[@as async.Closable]]\n+      end)\n+    end)\n+\n+    task:close()\n+\n+    check_task_err(task, 'closed')\n+    check_timer(weak)\n+  end)\n+\n+  it_exec('callback function can be double closed', function()\n+    --- @type { timer: uv.uv_timer_t? }\n+    local weak = setmetatable({}, { __mode = 'v' })\n+\n+    local task = run(function()\n+      await(1, function(callback)\n+        -- Never call callback\n+        local timer = assert(vim.uv.new_timer())\n+        weak.timer = timer\n+\n+        -- prematurely close the timer\n+        timer:close(callback)\n+        return timer --[[@as async.Closable]]\n+      end)\n+\n+      return 'FINISH'\n+    end)\n+\n+    check_task_err(task, 'handle .* is already closing')\n+    check_timer(weak)\n+  end)\n+\n+  -- Same as test above but uses async and wrap\n+  it_exec('callback function can be closed (2)', function()\n+    local weak = setmetatable({}, { __mode = 'v' })\n+\n+    local wfn = wrap(1, function(_callback)\n+      -- Never call callback\n+      local timer = vim.uv.new_timer()\n+      weak.timer = timer\n+      return timer --[[@as async.Closable]]\n+    end)\n+\n+    local task = run(function()\n+      wfn()\n+    end)\n+\n+    task:close()\n+\n+    check_task_err(task, 'closed')\n+    check_timer(weak)\n+  end)\n+\n+  it_exec('callback function can be closed (nested)', function()",
+            "html_url": "https://github.com/neovim/neovim/pull/34473#discussion_r2195520184",
+            "id": 2195520184,
+            "in_reply_to_id": 2195507321,
+            "line": 141,
+            "node_id": "PRRC_kwDOAPphoM6C3Pq4",
+            "original_commit_id": "1db96da6c5ba2ca9495f84f88ce50a94efb35989",
+            "original_line": 141,
+            "original_position": 141,
+            "original_start_line": null,
+            "path": "test/functional/lua/async_spec.lua",
+            "position": 141,
+            "pull_request_review_id": 3002329597,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/34473",
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2195520184/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-07-09T17:05:57Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2195520184",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",
+                "events_url": "https://api.github.com/users/lewis6991/events{/privacy}",
+                "followers_url": "https://api.github.com/users/lewis6991/followers",
+                "following_url": "https://api.github.com/users/lewis6991/following{/other_user}",
+                "gists_url": "https://api.github.com/users/lewis6991/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/lewis6991",
+                "id": 7904185,
+                "login": "lewis6991",
+                "node_id": "MDQ6VXNlcjc5MDQxODU=",
+                "organizations_url": "https://api.github.com/users/lewis6991/orgs",
+                "received_events_url": "https://api.github.com/users/lewis6991/received_events",
+                "repos_url": "https://api.github.com/users/lewis6991/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
+            }
         }
     ],
     "comment_regular_data": [
@@ -1178,7 +1317,7 @@
             "node_id": "IC_kwDOAPphoM6z91Cw",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 0,
+                "+1": 1,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -1186,7 +1325,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 0,
+                "total_count": 1,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3019329712/reactions"
             },
             "updated_at": "2025-06-30T14:13:15Z",
@@ -1308,9 +1447,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/lewis6991/neovim/pulls{/number}",
-            "pushed_at": "2025-06-30T14:39:06Z",
+            "pushed_at": "2025-07-14T15:41:22Z",
             "releases_url": "https://api.github.com/repos/lewis6991/neovim/releases{/id}",
-            "size": 322899,
+            "size": 324214,
             "ssh_url": "git@github.com:lewis6991/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/lewis6991/neovim/stargazers",
@@ -1367,7 +1506,7 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "6ae1ebfc424d4fbfdaab02a96edf2946c9e78fa5",
+    "merge_commit_sha": null,
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM6aPwLK",
@@ -1380,7 +1519,7 @@
     "state": "open",
     "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/1db96da6c5ba2ca9495f84f88ce50a94efb35989",
     "title": "feat(lua): add vim.async",
-    "updated_at": "2025-06-30T14:39:07Z",
+    "updated_at": "2025-07-09T17:02:53Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/34473",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",

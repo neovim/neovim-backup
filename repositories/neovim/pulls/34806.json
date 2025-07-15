@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/34806"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/09921304afa47f114e232996ae47ba1d1b78163f"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/5b9b081248de97772a6c8ee0f7589334fc96c9c2"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6168,
-            "forks_count": 6168,
+            "forks": 6179,
+            "forks_count": 6179,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1965,
-            "open_issues_count": 1965,
+            "open_issues": 1956,
+            "open_issues_count": 1956,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -119,11 +119,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2025-07-08T01:56:22Z",
+            "pushed_at": "2025-07-14T22:14:00Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 332418,
+            "size": 332755,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 90922,
+            "stargazers_count": 91117,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -141,14 +141,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2025-07-08T02:01:52Z",
+            "updated_at": "2025-07-15T02:58:55Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 90922,
-            "watchers_count": 90922,
+            "watchers": 91117,
+            "watchers_count": 91117,
             "web_commit_signoff_required": false
         },
-        "sha": "025c0703123fac78cf93535dd284d00c3d64a245",
+        "sha": "a94568644489d8b010ef6fc99dd32861bdfb3f16",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -173,7 +173,353 @@
     },
     "body": "Problem: `serverlist()` only lists servers that were started by `serverstart().`\r\n\r\nSolution: Also list running neovim servers in `stdpath(\"run\")`.\r\n\r\nThe lua `serverlist()` should not be in `vim.fs` and it should be private. I'm not sure where to put it so I put it in `vim.fs` to get it running and do the testing and I don't know how to make functions private.\n\nThis doesn't list TCP servers or named pipes. The only method I found to look through TCP servers on a system is `netstat` and I'm not sure if it's a good idea to rely on it. Named pipes could be started anywhere on the system and it would be impractical to look everywhere.\r\n\r\nReference issue: https://github.com/neovim/neovim/issues/21600",
     "closed_at": null,
-    "comment_data": [],
+    "comment_data": [
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/34806#discussion_r2203442609"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/34806"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2203442609"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "put the logic in `runtime/lua/vim/_core/server.lua` and then use `require('vim._core.sever...')` here. ",
+            "commit_id": "5b9b081248de97772a6c8ee0f7589334fc96c9c2",
+            "created_at": "2025-07-13T16:19:15Z",
+            "diff_hunk": "@@ -6824,13 +6824,34 @@ static void f_serverlist(typval_T *argvars, typval_T *rettv, EvalFuncData fptr)\n {\n   size_t n;\n   char **addrs = server_address_list(&n);\n+  dict_T *addrs_dict = tv_dict_alloc();\n \n   // Copy addrs into a linked list.\n   list_T *const l = tv_list_alloc_ret(rettv, (ptrdiff_t)n);\n   for (size_t i = 0; i < n; i++) {\n     tv_list_append_allocated_string(l, addrs[i]);\n+    tv_dict_add_bool(addrs_dict, addrs[i], strlen(addrs[i]), true);\n   }\n+\n+  Error err = ERROR_INIT;\n+  Object rv = NLUA_EXEC_STATIC(\"return vim.fs.serverlist(...)\", (Array)ARRAY_DICT_INIT, kRetObject,",
+            "html_url": "https://github.com/neovim/neovim/pull/34806#discussion_r2203442609",
+            "id": 2203442609,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM6DVd2x",
+            "original_commit_id": "09921304afa47f114e232996ae47ba1d1b78163f",
+            "original_line": 6837,
+            "original_position": 14,
+            "original_start_line": null,
+            "path": "src/nvim/eval/funcs.c",
+            "position": null,
+            "pull_request_review_id": 3014214751,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/34806",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2203442609/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-07-13T16:19:16Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2203442609",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/34806#discussion_r2203507189"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/34806"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2203507189"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "this existing test shouldn't require a change, because the enhancement to serverlist() should be opt-in, i.e. the user needs to pass something like:\n\n    vim.fn.serverlist({peer=true})",
+            "commit_id": "5b9b081248de97772a6c8ee0f7589334fc96c9c2",
+            "created_at": "2025-07-13T19:52:55Z",
+            "diff_hunk": "@@ -179,9 +179,9 @@ describe('server', function()\n \n     -- Exactly #servs servers should be added.\n     eq(_n + #servs, #new_servs)\n-    -- The new servers should be at the end of the list.\n+    -- servers started by `serverstart` will be listed after the current sever and before the other ones\n     for i = 1, #servs do\n-      eq(servs[i], new_servs[i + _n])\n+      eq(servs[i], new_servs[i + 1])",
+            "html_url": "https://github.com/neovim/neovim/pull/34806#discussion_r2203507189",
+            "id": 2203507189,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM6DVtn1",
+            "original_commit_id": "9bd42675775b03add5f0782ff873145704666a85",
+            "original_line": 184,
+            "original_position": 8,
+            "original_start_line": null,
+            "path": "test/functional/core/server_spec.lua",
+            "position": null,
+            "pull_request_review_id": 3014295158,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/34806",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2203507189/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-07-13T19:52:55Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2203507189",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/34806#discussion_r2203507560"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/34806"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2203507560"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "not a blocker for your work, but let's mention a TODO here.\n```suggestion\n  -- TODO: also get named pipes on Windows\n  local socket_paths = vim.fs.find(function(name, _)\n```",
+            "commit_id": "5b9b081248de97772a6c8ee0f7589334fc96c9c2",
+            "created_at": "2025-07-13T19:54:52Z",
+            "diff_hunk": "@@ -0,0 +1,26 @@\n+local M = {}\n+\n+--- Helper function for serverlist(), this returns all the currently running servers\n+--- in stdpath(\"run\"). Does not include named pipes or TCP servers.\n+---\n+--- @return string[] A list of currently running servers in stdpath(\"run\")\n+function M.serverlist()\n+  local socket_paths = vim.fs.find(function(name, _)",
+            "html_url": "https://github.com/neovim/neovim/pull/34806#discussion_r2203507560",
+            "id": 2203507560,
+            "line": 9,
+            "node_id": "PRRC_kwDOAPphoM6DVtto",
+            "original_commit_id": "9bd42675775b03add5f0782ff873145704666a85",
+            "original_line": 9,
+            "original_position": 8,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/_core/server.lua",
+            "position": 9,
+            "pull_request_review_id": 3014295537,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/34806",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2203507560/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-07-13T19:54:52Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2203507560",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/34806#discussion_r2205898301"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/34806"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2205898301"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\r\n    signature = 'serverlist([{opts}])',\r\n```",
+            "commit_id": "5b9b081248de97772a6c8ee0f7589334fc96c9c2",
+            "created_at": "2025-07-14T21:56:33Z",
+            "diff_hunk": "@@ -9654,15 +9654,23 @@ M.funcs = {\n     signature = 'searchpos({pattern} [, {flags} [, {stopline} [, {timeout} [, {skip}]]]])',\n   },\n   serverlist = {\n+    args = { 0, 1 },\n     desc = [=[\n       Returns a list of server addresses, or empty if all servers\n       were stopped. |serverstart()| |serverstop()|\n+\n+      The optional argument {opts} is a Dict and supports the following items:\n+\n+        peer  : If |TRUE|, servers not started by |serverstart()| will also be returned.\n+                Currenly only supports unnamed pipes in stdpath(\"run\").\n+                (default: |FALSE|)\n+\n       Example: >vim\n       \techo serverlist()\n       <\n     ]=],\n     name = 'serverlist',\n-    params = {},\n+    params = { { 'opts', 'table' } },\n     returns = 'string[]',\n     signature = 'serverlist()',",
+            "html_url": "https://github.com/neovim/neovim/pull/34806#discussion_r2205898301",
+            "id": 2205898301,
+            "line": 9675,
+            "node_id": "PRRC_kwDOAPphoM6De1Y9",
+            "original_commit_id": "5b9b081248de97772a6c8ee0f7589334fc96c9c2",
+            "original_line": 9675,
+            "original_position": 23,
+            "original_start_line": null,
+            "path": "src/nvim/eval.lua",
+            "position": 23,
+            "pull_request_review_id": 3017943505,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/34806",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2205898301/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-07-14T21:56:33Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2205898301",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+                "followers_url": "https://api.github.com/users/zeertzjq/followers",
+                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/zeertzjq",
+                "id": 35768171,
+                "login": "zeertzjq",
+                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+                "repos_url": "https://api.github.com/users/zeertzjq/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/34806#discussion_r2205900156"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/34806"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2205900156"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\r\n        peer  : If |TRUE|, servers not started by |serverstart()|\r\n                will also be returned. Currenly only supports\r\n                unnamed pipes in stdpath(\"run\"). (default: |FALSE|)\r\n```",
+            "commit_id": "5b9b081248de97772a6c8ee0f7589334fc96c9c2",
+            "created_at": "2025-07-14T21:58:04Z",
+            "diff_hunk": "@@ -9654,15 +9654,23 @@ M.funcs = {\n     signature = 'searchpos({pattern} [, {flags} [, {stopline} [, {timeout} [, {skip}]]]])',\n   },\n   serverlist = {\n+    args = { 0, 1 },\n     desc = [=[\n       Returns a list of server addresses, or empty if all servers\n       were stopped. |serverstart()| |serverstop()|\n+\n+      The optional argument {opts} is a Dict and supports the following items:\n+\n+        peer  : If |TRUE|, servers not started by |serverstart()| will also be returned.\n+                Currenly only supports unnamed pipes in stdpath(\"run\").\n+                (default: |FALSE|)",
+            "html_url": "https://github.com/neovim/neovim/pull/34806#discussion_r2205900156",
+            "id": 2205900156,
+            "line": 9666,
+            "node_id": "PRRC_kwDOAPphoM6De118",
+            "original_commit_id": "5b9b081248de97772a6c8ee0f7589334fc96c9c2",
+            "original_line": 9666,
+            "original_position": 13,
+            "original_start_line": 9664,
+            "path": "src/nvim/eval.lua",
+            "position": 13,
+            "pull_request_review_id": 3017945626,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/34806",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2205900156/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 9664,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2025-07-14T21:58:05Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2205900156",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+                "followers_url": "https://api.github.com/users/zeertzjq/followers",
+                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/zeertzjq",
+                "id": 35768171,
+                "login": "zeertzjq",
+                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+                "repos_url": "https://api.github.com/users/zeertzjq/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
+            }
+        }
+    ],
     "comment_regular_data": [],
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/34806/comments",
     "commits_url": "https://api.github.com/repos/neovim/neovim/pulls/34806/commits",
@@ -269,9 +615,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/siddhantdev/neovim/pulls{/number}",
-            "pushed_at": "2025-07-07T05:34:54Z",
+            "pushed_at": "2025-07-14T17:27:18Z",
             "releases_url": "https://api.github.com/repos/siddhantdev/neovim/releases{/id}",
-            "size": 329582,
+            "size": 330558,
             "ssh_url": "git@github.com:siddhantdev/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/siddhantdev/neovim/stargazers",
@@ -290,7 +636,7 @@
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "09921304afa47f114e232996ae47ba1d1b78163f",
+        "sha": "5b9b081248de97772a6c8ee0f7589334fc96c9c2",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/68201519?v=4",
             "events_url": "https://api.github.com/users/siddhantdev/events{/privacy}",
@@ -328,7 +674,7 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "3a7b54f84a728e498e79c86d693f472da140ce4b",
+    "merge_commit_sha": "269a7b31f68aec1045d6a5bf920d16d13ce81ff7",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM6dnlk2",
@@ -339,9 +685,9 @@
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/34806/comments",
     "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/09921304afa47f114e232996ae47ba1d1b78163f",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/5b9b081248de97772a6c8ee0f7589334fc96c9c2",
     "title": "fix: serverlist() also returns pipes from stdpath(\"run\")",
-    "updated_at": "2025-07-06T11:35:26Z",
+    "updated_at": "2025-07-14T21:58:05Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/34806",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/68201519?v=4",
