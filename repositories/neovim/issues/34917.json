@@ -46,8 +46,28 @@
     ],
     "author_association": "MEMBER",
     "body": "### Problem\n\n```\nFAILED   test/functional/terminal/tui_spec.lua @ 2505: TUI has no black flicker when clearing regions during startup with termguicolors\ntest/functional/terminal/tui_spec.lua:2528: Row 1 did not match.\nExpected:\n  |*^                                                   |\n  |*                                                   |\n  |*                                                   |\n  |*                                                   |\n  |*                                                   |\n  |*                                                   |\n  |*                                                   |\n  |*                                                   |\n  |*                                                   |\n  |*                                                   |\n  |                                                   |\nActual:\n  |*{UNEXPECTED foreground = Screen.colors.NvimDarkGray2, background = Screen.colors.NvimLightGrey2:^                                                   }|\n  |*{UNEXPECTED foreground = Screen.colors.NvimLightGray4, background = Screen.colors.NvimLightGrey2:~                                                  }|\n  |*{UNEXPECTED foreground = Screen.colors.NvimLightGray4, background = Screen.colors.NvimLightGrey2:~                                                  }|\n  |*{UNEXPECTED foreground = Screen.colors.NvimLightGray4, background = Screen.colors.NvimLightGrey2:~                                                  }|\n  |*{UNEXPECTED foreground = Screen.colors.NvimLightGray4, background = Screen.colors.NvimLightGrey2:~                                                  }|\n  |*{UNEXPECTED foreground = Screen.colors.NvimLightGray4, background = Screen.colors.NvimLightGrey2:~                                                  }|\n  |*{UNEXPECTED foreground = Screen.colors.NvimLightGray4, background = Screen.colors.NvimLightGrey2:~                                                  }|\n  |*{UNEXPECTED foreground = Screen.colors.NvimLightGray4, background = Screen.colors.NvimLightGrey2:~                                                  }|\n  |*{UNEXPECTED foreground = Screen.colors.NvimLightGray3, background = Screen.colors.NvimDarkGrey3:[No Name]                        0,0-1          All}|\n  |*{UNEXPECTED foreground = Screen.colors.NvimDarkGray2, background = Screen.colors.NvimLightGrey2:                                                   }|\n  |          \n```\n\n### Expected behavior\n\n@luukvbaal this test fails quite often, does it indicate that the bug is still present? maybe we should set it to `pending()` ?",
-    "closed_at": null,
-    "closed_by": null,
+    "closed_at": "2025-07-17T01:54:23Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+        "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+        "followers_url": "https://api.github.com/users/justinmk/followers",
+        "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+        "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/justinmk",
+        "id": 1359421,
+        "login": "justinmk",
+        "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+        "organizations_url": "https://api.github.com/users/justinmk/orgs",
+        "received_events_url": "https://api.github.com/users/justinmk/received_events",
+        "repos_url": "https://api.github.com/users/justinmk/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -93,9 +113,54 @@
                 "url": "https://api.github.com/users/luukvbaal",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "Flakiness seems resolved (while still failing before the fix) with:\n```diff\n@@ -2504,33 +2444,39 @@ describe('TUI', function()\n   for _, guicolors in ipairs({ 'notermguicolors', 'termguicolors' }) do\n     it('has no black flicker when clearing regions during startup with ' .. guicolors, function()\n       local screen = Screen.new(50, 10)\n+      screen:add_extra_attr_ids({\n+        [100] = {\n+          foreground = Screen.colors.NvimLightGrey2,\n+          background = Screen.colors.NvimDarkGrey2,\n+        },\n+      })\n       fn.jobstart({\n         nvim_prog,\n         '--clean',\n         '--cmd',\n         'set ' .. guicolors,\n         '--cmd',\n+        'echo \"foo\"',\n+        '--cmd',\n         'sleep 10',\n       }, {\n         term = true,\n-        env = {\n-          VIMRUNTIME = os.getenv('VIMRUNTIME'),\n-        },\n       })\n-      screen:expect({\n-        grid = [[\n+      if guicolors == 'termguicolors' then\n+        screen:expect([[\n+          {100:^                                                  }|\n+          {100:                                                  }|*7\n+          {100:foo                                               }|\n+                                                            |\n+        ]])\n+      else\n+        screen:expect([[\n           ^                                                  |\n-                                                            |*9\n-        ]],\n-        intermediate = true,\n-      })\n-      screen:try_resize(51, 11)\n-      screen:expect({\n-        grid = [[\n-          ^                                                   |\n-                                                             |*10\n-        ]],\n-      })\n+                                                            |*7\n+          foo                                               |\n+                                                            |\n+        ]])\n+      end\n     end)\n   end\n```",
+            "created_at": "2025-07-16T17:37:01Z",
+            "html_url": "https://github.com/neovim/neovim/issues/34917#issuecomment-3079594206",
+            "id": 3079594206,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/34917",
+            "node_id": "IC_kwDOAPphoM63juDe",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3079594206/reactions"
+            },
+            "updated_at": "2025-07-16T17:37:01Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3079594206",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/31730729?v=4",
+                "events_url": "https://api.github.com/users/luukvbaal/events{/privacy}",
+                "followers_url": "https://api.github.com/users/luukvbaal/followers",
+                "following_url": "https://api.github.com/users/luukvbaal/following{/other_user}",
+                "gists_url": "https://api.github.com/users/luukvbaal/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/luukvbaal",
+                "id": 31730729,
+                "login": "luukvbaal",
+                "node_id": "MDQ6VXNlcjMxNzMwNzI5",
+                "organizations_url": "https://api.github.com/users/luukvbaal/orgs",
+                "received_events_url": "https://api.github.com/users/luukvbaal/received_events",
+                "repos_url": "https://api.github.com/users/luukvbaal/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/luukvbaal/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/luukvbaal/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/luukvbaal",
+                "user_view_type": "public"
+            }
         }
     ],
-    "comments": 1,
+    "comments": 2,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/34917/comments",
     "created_at": "2025-07-13T16:22:46Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/34917/events",
@@ -121,8 +186,8 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/34917/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "sub_issues_summary": {
         "completed": 0,
         "percent_completed": 0,
@@ -140,7 +205,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyp",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2025-07-14T12:00:40Z",
+    "updated_at": "2025-07-17T01:54:23Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/34917",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
