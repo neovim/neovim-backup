@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 5554,
-            "forks_count": 5554,
+            "forks": 6210,
+            "forks_count": 6210,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1776,
-            "open_issues_count": 1776,
+            "open_issues": 1969,
+            "open_issues_count": 1969,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -114,15 +114,16 @@
                 "starred_url": "https://api.github.com/users/neovim/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/neovim/subscriptions",
                 "type": "Organization",
-                "url": "https://api.github.com/users/neovim"
+                "url": "https://api.github.com/users/neovim",
+                "user_view_type": "public"
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2024-09-02T22:52:19Z",
+            "pushed_at": "2025-07-29T02:23:07Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 283521,
+            "size": 334730,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 81367,
+            "stargazers_count": 91452,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -140,11 +141,11 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2024-09-03T02:01:19Z",
+            "updated_at": "2025-07-29T02:23:15Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 81367,
-            "watchers_count": 81367,
+            "watchers": 91452,
+            "watchers_count": 91452,
             "web_commit_signoff_required": false
         },
         "sha": "3bcd5624beec5d3fd90b9d7977fdc36a61ee1643",
@@ -166,11 +167,12 @@
             "starred_url": "https://api.github.com/users/neovim/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/neovim/subscriptions",
             "type": "Organization",
-            "url": "https://api.github.com/users/neovim"
+            "url": "https://api.github.com/users/neovim",
+            "user_view_type": "public"
         }
     },
     "body": "**Problem:** When setting `vim.wo.foldexpr = 'v:lua.vim.treesitter.foldexpr()'` globally, opening large files can be quite slow. This is especially true in files without a tree-sitter parser, where a huge amount of time is spent rechecking whether a parser exists. \r\n\r\n**Solution:** Cache the call to get a parser.\r\n\r\nThese are the results I have achieved below, testing on [the big linux file™](https://raw.githubusercontent.com/torvalds/linux/master/drivers/gpu/drm/amd/include/asic_reg/dcn/dcn_3_2_0_sh_mask.h) (click at your own risk):\r\n\r\n> Note that I renamed the file to have a `.txt` extension to test the parserless case.\r\n\r\n### Before this change\r\n\r\n<details>\r\n<summary>No parser</summary>\r\n<br>\r\n\r\n```\r\n--- Startup times for process: Primary/TUI ---\r\n\r\ntimes in msec\r\n clock   self+sourced   self:  sourced script\r\n clock   elapsed:              other lines\r\n\r\n000.003  000.003: --- NVIM STARTING ---\r\n000.261  000.258: event init\r\n000.372  000.111: early init\r\n000.458  000.086: locale set\r\n000.536  000.078: init first window\r\n001.115  000.579: inits 1\r\n001.130  000.015: window checked\r\n001.180  000.050: parsing arguments\r\n001.848  000.066  000.066: require('vim.shared')\r\n001.974  000.047  000.047: require('vim.inspect')\r\n002.035  000.046  000.046: require('vim._options')\r\n002.037  000.183  000.089: require('vim._editor')\r\n002.039  000.290  000.042: require('vim._init_packages')\r\n002.041  000.570: init lua interpreter\r\n003.246  001.205: --- NVIM STARTED ---\r\n\r\n--- Startup times for process: Embedded ---\r\n\r\ntimes in msec\r\n clock   self+sourced   self:  sourced script\r\n clock   elapsed:              other lines\r\n\r\n000.003  000.003: --- NVIM STARTING ---\r\n000.219  000.217: event init\r\n000.300  000.080: early init\r\n000.377  000.077: locale set\r\n000.445  000.068: init first window\r\n000.917  000.472: inits 1\r\n000.935  000.018: window checked\r\n000.978  000.043: parsing arguments\r\n001.637  000.064  000.064: require('vim.shared')\r\n001.777  000.056  000.056: require('vim.inspect')\r\n001.861  000.062  000.062: require('vim._options')\r\n001.862  000.218  000.100: require('vim._editor')\r\n001.864  000.323  000.041: require('vim._init_packages')\r\n001.865  000.565: init lua interpreter\r\n002.013  000.147: expanding arguments\r\n002.057  000.045: inits 2\r\n002.576  000.518: init highlight\r\n002.582  000.006: waiting for UI\r\n002.903  000.321: done waiting for UI\r\n002.909  000.006: clear screen\r\n003.047  000.015  000.015: require('vim.keymap')\r\n003.883  000.968  000.953: require('vim._defaults')\r\n003.886  000.009: init default mappings & autocommands\r\n1640.658  000.140  000.140: require('editorconfig')\r\n1641.208  1555.730: opening buffers\r\n1641.254  000.046: BufEnter autocommands\r\n1641.258  000.004: editing files in windows\r\n1642.083  000.520  000.520: require('alpha.themes.dashboard')\r\n1642.331  000.217  000.217: require('alpha')\r\n36308.263  34666.268: VimEnter autocommands\r\n36308.396  000.133: UIEnter autocommands\r\n36308.398  000.002: before starting main loop\r\n36309.531  001.133: first screen update\r\n36309.533  000.002: --- NVIM STARTED ---\r\n```\r\n</details>\r\n\r\n<details>\r\n<summary>Yes parser</summary>\r\n<br>\r\n\r\n```\r\n--- Startup times for process: Primary/TUI ---\r\n\r\ntimes in msec\r\n clock   self+sourced   self:  sourced script\r\n clock   elapsed:              other lines\r\n\r\n000.005  000.005: --- NVIM STARTING ---\r\n000.402  000.397: event init\r\n000.565  000.163: early init\r\n000.664  000.100: locale set\r\n000.743  000.078: init first window\r\n001.329  000.586: inits 1\r\n001.346  000.017: window checked\r\n001.401  000.056: parsing arguments\r\n002.056  000.051  000.051: require('vim.shared')\r\n002.170  000.048  000.048: require('vim.inspect')\r\n002.231  000.046  000.046: require('vim._options')\r\n002.233  000.173  000.080: require('vim._editor')\r\n002.234  000.269  000.045: require('vim._init_packages')\r\n002.236  000.566: init lua interpreter\r\n003.524  001.287: --- NVIM STARTED ---\r\n\r\n--- Startup times for process: Embedded ---\r\n\r\ntimes in msec\r\n clock   self+sourced   self:  sourced script\r\n clock   elapsed:              other lines\r\n\r\n000.003  000.003: --- NVIM STARTING ---\r\n000.220  000.218: event init\r\n000.302  000.082: early init\r\n000.376  000.073: locale set\r\n000.433  000.057: init first window\r\n000.925  000.493: inits 1\r\n000.944  000.019: window checked\r\n000.989  000.045: parsing arguments\r\n001.570  000.050  000.050: require('vim.shared')\r\n001.690  000.052  000.052: require('vim.inspect')\r\n001.757  000.052  000.052: require('vim._options')\r\n001.759  000.184  000.079: require('vim._editor')\r\n001.760  000.267  000.034: require('vim._init_packages')\r\n001.762  000.506: init lua interpreter\r\n001.847  000.085: expanding arguments\r\n001.871  000.023: inits 2\r\n002.175  000.304: init highlight\r\n002.176  000.001: waiting for UI\r\n002.343  000.167: done waiting for UI\r\n002.347  000.004: clear screen\r\n002.446  000.008  000.008: require('vim.keymap')\r\n004.074  001.724  001.716: require('vim._defaults')\r\n004.077  000.006: init default mappings & autocommands\r\n2342.609  000.883  000.883: require('editorconfig')\r\n3239.634  3138.673: opening buffers\r\n3239.654  000.019: BufEnter autocommands\r\n3239.657  000.004: editing files in windows\r\n3240.416  000.457  000.457: require('alpha.themes.dashboard')\r\n3240.541  000.110  000.110: require('alpha')\r\n3241.170  000.946: VimEnter autocommands\r\n3241.260  000.090: UIEnter autocommands\r\n3241.262  000.002: before starting main loop\r\n4864.438  000.085  000.085: require('dropbar.sources')\r\n4864.496  000.047  000.047: require('dropbar.sources.path')\r\n4864.525  000.027  000.027: require('dropbar.utils.source')\r\n4864.579  000.052  000.052: require('dropbar.sources.lsp')\r\n4864.613  000.033  000.033: require('dropbar.sources.treesitter')\r\n4864.677  1623.171: first screen update\r\n4864.678  000.001: --- NVIM STARTED ---\r\n```\r\n</details>\r\n\r\n### After this change\r\n\r\n<details>\r\n<summary>No parser</summary>\r\n<br>\r\n\r\n```\r\n--- Startup times for process: Primary/TUI ---\r\n\r\ntimes in msec\r\n clock   self+sourced   self:  sourced script\r\n clock   elapsed:              other lines\r\n\r\n000.001  000.001: --- NVIM STARTING ---\r\n000.305  000.304: event init\r\n000.538  000.232: early init\r\n000.623  000.085: locale set\r\n000.735  000.112: init first window\r\n001.602  000.867: inits 1\r\n001.612  000.011: window checked\r\n001.691  000.079: parsing arguments\r\n012.931  010.615  010.615: require('vim.shared')\r\n013.714  000.104  000.104: require('vim.inspect')\r\n014.312  000.562  000.562: require('vim._options')\r\n014.315  001.377  000.711: require('vim._editor')\r\n014.317  012.071  000.079: require('vim._init_packages')\r\n014.321  000.560: init lua interpreter\r\n015.785  001.463: --- NVIM STARTED ---\r\n\r\n--- Startup times for process: Embedded ---\r\n\r\ntimes in msec\r\n clock   self+sourced   self:  sourced script\r\n clock   elapsed:              other lines\r\n\r\n000.001  000.001: --- NVIM STARTING ---\r\n000.316  000.316: event init\r\n000.451  000.135: early init\r\n000.521  000.070: locale set\r\n000.623  000.102: init first window\r\n001.340  000.717: inits 1\r\n001.359  000.018: window checked\r\n001.417  000.058: parsing arguments\r\n012.535  010.584  010.584: require('vim.shared')\r\n013.300  000.081  000.081: require('vim.inspect')\r\n013.874  000.516  000.516: require('vim._options')\r\n013.877  001.334  000.736: require('vim._editor')\r\n013.879  011.959  000.041: require('vim._init_packages')\r\n013.883  000.507: init lua interpreter\r\n014.067  000.184: expanding arguments\r\n014.154  000.086: inits 2\r\n014.751  000.597: init highlight\r\n014.753  000.002: waiting for UI\r\n015.091  000.338: done waiting for UI\r\n015.125  000.034: clear screen\r\n015.890  000.099  000.099: require('vim.keymap')\r\n016.812  001.682  001.583: require('vim._defaults')\r\n016.816  000.009: init default mappings & autocommands\r\n926.201  000.340  000.340: require('editorconfig')\r\n926.963  823.532: opening buffers\r\n927.047  000.084: BufEnter autocommands\r\n927.051  000.004: editing files in windows\r\n928.157  000.749  000.749: require('alpha.themes.dashboard')\r\n928.923  000.687  000.687: require('alpha')\r\n1396.427  467.939: VimEnter autocommands\r\n1396.590  000.163: UIEnter autocommands\r\n1396.594  000.003: before starting main loop\r\n1399.008  002.414: first screen update\r\n1399.012  000.003: --- NVIM STARTED ---\r\n```\r\n</details>\r\n\r\n<details>\r\n<summary>Yes parser</summary>\r\n<br>\r\n\r\n```\r\n--- Startup times for process: Primary/TUI ---\r\n\r\ntimes in msec\r\n clock   self+sourced   self:  sourced script\r\n clock   elapsed:              other lines\r\n\r\n000.001  000.001: --- NVIM STARTING ---\r\n000.295  000.294: event init\r\n000.491  000.196: early init\r\n000.568  000.077: locale set\r\n000.677  000.109: init first window\r\n001.526  000.849: inits 1\r\n001.536  000.011: window checked\r\n001.613  000.077: parsing arguments\r\n012.949  010.734  010.734: require('vim.shared')\r\n013.666  000.061  000.061: require('vim.inspect')\r\n014.176  000.483  000.483: require('vim._options')\r\n014.179  001.222  000.679: require('vim._editor')\r\n014.181  012.000  000.044: require('vim._init_packages')\r\n014.185  000.572: init lua interpreter\r\n015.562  001.377: --- NVIM STARTED ---\r\n\r\n--- Startup times for process: Embedded ---\r\n\r\ntimes in msec\r\n clock   self+sourced   self:  sourced script\r\n clock   elapsed:              other lines\r\n\r\n000.001  000.001: --- NVIM STARTING ---\r\n000.415  000.414: event init\r\n000.631  000.216: early init\r\n000.739  000.108: locale set\r\n000.854  000.115: init first window\r\n001.870  001.017: inits 1\r\n001.889  000.019: window checked\r\n001.965  000.076: parsing arguments\r\n012.618  010.115  010.115: require('vim.shared')\r\n013.347  000.064  000.064: require('vim.inspect')\r\n013.912  000.537  000.537: require('vim._options')\r\n013.916  001.291  000.690: require('vim._editor')\r\n013.917  011.473  000.067: require('vim._init_packages')\r\n013.920  000.482: init lua interpreter\r\n014.074  000.154: expanding arguments\r\n014.131  000.056: inits 2\r\n014.640  000.509: init highlight\r\n014.642  000.002: waiting for UI\r\n014.977  000.335: done waiting for UI\r\n015.010  000.033: clear screen\r\n015.618  000.093  000.093: require('vim.keymap')\r\n016.485  001.472  001.379: require('vim._defaults')\r\n016.489  000.007: init default mappings & autocommands\r\n2025.347  000.065  000.065: require('editorconfig')\r\n2562.708  2452.155: opening buffers\r\n2562.728  000.021: BufEnter autocommands\r\n2562.734  000.005: editing files in windows\r\n2563.559  000.547  000.547: require('alpha.themes.dashboard')\r\n2563.675  000.101  000.101: require('alpha')\r\n2564.262  000.880: VimEnter autocommands\r\n2564.361  000.099: UIEnter autocommands\r\n2564.364  000.003: before starting main loop\r\n4165.767  000.125  000.125: require('dropbar.sources')\r\n4165.848  000.066  000.066: require('dropbar.sources.path')\r\n4165.887  000.035  000.035: require('dropbar.utils.source')\r\n4165.996  000.108  000.108: require('dropbar.sources.lsp')\r\n4166.050  000.052  000.052: require('dropbar.sources.treesitter')\r\n4166.171  1601.421: first screen update\r\n4166.172  000.001: --- NVIM STARTED ---\r\n```\r\n</details>\r\n\r\nAs you can see, on my machine there is about a 96% and 15% reduction in startup time for buffers without and with a parser, respectively. Note that these were not run with `--clean`, and this has a large impact on startup time as pointed out in https://github.com/neovim/neovim/pull/30164#issuecomment-2319596961.\r\n\r\n**Caveats:** This caching means that, unlike before this change, buffers without a parser that *later* get a parser (e.g. the `ft` was changed (or maybe text was inserted into an empty buffer and then written as a certain `ft` that has a parser? but would the foldexpr even be set initially in this case...?)). But currently things like filetype changes are already cached when the previous file type had a parser, and even without this change the folds would need to be recomputed (or the buffer would have to be reopened) to get accurate folds when changing a file type. So the behavior is, in my opinion, mostly unchanged.",
-    "closed_at": null,
+    "closed_at": "2025-07-22T04:51:41Z",
     "comment_data": [],
     "comment_regular_data": [
         {
@@ -214,7 +216,8 @@
                 "starred_url": "https://api.github.com/users/tomtomjhj/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/tomtomjhj/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/tomtomjhj"
+                "url": "https://api.github.com/users/tomtomjhj",
+                "user_view_type": "public"
             }
         },
         {
@@ -227,7 +230,7 @@
             "node_id": "IC_kwDOAPphoM6KAofc",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 0,
+                "+1": 1,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -235,7 +238,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 0,
+                "total_count": 1,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2315421660/reactions"
             },
             "updated_at": "2024-08-28T14:07:01Z",
@@ -258,7 +261,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -271,7 +275,7 @@
             "node_id": "IC_kwDOAPphoM6KAv7-",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 1,
+                "+1": 2,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -279,7 +283,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 1,
+                "total_count": 2,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2315452158/reactions"
             },
             "updated_at": "2024-08-28T14:14:06Z",
@@ -302,7 +306,8 @@
                 "starred_url": "https://api.github.com/users/tomtomjhj/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/tomtomjhj/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/tomtomjhj"
+                "url": "https://api.github.com/users/tomtomjhj",
+                "user_view_type": "public"
             }
         },
         {
@@ -346,7 +351,8 @@
                 "starred_url": "https://api.github.com/users/GitMurf/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/GitMurf/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/GitMurf"
+                "url": "https://api.github.com/users/GitMurf",
+                "user_view_type": "public"
             }
         },
         {
@@ -390,7 +396,8 @@
                 "starred_url": "https://api.github.com/users/ribru17/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ribru17/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ribru17"
+                "url": "https://api.github.com/users/ribru17",
+                "user_view_type": "public"
             }
         },
         {
@@ -434,7 +441,8 @@
                 "starred_url": "https://api.github.com/users/GitMurf/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/GitMurf/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/GitMurf"
+                "url": "https://api.github.com/users/GitMurf",
+                "user_view_type": "public"
             }
         }
     ],
@@ -507,8 +515,8 @@
             "name": "neovim",
             "node_id": "R_kgDOK_SsSw",
             "notifications_url": "https://api.github.com/repos/ribru17/neovim/notifications{?since,all,participating}",
-            "open_issues": 1,
-            "open_issues_count": 1,
+            "open_issues": 0,
+            "open_issues_count": 0,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/55766287?v=4",
                 "events_url": "https://api.github.com/users/ribru17/events{/privacy}",
@@ -527,13 +535,14 @@
                 "starred_url": "https://api.github.com/users/ribru17/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ribru17/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ribru17"
+                "url": "https://api.github.com/users/ribru17",
+                "user_view_type": "public"
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/ribru17/neovim/pulls{/number}",
-            "pushed_at": "2024-09-02T15:28:01Z",
+            "pushed_at": "2025-07-29T01:17:13Z",
             "releases_url": "https://api.github.com/repos/ribru17/neovim/releases{/id}",
-            "size": 276771,
+            "size": 327465,
             "ssh_url": "git@github.com:ribru17/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/ribru17/neovim/stargazers",
@@ -545,7 +554,7 @@
             "teams_url": "https://api.github.com/repos/ribru17/neovim/teams",
             "topics": [],
             "trees_url": "https://api.github.com/repos/ribru17/neovim/git/trees{/sha}",
-            "updated_at": "2024-09-01T18:52:14Z",
+            "updated_at": "2025-07-28T21:44:56Z",
             "url": "https://api.github.com/repos/ribru17/neovim",
             "visibility": "public",
             "watchers": 0,
@@ -571,7 +580,8 @@
             "starred_url": "https://api.github.com/users/ribru17/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/ribru17/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/ribru17"
+            "url": "https://api.github.com/users/ribru17",
+            "user_view_type": "public"
         }
     },
     "html_url": "https://github.com/neovim/neovim/pull/30164",
@@ -581,7 +591,7 @@
         {
             "color": "FEF2C0",
             "default": false,
-            "description": "issues reporting performance problems",
+            "description": "performance, latency, cpu/memory usage",
             "id": 101930601,
             "name": "performance",
             "node_id": "MDU6TGFiZWwxMDE5MzA2MDE=",
@@ -607,7 +617,7 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "d2df946f45c5ce3125867cf2fbdade01ea2f4bad",
+    "merge_commit_sha": null,
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM55qKb6",
@@ -617,10 +627,10 @@
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/30164/comments",
-    "state": "open",
+    "state": "closed",
     "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/5280e92521956197a8381a976b347a83043cbc9e",
     "title": "perf(treesitter): cache the parser check in foldexpr",
-    "updated_at": "2024-08-30T02:35:28Z",
+    "updated_at": "2025-07-22T04:51:41Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/30164",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/55766287?v=4",
@@ -640,6 +650,7 @@
         "starred_url": "https://api.github.com/users/ribru17/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/ribru17/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/ribru17"
+        "url": "https://api.github.com/users/ribru17",
+        "user_view_type": "public"
     }
 }

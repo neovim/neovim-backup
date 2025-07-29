@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/34725"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/9bbdda01831d829cb5aecbef788c1ffb29abb3af"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/c238c88b81ed77369bd90f1adbbfbd2889e75077"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6168,
-            "forks_count": 6168,
+            "forks": 6210,
+            "forks_count": 6210,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1965,
-            "open_issues_count": 1965,
+            "open_issues": 1969,
+            "open_issues_count": 1969,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -119,11 +119,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2025-07-08T01:56:22Z",
+            "pushed_at": "2025-07-29T02:23:07Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 332418,
+            "size": 334730,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 90922,
+            "stargazers_count": 91452,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -141,14 +141,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2025-07-08T02:01:52Z",
+            "updated_at": "2025-07-29T02:23:15Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 90922,
-            "watchers_count": 90922,
+            "watchers": 91452,
+            "watchers_count": 91452,
             "web_commit_signoff_required": false
         },
-        "sha": "3694fcec286763d21e30eb3f479aea4fe6d8d873",
+        "sha": "95dfb063daa709d303d0e37e86fbc8067950a830",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -172,7 +172,7 @@
         }
     },
     "body": "Problem:\n`runtime/plugin/shada.vim` is hard to read and maintain.\n\nSolution:\nSwitch it to Lua.\n",
-    "closed_at": null,
+    "closed_at": "2025-07-23T11:04:05Z",
     "comment_data": [
         {
             "_links": {
@@ -188,7 +188,7 @@
             },
             "author_association": "CONTRIBUTOR",
             "body": "@justinmk is this still necessary as 'cpoptions' seem to be about Vi-compatibility? I think we can just set `vim.bp[ev.buf].modified = false` as I also don't see when `ev.file` would not equal to `vim.fn.bufname(ev.buf)`?",
-            "commit_id": "9bbdda01831d829cb5aecbef788c1ffb29abb3af",
+            "commit_id": "c238c88b81ed77369bd90f1adbbfbd2889e75077",
             "created_at": "2025-07-03T20:26:37Z",
             "diff_hunk": "@@ -0,0 +1,88 @@\n+if vim.g.loaded_shada_plugin then\n+  return\n+end\n+vim.g.loaded_shada_plugin = 1\n+\n+local augroup = vim.api.nvim_create_augroup('nvim.shada', {})\n+local pattern = { '*.shada', '*.shada.tmp.[a-z]' }\n+\n+---@type fun(binstrings: string[]): string[]\n+local shada_get_strings = vim.fn['shada#get_strings']\n+---@type fun(strings: string[]): string[]\n+local shada_get_binstrings = vim.fn['shada#get_binstrings']\n+\n+vim.api.nvim_create_autocmd('BufReadCmd', {\n+  group = augroup,\n+  pattern = pattern,\n+  callback = function(ev)\n+    if vim.v.cmdarg ~= '' then\n+      error('++opt not supported')\n+    end\n+    local l = vim.fn.line('.') - 1\n+    vim.api.nvim_buf_set_lines(ev.buf, l, l, true, shada_get_strings(vim.fn.readfile(ev.file, 'b')))\n+    vim.bo[ev.buf].filetype = 'shada'\n+  end,\n+})\n+\n+vim.api.nvim_create_autocmd('FileReadCmd', {\n+  group = augroup,\n+  pattern = pattern,\n+  callback = function(ev)\n+    if vim.v.cmdarg ~= '' then\n+      error('++opt not supported')\n+    end\n+    -- vim.fn.append(\"'[\", shada_get_strings(vim.fn.readfile(ev.file, 'b')))\n+    local mark_line = vim.fn.line(\"'[\") - 1\n+    vim.api.nvim_buf_set_lines(ev.buf, mark_line, mark_line, true, shada_get_strings(vim.fn.readfile(ev.file, 'b')))\n+  end,\n+})\n+\n+vim.api.nvim_create_autocmd('BufWriteCmd', {\n+  group = augroup,\n+  pattern = pattern,\n+  callback = function(ev)\n+    if vim.v.cmdarg ~= '' then\n+      error('++opt not supported')\n+    end\n+    local buflines = vim.api.nvim_buf_get_lines(0, 0, -1, false)\n+    local err = vim.fn.writefile(shada_get_binstrings(buflines), ev.file, 'b')\n+    if not err then\n+      local modified\n+      if ev.file == vim.fn.bufname(ev.buf) then\n+        modified = false\n+      else\n+        modified = vim.o.cpoptions:find('+', 1, true) ~= nil",
             "html_url": "https://github.com/neovim/neovim/pull/34725#discussion_r2183694467",
@@ -204,7 +204,7 @@
             "pull_request_review_id": 2984562758,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/34725",
             "reactions": {
-                "+1": 0,
+                "+1": 1,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -212,7 +212,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 0,
+                "total_count": 1,
                 "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2183694467/reactions"
             },
             "side": "RIGHT",
@@ -242,9 +242,194 @@
                 "url": "https://api.github.com/users/yochem",
                 "user_view_type": "public"
             }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/34725#discussion_r2224073405"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/34725"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2224073405"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "if you're going to abstract this then might as well use it to save more code?\n```suggestion\nlocal function def_autocmd(event, opts, fn)\n  ...\n  opts.callback = function(ev)\n    if vim.v.cmdarg ~= '' then\n      error('++opt not supported')\n    end\n    fn(ev)\n  end\n  vim.api.nvim_create_autocmd(event, opts)\n```",
+            "commit_id": "c238c88b81ed77369bd90f1adbbfbd2889e75077",
+            "created_at": "2025-07-23T00:33:24Z",
+            "diff_hunk": "@@ -0,0 +1,90 @@\n+if vim.g.loaded_shada_plugin then\n+  return\n+end\n+vim.g.loaded_shada_plugin = 1\n+\n+local augroup = vim.api.nvim_create_augroup('nvim.shada', {})\n+local pattern = { '*.shada', '*.shada.tmp.[a-z]' }\n+\n+---Ensures that pattern and augroup are set correctly.\n+---@param event string|string[]\n+---@param opts vim.api.keyset.create_autocmd\n+local function shada_autocmd(event, opts)",
+            "html_url": "https://github.com/neovim/neovim/pull/34725#discussion_r2224073405",
+            "id": 2224073405,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM6EkKq9",
+            "original_commit_id": "9bbdda01831d829cb5aecbef788c1ffb29abb3af",
+            "original_line": 12,
+            "original_position": 12,
+            "original_start_line": null,
+            "path": "runtime/plugin/shada.lua",
+            "position": null,
+            "pull_request_review_id": 3045227057,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/34725",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2224073405/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-07-23T00:34:29Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2224073405",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/34725#discussion_r2225110663"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/34725"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2225110663"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "Great suggestion. Thanks!",
+            "commit_id": "c238c88b81ed77369bd90f1adbbfbd2889e75077",
+            "created_at": "2025-07-23T10:33:52Z",
+            "diff_hunk": "@@ -0,0 +1,90 @@\n+if vim.g.loaded_shada_plugin then\n+  return\n+end\n+vim.g.loaded_shada_plugin = 1\n+\n+local augroup = vim.api.nvim_create_augroup('nvim.shada', {})\n+local pattern = { '*.shada', '*.shada.tmp.[a-z]' }\n+\n+---Ensures that pattern and augroup are set correctly.\n+---@param event string|string[]\n+---@param opts vim.api.keyset.create_autocmd\n+local function shada_autocmd(event, opts)",
+            "html_url": "https://github.com/neovim/neovim/pull/34725#discussion_r2225110663",
+            "id": 2225110663,
+            "in_reply_to_id": 2224073405,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM6EoH6H",
+            "original_commit_id": "9bbdda01831d829cb5aecbef788c1ffb29abb3af",
+            "original_line": 12,
+            "original_position": 12,
+            "original_start_line": null,
+            "path": "runtime/plugin/shada.lua",
+            "position": null,
+            "pull_request_review_id": 3046714518,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/34725",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2225110663/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-07-23T10:33:52Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2225110663",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/23235841?v=4",
+                "events_url": "https://api.github.com/users/yochem/events{/privacy}",
+                "followers_url": "https://api.github.com/users/yochem/followers",
+                "following_url": "https://api.github.com/users/yochem/following{/other_user}",
+                "gists_url": "https://api.github.com/users/yochem/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/yochem",
+                "id": 23235841,
+                "login": "yochem",
+                "node_id": "MDQ6VXNlcjIzMjM1ODQx",
+                "organizations_url": "https://api.github.com/users/yochem/orgs",
+                "received_events_url": "https://api.github.com/users/yochem/received_events",
+                "repos_url": "https://api.github.com/users/yochem/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/yochem/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/yochem/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/yochem",
+                "user_view_type": "public"
+            }
         }
     ],
-    "comment_regular_data": [],
+    "comment_regular_data": [
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "This should be ready for review / merge :) ",
+            "created_at": "2025-07-22T11:41:16Z",
+            "html_url": "https://github.com/neovim/neovim/pull/34725#issuecomment-3102354803",
+            "id": 3102354803,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/34725",
+            "node_id": "IC_kwDOAPphoM646i1z",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3102354803/reactions"
+            },
+            "updated_at": "2025-07-22T11:41:16Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3102354803",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/23235841?v=4",
+                "events_url": "https://api.github.com/users/yochem/events{/privacy}",
+                "followers_url": "https://api.github.com/users/yochem/followers",
+                "following_url": "https://api.github.com/users/yochem/following{/other_user}",
+                "gists_url": "https://api.github.com/users/yochem/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/yochem",
+                "id": 23235841,
+                "login": "yochem",
+                "node_id": "MDQ6VXNlcjIzMjM1ODQx",
+                "organizations_url": "https://api.github.com/users/yochem/orgs",
+                "received_events_url": "https://api.github.com/users/yochem/received_events",
+                "repos_url": "https://api.github.com/users/yochem/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/yochem/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/yochem/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/yochem",
+                "user_view_type": "public"
+            }
+        }
+    ],
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/34725/comments",
     "commits_url": "https://api.github.com/repos/neovim/neovim/pulls/34725/commits",
     "created_at": "2025-07-01T15:30:46Z",
@@ -339,9 +524,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/yochem/neovim/pulls{/number}",
-            "pushed_at": "2025-07-06T21:09:22Z",
+            "pushed_at": "2025-07-23T11:37:25Z",
             "releases_url": "https://api.github.com/repos/yochem/neovim/releases{/id}",
-            "size": 326055,
+            "size": 328650,
             "ssh_url": "git@github.com:yochem/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/yochem/neovim/stargazers",
@@ -353,14 +538,14 @@
             "teams_url": "https://api.github.com/repos/yochem/neovim/teams",
             "topics": [],
             "trees_url": "https://api.github.com/repos/yochem/neovim/git/trees{/sha}",
-            "updated_at": "2025-07-03T21:00:53Z",
+            "updated_at": "2025-07-23T11:36:07Z",
             "url": "https://api.github.com/repos/yochem/neovim",
             "visibility": "public",
             "watchers": 0,
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "9bbdda01831d829cb5aecbef788c1ffb29abb3af",
+        "sha": "c238c88b81ed77369bd90f1adbbfbd2889e75077",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/23235841?v=4",
             "events_url": "https://api.github.com/users/yochem/events{/privacy}",
@@ -398,8 +583,8 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "2c88f6ed756680ffdaf158f2704d0cc904599cde",
-    "merged_at": null,
+    "merge_commit_sha": "61c4a6b3a9530f3774e3f2e15fdf1edb50f7f4e0",
+    "merged_at": "2025-07-23T11:04:05Z",
     "milestone": null,
     "node_id": "PR_kwDOAPphoM6c7nTl",
     "number": 34725,
@@ -408,10 +593,10 @@
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/34725/comments",
-    "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/9bbdda01831d829cb5aecbef788c1ffb29abb3af",
+    "state": "closed",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/c238c88b81ed77369bd90f1adbbfbd2889e75077",
     "title": "refactor(shada): switch plugin/shada.vim to Lua",
-    "updated_at": "2025-07-06T13:16:48Z",
+    "updated_at": "2025-07-23T11:04:05Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/34725",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/23235841?v=4",
