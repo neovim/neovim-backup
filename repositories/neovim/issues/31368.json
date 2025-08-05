@@ -4,8 +4,28 @@
     "assignees": [],
     "author_association": "CONTRIBUTOR",
     "body": "### Problem\n\nNeovim provides `dataSupprt` for codeActions and publishDiagnostics\n\n```\n\t/**\n\t * Whether code action supports the `data` property which is\n\t * preserved between a `textDocument/codeAction` and a\n\t * `codeAction/resolve` request.\n\t *\n\t * @since 3.16.0\n\t */\n\tdataSupport?: boolean;\n```\n\n```\n/**\n\t * A data entry field that is preserved on a code action between\n\t * a `textDocument/codeAction` and a `codeAction/resolve` request.\n\t *\n\t * @since 3.16.0\n\t */\n\tdata?: [LSPAny](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#lspAny);\n}\n```\n\n\nIn the example notice that `REALLY_IMPORTANT_PARAM` is missing from the resolve request.\n\nBecause we serialise converting null to lua nils, when we decode and re-encode we lose properties in the data object\n\n\n### Steps to reproduce using \"nvim -u minimal_init.lua\"\n\n```lua\nlocal requests = {\n  ['initialize'] = function(_)\n    return {\n      --- @type lsp.ServerCapabilities\n      capabilities = {\n        codeActionProvider = {\n          resolveProvider = true,\n          codeActionKinds = { 'source' },\n        },\n      },\n    }\n  end,\n  ['shutdown'] = function(_) end,\n  ['textDocument/codeAction'] = function(_)\n    ---@type lsp.CodeAction[]\n    local action = {\n      {\n        title = 'Example Action',\n        kind = 'source',\n        data = {\n          something = 'this',\n          REALLY_IMPORTANT_PARAM = vim.NIL,\n          something_else = 'that',\n        },\n      },\n    }\n    --- NOTE: Force serde as in memory lsp doesnt go through rpc\n    local encoded = vim.json.encode(action)\n    local decoded = vim.json.decode(encoded, { luanil = { object = true } })\n    return decoded\n  end,\n  ['codeAction/resolve'] = function(params)\n    print(vim.inspect(params))\n\treturn {}\nretu\n  end,\n}\n\nlocal noops = {\n  ['initialized'] = true,\n}\n\nlocal function server()\n  local srv = {}\n  local closing = false\n\n  function srv.request(method, params, handler)\n    coroutine.wrap(function()\n      if requests[method] then\n        local response = requests[method](params)\n        handler(nil, response)\n      elseif method == 'exit' then\n        closing = true\n      else\n        vim.notify('Unhandled request: ' .. method)\n      end\n    end)()\n  end\n\n  function srv.notify(method, _params)\n    coroutine.wrap(function()\n      if method == 'exit' then\n        closing = true\n      elseif not noops[method] then\n        vim.notify('Unhandled notification: ' .. method)\n      end\n    end)()\n  end\n\n  function srv.is_closing()\n    return closing\n  end\n\n  function srv.terminate()\n    closing = true\n  end\n\n  return srv\nend\n\nvim.lsp.start({\n  name = 'serde_nil',\n  cmd = server,\n})\n```\n\nPerform a code action and see that the param is missing\n\n### Expected behavior\n\nData properties to be preserved as null is a valid LSPAny value\n\n```\n/**\n * The LSP any type\n *\n * @since 3.17.0\n */\nexport type LSPAny = LSPObject | LSPArray | string | integer | uinteger |\n\tdecimal | boolean | null;\n\n```\n\n### Nvim version (nvim -v)\n\n0.11\n\n### Language server name/version\n\nAny\n\n### Operating system/version\n\nN/A\n\n### Log file\n\n_No response_",
-    "closed_at": null,
-    "closed_by": null,
+    "closed_at": "2025-08-03T14:42:45Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+        "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+        "followers_url": "https://api.github.com/users/justinmk/followers",
+        "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+        "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/justinmk",
+        "id": 1359421,
+        "login": "justinmk",
+        "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+        "organizations_url": "https://api.github.com/users/justinmk/orgs",
+        "received_events_url": "https://api.github.com/users/justinmk/received_events",
+        "repos_url": "https://api.github.com/users/justinmk/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -167,7 +187,7 @@
     "number": 31368,
     "performed_via_github_app": null,
     "reactions": {
-        "+1": 0,
+        "+1": 2,
         "-1": 0,
         "confused": 0,
         "eyes": 0,
@@ -175,12 +195,12 @@
         "hooray": 0,
         "laugh": 0,
         "rocket": 0,
-        "total_count": 0,
+        "total_count": 2,
         "url": "https://api.github.com/repos/neovim/neovim/issues/31368/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "sub_issues_summary": {
         "completed": 0,
         "percent_completed": 0,
@@ -198,7 +218,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyr",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2025-07-02T08:36:15Z",
+    "updated_at": "2025-08-03T14:42:45Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/31368",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/18444302?v=4",

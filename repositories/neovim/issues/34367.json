@@ -3,7 +3,7 @@
     "assignee": null,
     "assignees": [],
     "author_association": "MEMBER",
-    "body": "## Problem\n\nFollowup to #34296 #34354\n\n`:restart` currently depends on the UI client to spawn a new `nvim` server. This has some disadvantages:\n\n- all other UI clients detach and can't reattach to the new server.\n- if the UI client is on a different machine, it can't restart the server on the remote machine.\n\n## Expected behavior\n\n- Perform the restart on the server instead of the client. The `restart` UI event passes the listen address (instead of CLI args). \n- If Nvim doesn't know how to restart the server, show an error and cancel the `:restart`.\n\n### Benefits\n\n1. All UI clients can re-attach to the new address.\n2. No race conditions?\n    - If the user config has errors / waiting for input, are all UIs able to attach while Nvim is waiting for input?\n\n### Implementation?\n\n1. old server spawns a new server and gets the listen address\n2. old server emits the `remote` UI event with the new listen address\n3. UIs can attach to new server, they don't need to wait for old server to exit\n4. old server exits",
+    "body": "## Problem\n\nFollowup to #34296 #34354\n\n`:restart` currently depends on the UI client to spawn a new `nvim` server. This has some disadvantages:\n\n- all other UI clients detach and can't reattach to the new server.\n- if the UI client is on a different machine, it can't restart the server on the remote machine.\n\n## Expected behavior\n\n- Perform the restart on the server instead of the client. The `restart` UI event passes the listen address (instead of CLI args). \n- If Nvim doesn't know how to restart the server, show an error and cancel the `:restart`.\n\n### Benefits\n\n1. Simplier logic. ([ref](https://github.com/neovim/neovim/pull/35045#issuecomment-3146985628))\n1. All UI clients can re-attach to the new address.\n1. No race conditions?\n    - If the user config has errors / waiting for input, are all UIs able to attach while Nvim is waiting for input?\n\n### Implementation\n\nFrom https://github.com/neovim/neovim/pull/35045#issuecomment-3146985628 : \n1. server (nvim-1) starts new nvim instance (nvim-2)\n2. server emits `restart[addr, ... cmd]` ui event which includes the new listen address.\n3. ui handler:\n    1. opens a channel to nvim-2\n    2. waits for nvim-2 to die (close the channel)\n4. if the nvim-1 fails to quit:\n    - server terminates nvim-2.\n    - ui `restart` handler cancels its wait routine when it sees that nvim-2 died.\n",
     "closed_at": null,
     "closed_by": null,
     "comment_data": [
@@ -236,7 +236,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 63,
+        "closed_issues": 104,
         "created_at": "2024-05-16T14:11:54Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -266,10 +266,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/43/labels",
         "node_id": "MI_kwDOAPphoM4AqNEV",
         "number": 43,
-        "open_issues": 69,
+        "open_issues": 71,
         "state": "open",
         "title": "0.12",
-        "updated_at": "2025-06-09T17:26:31Z",
+        "updated_at": "2025-08-03T18:12:44Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/43"
     },
     "node_id": "I_kwDOAPphoM66bYL7",
@@ -307,7 +307,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyv",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2025-06-08T13:39:02Z",
+    "updated_at": "2025-08-03T05:06:40Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/34367",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
