@@ -2,10 +2,30 @@
     "active_lock_reason": null,
     "assignee": null,
     "assignees": [],
-    "author_association": "NONE",
+    "author_association": "CONTRIBUTOR",
     "body": "### Description\n\nWith the migration to a new way of configuring LSPs I noticed a change in behavior when working with multiple TypeScript projects tied together using [project references](https://www.typescriptlang.org/docs/handbook/project-references.html).\n\nWhen using `require('lspconfig').<lsp-name>.setup(...)` and opening files from different projects there is only one client instance.\n\nBut with `vim.lsp.config` + `vim.lsp.enable` a new separate client instance is started for each project.\n\nThe issue is that with multiple instances finding references doesn't work reliably across all projects even when all of them are loaded.\n\nI've tried `ts_ls` and `vtsls`, they both behave the same way before and after.\n\nHere is a repository to demonstrate the issue: https://github.com/faergeek/nvim-ts-workspace-folders-repro\n\nSteps to reproduce:\n\n1. Clone the repo\n2. `npm install -g typescript typescript-language-server` as per [configs.md](https://github.com/neovim/nvim-lspconfig/blob/master/doc/configs.md#ts_ls)\n3. Run `nvim --clean -u init.new.lua -O a/index.ts b/index.ts`, which uses the new way of configuration. Run `:LspInfo`. There will be two `ts_ls` instances under `vim.lsp: Active Clients`.\n4. Run `nvim --clean -u init.old.lua -O a/index.ts b/index.ts`, which uses the old way. Run `:LspInfo`. There will be just one `ts_ls` instance under `vim.lsp: Active Clients`.\n\nWith the old way any unrelated project will also be added to the same instance as well (from a completely different repository in a parent directory, for example), which doesn't seem right, but I don't know if it actually causes any issues.\n\nBased on `:help vim.lsp.Config` possible workaround outside of nvim-lspconfig would be either defining a custom `reuse_client` implementation or just setting `root_dir` to a cwd, for example:\n\n```lua\nvim.lsp.config('vtsls', {\n  root_dir = vim.uv.cwd(),\n})\n```\n\nI don't know what would be a generic solution to this other than looking for root markers top-down instead of bottom-up when detecting `root_dir`.",
-    "closed_at": null,
-    "closed_by": null,
+    "closed_at": "2025-08-17T21:12:43Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+        "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+        "followers_url": "https://api.github.com/users/justinmk/followers",
+        "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+        "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/justinmk",
+        "id": 1359421,
+        "login": "justinmk",
+        "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+        "organizations_url": "https://api.github.com/users/justinmk/orgs",
+        "received_events_url": "https://api.github.com/users/justinmk/received_events",
+        "repos_url": "https://api.github.com/users/justinmk/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -53,7 +73,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "I couldn't think of a way to fix this using only `reuse_client` besides just ignoring `root_dir` completely and only considering `name`s. Was this the default behavior before the introduction of `lsp` directory and the reason there was only a single instance previously?\n\nI couldn't think of any other solution than adjusting `root_dir` detection. Moving `.git` to the start of `root_markers` does help in this particular case, but from what I see removal of `.git` from `root_markers` was considered in #3728. And on top of that I think it's not hard to imagine a project setup where these TypeScript projects are plugged as git submodules into another repo. In which case this solution won't fix out-of-the-box behavior.\n\nFrom what I understand currently given the buffer path like\n`/home/user/projects/nvim-ts-workspace-folders-repro/a/index.ts` the search for a single marker will go like this:\n\n1. Check if `/home/user/projects/nvim-ts-workspace-folders-repro/a/tsconfig.json` exists\n2. Check if `/home/user/projects/nvim-ts-workspace-folders-repro/tsconfig.json` exists\n3. Check if `/home/user/projects/tsconfig.json` exists\n4. ...\n5. Check if `/tsconfig.json` exists\n\nWhat if there was a way to say that searching for a particular marker should go backwards?\n\n1. Check if `/tsconfig.json` exists\n2. Check if `/home/tsconfig.json` exists\n3. Check if `/home/user/tsconfig.json` exists\n4. ...\n5. Check if `/home/user/projects/nvim-ts-workspace-folders-repro/a/tsconfig.json` exists\n\nHaving `tsconfig.json` in a home directory would result in false positives though.\n\nTo be fair, setting `root_dir` via `.nvim.lua` with `exrc` enabled already works perfectly fine for me. I'm using `exrc` for other reasons anyway and it depends on cwd where nvim is started, so I could as well set `root_dir` to cwd globally in my config and be done with it. Maybe it's not worth trying to solve it any other way.",
             "created_at": "2025-06-17T06:40:28Z",
             "html_url": "https://github.com/neovim/nvim-lspconfig/issues/3910#issuecomment-2979129166",
@@ -143,7 +163,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": ">Can you show the code example?\n>\n>We definitely want to start leveraging project-local config more heavily.\n\nI have this in `.nvim.lua` at the root of the project:\n\n```lua\nvim.lsp.config('vtsls', { root_dir = vim.uv.cwd() })\n```\n\nI also configure nvim-dap and add some custom user commands per project this way, which is quite convenient.\n\nA possible inconvenience is that it only works when starting nvim at that same directory as well. But that's how I do it most of the time anyway, so that's not a big issue for me personally.\n\nI also have to remember to call `:trust` and most likely `:source %` on every edit of `.nvim.lua`, but that could be easily automated with a `BufWritePost` autocmd I think.\n\nFor local configuration of just LSP https://github.com/folke/neoconf.nvim looks cool. It doesn't need `:trust` since it can't execute arbitrary code and doesn't rely on cwd as far as I know, but I couldn't figure out how to make it stop reading `.vscode/settings.json` and I often had to override some settings. It can also be extended with settings for other purposes. I used it for configuring nvim-dap, but that started taking too much effort, so I dropped it and moved to just using `exrc` instead.",
             "created_at": "2025-06-17T11:00:22Z",
             "html_url": "https://github.com/neovim/nvim-lspconfig/issues/3910#issuecomment-2979913521",
@@ -233,7 +253,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": ">Better to get the script path instead (debug.getinfo(1, 'S').source:sub(2)):\n\nBut `exrc` file is only read if it's exactly in nvim cwd at the start, right? So making it relative to `exrc` file doesn't make much of a difference.\n\n>Hmm that's weird, you should be prompted automatically.\n\nPrompt appears just fine, no problem with that, I just prefer calling `:trust` to not be presented with a prompt next time when I'm trying to edit something quickly.",
             "created_at": "2025-06-17T14:26:00Z",
             "html_url": "https://github.com/neovim/nvim-lspconfig/issues/3910#issuecomment-2980597361",
@@ -323,7 +343,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": ">Here's the reuse_client logic in the legacy nvim-lpsconfig framework, maybe there's a logic difference that could be upstreamed: \n\nIf I understand it correctly, it looks like it tries to add a workspace folder to a client with matching `root_dir` and `name` first (assuming `root_dir` has all the same logic as it does now, this part roughly stays the same) and if it couldn't do that, then it tries to add `root_dir` to an existing client with just the same `name` (in current nvim's default it would return `false` and start a new instance instead). So `root_dir` is preferred to match, but not forced to. With this behavior it couldn't ever start another instance at all if there is an existing client with the same `name` already, which explains why it did work in such cases previously.\n\nThe old behavior works fine assuming you only open different workspaces which are related to each other (multiple related TypeScript projects, as discussed here). What issues it might cause in practice if you mix it with unrelated projects I'm not really sure. Maybe different package versions might result in conflicts or something like that.\n\nThe new behavior seems to be more correct in general, but might require setting `root_dir` explicitly.\n\nOn a side note, I've tried to compare it with what vscode does, based on whether it finds references properly or not. From what I've inferred, for vscode it's easy since it can just assume the folder you open in it is the `root_dir`. If I open a real root (git repo root form above) in it then it finds all the references (same as nvim with `root_dir` set), but if I open `a` inside of it, it doesn't find references in other projects (same as nvim out of the box, without configuration).\n\nFor neovim the only way to find a `root_dir` is to try to infer it based on presence of markers. But it's easy to set it explicitly.\n\nIn summary, both need a correct `root_dir`. In neovim you might need to set it explicitly if it can't be properly detected, in vscode you have to correctly set it implicitly by opening the right folder.\n\nAt this point I don't really think anything about neovim or nvim-lspconfig behavior should be changed. But maybe it's worth mentioning in the [troubleshooting section](https://github.com/neovim/nvim-lspconfig#troubleshooting) in a point about root detection, that `root_dir` can be set explicitly using `exrc` + `.nvim.lua`.",
             "created_at": "2025-06-18T05:04:46Z",
             "html_url": "https://github.com/neovim/nvim-lspconfig/issues/3910#issuecomment-2982698167",
@@ -368,7 +388,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "Seems like `debug.getinfo(1, 'S').source:sub(2)` could not be used since `.source` value it returns from inside of `.nvim.lua` is just `\"<nvim>\"`, there's no file path.\n\nAnd since in stable (0.11.*) `exrc` only looks in cwd, should I mention it in troubleshooting as just `vim.lsp.config('<client name>', { root_dir = vim.uv.cwd() })` for now?",
             "created_at": "2025-06-19T03:41:10Z",
             "html_url": "https://github.com/neovim/nvim-lspconfig/issues/3910#issuecomment-2986495253",
@@ -494,8 +514,8 @@
         "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/3910/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/nvim-lspconfig",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "sub_issues_summary": {
         "completed": 0,
         "percent_completed": 0,
@@ -504,7 +524,7 @@
     "timeline_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/3910/timeline",
     "title": "New clients started per `tsconfig.json` in a multi-project TypeScript codebase",
     "type": null,
-    "updated_at": "2025-07-01T19:34:56Z",
+    "updated_at": "2025-08-17T21:12:43Z",
     "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/3910",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/3524621?v=4",

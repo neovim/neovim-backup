@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/34024"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/e0a9f39d7a26269f6c1aa841b3ae8c1dd4c81277"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/9a47ec99e68de7b38560d9f146f62d3de67ac4f6"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6225,
-            "forks_count": 6225,
+            "forks": 6262,
+            "forks_count": 6262,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1969,
-            "open_issues_count": 1969,
+            "open_issues": 1971,
+            "open_issues_count": 1971,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -119,11 +119,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2025-08-04T05:24:53Z",
+            "pushed_at": "2025-08-19T00:45:15Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 335555,
+            "size": 338530,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 91672,
+            "stargazers_count": 92074,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -141,14 +141,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2025-08-05T02:46:52Z",
+            "updated_at": "2025-08-19T01:56:33Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 91672,
-            "watchers_count": 91672,
+            "watchers": 92074,
+            "watchers_count": 92074,
             "web_commit_signoff_required": false
         },
-        "sha": "f87b6230f12419ecc64bc304fabb6c41913dafe4",
+        "sha": "7eb9badd9384ee5970245e2c6f25f170dea91ce8",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -171,15 +171,377 @@
             "user_view_type": "public"
         }
     },
-    "body": "Problem: on_detach may be called before buf_freeall (before autocommands) or\r\nafter buf_freeall frees things like the buffer's memfile (which can cause\r\nissues, such as allowing the buffer to be reloaded before close_buffer has\r\nfinished cleaning up the buffer).\r\n\r\nSolution: on_detach at a more consistent time: just before buf_freeall frees\r\nanything (makes the buffer more useful for inspection), but after autocommands.\r\nLike the old buf_updates_unload call in close_buffer, invoke on_detach when\r\nbuf_freeall will surely free. Remove the redundant call in free_buffer_stuff, as\r\nit always occurs after buf_freeall (in which case on_detach would already be\r\nunregistered).\r\n\r\nFixes #28084\r\nFixes #33967\r\nFixes #35116\r\n",
-    "closed_at": null,
-    "comment_data": [],
-    "comment_regular_data": [],
+    "body": "Problem: on_detach may be called after buf_freeall and other important\r\nthings, plus its textlock restrictions are insufficient. This can cause issues\r\nsuch as leaks, internal errors and crashes.\r\n\r\nSolution: disable buffer updates in buf_freeall, before autocommands (like the\r\norder after #35355 and when do_ecmd reloads a buffer). Don't do so in\r\nfree_buffer_stuff; it's not safe to run user code there, and buf_freeall already\r\nruns before then; just free them to avoid leaks if buf_freeall autocommands\r\nregistered more for some reason.\r\n\r\nFixes #28084\r\nFixes #33967\r\nFixes #35116\r\n",
+    "closed_at": "2025-08-17T21:32:54Z",
+    "comment_data": [
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/34024#discussion_r2280922942"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/34024"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2280922942"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "`on_detach` has textlock set, and like the autocmds below has `b_locked` set here too. Makes it pretty hard to delete the buffer, but it might still be possible; it's at least consistent with below to include the check.",
+            "commit_id": "9a47ec99e68de7b38560d9f146f62d3de67ac4f6",
+            "created_at": "2025-08-17T15:27:29Z",
+            "diff_hunk": "@@ -788,6 +784,12 @@ void buf_freeall(buf_T *buf, int flags)\n   bufref_T bufref;\n   set_bufref(&bufref, buf);\n \n+  // Disable buffer-updates for the current buffer.\n+  buf_updates_unload(buf, false);\n+  if (!bufref_valid(&bufref)) {\n+    // on_detach callback deleted the buffer.\n+    return;\n+  }",
+            "html_url": "https://github.com/neovim/neovim/pull/34024#discussion_r2280922942",
+            "id": 2280922942,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM6H9B8-",
+            "original_commit_id": "614a159ba49fee106b054b76d65acef733bd8351",
+            "original_line": 791,
+            "original_position": 20,
+            "original_start_line": 787,
+            "path": "src/nvim/buffer.c",
+            "position": null,
+            "pull_request_review_id": 3126382168,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/34024",
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2280922942/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2025-08-17T15:27:30Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2280922942",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/6256228?v=4",
+                "events_url": "https://api.github.com/users/seandewar/events{/privacy}",
+                "followers_url": "https://api.github.com/users/seandewar/followers",
+                "following_url": "https://api.github.com/users/seandewar/following{/other_user}",
+                "gists_url": "https://api.github.com/users/seandewar/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/seandewar",
+                "id": 6256228,
+                "login": "seandewar",
+                "node_id": "MDQ6VXNlcjYyNTYyMjg=",
+                "organizations_url": "https://api.github.com/users/seandewar/orgs",
+                "received_events_url": "https://api.github.com/users/seandewar/received_events",
+                "repos_url": "https://api.github.com/users/seandewar/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/seandewar/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/seandewar/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/seandewar",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/34024#discussion_r2281001992"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/34024"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2281001992"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "My test supersedes this one, so I've removed it (but kept the case when wiping the last listed non-reusable buffer)",
+            "commit_id": "9a47ec99e68de7b38560d9f146f62d3de67ac4f6",
+            "created_at": "2025-08-17T19:57:39Z",
+            "diff_hunk": "@@ -1428,42 +1430,138 @@ describe('lua: nvim_buf_attach on_bytes', function()\n end)\n \n describe('nvim_buf_attach on_detach', function()\n-  it('is invoked before unloading buffer', function()",
+            "html_url": "https://github.com/neovim/neovim/pull/34024#discussion_r2281001992",
+            "id": 2281001992,
+            "line": 1431,
+            "node_id": "PRRC_kwDOAPphoM6H9VQI",
+            "original_commit_id": "9a47ec99e68de7b38560d9f146f62d3de67ac4f6",
+            "original_line": 1431,
+            "original_position": 13,
+            "original_start_line": null,
+            "path": "test/functional/lua/buffer_updates_spec.lua",
+            "position": 13,
+            "pull_request_review_id": 3126447057,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/34024",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 1,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2281001992/reactions"
+            },
+            "side": "LEFT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-08-17T19:57:39Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2281001992",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/6256228?v=4",
+                "events_url": "https://api.github.com/users/seandewar/events{/privacy}",
+                "followers_url": "https://api.github.com/users/seandewar/followers",
+                "following_url": "https://api.github.com/users/seandewar/following{/other_user}",
+                "gists_url": "https://api.github.com/users/seandewar/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/seandewar",
+                "id": 6256228,
+                "login": "seandewar",
+                "node_id": "MDQ6VXNlcjYyNTYyMjg=",
+                "organizations_url": "https://api.github.com/users/seandewar/orgs",
+                "received_events_url": "https://api.github.com/users/seandewar/received_events",
+                "repos_url": "https://api.github.com/users/seandewar/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/seandewar/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/seandewar/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/seandewar",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/34024#discussion_r2281002940"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/34024"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2281002940"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "nit: does this fit in one of the existing describe() blocks ?",
+            "commit_id": "9a47ec99e68de7b38560d9f146f62d3de67ac4f6",
+            "created_at": "2025-08-17T20:00:51Z",
+            "diff_hunk": "@@ -1428,42 +1430,138 @@ describe('lua: nvim_buf_attach on_bytes', function()\n end)\n \n describe('nvim_buf_attach on_detach', function()\n-  it('is invoked before unloading buffer', function()\n+  it('called before buf_freeall autocommands', function()\n     exec_lua(function()\n-      _G.logs = {} ---@type table<integer, string[]>\n+      vim.api.nvim_create_autocmd({ 'BufUnload', 'BufDelete', 'BufWipeout' }, {\n+        callback = function(args)\n+          table.insert(\n+            _G.events,\n+            ('%s: %d %s'):format(\n+              args.event,\n+              args.buf,\n+              tostring(vim.api.nvim_buf_is_loaded(args.buf))\n+            )\n+          )\n+        end,\n+      })\n+      function _G.on_detach(_, b)\n+        table.insert(\n+          _G.events,\n+          ('on_detach: %d %s'):format(b, tostring(vim.api.nvim_buf_is_loaded(b)))\n+        )\n+      end\n+      _G.events = {}\n+      vim.cmd 'new'\n+      vim.bo.bufhidden = 'wipe'\n+      vim.api.nvim_buf_attach(0, false, { on_detach = _G.on_detach })\n+      vim.cmd 'quit!'\n     end)\n-    local function setup(bufnr)\n-      exec_lua(function()\n-        _G.logs[bufnr] = {}\n-        vim.api.nvim_create_autocmd({ 'BufUnload', 'BufWipeout' }, {\n-          buffer = bufnr,\n-          callback = function(ev)\n-            table.insert(_G.logs[bufnr], ev.event)\n-          end,\n-        })\n-        vim.api.nvim_buf_attach(bufnr, false, {\n-          on_detach = function()\n-            table.insert(_G.logs[bufnr], 'on_detach')\n-          end,\n-        })\n-      end)\n-    end\n-    -- Test with two buffers because the :bw works differently for the last buffer.\n-    -- Before #35355, the order was as follows:\n-    -- * non-last buffers: BufUnload → BufWipeout → on_detach\n-    -- * the last buffer (with text): BufUnload → on_detach → BufWipeout\n-    local buf1 = api.nvim_get_current_buf()\n-    local buf2 = api.nvim_create_buf(true, false)\n-    api.nvim_open_win(buf2, false, { split = 'below' })\n-    api.nvim_buf_set_lines(buf1, 0, -1, true, { 'abc' })\n-    api.nvim_buf_set_lines(buf2, 0, -1, true, { 'abc' })\n-    setup(buf1)\n-    setup(buf2)\n-    api.nvim_buf_delete(buf1, { force = true })\n-    api.nvim_buf_delete(buf2, { force = true })\n-    local logs = exec_lua('return _G.logs')\n-    local order = { 'on_detach', 'BufUnload', 'BufWipeout' }\n-    eq(order, logs[buf1])\n-    eq(order, logs[buf2])\n+\n+    eq(\n+      { 'on_detach: 2 true', 'BufUnload: 2 true', 'BufDelete: 2 true', 'BufWipeout: 2 true' },\n+      exec_lua('return _G.events')\n+    )\n+    eq(false, api.nvim_buf_is_valid(2))\n+\n+    exec_lua(function()\n+      _G.events = {}\n+      local buf = vim.api.nvim_create_buf(false, true)\n+      vim.api.nvim_buf_attach(buf, false, { on_detach = _G.on_detach })\n+      vim.api.nvim_buf_delete(buf, { force = true })\n+    end)\n+\n+    -- Was unlisted, so no BufDelete.\n+    eq(\n+      { 'on_detach: 3 true', 'BufUnload: 3 true', 'BufWipeout: 3 true' },\n+      exec_lua('return _G.events')\n+    )\n+    eq(false, api.nvim_buf_is_valid(3))\n+\n+    exec_lua(function()\n+      _G.events = {}\n+      vim.api.nvim_buf_attach(1, false, { on_detach = _G.on_detach })\n+      vim.api.nvim_create_autocmd('BufUnload', {\n+        buffer = 1,\n+        once = true,\n+        callback = function()\n+          vim.api.nvim_buf_attach(1, false, {\n+            on_detach = function(...)\n+              vim.fn.bufload(1) -- Leaks the memfile it were to run inside free_buffer_stuff.\n+              return _G.on_detach(...)\n+            end,\n+          })\n+          table.insert(_G.events, 'local BufUnload')\n+        end,\n+      })\n+      vim.cmd 'edit asdf' -- Reuses buffer 1.\n+    end)\n+\n+    -- on_detach shouldn't run after autocommands when reusing a buffer (in free_buffer_stuff), even\n+    -- if those autocommands registered it, as curbuf may be in a semi-unloaded state at that point.\n+    eq({\n+      'on_detach: 1 true',\n+      'BufUnload: 1 true',\n+      'local BufUnload',\n+      'BufDelete: 1 true',\n+      'BufWipeout: 1 true',\n+    }, exec_lua('return _G.events'))\n+\n+    exec_lua(function()\n+      _G.events = {}\n+      vim.api.nvim_buf_attach(0, false, { on_detach = _G.on_detach })\n+      vim.cmd 'edit'\n+    end)\n+\n+    -- Re-edit buffer; on_detach is called.\n+    eq({ 'on_detach: 1 true', 'BufUnload: 1 true' }, exec_lua('return _G.events'))\n+    eq(true, api.nvim_buf_is_valid(1))\n+\n+    exec_lua(function()\n+      vim.cmd '%bwipeout!'\n+      vim.bo.modified = true\n+      _G.events = {}\n+      vim.api.nvim_buf_attach(0, false, { on_detach = _G.on_detach })\n+      vim.api.nvim_buf_delete(0, { force = true })\n+    end)\n+\n+    -- on_detach must still be first when wiping the last buffer if it's listed and non-reusable.\n+    -- Previously: BufUnload → BufDelete → on_detach → BufWipeout.\n+    eq(\n+      { 'on_detach: 4 true', 'BufUnload: 4 true', 'BufDelete: 4 true', 'BufWipeout: 4 false' },\n+      exec_lua('return _G.events')\n+    )\n+  end)\n+\n+  it('disallows splitting', function()\n+    command('new | setlocal bufhidden=wipe')\n+    local buf = api.nvim_get_current_buf()\n+    exec_lua(function()\n+      vim.api.nvim_buf_attach(0, false, {\n+        on_detach = function()\n+          -- Used to allow opening more views into a closing buffer, resulting in open windows to an\n+          -- unloaded buffer.\n+          vim.cmd [=[execute \"normal! \\<C-W>s\"]=]\n+        end,\n+      })\n+    end)\n+    matches('E1159: Cannot split a window when closing the buffer$', pcall_err(command, 'quit!'))\n+    eq({}, fn.win_findbuf(buf))\n+    eq(false, api.nvim_buf_is_valid(buf))\n+  end)\n+end)\n+\n+it('nvim_buf_attach from buf_freeall autocommands does not leak', function()",
+            "html_url": "https://github.com/neovim/neovim/pull/34024#discussion_r2281002940",
+            "id": 2281002940,
+            "line": 1553,
+            "node_id": "PRRC_kwDOAPphoM6H9Ve8",
+            "original_commit_id": "9a47ec99e68de7b38560d9f146f62d3de67ac4f6",
+            "original_line": 1553,
+            "original_position": 168,
+            "original_start_line": null,
+            "path": "test/functional/lua/buffer_updates_spec.lua",
+            "position": 168,
+            "pull_request_review_id": 3126447709,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/34024",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2281002940/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-08-17T20:00:51Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2281002940",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/34024#discussion_r2281003978"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/34024"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2281003978"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Describes seem to relate to specific callbacks, but this doesn't require any of 'em.",
+            "commit_id": "9a47ec99e68de7b38560d9f146f62d3de67ac4f6",
+            "created_at": "2025-08-17T20:04:34Z",
+            "diff_hunk": "@@ -1428,42 +1430,138 @@ describe('lua: nvim_buf_attach on_bytes', function()\n end)\n \n describe('nvim_buf_attach on_detach', function()\n-  it('is invoked before unloading buffer', function()\n+  it('called before buf_freeall autocommands', function()\n     exec_lua(function()\n-      _G.logs = {} ---@type table<integer, string[]>\n+      vim.api.nvim_create_autocmd({ 'BufUnload', 'BufDelete', 'BufWipeout' }, {\n+        callback = function(args)\n+          table.insert(\n+            _G.events,\n+            ('%s: %d %s'):format(\n+              args.event,\n+              args.buf,\n+              tostring(vim.api.nvim_buf_is_loaded(args.buf))\n+            )\n+          )\n+        end,\n+      })\n+      function _G.on_detach(_, b)\n+        table.insert(\n+          _G.events,\n+          ('on_detach: %d %s'):format(b, tostring(vim.api.nvim_buf_is_loaded(b)))\n+        )\n+      end\n+      _G.events = {}\n+      vim.cmd 'new'\n+      vim.bo.bufhidden = 'wipe'\n+      vim.api.nvim_buf_attach(0, false, { on_detach = _G.on_detach })\n+      vim.cmd 'quit!'\n     end)\n-    local function setup(bufnr)\n-      exec_lua(function()\n-        _G.logs[bufnr] = {}\n-        vim.api.nvim_create_autocmd({ 'BufUnload', 'BufWipeout' }, {\n-          buffer = bufnr,\n-          callback = function(ev)\n-            table.insert(_G.logs[bufnr], ev.event)\n-          end,\n-        })\n-        vim.api.nvim_buf_attach(bufnr, false, {\n-          on_detach = function()\n-            table.insert(_G.logs[bufnr], 'on_detach')\n-          end,\n-        })\n-      end)\n-    end\n-    -- Test with two buffers because the :bw works differently for the last buffer.\n-    -- Before #35355, the order was as follows:\n-    -- * non-last buffers: BufUnload → BufWipeout → on_detach\n-    -- * the last buffer (with text): BufUnload → on_detach → BufWipeout\n-    local buf1 = api.nvim_get_current_buf()\n-    local buf2 = api.nvim_create_buf(true, false)\n-    api.nvim_open_win(buf2, false, { split = 'below' })\n-    api.nvim_buf_set_lines(buf1, 0, -1, true, { 'abc' })\n-    api.nvim_buf_set_lines(buf2, 0, -1, true, { 'abc' })\n-    setup(buf1)\n-    setup(buf2)\n-    api.nvim_buf_delete(buf1, { force = true })\n-    api.nvim_buf_delete(buf2, { force = true })\n-    local logs = exec_lua('return _G.logs')\n-    local order = { 'on_detach', 'BufUnload', 'BufWipeout' }\n-    eq(order, logs[buf1])\n-    eq(order, logs[buf2])\n+\n+    eq(\n+      { 'on_detach: 2 true', 'BufUnload: 2 true', 'BufDelete: 2 true', 'BufWipeout: 2 true' },\n+      exec_lua('return _G.events')\n+    )\n+    eq(false, api.nvim_buf_is_valid(2))\n+\n+    exec_lua(function()\n+      _G.events = {}\n+      local buf = vim.api.nvim_create_buf(false, true)\n+      vim.api.nvim_buf_attach(buf, false, { on_detach = _G.on_detach })\n+      vim.api.nvim_buf_delete(buf, { force = true })\n+    end)\n+\n+    -- Was unlisted, so no BufDelete.\n+    eq(\n+      { 'on_detach: 3 true', 'BufUnload: 3 true', 'BufWipeout: 3 true' },\n+      exec_lua('return _G.events')\n+    )\n+    eq(false, api.nvim_buf_is_valid(3))\n+\n+    exec_lua(function()\n+      _G.events = {}\n+      vim.api.nvim_buf_attach(1, false, { on_detach = _G.on_detach })\n+      vim.api.nvim_create_autocmd('BufUnload', {\n+        buffer = 1,\n+        once = true,\n+        callback = function()\n+          vim.api.nvim_buf_attach(1, false, {\n+            on_detach = function(...)\n+              vim.fn.bufload(1) -- Leaks the memfile it were to run inside free_buffer_stuff.\n+              return _G.on_detach(...)\n+            end,\n+          })\n+          table.insert(_G.events, 'local BufUnload')\n+        end,\n+      })\n+      vim.cmd 'edit asdf' -- Reuses buffer 1.\n+    end)\n+\n+    -- on_detach shouldn't run after autocommands when reusing a buffer (in free_buffer_stuff), even\n+    -- if those autocommands registered it, as curbuf may be in a semi-unloaded state at that point.\n+    eq({\n+      'on_detach: 1 true',\n+      'BufUnload: 1 true',\n+      'local BufUnload',\n+      'BufDelete: 1 true',\n+      'BufWipeout: 1 true',\n+    }, exec_lua('return _G.events'))\n+\n+    exec_lua(function()\n+      _G.events = {}\n+      vim.api.nvim_buf_attach(0, false, { on_detach = _G.on_detach })\n+      vim.cmd 'edit'\n+    end)\n+\n+    -- Re-edit buffer; on_detach is called.\n+    eq({ 'on_detach: 1 true', 'BufUnload: 1 true' }, exec_lua('return _G.events'))\n+    eq(true, api.nvim_buf_is_valid(1))\n+\n+    exec_lua(function()\n+      vim.cmd '%bwipeout!'\n+      vim.bo.modified = true\n+      _G.events = {}\n+      vim.api.nvim_buf_attach(0, false, { on_detach = _G.on_detach })\n+      vim.api.nvim_buf_delete(0, { force = true })\n+    end)\n+\n+    -- on_detach must still be first when wiping the last buffer if it's listed and non-reusable.\n+    -- Previously: BufUnload → BufDelete → on_detach → BufWipeout.\n+    eq(\n+      { 'on_detach: 4 true', 'BufUnload: 4 true', 'BufDelete: 4 true', 'BufWipeout: 4 false' },\n+      exec_lua('return _G.events')\n+    )\n+  end)\n+\n+  it('disallows splitting', function()\n+    command('new | setlocal bufhidden=wipe')\n+    local buf = api.nvim_get_current_buf()\n+    exec_lua(function()\n+      vim.api.nvim_buf_attach(0, false, {\n+        on_detach = function()\n+          -- Used to allow opening more views into a closing buffer, resulting in open windows to an\n+          -- unloaded buffer.\n+          vim.cmd [=[execute \"normal! \\<C-W>s\"]=]\n+        end,\n+      })\n+    end)\n+    matches('E1159: Cannot split a window when closing the buffer$', pcall_err(command, 'quit!'))\n+    eq({}, fn.win_findbuf(buf))\n+    eq(false, api.nvim_buf_is_valid(buf))\n+  end)\n+end)\n+\n+it('nvim_buf_attach from buf_freeall autocommands does not leak', function()",
+            "html_url": "https://github.com/neovim/neovim/pull/34024#discussion_r2281003978",
+            "id": 2281003978,
+            "in_reply_to_id": 2281002940,
+            "line": 1553,
+            "node_id": "PRRC_kwDOAPphoM6H9VvK",
+            "original_commit_id": "9a47ec99e68de7b38560d9f146f62d3de67ac4f6",
+            "original_line": 1553,
+            "original_position": 168,
+            "original_start_line": null,
+            "path": "test/functional/lua/buffer_updates_spec.lua",
+            "position": 168,
+            "pull_request_review_id": 3126448488,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/34024",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2281003978/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-08-17T20:04:34Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2281003978",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/6256228?v=4",
+                "events_url": "https://api.github.com/users/seandewar/events{/privacy}",
+                "followers_url": "https://api.github.com/users/seandewar/followers",
+                "following_url": "https://api.github.com/users/seandewar/following{/other_user}",
+                "gists_url": "https://api.github.com/users/seandewar/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/seandewar",
+                "id": 6256228,
+                "login": "seandewar",
+                "node_id": "MDQ6VXNlcjYyNTYyMjg=",
+                "organizations_url": "https://api.github.com/users/seandewar/orgs",
+                "received_events_url": "https://api.github.com/users/seandewar/received_events",
+                "repos_url": "https://api.github.com/users/seandewar/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/seandewar/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/seandewar/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/seandewar",
+                "user_view_type": "public"
+            }
+        }
+    ],
+    "comment_regular_data": [
+        {
+            "author_association": "NONE",
+            "body": "Successfully created backport PR for `release-0.11`:\n- #35369",
+            "created_at": "2025-08-17T22:15:04Z",
+            "html_url": "https://github.com/neovim/neovim/pull/34024#issuecomment-3194686679",
+            "id": 3194686679,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/34024",
+            "node_id": "IC_kwDOAPphoM6-awzX",
+            "performed_via_github_app": {
+                "client_id": "Iv23lig4DyAliuVagKSN",
+                "created_at": "2024-07-16T09:59:15Z",
+                "description": "",
+                "events": [],
+                "external_url": "https://neovim.io/",
+                "html_url": "https://github.com/apps/neovim-backports",
+                "id": 946290,
+                "name": "neovim backports",
+                "node_id": "A_kwHOAGK_Pc4ADnBy",
+                "owner": {
+                    "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
+                    "events_url": "https://api.github.com/users/neovim/events{/privacy}",
+                    "followers_url": "https://api.github.com/users/neovim/followers",
+                    "following_url": "https://api.github.com/users/neovim/following{/other_user}",
+                    "gists_url": "https://api.github.com/users/neovim/gists{/gist_id}",
+                    "gravatar_id": "",
+                    "html_url": "https://github.com/neovim",
+                    "id": 6471485,
+                    "login": "neovim",
+                    "node_id": "MDEyOk9yZ2FuaXphdGlvbjY0NzE0ODU=",
+                    "organizations_url": "https://api.github.com/users/neovim/orgs",
+                    "received_events_url": "https://api.github.com/users/neovim/received_events",
+                    "repos_url": "https://api.github.com/users/neovim/repos",
+                    "site_admin": false,
+                    "starred_url": "https://api.github.com/users/neovim/starred{/owner}{/repo}",
+                    "subscriptions_url": "https://api.github.com/users/neovim/subscriptions",
+                    "type": "Organization",
+                    "url": "https://api.github.com/users/neovim",
+                    "user_view_type": "public"
+                },
+                "permissions": {
+                    "contents": "write",
+                    "metadata": "read",
+                    "pull_requests": "write"
+                },
+                "slug": "neovim-backports",
+                "updated_at": "2024-09-11T10:04:42Z"
+            },
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3194686679/reactions"
+            },
+            "updated_at": "2025-08-17T22:15:04Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3194686679",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/in/946290?v=4",
+                "events_url": "https://api.github.com/users/neovim-backports%5Bbot%5D/events{/privacy}",
+                "followers_url": "https://api.github.com/users/neovim-backports%5Bbot%5D/followers",
+                "following_url": "https://api.github.com/users/neovim-backports%5Bbot%5D/following{/other_user}",
+                "gists_url": "https://api.github.com/users/neovim-backports%5Bbot%5D/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/apps/neovim-backports",
+                "id": 175700243,
+                "login": "neovim-backports[bot]",
+                "node_id": "BOT_kgDOCnj5Ew",
+                "organizations_url": "https://api.github.com/users/neovim-backports%5Bbot%5D/orgs",
+                "received_events_url": "https://api.github.com/users/neovim-backports%5Bbot%5D/received_events",
+                "repos_url": "https://api.github.com/users/neovim-backports%5Bbot%5D/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/neovim-backports%5Bbot%5D/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/neovim-backports%5Bbot%5D/subscriptions",
+                "type": "Bot",
+                "url": "https://api.github.com/users/neovim-backports%5Bbot%5D",
+                "user_view_type": "public"
+            }
+        }
+    ],
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/34024/comments",
     "commits_url": "https://api.github.com/repos/neovim/neovim/pulls/34024/commits",
     "created_at": "2025-05-14T21:53:20Z",
     "diff_url": "https://github.com/neovim/neovim/pull/34024.diff",
-    "draft": true,
+    "draft": false,
     "head": {
         "label": "seandewar:on_detach-sooner",
         "ref": "on_detach-sooner",
@@ -269,9 +631,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/seandewar/neovim/pulls{/number}",
-            "pushed_at": "2025-07-22T13:56:03Z",
+            "pushed_at": "2025-08-18T14:30:34Z",
             "releases_url": "https://api.github.com/repos/seandewar/neovim/releases{/id}",
-            "size": 320801,
+            "size": 329654,
             "ssh_url": "git@github.com:seandewar/neovim.git",
             "stargazers_count": 1,
             "stargazers_url": "https://api.github.com/repos/seandewar/neovim/stargazers",
@@ -290,7 +652,7 @@
             "watchers_count": 1,
             "web_commit_signoff_required": false
         },
-        "sha": "e0a9f39d7a26269f6c1aa841b3ae8c1dd4c81277",
+        "sha": "9a47ec99e68de7b38560d9f146f62d3de67ac4f6",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6256228?v=4",
             "events_url": "https://api.github.com/users/seandewar/events{/privacy}",
@@ -337,11 +699,11 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "0f5108e80f7add81301f3594c37c702ae4b64164",
-    "merged_at": null,
+    "merge_commit_sha": "2211953266f7d01462e38b7f885bdc6a0afb62a0",
+    "merged_at": "2025-08-17T21:32:54Z",
     "milestone": {
         "closed_at": null,
-        "closed_issues": 13,
+        "closed_issues": 34,
         "created_at": "2025-07-14T12:16:41Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -371,10 +733,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/52/labels",
         "node_id": "MI_kwDOAPphoM4Aymiy",
         "number": 52,
-        "open_issues": 22,
+        "open_issues": 20,
         "state": "open",
         "title": "0.11.4",
-        "updated_at": "2025-08-03T13:36:08Z",
+        "updated_at": "2025-08-17T22:15:16Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/52"
     },
     "node_id": "PR_kwDOAPphoM6WOoR1",
@@ -384,10 +746,10 @@
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/34024/comments",
-    "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/e0a9f39d7a26269f6c1aa841b3ae8c1dd4c81277",
-    "title": "fix(api): call on_detach just before buffer stuff is freed",
-    "updated_at": "2025-08-01T02:55:25Z",
+    "state": "closed",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/9a47ec99e68de7b38560d9f146f62d3de67ac4f6",
+    "title": "fix(api): on_detach consistently before buf_freeall autocmds",
+    "updated_at": "2025-08-17T22:15:04Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/34024",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/6256228?v=4",

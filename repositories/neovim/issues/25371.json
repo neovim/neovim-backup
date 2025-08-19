@@ -4,8 +4,28 @@
     "assignees": [],
     "author_association": "NONE",
     "body": "### Problem\n\nConsider the following Go code where `foo` takes two parameters\r\n\r\n**NOTE**: This is relevant to other LSPs as well.\r\n\r\n```go\r\npackage main\r\n\r\nfunc main() {\r\n\tfoo(\"hello\")\r\n\t//         ^ There is no way for me to visually recognize that the error is from here\r\n}\r\n\r\nfunc foo(a, b string) {}\r\n```\r\n\r\nSo I think this is related to the fact that in the output of `vim.diagnostic.get()`, which is included at the bottom of this textbox, `lnum` equals `end_lnum` and `col` equals `end_col`. Therefore the highlighting is omitted.\r\n\r\n```\r\n{ {\r\n    bufnr = 1,\r\n    code = \"WrongArgCount\",\r\n    col = 12,\r\n    end_col = 12,\r\n    end_lnum = 3,\r\n    lnum = 3,\r\n    message = \"not enough arguments in call to foo\\n\\thave (string)\\n\\twant (string, string)\",\r\n    namespace = 7,\r\n    severity = 1,\r\n    source = \"compiler\",\r\n    user_data = {\r\n      lsp = {\r\n        code = \"WrongArgCount\",\r\n        codeDescription = {\r\n          href = \"https://pkg.go.dev/golang.org/x/tools/internal/typesinternal#WrongArgCount\"\r\n        }\r\n      }\r\n    }\r\n  } }\r\n```\n\n### Steps to reproduce\n\n1. Setup a language server with [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig).\r\n2. Make an error that is only applied to a single character (e.g. missing function parameter).\r\n\r\n```lua\r\nfor name, url in pairs{\r\n  -- ADD PLUGINS _NECESSARY_ TO REPRODUCE THE ISSUE, e.g:\r\n  -- some_plugin = 'https://github.com/author/plugin.nvim'\r\n  lspconfig = \"https://github.com/neovim/nvim-lspconfig\",\r\n} do\r\n  local install_path = vim.fn.fnamemodify('nvim_issue/'..name, ':p')\r\n  if vim.fn.isdirectory(install_path) == 0 then\r\n    vim.fn.system { 'git', 'clone', '--depth=1', url, install_path }\r\n  end\r\n  vim.opt.runtimepath:append(install_path)\r\nend\r\n\r\n-- ADD INIT.LUA SETTINGS THAT IS _NECESSARY_ FOR REPRODUCING THE ISSUE\r\n\r\n-- IMPORTANT: you need to have gopls installed\r\n-- NOTE: it is also possible with other language servers\r\nrequire('lspconfig').gopls.setup({})\r\n```\n\n### Expected behavior\n\nI expect that parenthesis to be highlighted with `DiagnosticUnderlineError` like other LSP errors.\n\n### Neovim version (nvim -v)\n\nv0.10.0-dev+1187-g5331d5772\n\n### Vim (not Nvim) behaves the same?\n\nvim does not have diagnostics\n\n### Operating system/version\n\nFedora Linux 38 (Workstation Edition)\n\n### Terminal name/version\n\nkitty 0.29.2\n\n### $TERM environment variable\n\nxterm-kitty\n\n### Installation\n\nagriffis/neovim-nightly dnf copr plugin",
-    "closed_at": null,
-    "closed_by": null,
+    "closed_at": "2025-08-17T02:43:04Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/62502207?v=4",
+        "events_url": "https://api.github.com/users/MariaSolOs/events{/privacy}",
+        "followers_url": "https://api.github.com/users/MariaSolOs/followers",
+        "following_url": "https://api.github.com/users/MariaSolOs/following{/other_user}",
+        "gists_url": "https://api.github.com/users/MariaSolOs/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/MariaSolOs",
+        "id": 62502207,
+        "login": "MariaSolOs",
+        "node_id": "MDQ6VXNlcjYyNTAyMjA3",
+        "organizations_url": "https://api.github.com/users/MariaSolOs/orgs",
+        "received_events_url": "https://api.github.com/users/MariaSolOs/received_events",
+        "repos_url": "https://api.github.com/users/MariaSolOs/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/MariaSolOs/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/MariaSolOs/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/MariaSolOs",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -141,9 +161,54 @@
                 "url": "https://api.github.com/users/utilyre",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "From [the spec](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#range): \"A range in a text document expressed as (zero-based) start and end positions. A range is comparable to a selection in an editor. **Therefore, the end position is exclusive.**\"\n\nI agree with @mfussenegger. If `start` == `end` and the end position is exclusive in the range, then no underline is the correct thing to do from our side.",
+            "created_at": "2025-08-17T02:42:54Z",
+            "html_url": "https://github.com/neovim/neovim/issues/25371#issuecomment-3194075279",
+            "id": 3194075279,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/25371",
+            "node_id": "IC_kwDOAPphoM6-YbiP",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3194075279/reactions"
+            },
+            "updated_at": "2025-08-17T02:42:54Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3194075279",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/62502207?v=4",
+                "events_url": "https://api.github.com/users/MariaSolOs/events{/privacy}",
+                "followers_url": "https://api.github.com/users/MariaSolOs/followers",
+                "following_url": "https://api.github.com/users/MariaSolOs/following{/other_user}",
+                "gists_url": "https://api.github.com/users/MariaSolOs/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/MariaSolOs",
+                "id": 62502207,
+                "login": "MariaSolOs",
+                "node_id": "MDQ6VXNlcjYyNTAyMjA3",
+                "organizations_url": "https://api.github.com/users/MariaSolOs/orgs",
+                "received_events_url": "https://api.github.com/users/MariaSolOs/received_events",
+                "repos_url": "https://api.github.com/users/MariaSolOs/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/MariaSolOs/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/MariaSolOs/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/MariaSolOs",
+                "user_view_type": "public"
+            }
         }
     ],
-    "comments": 3,
+    "comments": 4,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/25371/comments",
     "created_at": "2023-09-26T09:04:36Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/25371/events",
@@ -179,8 +244,8 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/25371/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "not_planned",
     "sub_issues_summary": {
         "completed": 0,
         "percent_completed": 0,
@@ -198,7 +263,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyr",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2025-07-02T08:37:10Z",
+    "updated_at": "2025-08-17T02:43:04Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/25371",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/91974155?v=4",

@@ -3,7 +3,7 @@
     "assignee": null,
     "assignees": [],
     "author_association": "MEMBER",
-    "body": "# Problem\n\n- There are various different ways of representing a position (e.g. `:help api-indexing`).\n    - https://github.com/neovim/neovim/issues/25272#issuecomment-1729294143\n- Comparing or reasoning about positions requires boilerplate / utility functions such as:\n    - [get_range_from_mark](https://github.com/neovim/neovim/pull/25301#discussion_r1334298996)\n    - [make_line_range_params](https://github.com/neovim/neovim/pull/25194#discussion_r1328985155)\n    - [compare_position](https://github.com/vscode-neovim/vscode-neovim/pull/1490/files#diff-356c71d28d1ad83654bec96ec39481938dd06e6589a05d781ed2ab028d9296b6R70-R84)\n    - `ui.lua:position_in_range()` https://github.com/neovim/neovim/pull/33500#discussion_r2049095231\n\nCopying @mfussenegger summary:\n\n> cursor/position related functions:\n> \n> * `vim.region(..., pos1, pos2, ...)`\n>   * pos1 & pos2: `integer[] (line, column)` `(0,0)` indexed byte positions\n> * `vim.inspect_pos(..., row, col, ...)` 0 based\n> * `vim.show_pos(..., row, col, ...)` 0 based\n> * `vim.highlight.range(... start, finish, ...)` - `{line, col}` tuple, doesn't mention if `(0, 0)` or something else?\n> * `vim.treesitter.get_node_text(node, ...)`\n> * `vim.fn.cursor(lnum, col, off)` `(1, 1)` - With `0` meaning stay in current line or column\n> * `vim.fn.getpos(expr)` - result is `[bufnr, lnum, col, off]` (1, 1) based;\n> * `vim.fn.getcurpos([{winid}])` like ^ but with an extra `curswant` in the result.\n> * `vim.fn.getline(lnum, end)` - 1 based\n> * `nvim_win_set_cursor(win, pos)` -  `pos` is `(row, col)` tuple  with `(1, 0)` indexing\n> * `nvim_win_get_cursor(win)` - Mirrors `nvim_win_set_cursor`\n> * `nvim_buf_get_lines(..., start, end, ...)` - 0 based, end-exclusive\n> * `nvim_buf_get_lines(..., start_row, start_col, end_row, end_col...)` - 0 based, row indices end-inclusive, column indices end-exclusive\n> \n> LSP structures:\n> \n> ```\n> Position\n>    line: integer 0 based\n>    character: integer 0 base  (but encoding dependent\n> ```\n> \n> ```\n> Range\n>     start: Position\n>     end: Position\n> ```\n\n# Proposal\n\nImplement `vim.pos` module for representing and working with normalized positions.\n\n- ✅ [#35109](https://github.com/neovim/neovim/pull/35109) `vim.pos(row, col)` creates a `vim.pos.Pos` position using \"normalized\" indexing (TBD).\n    - `vim.pos(expr: string)` takes a [getpos()-like expression](https://neovim.io/doc/user/builtin.html#line()).\n- `vim.pos.Pos` structure is defined as:\n  ```\n  vim.pos.Pos: {\n    kind?: 'mark' | 'extmark' | 'cursor' | ...\n    col: number\n    row: number\n    buf?: number -- Buffer id.\n\n    -- TODO: do we need these fields?\n    -- row_offset?: number\n    -- col_offset?: number\n    -- vcol?: number  -- virtual column\n    -- vrow?: number  -- virtual row\n  }\n  ```\n- `vim.pos.cmp()` compares positions (analogous to `vim.version.cmp()`)\n- `vim.pos.relative(kind:'cursor'|'editor'|'laststatus'|'mouse'|'tabline'|'win')` gets raw positions (exposes internals of `nvim_open_win(…,{relative=…})`\n- For integration with legacy interfaces it can _accept_ and _produce_ any kind of position. Interface proposal:\n  ```\n  vim.pos.mark(row,col)       -- Creates a position from a mark-like row/col.\n  vim.pos.extmark(row,col)    -- Creates a position from a extmark-like row/col.\n  vim.pos.cursor(row,col)     -- Creates a position from a cursor-like row/col.\n  vim.pos.mark(pos)           -- Converts `pos` to a mark-like position.\n  vim.pos.extmark(pos)        -- Converts `pos` to a extmark-like position.\n  vim.pos.cursor(pos)         -- Converts `pos` to a cursor-like position.\n  ```",
+    "body": "# Problem\n\n- There are various different ways of representing a position (e.g. `:help api-indexing`).\n    - https://github.com/neovim/neovim/issues/25272#issuecomment-1729294143\n- Comparing or reasoning about positions requires boilerplate / utility functions such as:\n    - [get_range_from_mark](https://github.com/neovim/neovim/pull/25301#discussion_r1334298996)\n    - [make_line_range_params](https://github.com/neovim/neovim/pull/25194#discussion_r1328985155)\n    - [compare_position](https://github.com/vscode-neovim/vscode-neovim/pull/1490/files#diff-356c71d28d1ad83654bec96ec39481938dd06e6589a05d781ed2ab028d9296b6R70-R84)\n    - `ui.lua:position_in_range()` https://github.com/neovim/neovim/pull/33500#discussion_r2049095231\n\nCopying @mfussenegger summary:\n\n> cursor/position related functions:\n> \n> * `vim.region(..., pos1, pos2, ...)`\n>   * pos1 & pos2: `integer[] (line, column)` `(0,0)` indexed byte positions\n> * `vim.inspect_pos(..., row, col, ...)` 0 based\n> * `vim.show_pos(..., row, col, ...)` 0 based\n> * `vim.highlight.range(... start, finish, ...)` - `{line, col}` tuple, doesn't mention if `(0, 0)` or something else?\n> * `vim.treesitter.get_node_text(node, ...)`\n> * `vim.fn.cursor(lnum, col, off)` `(1, 1)` - With `0` meaning stay in current line or column\n> * `vim.fn.getpos(expr)` - result is `[bufnr, lnum, col, off]` (1, 1) based;\n> * `vim.fn.getcurpos([{winid}])` like ^ but with an extra `curswant` in the result.\n> * `vim.fn.getline(lnum, end)` - 1 based\n> * `nvim_win_set_cursor(win, pos)` -  `pos` is `(row, col)` tuple  with `(1, 0)` indexing\n> * `nvim_win_get_cursor(win)` - Mirrors `nvim_win_set_cursor`\n> * `nvim_buf_get_lines(..., start, end, ...)` - 0 based, end-exclusive\n> * `nvim_buf_get_lines(..., start_row, start_col, end_row, end_col...)` - 0 based, row indices end-inclusive, column indices end-exclusive\n> \n> LSP structures:\n> \n> ```\n> Position\n>    line: integer 0 based\n>    character: integer 0 base  (but encoding dependent\n> ```\n> \n> ```\n> Range\n>     start: Position\n>     end: Position\n> ```\n\n# Proposal\n\nImplement `vim.pos` module for representing and working with normalized positions.\n\n- ✅ [#35109](https://github.com/neovim/neovim/pull/35109) `vim.pos(row, col)` creates a `vim.pos.Pos` position using \"normalized\" indexing (TBD).\n    - `vim.pos(expr: string)` takes a [getpos()-like expression](https://neovim.io/doc/user/builtin.html#line()).\n- `vim.pos.Pos` structure is defined as:\n  ```\n  vim.pos.Pos: {\n    kind?: 'mark' | 'extmark' | 'cursor' | ...\n    col: number\n    row: number\n    buf?: number -- Buffer id.\n\n    -- TODO: do we need these fields?\n    -- row_offset?: number\n    -- col_offset?: number\n    -- vcol?: number  -- virtual column\n    -- vrow?: number  -- virtual row\n  }\n  ```\n- `vim.pos.cmp()` compares positions (analogous to `vim.version.cmp()`)\n- `vim.pos.rel(kind:'cursor'|'editor'|'laststatus'|'mouse'|'tabline'|'win')` gets raw *relative* positions (exposes internals of `nvim_open_win(…,{relative=…})`\n- For integration with legacy interfaces it can _accept_ and _produce_ any kind of position. Interface proposal:\n  ```\n  vim.pos.lsp(pos)            -- Converts `pos` to a LSP position.\n  vim.pos.mark(row,col)       -- Creates a position from a mark-like row/col.\n  vim.pos.extmark(row,col)    -- Creates a position from a extmark-like row/col.\n  vim.pos.cursor(row,col)     -- Creates a position from a cursor-like row/col.\n  vim.pos.mark(pos)           -- Converts `pos` to a mark-like position.\n  vim.pos.extmark(pos)        -- Converts `pos` to a extmark-like position.\n  vim.pos.cursor(pos)         -- Converts `pos` to a cursor-like position.\n  ```",
     "closed_at": null,
     "closed_by": null,
     "comment_data": [
@@ -467,7 +467,7 @@
             "node_id": "IC_kwDOAPphoM6TJcwx",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 2,
+                "+1": 3,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -475,7 +475,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 2,
+                "total_count": 3,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2468727857/reactions"
             },
             "updated_at": "2024-11-11T17:49:53Z",
@@ -578,7 +578,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 734,
+        "closed_issues": 738,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -608,10 +608,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 635,
+        "open_issues": 629,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2025-08-03T21:37:35Z",
+        "updated_at": "2025-08-17T22:15:11Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM5y5-xc",
@@ -649,7 +649,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyv",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2025-08-03T15:56:51Z",
+    "updated_at": "2025-08-17T20:39:24Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/25509",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
