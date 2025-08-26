@@ -3,7 +3,7 @@
     "assignee": null,
     "assignees": [],
     "author_association": "MEMBER",
-    "body": "# Problem\r\n\r\n[vim.iter](https://neovim.io/doc/user/lua.html#vim.iter) is a general-purpose abstraction around all [iterable](https://neovim.io/doc/user/lua.html#iterable) concepts, so the old `vim.tbl_*` functions are mostly redundant.\r\n\r\n- many of them can/should be addressed by `vim.iter`\r\n- the rest are fundamental (\"language-level\") functions which can \"graduate\" by simply dropping the `tbl_` prefix\r\n\r\nNotes from @clason https://github.com/neovim/neovim/issues/23913#issuecomment-1576530394 : \r\n\r\n> * Anything that reasonably applies to **generic** iterators should go to `vim.iter`: `isempty`, `contains`, `count`, `spairs()` (as a flag to `vim.iter(table)`?), and all `list_*` methods.\r\n> * Anything that is specific for general (not purely list-like) tables should go to `vim.table` ... especially functions that _modify_ (increase) the table: `isarray`, `[deep_]extend`, `[deep_]copy` (clone), `keys`, `values`, `get`. \r\n>    * There's an efficient `insert` and `remove` functions from `treesitter/_fold` we could add (lewis6991), the former possibly replacing `list_extend`.\r\n> * `vim.table.pack` ... extend the whole `table` module so you can just do `local table = vim.table` and not worry about it?\r\n\r\n\r\n\r\n# Proposal\r\n\r\n## Graduate\r\n\r\n- [x] `vim.tbl_isarray()`: ([unreleased](https://github.com/neovim/neovim/commit/7caf0eafd83b5a92f2ff219b3a64ffae4174b9af)) rename to `vim.isarray(it: table|Iter)`\r\n- [x] `vim.tbl_islist()`: rename to `vim.islist()`\r\n- [ ] `vim.tbl_isempty()`: add `vim.empty(o: any)`\r\n    - Note: `Iter:next()` already works, but `tbl_isempty` is sugar for that...\r\n- [ ] `vim.tbl_get()`: add `vim.get(it: table|Iter)` [#24597](https://github.com/neovim/neovim/pull/24597)\r\n    - Note: works like `vim.get(t).a.b.c` instead of old `tbl_get(t, 'a', 'b', 'c')`\r\n- [ ] `vim.tbl_count()`: add `vim.len(o: any)`\r\n    - Note: `it:fold(0, function(acc,i) return acc + 1 end)`\r\n    - Note: do we need `Iter:__len()` ?\r\n\r\n## Remove\r\n\r\n- [x] `vim.tbl_add_reverse_lookup()`: [#24564](https://github.com/neovim/neovim/pull/24564) [#27639](https://github.com/neovim/neovim/pull/27639)\r\n- [x] `vim.tbl_flatten()`: [#28450](https://github.com/neovim/neovim/pull/28450)\r\n- [ ] `vim.tbl_map()`: redundant with `vim.iter():map():totable()`\r\n- [ ] `vim.tbl_filter()`: redundant with `vim.iter():filter():totable()`\r\n- [ ] `vim.tbl_contains()`: use `Iter:any()` instead.\r\n    - TODO: overload `Iter:any()` to accept a value instead of a predicate.\r\n- [ ] `vim.tbl_extend()` AND `vim.tbl_deep_extend()`: replace with `vim.merge(opt: nil|{deep=boolean, behavior=string}, ...)`\r\n    - https://github.com/neovim/neovim/pull/15124, improved [merge() in lazy.nvim](https://github.com/folke/lazy.nvim/blob/48b52b5cfcf8f88ed0aff8fde573a5cc20b1306d/lua/lazy/core/util.lua#L451)\r\n\r\n## Open questions\r\n\r\n- [ ] `vim.list_extend()`, `vim.tbl_extend()`: TBD, see also [#14544](https://github.com/neovim/neovim/issues/14544), improved [merge() in lazy.nvim](https://github.com/folke/lazy.nvim/blob/48b52b5cfcf8f88ed0aff8fde573a5cc20b1306d/lua/lazy/core/util.lua#L451)\r\n\r\nControversial / debatable:\r\n\r\n- [ ] `vim.tbl_keys()`: add `vim.keys(o: table|Iter)` ~~(or Iter:tolist('keys')?~~ [related](https://github.com/neovim/neovim/pull/24564#issuecomment-1666481111)\r\n- [ ] `vim.tbl_values()`: add `vim.values(o: table|Iter)` ~~(or Iter:tolist('values'))?~~\r\n\r\n# Plan\r\n\r\n- 0.10: soft deprecation: mark (most) `tbl_xx` functions as deprecated\r\n- 0.11: hard deprecation: `vim.deprecate` with one-time _warning_\r\n- 0.12: vim.deprecate w/ error",
+    "body": "# Problem\n\n[vim.iter](https://neovim.io/doc/user/lua.html#vim.iter) is a general-purpose abstraction around all [iterable](https://neovim.io/doc/user/lua.html#iterable) concepts, so the old `vim.tbl_*` functions are mostly redundant.\n\n- many of them can/should be addressed by `vim.iter`\n- or `vim.list`\n- the rest are fundamental (\"language-level\") functions which can \"graduate\" by simply dropping the `tbl_` prefix\n\nNotes from @clason https://github.com/neovim/neovim/issues/23913#issuecomment-1576530394 : \n\n> * Anything that reasonably applies to **generic** iterators should go to `vim.iter`: `isempty`, `contains`, `count`, `spairs()` (as a flag to `vim.iter(table)`?), and all `list_*` methods.\n> * Anything that is specific for general (not purely list-like) tables should go to `vim.table` ... especially functions that _modify_ (increase) the table: `isarray`, `[deep_]extend`, `[deep_]copy` (clone), `keys`, `values`, `get`. \n>    * There's an efficient `insert` and `remove` functions from `treesitter/_fold` we could add (lewis6991), the former possibly replacing `list_extend`.\n> * `vim.table.pack` ... extend the whole `table` module so you can just do `local table = vim.table` and not worry about it?\n\n\n\n# Proposal\n\n## Graduate\n\n- [x] `vim.tbl_isarray()`: ([unreleased](https://github.com/neovim/neovim/commit/7caf0eafd83b5a92f2ff219b3a64ffae4174b9af)) rename to `vim.isarray(it: table|Iter)`\n- [x] `vim.tbl_islist()`: rename to `vim.islist()`\n- [ ] `vim.tbl_isempty()`: add `vim.empty(o: any)`\n    - Note: `Iter:next()` already works, but `tbl_isempty` is sugar for that...\n- [ ] `vim.tbl_get()`: add `vim.get(it: table|Iter)` [#24597](https://github.com/neovim/neovim/pull/24597)\n    - Note: works like `vim.get(t).a.b.c` instead of old `tbl_get(t, 'a', 'b', 'c')`\n- [ ] `vim.tbl_count()`: add `vim.len(o: any)`\n    - Note: `it:fold(0, function(acc,i) return acc + 1 end)`\n    - Note: do we need `Iter:__len()` ?\n\n## Remove\n\n- [x] `vim.tbl_add_reverse_lookup()`: [#24564](https://github.com/neovim/neovim/pull/24564) [#27639](https://github.com/neovim/neovim/pull/27639)\n- [x] `vim.tbl_flatten()`: [#28450](https://github.com/neovim/neovim/pull/28450)\n- [ ] `vim.tbl_map()`: redundant with `vim.iter():map():totable()`\n- [ ] `vim.tbl_filter()`: redundant with `vim.iter():filter():totable()`\n- [ ] `vim.tbl_contains()`: use `Iter:any()` instead.\n    - TODO: overload `Iter:any()` to accept a value instead of a predicate.\n- [ ] `vim.tbl_extend()` AND `vim.tbl_deep_extend()`: replace with `vim.merge(opt: nil|{deep=boolean, behavior=string}, ...)`\n    - https://github.com/neovim/neovim/pull/15124, improved [merge() in lazy.nvim](https://github.com/folke/lazy.nvim/blob/48b52b5cfcf8f88ed0aff8fde573a5cc20b1306d/lua/lazy/core/util.lua#L451)\n\n## Open questions\n\n- [ ] `vim.list_extend()`, `vim.tbl_extend()`: TBD, see also [#14544](https://github.com/neovim/neovim/issues/14544), improved [merge() in lazy.nvim](https://github.com/folke/lazy.nvim/blob/48b52b5cfcf8f88ed0aff8fde573a5cc20b1306d/lua/lazy/core/util.lua#L451)\n\nControversial / debatable:\n\n- [ ] `vim.tbl_keys()`: add `vim.keys(o: table|Iter)` ~~(or Iter:tolist('keys')?~~ [related](https://github.com/neovim/neovim/pull/24564#issuecomment-1666481111)\n- [ ] `vim.tbl_values()`: add `vim.values(o: table|Iter)` ~~(or Iter:tolist('values'))?~~\n\n# Plan\n\n- 0.10: soft deprecation: mark (most) `tbl_xx` functions as deprecated\n- 0.11: hard deprecation: `vim.deprecate` with one-time _warning_\n- 0.12: vim.deprecate w/ error",
     "closed_at": null,
     "closed_by": null,
     "comment_data": [
@@ -456,14 +456,65 @@
                 "url": "https://api.github.com/users/justinmk",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "NONE",
+            "body": "@justinmk since `vim.list` namespace is being added, it would maybe be good to add a note to the description of this issue? similarly to how `vim.iter` and `vim.table` are already mentioned here",
+            "created_at": "2025-08-25T13:01:07Z",
+            "html_url": "https://github.com/neovim/neovim/issues/24572#issuecomment-3220176087",
+            "id": 3220176087,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/24572",
+            "node_id": "IC_kwDOAPphoM6_7_zX",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3220176087/reactions"
+            },
+            "updated_at": "2025-08-25T13:01:07Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3220176087",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/90346110?v=4",
+                "events_url": "https://api.github.com/users/bartbie/events{/privacy}",
+                "followers_url": "https://api.github.com/users/bartbie/followers",
+                "following_url": "https://api.github.com/users/bartbie/following{/other_user}",
+                "gists_url": "https://api.github.com/users/bartbie/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/bartbie",
+                "id": 90346110,
+                "login": "bartbie",
+                "node_id": "MDQ6VXNlcjkwMzQ2MTEw",
+                "organizations_url": "https://api.github.com/users/bartbie/orgs",
+                "received_events_url": "https://api.github.com/users/bartbie/received_events",
+                "repos_url": "https://api.github.com/users/bartbie/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/bartbie/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/bartbie/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/bartbie",
+                "user_view_type": "public"
+            }
         }
     ],
-    "comments": 10,
+    "comments": 11,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/24572/comments",
     "created_at": "2023-08-05T12:09:52Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/24572/events",
     "html_url": "https://github.com/neovim/neovim/issues/24572",
     "id": 1837729446,
+    "issue_dependencies_summary": {
+        "blocked_by": 0,
+        "blocking": 0,
+        "total_blocked_by": 0,
+        "total_blocking": 0
+    },
     "labels": [
         {
             "color": "c5def5",
@@ -488,7 +539,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 726,
+        "closed_issues": 738,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -518,10 +569,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 630,
+        "open_issues": 631,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2025-07-07T03:51:31Z",
+        "updated_at": "2025-08-26T02:25:08Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM5tiYam",
@@ -559,7 +610,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyv",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2025-07-02T08:58:04Z",
+    "updated_at": "2025-08-25T18:30:45Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/24572",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
