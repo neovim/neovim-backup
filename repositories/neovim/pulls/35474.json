@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6275,
-            "forks_count": 6275,
+            "forks": 6294,
+            "forks_count": 6294,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1988,
-            "open_issues_count": 1988,
+            "open_issues": 1994,
+            "open_issues_count": 1994,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -119,11 +119,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2025-08-25T23:24:21Z",
+            "pushed_at": "2025-09-02T02:10:04Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 339513,
+            "size": 340229,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 92240,
+            "stargazers_count": 92438,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -141,11 +141,11 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2025-08-26T02:19:53Z",
+            "updated_at": "2025-09-02T02:37:13Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 92240,
-            "watchers_count": 92240,
+            "watchers": 92438,
+            "watchers_count": 92438,
             "web_commit_signoff_required": false
         },
         "sha": "516363e6baa0329dac4b048526e3deadb0d580d0",
@@ -172,7 +172,7 @@
         }
     },
     "body": "Problem: various functions may return incorrect window numbers for unfocusable or hidden windows.\r\n\r\nSolution: fix the checks. Make sure current windows in non-current tabpages have a window number.\r\n\r\nFixes #35453\r\n\r\nSurprisingly fiddly to get this right, so hopefully I didn't screw anything up. :innocent: ",
-    "closed_at": null,
+    "closed_at": "2025-08-26T20:13:06Z",
     "comment_data": [
         {
             "_links": {
@@ -312,6 +312,76 @@
                 "url": "https://api.github.com/users/seandewar",
                 "user_view_type": "public"
             }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/35474#discussion_r2302066040"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/35474"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2302066040"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Vim bug fixed in [v9.1.1696](https://github.com/vim/vim/commit/7d6be2cead4e58356387b52ab9587c079a167775) :+1:",
+            "commit_id": "625476a61bcd2941f3fbde9345cbfb1d39c6fbe5",
+            "created_at": "2025-08-26T20:27:05Z",
+            "diff_hunk": "@@ -899,14 +900,53 @@ describe('float window', function()\n   end)\n \n   it('non-visible/focusable are not assigned a window number', function()\n-    local win = api.nvim_open_win(0, false, { relative = 'editor', width = 2, height = 2, row = 2, col = 2, focusable = false })\n+    command('tabnew')\n+    local tp = api.nvim_get_current_tabpage()\n+    local split_win = api.nvim_get_current_win()\n+    local float_buf = api.nvim_create_buf(true, true)\n+    local win = api.nvim_open_win(float_buf, false, { relative = 'editor', width = 2, height = 2, row = 2, col = 2, focusable = false })\n     api.nvim_open_win(0, false, { relative = 'editor', width = 2, height = 2, row = 2, col = 2, hide = true })\n     api.nvim_open_win(0, false, { relative = 'editor', width = 2, height = 2, row = 2, col = 2 })\n+\n     eq(2, fn.winnr('$'))\n     eq(0, fn.win_id2win(win))\n+    eq(0, fn.getwininfo(win)[1].winnr)\n+    eq(2, fn.tabpagewinnr(2, '$'))\n+    eq(0, fn.win_getid(3))\n+    eq(0, fn.win_getid(3, 2))\n+    eq(-1, fn.bufwinnr(float_buf))\n+    eq(win, fn.bufwinid(float_buf)) -- bufwinid unaffected.\n+    eq(nil, fn.winrestcmd():match('3resize'))\n+\n     -- Unless it is the current window.\n     api.nvim_set_current_win(win)\n-    eq({ 3, 3 }, { fn.winnr(), fn.win_id2win(win) })\n+    eq(3, fn.winnr('$'))\n+    eq(3, fn.winnr())\n+    eq(3, fn.win_id2win(win))\n+    eq(3, fn.getwininfo(win)[1].winnr)\n+    eq({ 2, 3 }, fn.win_id2tabwin(win))\n+    eq(3, fn.tabpagewinnr(2, '$'))\n+    eq(3, fn.tabpagewinnr(2))\n+    eq(win, fn.win_getid(3))\n+    eq(win, fn.win_getid(3, 2))\n+    eq(3, fn.bufwinnr(float_buf))\n+    matches('3resize', fn.winrestcmd())\n+\n+    -- When switching tabpages it should still have a winnr, as it's current in the other tabpage.\n+    command('tabfirst')\n+    eq({ 2, 3 }, fn.win_id2tabwin(win))\n+    eq(3, fn.getwininfo(win)[1].winnr)\n+    eq(win, fn.win_getid(3, 2))\n+    eq(3, fn.tabpagewinnr(2, '$'))\n+    eq(3, fn.tabpagewinnr(2))\n+\n+    -- ...but not if it's non-current in that tabpage.\n+    api.nvim_tabpage_set_win(tp, split_win)\n+    eq({ 0, 0 }, fn.win_id2tabwin(win))",
+            "html_url": "https://github.com/neovim/neovim/pull/35474#discussion_r2302066040",
+            "id": 2302066040,
+            "in_reply_to_id": 2297714886,
+            "line": 946,
+            "node_id": "PRRC_kwDOAPphoM6JNr14",
+            "original_commit_id": "2350dc89b9b0a9fda6c99fc2ae64be4d0231be02",
+            "original_line": 946,
+            "original_position": 56,
+            "original_start_line": null,
+            "path": "test/functional/ui/float_spec.lua",
+            "position": 57,
+            "pull_request_review_id": 3157204636,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/35474",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 1,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2302066040/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-08-26T20:27:06Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2302066040",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/6256228?v=4",
+                "events_url": "https://api.github.com/users/seandewar/events{/privacy}",
+                "followers_url": "https://api.github.com/users/seandewar/followers",
+                "following_url": "https://api.github.com/users/seandewar/following{/other_user}",
+                "gists_url": "https://api.github.com/users/seandewar/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/seandewar",
+                "id": 6256228,
+                "login": "seandewar",
+                "node_id": "MDQ6VXNlcjYyNTYyMjg=",
+                "organizations_url": "https://api.github.com/users/seandewar/orgs",
+                "received_events_url": "https://api.github.com/users/seandewar/received_events",
+                "repos_url": "https://api.github.com/users/seandewar/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/seandewar/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/seandewar/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/seandewar",
+                "user_view_type": "public"
+            }
         }
     ],
     "comment_regular_data": [],
@@ -409,9 +479,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/seandewar/neovim/pulls{/number}",
-            "pushed_at": "2025-08-25T20:02:02Z",
+            "pushed_at": "2025-08-26T20:27:54Z",
             "releases_url": "https://api.github.com/repos/seandewar/neovim/releases{/id}",
-            "size": 330835,
+            "size": 329191,
             "ssh_url": "git@github.com:seandewar/neovim.git",
             "stargazers_count": 1,
             "stargazers_url": "https://api.github.com/repos/seandewar/neovim/stargazers",
@@ -458,8 +528,8 @@
     "issue_url": "https://api.github.com/repos/neovim/neovim/issues/35474",
     "labels": [],
     "locked": false,
-    "merge_commit_sha": "a0c83c9d4cf6b9b65559da4b1ae47e8feeb1e62b",
-    "merged_at": null,
+    "merge_commit_sha": "1e1619de830ec64ec887911b444753486db63476",
+    "merged_at": "2025-08-26T20:13:06Z",
     "milestone": null,
     "node_id": "PR_kwDOAPphoM6lLtgw",
     "number": 35474,
@@ -468,10 +538,10 @@
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/35474/comments",
-    "state": "open",
+    "state": "closed",
     "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/625476a61bcd2941f3fbde9345cbfb1d39c6fbe5",
     "title": "fix(eval): fixups for winnrs of unfocusable/hidden windows",
-    "updated_at": "2025-08-25T10:47:48Z",
+    "updated_at": "2025-08-26T20:27:54Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/35474",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/6256228?v=4",
