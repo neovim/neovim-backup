@@ -3,7 +3,7 @@
     "assignee": null,
     "assignees": [],
     "author_association": "CONTRIBUTOR",
-    "body": "### Problem\n\n`vim.snippet.expand` does not support snippets such as `${1:$TM_FILENAME}`, `${1:${TM_FILENAME}}` and  `${1:${TM_FILENAME:placeholder}}`. (Looking at [the roadmap](https://github.com/neovim/neovim/issues/25696), I think that these should be supported under \"nested placeholders.\")\n\n### Steps to reproduce\n\n```\nnvim --clean foo.txt\n:lua vim.snippet.expand(\"$TM_FILENAME: ${1:$TM_FILENAME}\")\n```\n\nThis yields `foo.txt: |` (where `|` is the cursor), but it should yield `foo.txt: foo.txt` (with the second `foo.txt` selected).\n\n```\nnvim --clean foo.txt\n:lua vim.snippet.expand(\"$TM_FILENAME: ${1:${TM_SELECTED_BASE}}\")\n```\n\nThis yields `foo.txt: |` (where `|` is the cursor), but it should yield `foo.txt: foo` (with `foo` selected). (This one also seems to get neovim confused about when to consider the snippet finished. There's wonky behavior with tabbing.)\n\n\n```\nnvim --clean\n:lua vim.snippet.expand(\"$TM_FILENAME: ${1:${TM_FILENAME:placeholder}}\")\n```\n\nThis yields `: |` (where `|` is the cursor), but it should yield `: placeholder` (with `placeholder` selected). (This one has the same problem with tabbing as the second example.)\n\n\n### Expected behavior\n\nSee above in the steps to reproduce. (It seemed easier to interleave the examples and expectations.)\n\n### Neovim version (nvim -v)\n\n0.11.0-dev-165+g054a287db\n\n### Vim (not Nvim) behaves the same?\n\nNo such thing in vim\n\n### Operating system/version\n\nmacOS 14.5\n\n### Terminal name/version\n\nGhostty 237343f4\n\n### $TERM environment variable\n\nxterm-ghostty\n\n### Installation\n\nBuild from repo",
+    "body": "### Problem\n\n`vim.snippet.expand` does not support snippets such as `${1:$TM_FILENAME}`, `${1:${TM_FILENAME}}` and  `${1:${TM_FILENAME:placeholder}}`. (Looking at [the roadmap](https://github.com/neovim/neovim/issues/25696), I think that these should be supported under \"nested placeholders.\")\n\n### Steps to reproduce\n\n```\nnvim --clean foo.txt\n:lua vim.snippet.expand(\"$TM_FILENAME: ${1:$TM_FILENAME}\")\n```\n\nThis yields `foo.txt: |` (where `|` is the cursor), but it should yield `foo.txt: foo.txt` (with the second `foo.txt` selected).\n\n```\nnvim --clean foo.txt\n:lua vim.snippet.expand(\"$TM_FILENAME: ${1:${TM_FILENAME_BASE}}\")\n```\n\nThis yields `foo.txt: |` (where `|` is the cursor), but it should yield `foo.txt: foo` (with `foo` selected). (This one also seems to get neovim confused about when to consider the snippet finished. There's wonky behavior with tabbing.)\n\n\n```\nnvim --clean\n:lua vim.snippet.expand(\"$TM_FILENAME: ${1:${TM_FILENAME:placeholder}}\")\n```\n\nThis yields `: |` (where `|` is the cursor), but it should yield `: placeholder` (with `placeholder` selected). (This one has the same problem with tabbing as the second example.)\n\n\n### Expected behavior\n\nSee above in the steps to reproduce. (It seemed easier to interleave the examples and expectations.)\n\n### Neovim version (nvim -v)\n\n0.11.0-dev-165+g054a287db\n\n### Vim (not Nvim) behaves the same?\n\nNo such thing in vim\n\n### Operating system/version\n\nmacOS 14.5\n\n### Terminal name/version\n\nGhostty 237343f4\n\n### $TERM environment variable\n\nxterm-ghostty\n\n### Installation\n\nBuild from repo",
     "closed_at": null,
     "closed_by": null,
     "comment_data": [
@@ -51,14 +51,65 @@
                 "url": "https://api.github.com/users/powermosfet",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "@powermosfet I'm sorry to be coming back to this so late, but I'm working on this issue, and I realize that I don't know what your snippet should do.\n\n1. Where do you think that the cursor should start: on the first or the second $1?\n2. Do you think that the first $1 should have \"value\" as an initial placeholder because the second $1 does?\n3. Regardless of which $1 the cursor starts on, what should happen to the other $1 if you replace \"value\" with something else?\n4. What should happen to the other $1 if you replace you replace whatever is in the $1 you're on **after hitting tab**? (I.e., when you are at $2.)\n\nI just tested with VS Code and in that case, the answers are as follows.\n\n1. The cursor starts on the first $1.\n2. The first and second $1 both have \"value\" as a placeholder.\n3. If you change the first \"value\" to \"bye\" (before hitting tab), the second $1 changes to \"bye\" too.\n4. If you hit tab, the cursor doesn't move, but you are then at tabstop $2. If you then change the first \"bye\" to \"hi\", the second \"bye\" stays as is. I.e., the final text is `Debug.log \"hi\" bye`.\n\nI'm guessing you think that Neovim's snippets should do the same as VS Code does here. Is that correct? (Again, to be honest, it's not 100% clear to me what the spec says about all this. It wasn't obvious to me, but that may be my problem. That said, I also testing with a Neovim snippet plugin and got surprising results.)",
+            "created_at": "2025-09-07T13:51:23Z",
+            "html_url": "https://github.com/neovim/neovim/issues/29169#issuecomment-3263792314",
+            "id": 3263792314,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/29169",
+            "node_id": "IC_kwDOAPphoM7CiYS6",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3263792314/reactions"
+            },
+            "updated_at": "2025-09-07T14:02:43Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3263792314",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/62958?v=4",
+                "events_url": "https://api.github.com/users/telemachus/events{/privacy}",
+                "followers_url": "https://api.github.com/users/telemachus/followers",
+                "following_url": "https://api.github.com/users/telemachus/following{/other_user}",
+                "gists_url": "https://api.github.com/users/telemachus/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/telemachus",
+                "id": 62958,
+                "login": "telemachus",
+                "node_id": "MDQ6VXNlcjYyOTU4",
+                "organizations_url": "https://api.github.com/users/telemachus/orgs",
+                "received_events_url": "https://api.github.com/users/telemachus/received_events",
+                "repos_url": "https://api.github.com/users/telemachus/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/telemachus/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/telemachus/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/telemachus",
+                "user_view_type": "public"
+            }
         }
     ],
-    "comments": 1,
+    "comments": 2,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/29169/comments",
     "created_at": "2024-06-03T19:39:23Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/29169/events",
     "html_url": "https://github.com/neovim/neovim/issues/29169",
     "id": 2331899999,
+    "issue_dependencies_summary": {
+        "blocked_by": 0,
+        "blocking": 0,
+        "total_blocked_by": 0,
+        "total_blocking": 0
+    },
     "labels": [
         {
             "color": "C5DEF5",
@@ -74,7 +125,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 726,
+        "closed_issues": 741,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -104,17 +155,17 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 630,
+        "open_issues": 633,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2025-07-07T03:51:31Z",
+        "updated_at": "2025-09-08T22:10:01Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM6K_fhf",
     "number": 29169,
     "performed_via_github_app": null,
     "reactions": {
-        "+1": 5,
+        "+1": 6,
         "-1": 0,
         "confused": 0,
         "eyes": 2,
@@ -122,7 +173,7 @@
         "hooray": 0,
         "laugh": 0,
         "rocket": 0,
-        "total_count": 7,
+        "total_count": 8,
         "url": "https://api.github.com/repos/neovim/neovim/issues/29169/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
@@ -145,7 +196,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyv",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2025-07-04T09:27:16Z",
+    "updated_at": "2025-09-07T14:02:43Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/29169",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/62958?v=4",

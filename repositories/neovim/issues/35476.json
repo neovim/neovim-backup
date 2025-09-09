@@ -38,14 +38,14 @@
             "performed_via_github_app": null,
             "reactions": {
                 "+1": 0,
-                "-1": 1,
+                "-1": 2,
                 "confused": 0,
                 "eyes": 0,
                 "heart": 0,
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 1,
+                "total_count": 2,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3220247511/reactions"
             },
             "updated_at": "2025-08-25T13:21:21Z",
@@ -116,9 +116,54 @@
                 "url": "https://api.github.com/users/ofseed",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "NONE",
+            "body": "Using the newly merged pull request, I'm using this code to achieve this, it's a bit hacky but is doing the job until a plugin officially supports it or someone provides better code snippets:\n\n```lua\nlocal function accept_completion(item, mode)\n  local insert_text = item.insert_text\n  if type(insert_text) == \"string\" then\n    local range = item.range\n    if range then\n      local lines = vim.split(insert_text, \"\\n\")\n      local current_lines = vim.api.nvim_buf_get_text(\n        range.start.buf,\n        range.start.row,\n        range.start.col,\n        range.end_.row,\n        range.end_.col,\n        {}\n      )\n\n      if mode == \"word\" then\n        local row = 1\n        while row <= #lines and row <= #current_lines and lines[row] == current_lines[row] do\n          row = row + 1\n        end\n\n        local col = 1\n        while\n          row <= #lines\n          and col <= #lines[row]\n          and row <= #current_lines\n          and col <= #current_lines[row]\n          and lines[row][col] == current_lines[row][col]\n        do\n          col = col + 1\n        end\n\n        local word = string.match(lines[row]:sub(col), \"%s*[^%s]%w*\")\n        vim.print(\n          range.start.buf,\n          math.min(range.start.row + row - 1, range.end_.row),\n          row == #current_lines and math.min(range.start.col + col - 1, range.end_.col)\n          or math.min(col - 1, range.end_.col),\n          range.end_.row,\n          range.end_.col,\n          { word }\n        )\n\n        vim.api.nvim_buf_set_text(\n          range.start.buf,\n          math.min(range.start.row + row - 1, range.end_.row),\n          row <= #current_lines and (row == 1 and range.start.col + col - 1 or col - 1) or range.end_.col,\n          range.end_.row,\n          range.end_.col,\n          row <= #current_lines and { word } or { \"\", word }\n        )\n        local pos = item.range.start:to_cursor()\n        vim.api.nvim_win_set_cursor(vim.fn.bufwinid(range.start.buf), {\n          pos[1] + row - 1,\n          pos[2] + col - 1 + #lines[1] - 1,\n        })\n      else\n        vim.api.nvim_buf_set_text(\n          range.start.buf,\n          range.start.row,\n          range.start.col,\n          range.end_.row,\n          range.end_.col,\n          lines\n        )\n        local pos = item.range.start:to_cursor()\n        vim.api.nvim_win_set_cursor(vim.fn.bufwinid(range.start.buf), {\n          pos[1] + #lines - 1,\n          (#lines == 1 and pos[2] or 0) + #lines[#lines],\n        })\n      end\n    else\n      vim.api.nvim_paste(insert_text, false, 0)\n    end\n  elseif insert_text.kind == \"snippet\" then\n    vim.snippet.expand(insert_text.value)\n  end\n\n  -- Execute the command *after* inserting this completion.\n  if item.command then\n    local client = assert(vim.lsp.get_client_by_id(item.client_id))\n    client:exec_cmd(item.command, { bufnr = item.range.start.buf })\n  end\nend\n```\n\nyou can use it like this in the `LspAttach` autocmd:\n```lua\n    local opts = { noremap = true, silent = true, buffer = bufnr }\n\n    vim.keymap.set(\n      \"i\",\n      \"<c-x>\",\n      function()\n        local result = vim.lsp.inline_completion.get({\n          bufnr = bufnr,\n          on_accept = accept_completion,\n        })\n        if not result then\n          return \"<c-x>\"\n        end\n      end,\n      vim.tbl_extend(\"force\", opts, {\n        expr = true,\n        replace_keycodes = true,\n        desc = \"Get the current inline completion\",\n      })\n    )\n    vim.keymap.set(\n      \"i\",\n      \"<m-l>\",\n      function()\n        local result = vim.lsp.inline_completion.get({\n          bufnr = bufnr,\n          on_accept = function(item)\n            accept_completion(item, \"word\")\n          end,\n        })\n        if not result then\n          return \"<c-x>\"\n        end\n      end,\n      vim.tbl_extend(\"force\", opts, {\n        expr = true,\n        replace_keycodes = true,\n        desc = \"Get the current inline completion\",\n      })\n    )\n```\n\nSimple as that.™",
+            "created_at": "2025-09-02T13:07:19Z",
+            "html_url": "https://github.com/neovim/neovim/issues/35476#issuecomment-3245265729",
+            "id": 3245265729,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/35476",
+            "node_id": "IC_kwDOAPphoM7BbtNB",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3245265729/reactions"
+            },
+            "updated_at": "2025-09-02T13:09:29Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3245265729",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1270688?v=4",
+                "events_url": "https://api.github.com/users/sassanh/events{/privacy}",
+                "followers_url": "https://api.github.com/users/sassanh/followers",
+                "following_url": "https://api.github.com/users/sassanh/following{/other_user}",
+                "gists_url": "https://api.github.com/users/sassanh/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/sassanh",
+                "id": 1270688,
+                "login": "sassanh",
+                "node_id": "MDQ6VXNlcjEyNzA2ODg=",
+                "organizations_url": "https://api.github.com/users/sassanh/orgs",
+                "received_events_url": "https://api.github.com/users/sassanh/received_events",
+                "repos_url": "https://api.github.com/users/sassanh/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/sassanh/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/sassanh/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/sassanh",
+                "user_view_type": "public"
+            }
         }
     ],
-    "comments": 2,
+    "comments": 3,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/35476/comments",
     "created_at": "2025-08-25T13:17:52Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/35476/events",
@@ -179,7 +224,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyv",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2025-08-25T13:50:22Z",
+    "updated_at": "2025-09-02T13:09:29Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/35476",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/5817809?v=4",

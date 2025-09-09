@@ -45,7 +45,7 @@
         }
     ],
     "author_association": "MEMBER",
-    "body": "## Problem\n\nThe Big Unlock of https://github.com/neovim/neovim/issues/27811 is to avoid press-enter. That also means avoiding \"press q\". \n\nKey idea: no press-enter/press-q for mappings or commands, ever. Users that don't like this can enable the legacy press-enter behavior (which we can emulate with `vim._extui`, to a reasonable extent, at low cost).\n\nTo [review, the problems](https://github.com/neovim/neovim/issues/35013#issuecomment-3100853232) with the legacy press-enter behavior are:\n\n- It does not passthrough (at least) these keys: `g`, `b,` `k`, `u`, `<tab>`, `<space>`, and `<enter>`.\n- It moves the cursor.\n- It **blocks Nvim execution** (modal).\n\n## Expected behavior\n\nFor all kinds of \"pager\" output, the user should never get trapped in the pager (the \"more\" window). We can address this in phases, as follows. As we discover problems with each stage, we can move to the next stage.\n\n### Phase 1 (✅ done: #34679 #35028)\n\n(Try [this patch](https://github.com/neovim/neovim/issues/34281#issuecomment-3008453727) for a proof of concept) The pager should never be \"focused\" unless the user requests it via `g<`. Users need to get used to hitting `g<` to activate the pager. This includes all non-input message kinds, including `shell_cmd`, etc.\n\nFor example: when I use vim-fugitive `:Git commit`, I shouldn't have to exit the shell output. \n\n1. By default, show all lines up to the (currently hardcoded/fictional) 'messagesheight'\n    - if there are still truncated lines, add a `[+n]` at the end\n2. when that msg area disappears on user input (`on_key` handler), shrink to 'cmdheight' with `[+n]`.\n\n### Phase 2\n\n- Let the 'more' option control whether the pager is focused? (This will slightly change the purpose of the option.) \"Off\" by default.\n- Introduce a `'messagesheight'` (`'pagerheight'`?) option, instead of `'cmdheight'`. This controls the maximum height of text shown by default. The pager is still never focused by default, but output is shown up to 'messagesheight' and may overlay the current buffer. \n    - The user cursor position remains in whatever buffer they were in when they invoked a mapping/command that triggered output. \n    - The pager disappears on any kind of user input. It is not timer-based.\n    - As always, if 'messagesheight' didn't show enough, the user hits `g<` to opt-in to the full pager.\n\n### Phase 3\n\nWe may want to special-case \"interactive\" commands that were invoked via the `:` cmdline. Maybe it's expected and more ergonomic that `g<` is not required here. I hope we can avoid this, but we can consider this if necessary. This approach won't help users that are using third-party command-invocation plugins (but those plugins can easily call `g<` by default).",
+    "body": "## Problem\n\nThe Big Unlock of https://github.com/neovim/neovim/issues/27811 is to avoid press-enter. That also means avoiding \"press q\". \n\nKey idea: no press-enter/press-q for mappings or commands, ever. Users that don't like this can enable the legacy press-enter behavior (which we can emulate with `vim._extui`, to a reasonable extent, at low cost).\n\nTo [review, the problems](https://github.com/neovim/neovim/issues/35013#issuecomment-3100853232) with the legacy press-enter behavior are:\n\n- It does not passthrough (at least) these keys: `g`, `b,` `k`, `u`, `<tab>`, `<space>`, and `<enter>`.\n- It moves the cursor.\n- It **blocks Nvim execution** (modal).\n\n## Expected behavior\n\nFor all kinds of \"pager\" output, the user should never get trapped in the pager (the \"more\" window). We can address this in phases, as follows. As we discover problems with each stage, we can move to the next stage.\n\n### Phase 1 (✅ done: #34679 #35028)\n\n(Try [this patch](https://github.com/neovim/neovim/issues/34281#issuecomment-3008453727) for a proof of concept) The pager should never be \"focused\" unless the user requests it via `g<`. Users need to get used to hitting `g<` to activate the pager. This includes all non-input message kinds, including `shell_cmd`, etc.\n\nFor example: when I use vim-fugitive `:Git commit`, I shouldn't have to exit the shell output. \n\n1. By default, show all lines up to the (currently hardcoded/fictional) 'messagesheight'\n    - if there are still truncated lines, add a `[+n]` at the end\n2. when that msg area disappears on user input (`on_key` handler), shrink to 'cmdheight' with `[+n]`.\n\n### Phase 2\n\n- Let the 'more' option control whether the pager is focused? (This will slightly change the purpose of the option.) \"Off\" by default.\n    - Or the existing `messagesopt=hit-enter` flag?\n- Introduce a `'messagesheight'` (`'pagerheight'`?) option, instead of `'cmdheight'`. This controls the maximum height of text shown by default. The pager is still never focused by default, but output is shown up to 'messagesheight' and may overlay the current buffer. \n    - The user cursor position remains in whatever buffer they were in when they invoked a mapping/command that triggered output. \n    - The pager disappears on any kind of user input. It is not timer-based.\n    - As always, if 'messagesheight' didn't show enough, the user hits `g<` to opt-in to the full pager.\n\n### Phase 3\n\nWe may want to special-case \"interactive\" commands that were invoked via the `:` cmdline. Maybe it's expected and more ergonomic that `g<` is not required here. I hope we can avoid this, but we can consider this if necessary. This approach won't help users that are using third-party command-invocation plugins (but those plugins can easily call `g<` by default).",
     "closed_at": null,
     "closed_by": null,
     "comment_data": [
@@ -506,6 +506,12 @@
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/34281/events",
     "html_url": "https://github.com/neovim/neovim/issues/34281",
     "id": 3110178455,
+    "issue_dependencies_summary": {
+        "blocked_by": 0,
+        "blocking": 0,
+        "total_blocked_by": 0,
+        "total_blocking": 0
+    },
     "labels": [
         {
             "color": "c5def5",
@@ -528,7 +534,7 @@
         {
             "color": "C5DEF5",
             "default": false,
-            "description": "UI messages, log messages, errors, warnings, feedback",
+            "description": "UI messages, log messages, progress, errors, warnings, feedback",
             "id": 5637083595,
             "name": "messages",
             "node_id": "LA_kwDOAPphoM8AAAABT_8Ryw",
@@ -548,7 +554,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 102,
+        "closed_issues": 117,
         "created_at": "2024-05-16T14:11:54Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -572,31 +578,32 @@
             "user_view_type": "public"
         },
         "description": "",
-        "due_on": null,
+        "due_on": "2025-12-25T08:00:00Z",
         "html_url": "https://github.com/neovim/neovim/milestone/43",
         "id": 11063573,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/43/labels",
         "node_id": "MI_kwDOAPphoM4AqNEV",
         "number": 43,
-        "open_issues": 70,
+        "open_issues": 73,
         "state": "open",
         "title": "0.12",
-        "updated_at": "2025-07-28T15:26:14Z",
+        "updated_at": "2025-09-09T00:55:00Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/43"
     },
     "node_id": "I_kwDOAPphoM65YY6X",
     "number": 34281,
+    "parent_issue_url": "https://api.github.com/repos/neovim/neovim/issues/27811",
     "performed_via_github_app": null,
     "reactions": {
-        "+1": 12,
-        "-1": 1,
+        "+1": 14,
+        "-1": 0,
         "confused": 0,
         "eyes": 0,
-        "heart": 2,
+        "heart": 3,
         "hooray": 2,
         "laugh": 0,
         "rocket": 2,
-        "total_count": 19,
+        "total_count": 21,
         "url": "https://api.github.com/repos/neovim/neovim/issues/34281/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
@@ -619,7 +626,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyv",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2025-07-22T17:12:59Z",
+    "updated_at": "2025-09-06T19:17:32Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/34281",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
