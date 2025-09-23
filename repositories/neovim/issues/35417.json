@@ -4,8 +4,28 @@
     "assignees": [],
     "author_association": "CONTRIBUTOR",
     "body": "### Problem\n\nAssume we have attached two language servers both providing completion with single trigger characters `-` and `>` respectively. \n\nThen map `vim.keymap.set('i', '<A-.>', '->')`. \n\nWhen `->` is inserted from that keymap, then `>` doesn't act as a trigger character because `completion_timer` started for `-` is still alive. As the result, we get completion items from `ls1` only.\n\nhttps://github.com/neovim/neovim/blob/30dae87de4c6d6c8bda9657e22e187634cfa12a8/runtime/lua/vim/lsp/completion.lua#L572-L587\n\n\n### Steps to reproduce\n\n`init.lua`:\n````lua\nlocal function createServer(opts)\n  opts = opts or {}\n  local server = {}\n  server.messages = {}\n\n  function server.cmd(dispatchers)\n    local closing = false\n    local handlers = opts.handlers or {}\n    local srv = {}\n\n    function srv.request(method, params, callback)\n      table.insert(server.messages, {\n        method = method,\n        params = params,\n      })\n      local handler = handlers[method]\n      if handler then\n        handler(method, params, callback)\n      elseif method == 'initialize' then\n        callback(nil, {\n          capabilities = opts.capabilities or {},\n        })\n      elseif method == 'shutdown' then\n        callback(nil, nil)\n      end\n      local request_id = #server.messages\n      return true, request_id\n    end\n\n    function srv.notify(method, params)\n      table.insert(server.messages, {\n        method = method,\n        params = params,\n      })\n      if method == 'exit' then\n        dispatchers.on_exit(0, 15)\n      end\n    end\n\n    function srv.is_closing()\n      return closing\n    end\n\n    function srv.terminate()\n      closing = true\n    end\n\n    return srv\n  end\n\n  return server\nend\n\nlocal completionResultPhpactor = {\n  isIncomplete = false,\n  items = {\n    {\n      additionalTextEdits = {{\n        newText = 'use ReturnTypeWillChange;\\n',\n        range = {\n          ['end'] = {\n            character = 0,\n            line = 1\n          },\n          start = {\n            character = 0,\n            line = 1\n          }\n        },\n      }},\n      label = 'return',\n      insertText = 'return $1;$0',\n      kind = vim.lsp.protocol.CompletionItemKind.Keyword,\n      insertTextFormat = vim.lsp.protocol.InsertTextFormat.Snippet,\n      detail = 'Result from Phpactor',\n      sortText = '-255-return ',\n    },\n  },\n}\n\nlocal completionResultNullLs = {\n  isIncomplete = false,\n  items = {\n    {\n      label = '/**',\n      insertText = '/** ${1:hello} */',\n      insertTextFormat = 2,\n      kind = 15,\n      detail = 'Result from null-ls',\n    },\n  },\n}\n\nlocal function createServerWithCompletionProvider(completionResult, triggerCharacters)\n  return createServer({\n    capabilities = {\n      completionProvider = {\n        triggerCharacters = triggerCharacters\n      },\n    },\n    handlers = {\n      ['textDocument/completion'] = function (_, _, callback)\n        callback(nil, completionResult)\n      end,\n    },\n  })\nend\n\nlocal function startClient(name, completionResult, triggerCharacters)\n  vim.lsp.start({\n    name = name,\n    cmd = createServerWithCompletionProvider(completionResult, triggerCharacters).cmd,\n    on_attach = function (client, bufnr0)\n      vim.lsp.completion.enable(true, client.id, bufnr0, {autotrigger = true})\n      vim.keymap.set('i', '<A-.>', '->', {buffer = bufnr0})\n    end,\n  })\nend\n\nvim.o.completeopt = 'popup,menuone,noinsert,fuzzy'\nvim.fn.complete = vim.schedule_wrap(vim.fn.complete)\n\nvim.api.nvim_create_autocmd('UIEnter', {\n  callback = function ()\n    startClient('fake-null-ls', completionResultNullLs, {'-'})\n    startClient('fake-phpactor', completionResultPhpactor, {'>'})\n  end\n})\n````\n- `nvim -u init.lua`\n- in Insert mode see effects of typing `-`, `>`, `->` (manually) and `<A-.>`.\n\n### Expected behavior\n\nIn the repro: if `->` is typed from `<A-.>` mapping, only call to `fake-phpactor` should be triggered.\n\n### Nvim version (nvim -v)\n\nv0.12.0-dev-1050+g9467731865\n\n### Vim (not Nvim) behaves the same?\n\nn/a\n\n### Operating system/version\n\nDebian Sid\n\n### Terminal name/version\n\nalacritty\n\n### $TERM environment variable\n\nalacritty\n\n### Installation\n\nfrom repo",
-    "closed_at": null,
-    "closed_by": null,
+    "closed_at": "2025-09-17T16:07:47Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+        "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+        "followers_url": "https://api.github.com/users/justinmk/followers",
+        "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+        "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/justinmk",
+        "id": 1359421,
+        "login": "justinmk",
+        "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+        "organizations_url": "https://api.github.com/users/justinmk/orgs",
+        "received_events_url": "https://api.github.com/users/justinmk/received_events",
+        "repos_url": "https://api.github.com/users/justinmk/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -170,8 +190,8 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 289,
-        "created_at": "2014-11-26T22:13:11Z",
+        "closed_issues": 21,
+        "created_at": "2025-09-02T15:27:06Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
             "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
@@ -193,18 +213,18 @@
             "url": "https://api.github.com/users/justinmk",
             "user_view_type": "public"
         },
-        "description": "We don't plan to work on this, but will accept high quality contributions from someone who will own the feature and follow up on bug reports.",
+        "description": "",
         "due_on": null,
-        "html_url": "https://github.com/neovim/neovim/milestone/9",
-        "id": 881978,
-        "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/9/labels",
-        "node_id": "MDk6TWlsZXN0b25lODgxOTc4",
-        "number": 9,
-        "open_issues": 349,
+        "html_url": "https://github.com/neovim/neovim/milestone/53",
+        "id": 13605541,
+        "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/53/labels",
+        "node_id": "MI_kwDOAPphoM4Az5ql",
+        "number": 53,
+        "open_issues": 18,
         "state": "open",
-        "title": "needs-owner",
-        "updated_at": "2025-08-26T02:25:08Z",
-        "url": "https://api.github.com/repos/neovim/neovim/milestones/9"
+        "title": "0.11.5",
+        "updated_at": "2025-09-22T00:59:21Z",
+        "url": "https://api.github.com/repos/neovim/neovim/milestones/53"
     },
     "node_id": "I_kwDOAPphoM7HLyY4",
     "number": 35417,
@@ -222,8 +242,8 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/35417/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "sub_issues_summary": {
         "completed": 0,
         "percent_completed": 0,
@@ -241,7 +261,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyr",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2025-08-22T21:56:05Z",
+    "updated_at": "2025-09-17T16:09:21Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/35417",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/11404453?v=4",

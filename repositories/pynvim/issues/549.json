@@ -5,9 +5,10 @@
     "author_association": "NONE",
     "body": "```python\r\n    @pynvim.command('Scratch')\r\n    def cmd_scratch(self):\r\n        buffer = self.nvim.api.create_buf(False, True)\r\n        win = self.nvim.api.open_win(buffer, True, {'width':60,'height':5,'style':'minimal','relative':'editor','row':0,'col':0})\r\n        self.nvim.out_write(f'Scratch {buffer=} {win=}\\n')\r\n\r\n    @pynvim.autocmd('BufUnload', eval='+expand(\"<abuf>\")', sync=True)\r\n    def on_bufunload(self, buffer):\r\n        self.nvim.out_write(f'BufUnload {buffer=} {self.nvim.current.buffer.number=}\\n')\r\n```\r\n\r\nWhen I `:bdelete` the scratch buffer, the _BufUnload_ event fires and the callback receives the number of the newly focused buffer (i.e. the same as `nvim.current.buffer`, not the scratch buffer) in its `buffer` argument, from the `<abuf>` expansion.\r\nIIUC, the _BufUnload_ docs says `<abuf>` should hold the unloading buffer number (here, the scratch buffer). Am I doing something wrong or is that a bug?\r\n\r\n(This looks a lot like neovim/node-client#58.)",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
-            "author_association": "CONTRIBUTOR",
+            "author_association": "MEMBER",
             "body": "Looks like a bug. So in the first invocation a wrong buf number is passed, but in the consequent invocations it works correctly.\r\n\r\nSo the autocmd defined by the rplugin is:\r\n\r\n```\r\nBufUnload * call remote#define#request(4, \"/path/to/rplugin/python3/myplugin:autocmd:BufUnload:*\", eval(\"+expand(\\\r\n\"<abuf>\\\")\"))\r\n```\r\n\r\nHere a `rpcrequest` call should block until a response is received, and note that the evaluation of `expand(\"<abuf>\")` is done on the neovim client side (in the vimscript that calls the autocmd).\r\n\r\nBut in the first invocation when it is yet to be bootstrapped:\r\n```\r\nBufUnload *         call remote#define#AutocmdBootstrap(\"python3\", \"/path/to/rplugin/python3/myplugin:autocmd:BufUnload:*\"\r\n, v:true, \"BufUnload\", {'group': 'RPC_DEFINE_AUTOCMD_GROUP_2', 'pattern': '*', 'eval': '+expand(\"<abuf>\")'}, \"\\\"doau RPC_DEFINE_AUTOCMD_GROUP_2 BufUnload \\\".fnameesc\r\nape(expand(\\\"<amatch>\\\"))\")\r\n```\r\n\r\nIt looks like by the time the actual RPC request is made, the buffer is already gone and hence wrong buffer number is passed. I think this is a bug of neovim core (rplugin provider) rather than pynvim --- probably why node-client also suffers the same error.",
             "created_at": "2023-10-28T06:08:02Z",
             "html_url": "https://github.com/neovim/pynvim/issues/549#issuecomment-1783716532",
@@ -47,11 +48,12 @@
                 "starred_url": "https://api.github.com/users/wookayin/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/wookayin/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/wookayin"
+                "url": "https://api.github.com/users/wookayin",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "CONTRIBUTOR",
+            "author_association": "MEMBER",
             "body": "https://github.com/neovim/neovim/blob/master/runtime/autoload/remote/define.vim#L114\r\n\r\n```\r\neval(a:forward)\r\n```\r\nthis executes `doau RPC_DEFINE_AUTOCMD_GROUP_2 BufUnload` (i.e. no `<amatch>`, `<abuf>`) -- `<amatch>`, `<abuf>` cannot be expanded correctly due to a different (autocmd) execution context (i.e. during `doautocmd BufUnload`).",
             "created_at": "2023-10-28T06:17:52Z",
             "html_url": "https://github.com/neovim/pynvim/issues/549#issuecomment-1783718589",
@@ -91,7 +93,8 @@
                 "starred_url": "https://api.github.com/users/wookayin/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/wookayin/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/wookayin"
+                "url": "https://api.github.com/users/wookayin",
+                "user_view_type": "public"
             }
         }
     ],
@@ -101,17 +104,13 @@
     "events_url": "https://api.github.com/repos/neovim/pynvim/issues/549/events",
     "html_url": "https://github.com/neovim/pynvim/issues/549",
     "id": 1952768395,
-    "labels": [
-        {
-            "color": "f9d0c4",
-            "default": true,
-            "description": null,
-            "id": 97892276,
-            "name": "bug",
-            "node_id": "MDU6TGFiZWw5Nzg5MjI3Ng==",
-            "url": "https://api.github.com/repos/neovim/pynvim/labels/bug"
-        }
-    ],
+    "issue_dependencies_summary": {
+        "blocked_by": 0,
+        "blocking": 0,
+        "total_blocked_by": 0,
+        "total_blocking": 0
+    },
+    "labels": [],
     "labels_url": "https://api.github.com/repos/neovim/pynvim/issues/549/labels{/name}",
     "locked": false,
     "milestone": null,
@@ -133,9 +132,24 @@
     "repository_url": "https://api.github.com/repos/neovim/pynvim",
     "state": "open",
     "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/pynvim/issues/549/timeline",
     "title": "`<abuf>` is wrong for `BufUnload` with hidden buffer",
-    "updated_at": "2023-10-29T08:42:07Z",
+    "type": {
+        "color": "red",
+        "created_at": "2024-01-25T10:10:19Z",
+        "description": "An unexpected problem or behavior",
+        "id": 597163,
+        "is_enabled": true,
+        "name": "Bug",
+        "node_id": "IT_kwDOAGK_Pc4ACRyr",
+        "updated_at": "2024-07-26T10:12:30Z"
+    },
+    "updated_at": "2025-09-22T19:33:15Z",
     "url": "https://api.github.com/repos/neovim/pynvim/issues/549",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/2384790?v=4",
@@ -155,6 +169,7 @@
         "starred_url": "https://api.github.com/users/laomaiweng/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/laomaiweng/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/laomaiweng"
+        "url": "https://api.github.com/users/laomaiweng",
+        "user_view_type": "public"
     }
 }
