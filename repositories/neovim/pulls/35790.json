@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/35790"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/b4e8617714c760957832788d7e3fda989d6f64de"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/406f9e3c8c66be05bfa196ad589a385dea932920"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6332,
-            "forks_count": 6332,
+            "forks": 6343,
+            "forks_count": 6343,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1997,
-            "open_issues_count": 1997,
+            "open_issues": 1996,
+            "open_issues_count": 1996,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -119,11 +119,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2025-09-22T23:21:28Z",
+            "pushed_at": "2025-09-30T01:54:02Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 343564,
+            "size": 344511,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 92928,
+            "stargazers_count": 93098,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -141,14 +141,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2025-09-22T23:52:03Z",
+            "updated_at": "2025-09-30T01:54:08Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 92928,
-            "watchers_count": 92928,
+            "watchers": 93098,
+            "watchers_count": 93098,
             "web_commit_signoff_required": false
         },
-        "sha": "8ec562fe522a35e454634dbc96c8832f8bb2a1fb",
+        "sha": "42aae632beb064ebb35da81f13a665c47c0a8dbe",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -172,8 +172,147 @@
         }
     },
     "body": null,
-    "closed_at": null,
-    "comment_data": [],
+    "closed_at": "2025-09-26T05:10:24Z",
+    "comment_data": [
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/35790#discussion_r2374523368"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/35790"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2374523368"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Most of `op_yank()` is moved to `op_yank_reg()` in Nvim, so `op_yank_reg()` should be moved to register.c. And patch 8.1.2077 moved `yank_copy_line()` (which is only called by `op_yank()` in Vim or `op_yank_reg()` in Nvim) as well, but it isn't moved in this PR.",
+            "commit_id": "f63861b79f6f083f8cfa74022cfd1fb12d299309",
+            "created_at": "2025-09-24T06:11:11Z",
+            "diff_hunk": "@@ -2521,62 +1790,7 @@ int op_change(oparg_T *oap)\n   return retval;\n }\n \n-#if defined(EXITFREE)\n-void clear_registers(void)\n-{\n-  for (int i = 0; i < NUM_REGISTERS; i++) {\n-    free_register(&y_regs[i]);\n-  }\n-}\n-\n-#endif\n-\n-/// Free contents of yankreg `reg`.\n-/// Called for normal freeing and in case of error.\n-///\n-/// @param reg  must not be NULL (but `reg->y_array` might be)\n-void free_register(yankreg_T *reg)\n-  FUNC_ATTR_NONNULL_ALL\n-{\n-  XFREE_CLEAR(reg->additional_data);\n-  if (reg->y_array == NULL) {\n-    return;\n-  }\n-\n-  for (size_t i = reg->y_size; i-- > 0;) {  // from y_size - 1 to 0 included\n-    API_CLEAR_STRING(reg->y_array[i]);\n-  }\n-  XFREE_CLEAR(reg->y_array);\n-}\n-\n-/// Yanks the text between \"oap->start\" and \"oap->end\" into a yank register.\n-/// If we are to append (uppercase register), we first yank into a new yank\n-/// register and then concatenate the old and the new one.\n-/// Do not call this from a delete operation. Use op_yank_reg() instead.\n-///\n-/// @param oap operator arguments\n-/// @param message show message when more than `&report` lines are yanked.\n-/// @returns whether the operation register was writable.\n-bool op_yank(oparg_T *oap, bool message)\n-  FUNC_ATTR_NONNULL_ALL\n-{\n-  // check for read-only register\n-  if (oap->regname != 0 && !valid_yank_reg(oap->regname, true)) {\n-    beep_flush();\n-    return false;\n-  }\n-  if (oap->regname == '_') {\n-    return true;  // black hole: nothing to do\n-  }\n-\n-  yankreg_T *reg = get_yank_register(oap->regname, YREG_YANK);\n-  op_yank_reg(oap, message, reg, is_append_register(oap->regname));\n-  set_clipboard(oap->regname, reg);\n-  do_autocmd_textyankpost(oap, reg);\n-  return true;\n-}\n-\n-static void op_yank_reg(oparg_T *oap, bool message, yankreg_T *reg, bool append)\n+void op_yank_reg(oparg_T *oap, bool message, yankreg_T *reg, bool append)",
+            "html_url": "https://github.com/neovim/neovim/pull/35790#discussion_r2374523368",
+            "id": 2374523368,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM6NiFno",
+            "original_commit_id": "f63861b79f6f083f8cfa74022cfd1fb12d299309",
+            "original_line": 1793,
+            "original_position": 832,
+            "original_start_line": null,
+            "path": "src/nvim/ops.c",
+            "position": 1,
+            "pull_request_review_id": 3261166251,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/35790",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2374523368/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-09-24T06:11:18Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2374523368",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+                "followers_url": "https://api.github.com/users/zeertzjq/followers",
+                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/zeertzjq",
+                "id": 35768171,
+                "login": "zeertzjq",
+                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+                "repos_url": "https://api.github.com/users/zeertzjq/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/35790#discussion_r2377874004"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/35790"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2377874004"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "`copy_register()` was renamed from `get_register()` in edb13791bd6eda43ab3816c7697530b378680e61. `get_register()` was moved in patch 8.1.2077, so `copy_register()` should be moved to register.c.\r\n\r\nAlso, `format_reg_type()` was factored out from `yank_do_autocmd()` (now `do_autocmd_textyankpost()`) in c1487b9685fd6bb2640cc163152b7713e8e89e1e, so it should be moved along with `do_autocmd_textyankpost()`.",
+            "commit_id": "fbdc01b698e87f753d1e85781e219be7fa3e4f7b",
+            "created_at": "2025-09-25T06:19:22Z",
+            "diff_hunk": "@@ -715,150 +703,6 @@ static void block_insert(oparg_T *oap, const char *s, size_t slen, bool b_insert\n   }\n }\n \n-// Keep the last expression line here, for repeating.\n-static char *expr_line = NULL;\n-\n-/// Get an expression for the \"\\\"=expr1\" or \"CTRL-R =expr1\"\n-///\n-/// @return  '=' when OK, NUL otherwise.\n-int get_expr_register(void)\n-{\n-  char *new_line = getcmdline('=', 0, 0, true);\n-  if (new_line == NULL) {\n-    return NUL;\n-  }\n-  if (*new_line == NUL) {  // use previous line\n-    xfree(new_line);\n-  } else {\n-    set_expr_line(new_line);\n-  }\n-  return '=';\n-}\n-\n-/// Set the expression for the '=' register.\n-/// Argument must be an allocated string.\n-void set_expr_line(char *new_line)\n-{\n-  xfree(expr_line);\n-  expr_line = new_line;\n-}\n-\n-/// Get the result of the '=' register expression.\n-///\n-/// @return  a pointer to allocated memory, or NULL for failure.\n-char *get_expr_line(void)\n-{\n-  static int nested = 0;\n-\n-  if (expr_line == NULL) {\n-    return NULL;\n-  }\n-\n-  // Make a copy of the expression, because evaluating it may cause it to be\n-  // changed.\n-  char *expr_copy = xstrdup(expr_line);\n-\n-  // When we are invoked recursively limit the evaluation to 10 levels.\n-  // Then return the string as-is.\n-  if (nested >= 10) {\n-    return expr_copy;\n-  }\n-\n-  nested++;\n-  char *rv = eval_to_string(expr_copy, true, false);\n-  nested--;\n-  xfree(expr_copy);\n-  return rv;\n-}\n-\n-/// Get the '=' register expression itself, without evaluating it.\n-char *get_expr_line_src(void)\n-{\n-  if (expr_line == NULL) {\n-    return NULL;\n-  }\n-  return xstrdup(expr_line);\n-}\n-\n-/// @return  whether `regname` is a valid name of a yank register.\n-///\n-/// @note: There is no check for 0 (default register), caller should do this.\n-/// The black hole register '_' is regarded as valid.\n-///\n-/// @param regname name of register\n-/// @param writing allow only writable registers\n-bool valid_yank_reg(int regname, bool writing)\n-{\n-  if ((regname > 0 && ASCII_ISALNUM(regname))\n-      || (!writing && vim_strchr(\"/.%:=\", regname) != NULL)\n-      || regname == '#'\n-      || regname == '\"'\n-      || regname == '-'\n-      || regname == '_'\n-      || regname == '*'\n-      || regname == '+') {\n-    return true;\n-  }\n-  return false;\n-}\n-\n-/// @return yankreg_T to use, according to the value of `regname`.\n-/// Cannot handle the '_' (black hole) register.\n-/// Must only be called with a valid register name!\n-///\n-/// @param regname The name of the register used or 0 for the unnamed register\n-/// @param mode One of the following three flags:\n-///\n-/// `YREG_PASTE`:\n-/// Prepare for pasting the register `regname`. With no regname specified,\n-/// read from last written register, or from unnamed clipboard (depending on the\n-/// `clipboard=unnamed` option). Queries the clipboard provider if necessary.\n-///\n-/// `YREG_YANK`:\n-/// Preparare for yanking into `regname`. With no regname specified,\n-/// yank into `\"0` register. Update `y_previous` for next unnamed paste.\n-///\n-/// `YREG_PUT`:\n-/// Obtain the location that would be read when pasting `regname`.\n-yankreg_T *get_yank_register(int regname, int mode)\n-{\n-  yankreg_T *reg;\n-\n-  if ((mode == YREG_PASTE || mode == YREG_PUT)\n-      && get_clipboard(regname, &reg, false)) {\n-    // reg is set to clipboard contents.\n-    return reg;\n-  } else if (mode == YREG_PUT && (regname == '*' || regname == '+')) {\n-    // in case clipboard not available and we aren't actually pasting,\n-    // return an empty register\n-    static yankreg_T empty_reg = { .y_array = NULL };\n-    return &empty_reg;\n-  } else if (mode != YREG_YANK\n-             && (regname == 0 || regname == '\"' || regname == '*' || regname == '+')\n-             && y_previous != NULL) {\n-    // in case clipboard not available, paste from previous used register\n-    return y_previous;\n-  }\n-\n-  int i = op_reg_index(regname);\n-  // when not 0-9, a-z, A-Z or '-'/'+'/'*': use register 0\n-  if (i == -1) {\n-    i = 0;\n-  }\n-  reg = &y_regs[i];\n-\n-  if (mode == YREG_YANK) {\n-    // remember the written register for unnamed paste\n-    y_previous = reg;\n-  }\n-  return reg;\n-}\n-\n-static bool is_append_register(int regname)\n-{\n-  return ASCII_ISUPPER(regname);\n-}\n-\n /// @return  a copy of contents in register `name` for use in do_put. Should be\n ///          freed by caller.\n yankreg_T *copy_register(int name)",
+            "html_url": "https://github.com/neovim/neovim/pull/35790#discussion_r2377874004",
+            "id": 2377874004,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM6Nu3pU",
+            "original_commit_id": "8d0cf12374c516979e8ce53583fbe3710d647cc8",
+            "original_line": 708,
+            "original_position": 180,
+            "original_start_line": null,
+            "path": "src/nvim/ops.c",
+            "position": 1,
+            "pull_request_review_id": 3265941704,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/35790",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2377874004/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-09-25T06:34:42Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2377874004",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+                "followers_url": "https://api.github.com/users/zeertzjq/followers",
+                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/zeertzjq",
+                "id": 35768171,
+                "login": "zeertzjq",
+                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+                "repos_url": "https://api.github.com/users/zeertzjq/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
+            }
+        }
+    ],
     "comment_regular_data": [
         {
             "author_association": "MEMBER",
@@ -196,8 +335,53 @@
                 "total_count": 1,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3294643094/reactions"
             },
-            "updated_at": "2025-09-16T04:29:06Z",
+            "updated_at": "2025-09-25T05:53:50Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3294643094",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+                "followers_url": "https://api.github.com/users/zeertzjq/followers",
+                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/zeertzjq",
+                "id": 35768171,
+                "login": "zeertzjq",
+                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+                "repos_url": "https://api.github.com/users/zeertzjq/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "[Vim patch 8.2.2189](https://github.com/vim/vim/commit/032a2d050b82b146d70d6ff714838ee62c07d8ad) includes a comment change that depends on patch 8.1.2077:\r\n```diff\r\ncommit 032a2d050b82b146d70d6ff714838ee62c07d8ad\r\nAuthor: Bram Moolenaar <Bram@vim.org>\r\nDate:   Tue Dec 22 17:59:35 2020 +0100\r\n\r\n    patch 8.2.2189: cannot repeat a command that uses the small delete register\r\n    \r\n    Problem:    Cannot repeat a command that uses the small delete register.\r\n    Solution:   Store the register name instead of the contents. (Christian\r\n                Brabandt, closes #7527)\r\n\r\ndiff --git a/src/ops.c b/src/ops.c\r\nindex 53bd084ec..d8e96ff1a 100644\r\n--- a/src/ops.c\r\n+++ b/src/ops.c\r\n@@ -9,7 +9,7 @@\r\n \r\n /*\r\n  * ops.c: implementation of various operators: op_shift, op_delete, op_tilde,\r\n- *\t  op_change, op_yank, do_put, do_join\r\n+ *\t  op_change, op_yank, do_join\r\n  */\r\n \r\n #include \"vim.h\"\r\n```\r\n\r\nThis change wasn't included in b602fe74b075b5e3c4f095d907bed9abc98462f3, so I think it should be included here.",
+            "created_at": "2025-09-25T06:26:57Z",
+            "html_url": "https://github.com/neovim/neovim/pull/35790#issuecomment-3332367426",
+            "id": 3332367426,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/35790",
+            "node_id": "IC_kwDOAPphoM7Gn-RC",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3332367426/reactions"
+            },
+            "updated_at": "2025-09-26T03:18:18Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3332367426",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
                 "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
@@ -225,7 +409,7 @@
     "commits_url": "https://api.github.com/repos/neovim/neovim/pulls/35790/commits",
     "created_at": "2025-09-16T01:05:22Z",
     "diff_url": "https://github.com/neovim/neovim/pull/35790.diff",
-    "draft": true,
+    "draft": false,
     "head": {
         "label": "janlazo:vim-8.1.1989",
         "ref": "vim-8.1.1989",
@@ -315,9 +499,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/janlazo/neovim/pulls{/number}",
-            "pushed_at": "2025-09-22T01:50:15Z",
+            "pushed_at": "2025-09-30T01:59:17Z",
             "releases_url": "https://api.github.com/repos/janlazo/neovim/releases{/id}",
-            "size": 333016,
+            "size": 333833,
             "ssh_url": "git@github.com:janlazo/neovim.git",
             "stargazers_count": 3,
             "stargazers_url": "https://api.github.com/repos/janlazo/neovim/stargazers",
@@ -329,14 +513,14 @@
             "teams_url": "https://api.github.com/repos/janlazo/neovim/teams",
             "topics": [],
             "trees_url": "https://api.github.com/repos/janlazo/neovim/git/trees{/sha}",
-            "updated_at": "2025-09-22T01:50:22Z",
+            "updated_at": "2025-09-30T01:57:20Z",
             "url": "https://api.github.com/repos/janlazo/neovim",
             "visibility": "public",
             "watchers": 3,
             "watchers_count": 3,
             "web_commit_signoff_required": false
         },
-        "sha": "b4e8617714c760957832788d7e3fda989d6f64de",
+        "sha": "406f9e3c8c66be05bfa196ad589a385dea932920",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/8740057?v=4",
             "events_url": "https://api.github.com/users/janlazo/events{/privacy}",
@@ -374,8 +558,8 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "299a43bd822917dd45e707454b42505a6eed1b15",
-    "merged_at": null,
+    "merge_commit_sha": "a0c60e819df1b4d4ae5ac631d48e874fa1cf9b92",
+    "merged_at": "2025-09-26T05:10:24Z",
     "milestone": null,
     "node_id": "PR_kwDOAPphoM6ovjHn",
     "number": 35790,
@@ -384,10 +568,10 @@
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/35790/comments",
-    "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/b4e8617714c760957832788d7e3fda989d6f64de",
-    "title": "draft: vim-patch:8.1.2021",
-    "updated_at": "2025-09-17T03:34:04Z",
+    "state": "closed",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/406f9e3c8c66be05bfa196ad589a385dea932920",
+    "title": "vim-patch:8.1.{2021,2077}",
+    "updated_at": "2025-09-27T00:17:17Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/35790",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/8740057?v=4",

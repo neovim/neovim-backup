@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/35019"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/e2e10dd81ce79556d5297d29d8303e4381ae3a22"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/a95850d65f4d91cd08082468f5b50a9a2117d6c4"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6198,
-            "forks_count": 6198,
+            "forks": 6343,
+            "forks_count": 6343,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1970,
-            "open_issues_count": 1970,
+            "open_issues": 1996,
+            "open_issues_count": 1996,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -119,11 +119,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2025-07-21T05:18:47Z",
+            "pushed_at": "2025-09-30T01:54:02Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 334403,
+            "size": 344511,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 91287,
+            "stargazers_count": 93098,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -141,14 +141,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2025-07-22T03:04:19Z",
+            "updated_at": "2025-09-30T01:54:08Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 91287,
-            "watchers_count": 91287,
+            "watchers": 93098,
+            "watchers_count": 93098,
             "web_commit_signoff_required": false
         },
-        "sha": "ea2d226df6f344451306274f3f99911d459fb9dd",
+        "sha": "9da316fcc45c34ec47e95f50e28865c3ec3ba15b",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -200,7 +200,7 @@
             "original_position": 39,
             "original_start_line": 1513,
             "path": "src/nvim/ex_docmd.c",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 3037809710,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/35019",
             "reactions": {
@@ -240,6 +240,490 @@
                 "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
                 "type": "User",
                 "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/35019#discussion_r2387100213"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/35019"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2387100213"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Extracting this function seem to make code less readable, considering that it's just two function calls.",
+            "commit_id": "210ed2ff825fdc4679ef0eb78e08af23bdc19333",
+            "created_at": "2025-09-29T08:21:30Z",
+            "diff_hunk": "@@ -1480,6 +1480,38 @@ bool is_cmd_ni(cmdidx_T cmdidx)\n                                      || cmdnames[cmdidx].cmd_func == ex_script_ni);\n }\n \n+// Find the command name after skipping range specifiers.\n+static char *find_command_after_range(exarg_T *eap)\n+{\n+  char *cmd = eap->cmd;\n+  eap->cmd = skip_range(eap->cmd, NULL);\n+  if (*eap->cmd == '*') {\n+    eap->cmd = skipwhite(eap->cmd + 1);\n+  }\n+  char *p = find_ex_command(eap, NULL);\n+  eap->cmd = cmd;  // Restore original position for address parsing\n+  return p;\n+}\n+\n+// Set the forceit flag based on the presence of '!' after the command.\n+static void set_forceit_flag(exarg_T *eap, char **p)\n+{\n+  if (**p == '!' && eap->cmdidx != CMD_substitute\n+      && eap->cmdidx != CMD_smagic && eap->cmdidx != CMD_snomagic) {\n+    (*p)++;\n+    eap->forceit = true;\n+  } else {\n+    eap->forceit = false;\n+  }\n+}\n+\n+// Parse register designation and count values for the command.\n+static bool parse_register_and_count(exarg_T *eap, const char **errormsg, bool for_execution)\n+{\n+  parse_register(eap);\n+  return parse_count(eap, errormsg, for_execution) != FAIL;\n+}",
+            "html_url": "https://github.com/neovim/neovim/pull/35019#discussion_r2387100213",
+            "id": 2387100213,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM6OSEI1",
+            "original_commit_id": "b855c46e70df0bd1c5b19f2ee1a119ae3f4337c4",
+            "original_line": 1513,
+            "original_position": 34,
+            "original_start_line": 1508,
+            "path": "src/nvim/ex_docmd.c",
+            "position": 1,
+            "pull_request_review_id": 3278491601,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/35019",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2387100213/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2025-09-29T08:21:46Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2387100213",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+                "followers_url": "https://api.github.com/users/zeertzjq/followers",
+                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/zeertzjq",
+                "id": 35768171,
+                "login": "zeertzjq",
+                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+                "repos_url": "https://api.github.com/users/zeertzjq/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/35019#discussion_r2387126811"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/35019"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2387126811"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Okay reverted the extraction. revisit it during the future refactor 😊\r\n",
+            "commit_id": "210ed2ff825fdc4679ef0eb78e08af23bdc19333",
+            "created_at": "2025-09-29T08:32:09Z",
+            "diff_hunk": "@@ -1480,6 +1480,38 @@ bool is_cmd_ni(cmdidx_T cmdidx)\n                                      || cmdnames[cmdidx].cmd_func == ex_script_ni);\n }\n \n+// Find the command name after skipping range specifiers.\n+static char *find_command_after_range(exarg_T *eap)\n+{\n+  char *cmd = eap->cmd;\n+  eap->cmd = skip_range(eap->cmd, NULL);\n+  if (*eap->cmd == '*') {\n+    eap->cmd = skipwhite(eap->cmd + 1);\n+  }\n+  char *p = find_ex_command(eap, NULL);\n+  eap->cmd = cmd;  // Restore original position for address parsing\n+  return p;\n+}\n+\n+// Set the forceit flag based on the presence of '!' after the command.\n+static void set_forceit_flag(exarg_T *eap, char **p)\n+{\n+  if (**p == '!' && eap->cmdidx != CMD_substitute\n+      && eap->cmdidx != CMD_smagic && eap->cmdidx != CMD_snomagic) {\n+    (*p)++;\n+    eap->forceit = true;\n+  } else {\n+    eap->forceit = false;\n+  }\n+}\n+\n+// Parse register designation and count values for the command.\n+static bool parse_register_and_count(exarg_T *eap, const char **errormsg, bool for_execution)\n+{\n+  parse_register(eap);\n+  return parse_count(eap, errormsg, for_execution) != FAIL;\n+}",
+            "html_url": "https://github.com/neovim/neovim/pull/35019#discussion_r2387126811",
+            "id": 2387126811,
+            "in_reply_to_id": 2387100213,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM6OSKob",
+            "original_commit_id": "b855c46e70df0bd1c5b19f2ee1a119ae3f4337c4",
+            "original_line": 1513,
+            "original_position": 34,
+            "original_start_line": 1508,
+            "path": "src/nvim/ex_docmd.c",
+            "position": 1,
+            "pull_request_review_id": 3278529205,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/35019",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2387126811/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2025-09-29T08:32:10Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2387126811",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",
+                "events_url": "https://api.github.com/users/glepnir/events{/privacy}",
+                "followers_url": "https://api.github.com/users/glepnir/followers",
+                "following_url": "https://api.github.com/users/glepnir/following{/other_user}",
+                "gists_url": "https://api.github.com/users/glepnir/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/glepnir",
+                "id": 41671631,
+                "login": "glepnir",
+                "node_id": "MDQ6VXNlcjQxNjcxNjMx",
+                "organizations_url": "https://api.github.com/users/glepnir/orgs",
+                "received_events_url": "https://api.github.com/users/glepnir/received_events",
+                "repos_url": "https://api.github.com/users/glepnir/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/glepnir/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/glepnir/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/glepnir",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/35019#discussion_r2388133588"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/35019"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2388133588"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\nstatic char *find_excmd_after_range(exarg_T *eap)\n```",
+            "commit_id": "a95850d65f4d91cd08082468f5b50a9a2117d6c4",
+            "created_at": "2025-09-29T14:08:53Z",
+            "diff_hunk": "@@ -1480,6 +1480,31 @@ bool is_cmd_ni(cmdidx_T cmdidx)\n                                      || cmdnames[cmdidx].cmd_func == ex_script_ni);\n }\n \n+// Find the command name after skipping range specifiers.\n+static char *find_command_after_range(exarg_T *eap)",
+            "html_url": "https://github.com/neovim/neovim/pull/35019#discussion_r2388133588",
+            "id": 2388133588,
+            "line": 1484,
+            "node_id": "PRRC_kwDOAPphoM6OWAbU",
+            "original_commit_id": "a95850d65f4d91cd08082468f5b50a9a2117d6c4",
+            "original_line": 1484,
+            "original_position": 5,
+            "original_start_line": null,
+            "path": "src/nvim/ex_docmd.c",
+            "position": 5,
+            "pull_request_review_id": 3280062764,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/35019",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2388133588/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-09-29T14:08:53Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2388133588",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/35019#discussion_r2388141954"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/35019"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2388141954"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "do not drop useful information. this comment from the old code was a useful hint because it's not obvious that this has anything to do with \"modifiers\"\n \n```suggestion\n  // Save location after command modifiers.\n  char *cmd = eap->cmd;\n```",
+            "commit_id": "a95850d65f4d91cd08082468f5b50a9a2117d6c4",
+            "created_at": "2025-09-29T14:11:05Z",
+            "diff_hunk": "@@ -1480,6 +1480,31 @@ bool is_cmd_ni(cmdidx_T cmdidx)\n                                      || cmdnames[cmdidx].cmd_func == ex_script_ni);\n }\n \n+// Find the command name after skipping range specifiers.\n+static char *find_command_after_range(exarg_T *eap)\n+{\n+  char *cmd = eap->cmd;",
+            "html_url": "https://github.com/neovim/neovim/pull/35019#discussion_r2388141954",
+            "id": 2388141954,
+            "line": 1486,
+            "node_id": "PRRC_kwDOAPphoM6OWCeC",
+            "original_commit_id": "a95850d65f4d91cd08082468f5b50a9a2117d6c4",
+            "original_line": 1486,
+            "original_position": 7,
+            "original_start_line": null,
+            "path": "src/nvim/ex_docmd.c",
+            "position": 7,
+            "pull_request_review_id": 3280076058,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/35019",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2388141954/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-09-29T14:11:05Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2388141954",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/35019#discussion_r2388145129"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/35019"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2388145129"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\n  // We need the command name to know what kind of range it uses.\n```",
+            "commit_id": "a95850d65f4d91cd08082468f5b50a9a2117d6c4",
+            "created_at": "2025-09-29T14:11:53Z",
+            "diff_hunk": "@@ -1520,22 +1545,15 @@ bool parse_cmdline(char **cmdline, exarg_T *eap, CmdParseInfo *cmdinfo, const ch\n   }\n   after_modifier = eap->cmd;\n \n-  // Save location after command modifiers\n-  char *cmd = eap->cmd;\n-  // Skip ranges to find command name since we need the command to know what kind of range it uses\n-  eap->cmd = skip_range(eap->cmd, NULL);\n-  if (*eap->cmd == '*') {\n-    eap->cmd = skipwhite(eap->cmd + 1);\n-  }\n-  char *p = find_ex_command(eap, NULL);\n+  // Find command name after any range specification",
+            "html_url": "https://github.com/neovim/neovim/pull/35019#discussion_r2388145129",
+            "id": 2388145129,
+            "line": 1548,
+            "node_id": "PRRC_kwDOAPphoM6OWDPp",
+            "original_commit_id": "a95850d65f4d91cd08082468f5b50a9a2117d6c4",
+            "original_line": 1548,
+            "original_position": 44,
+            "original_start_line": null,
+            "path": "src/nvim/ex_docmd.c",
+            "position": 44,
+            "pull_request_review_id": 3280081405,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/35019",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2388145129/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-09-29T14:11:53Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2388145129",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/35019#discussion_r2388150411"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/35019"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2388150411"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\n    eap->forceit = false;  // :r! filter\n```",
+            "commit_id": "a95850d65f4d91cd08082468f5b50a9a2117d6c4",
+            "created_at": "2025-09-29T14:13:05Z",
+            "diff_hunk": "@@ -1557,31 +1575,19 @@ bool parse_cmdline(char **cmdline, exarg_T *eap, CmdParseInfo *cmdinfo, const ch\n   }\n \n   // Correctly set 'forceit' for commands\n-  if (*p == '!' && eap->cmdidx != CMD_substitute\n-      && eap->cmdidx != CMD_smagic && eap->cmdidx != CMD_snomagic) {\n-    p++;\n-    eap->forceit = true;\n-  } else {\n-    eap->forceit = false;\n-  }\n+  set_forceit_flag(eap, &p);\n \n   // Parse arguments.\n   if (!IS_USER_CMDIDX(eap->cmdidx)) {\n     eap->argt = cmdnames[(int)eap->cmdidx].cmd_argt;\n   }\n   // Skip to start of argument.\n   // Don't do this for the \":!\" command, because \":!! -l\" needs the space.\n-  if (eap->cmdidx == CMD_bang) {\n-    eap->arg = p;\n-  } else {\n-    eap->arg = skipwhite(p);\n-  }\n+  eap->arg = eap->cmdidx == CMD_bang ? p : skipwhite(p);\n \n   // Don't treat \":r! filter\" like a bang\n-  if (eap->cmdidx == CMD_read) {\n-    if (eap->forceit) {\n-      eap->forceit = false;                     // :r! filter\n-    }\n+  if (eap->cmdidx == CMD_read && eap->forceit) {\n+    eap->forceit = false;                     // :r! filter",
+            "html_url": "https://github.com/neovim/neovim/pull/35019#discussion_r2388150411",
+            "id": 2388150411,
+            "line": 1590,
+            "node_id": "PRRC_kwDOAPphoM6OWEiL",
+            "original_commit_id": "a95850d65f4d91cd08082468f5b50a9a2117d6c4",
+            "original_line": 1590,
+            "original_position": 89,
+            "original_start_line": null,
+            "path": "src/nvim/ex_docmd.c",
+            "position": 89,
+            "pull_request_review_id": 3280089020,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/35019",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2388150411/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-09-29T14:13:05Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2388150411",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/35019#discussion_r2388164624"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/35019"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2388164624"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "this name is a  bit misleading.\n\n```suggestion\nstatic void parse_bang(exarg_T *eap, char **p)\n```",
+            "commit_id": "a95850d65f4d91cd08082468f5b50a9a2117d6c4",
+            "created_at": "2025-09-29T14:17:17Z",
+            "diff_hunk": "@@ -1480,6 +1480,31 @@ bool is_cmd_ni(cmdidx_T cmdidx)\n                                      || cmdnames[cmdidx].cmd_func == ex_script_ni);\n }\n \n+// Find the command name after skipping range specifiers.\n+static char *find_command_after_range(exarg_T *eap)\n+{\n+  char *cmd = eap->cmd;\n+  eap->cmd = skip_range(eap->cmd, NULL);\n+  if (*eap->cmd == '*') {\n+    eap->cmd = skipwhite(eap->cmd + 1);\n+  }\n+  char *p = find_ex_command(eap, NULL);\n+  eap->cmd = cmd;  // Restore original position for address parsing\n+  return p;\n+}\n+\n+// Set the forceit flag based on the presence of '!' after the command.\n+static void set_forceit_flag(exarg_T *eap, char **p)",
+            "html_url": "https://github.com/neovim/neovim/pull/35019#discussion_r2388164624",
+            "id": 2388164624,
+            "line": 1497,
+            "node_id": "PRRC_kwDOAPphoM6OWIAQ",
+            "original_commit_id": "a95850d65f4d91cd08082468f5b50a9a2117d6c4",
+            "original_line": 1497,
+            "original_position": 18,
+            "original_start_line": null,
+            "path": "src/nvim/ex_docmd.c",
+            "position": 18,
+            "pull_request_review_id": 3280110189,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/35019",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2388164624/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-09-29T14:17:17Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2388164624",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
                 "user_view_type": "public"
             }
         }
@@ -339,9 +823,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/glepnir/neovim/pulls{/number}",
-            "pushed_at": "2025-07-21T12:31:43Z",
+            "pushed_at": "2025-09-29T10:46:18Z",
             "releases_url": "https://api.github.com/repos/glepnir/neovim/releases{/id}",
-            "size": 327156,
+            "size": 337462,
             "ssh_url": "git@github.com:glepnir/neovim.git",
             "stargazers_count": 2,
             "stargazers_url": "https://api.github.com/repos/glepnir/neovim/stargazers",
@@ -353,14 +837,14 @@
             "teams_url": "https://api.github.com/repos/glepnir/neovim/teams",
             "topics": [],
             "trees_url": "https://api.github.com/repos/glepnir/neovim/git/trees{/sha}",
-            "updated_at": "2025-07-20T00:36:49Z",
+            "updated_at": "2025-09-28T00:16:24Z",
             "url": "https://api.github.com/repos/glepnir/neovim",
             "visibility": "public",
             "watchers": 2,
             "watchers_count": 2,
             "web_commit_signoff_required": false
         },
-        "sha": "e2e10dd81ce79556d5297d29d8303e4381ae3a22",
+        "sha": "a95850d65f4d91cd08082468f5b50a9a2117d6c4",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",
             "events_url": "https://api.github.com/users/glepnir/events{/privacy}",
@@ -398,7 +882,7 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "ae533472ee064c9407a12c627dae22c408e1b87e",
+    "merge_commit_sha": "a3d4ae47c2937af4f82b76df8933b42c08de9411",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM6f0nl_",
@@ -409,9 +893,9 @@
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/35019/comments",
     "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/e2e10dd81ce79556d5297d29d8303e4381ae3a22",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/a95850d65f4d91cd08082468f5b50a9a2117d6c4",
     "title": "refactor: extract common logic from parse_cmdline and do_one_cmd",
-    "updated_at": "2025-07-21T12:31:44Z",
+    "updated_at": "2025-09-29T14:17:17Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/35019",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",

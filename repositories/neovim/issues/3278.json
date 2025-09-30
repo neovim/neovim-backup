@@ -2,12 +2,13 @@
     "active_lock_reason": null,
     "assignee": null,
     "assignees": [],
-    "author_association": "NONE",
+    "author_association": "CONTRIBUTOR",
     "body": "Current proposal:\n\n```\n                     hierarchical part\n          ┌──────────────────┴──────────────────┐\nterminal://username@localhost/usr/local/bin/bash:1234/path/cwd/?ls;echo foo;#optional-name\n└───┬───┘ └───┬───┘ └───┬───┘└─────────┬────────┘└─┬─┘└───┬────┘└────┬─────┘└─────┬─────┘\n scheme      user     host        path to shell    pid    cwd       query       fragment\n```\n\n@justinmk \n\n> > If you run term:ls or term:cmd it executes the command then leaves the shell\n> > Perhaps that behavior should be changed.\n\nI was thinking about this and I was wondering if there was a little overlap here with the `:term ls` command and the `:!ls` command since both execute the command and then leave the shell. \n",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "Why user and host? Also do not forget that path to shell may contain strings like `:1234`, though this is unlikely. I would suggest then\n\n```\nterm://[{user}@{host}][:{cwd}]//[{shell}+{shellcmdflag}+]{args}[#{pid}]\n```\n\n. The `{args}` part is tricky: it is a representation of the arguments _list_ which in some cases _will_ contain things like spaces, `//`, `:`, `+` and other characters. Suggested escaping scheme: separate arguments with `+`, urlencode `+`, `%` and `#` inside arguments, allow urlencoding anything inside arguments and `{shell}+{shellcmdflag}` part. `{cwd}` should never contain trailing directory separator.\n\n`user@host:`, `//{cwd}` and `#{pid}` parts may be omitted when terminal is opened by the user. `{&sh}+{&shcf}+` part is omitted _only_ when terminal is launched without using shell (e.g. `call termopen(['ls'])`, but not `call termopen('ls')`: basically every terminal described by this URI is opened using list syntax, just in case of `call termopen('ls')` `{args}` will be a single argument). After terminal was opened it is always renamed to the _full_ URI:\n\n```\nterm://{user}@{host}:{cwd}//{args}#{pid}\n```\n\nfor saving inside a session file. Still do not understand what’s the reason for `{user}` and `{host}`. `{pid}` may be replaced with `optional-name`, it is not relevant and serves the single purpose of making unique name.\n\nThis variant is mostly different from current scheme by changing meaning and encoding of `{args}` (note: the best thing is changing the encoding), location and meaning of `#{pid}` (only changes how it appears in regex and not anything else) and additions of `{user}@{host}`. `{args}` is the best part of it: currently `call termopen(['ls', '.'])` produces `term://.//{pid}:ls` which is not different from `:term ls`, even though latter is launched using shell and former contains additional argument.\n",
             "created_at": "2015-08-31T19:16:59Z",
             "html_url": "https://github.com/neovim/neovim/issues/3278#issuecomment-136473009",
@@ -47,11 +48,12 @@
                 "starred_url": "https://api.github.com/users/ZyX-I/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ZyX-I/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ZyX-I"
+                "url": "https://api.github.com/users/ZyX-I",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "# Reference Information:\n\nGeneric URI:\n`<scheme>:<hierarchical part>[?<query>][#<fragment>]`\n\nSSH URI:\n`ssh://[<user>[;fingerprint=<host-key fingerprint>]@]<host>[:<port>]`\n\nURI Docs:\n[RFC 3986](https://tools.ietf.org/html/rfc3986)\n[STD 66](http://tools.ietf.org/html/std66)\n\nUsing vim via SCP:\n`vim scp://remoteuser@server.tld//path/to/document`\n",
             "created_at": "2015-09-01T01:33:45Z",
             "html_url": "https://github.com/neovim/neovim/issues/3278#issuecomment-136546395",
@@ -91,11 +93,12 @@
                 "starred_url": "https://api.github.com/users/vito-c/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/vito-c/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/vito-c"
+                "url": "https://api.github.com/users/vito-c",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "I was thinking having the username and host would future proof the uri in case a feature was added that allowed the terminal command to start an ssh session. \n\nI was hoping we could group the pid with the shell information. As you mentioned the pid provides uniqueness. \n\n> `{pid}` may be replaced with optional-name, it is not relevant and serves the single purpose of making unique name.\n\nIf you made the pid optional and allow it to be replaced by `optional-name` then collisions will occur if two terminals are started with the same optional-name. \n\nI see your point though about possible `:1234` in the shell path. I think separation with a `:` was used because it felt natural to treat the numeric part the similar to how a port is treated.\n\nTreating the commands as a query to the shell also makes sense hence the `?` separation. @ZyX-I I think in your above examples the args were commands?\n\nI agree that the commands would need to be url encoded. \n\n`term://[{user}@{host}]:[{cwd}]//[{shell}+{shellcmdflag}+]//{pid}?{cmds}#{optional name}`\n",
             "created_at": "2015-09-01T01:34:47Z",
             "html_url": "https://github.com/neovim/neovim/issues/3278#issuecomment-136546490",
@@ -135,11 +138,12 @@
                 "starred_url": "https://api.github.com/users/vito-c/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/vito-c/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/vito-c"
+                "url": "https://api.github.com/users/vito-c",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "@vito-c I ignored the URI scheme because I see no sense in following it: this is NeoVim own format. `{args}` is _one_ command, because you _can’t_ use `:term` with more then one command. Basically this is a translation of `termopen()` call. For the same reason I am _not_ separating `{args}` from `{shell}+{shellcmdflag}`: if shell _is_ used it will be part of `{args}`, if shell is not it will not be there. I do not see where you can get `{cmds}`, NeoVim cannot track commands that are launched _after_ starting the shell, so `{cmds}` has no reason to exist.\n",
             "created_at": "2015-09-01T05:20:48Z",
             "html_url": "https://github.com/neovim/neovim/issues/3278#issuecomment-136589889",
@@ -179,7 +183,8 @@
                 "starred_url": "https://api.github.com/users/ZyX-I/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ZyX-I/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ZyX-I"
+                "url": "https://api.github.com/users/ZyX-I",
+                "user_view_type": "public"
             }
         },
         {
@@ -223,231 +228,12 @@
                 "starred_url": "https://api.github.com/users/bohrshaw/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/bohrshaw/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/bohrshaw"
+                "url": "https://api.github.com/users/bohrshaw",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "MEMBER",
-            "body": ">  I do not see where you can get {cmds}, NeoVim cannot track commands that are launched after starting the shell, so {cmds} has no reason to exist.\n\nCouldn't the backlog of the terminal be saved as views are, when sessions get saved? If I have a terminal named `terminal://whatever` and I save the session, then sourcing it could restore that. Just a thought. \n",
-            "created_at": "2015-09-01T16:24:55Z",
-            "html_url": "https://github.com/neovim/neovim/issues/3278#issuecomment-136781295",
-            "id": 136781295,
-            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/3278",
-            "node_id": "MDEyOklzc3VlQ29tbWVudDEzNjc4MTI5NQ==",
-            "performed_via_github_app": null,
-            "reactions": {
-                "+1": 0,
-                "-1": 0,
-                "confused": 0,
-                "eyes": 0,
-                "heart": 0,
-                "hooray": 0,
-                "laugh": 0,
-                "rocket": 0,
-                "total_count": 0,
-                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/136781295/reactions"
-            },
-            "updated_at": "2015-09-01T16:24:55Z",
-            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/136781295",
-            "user": {
-                "avatar_url": "https://avatars.githubusercontent.com/u/221465?v=4",
-                "events_url": "https://api.github.com/users/fmoralesc/events{/privacy}",
-                "followers_url": "https://api.github.com/users/fmoralesc/followers",
-                "following_url": "https://api.github.com/users/fmoralesc/following{/other_user}",
-                "gists_url": "https://api.github.com/users/fmoralesc/gists{/gist_id}",
-                "gravatar_id": "",
-                "html_url": "https://github.com/fmoralesc",
-                "id": 221465,
-                "login": "fmoralesc",
-                "node_id": "MDQ6VXNlcjIyMTQ2NQ==",
-                "organizations_url": "https://api.github.com/users/fmoralesc/orgs",
-                "received_events_url": "https://api.github.com/users/fmoralesc/received_events",
-                "repos_url": "https://api.github.com/users/fmoralesc/repos",
-                "site_admin": false,
-                "starred_url": "https://api.github.com/users/fmoralesc/starred{/owner}{/repo}",
-                "subscriptions_url": "https://api.github.com/users/fmoralesc/subscriptions",
-                "type": "User",
-                "url": "https://api.github.com/users/fmoralesc"
-            }
-        },
-        {
-            "author_association": "MEMBER",
-            "body": "> Couldn't the backlog of the terminal be saved as views are, when sessions get saved? If I have a terminal named terminal://whatever and I save the session, then sourcing it could restore that. Just a thought.\n\nFirst describe how are you going to get “backlog of the terminal” given loads of possibilities like aliases or bindings: e.g. I have zsh binding with `<C-r>+` lhs whose nature is easy to understand.\n\nAlso what’s the point of this when it can contain different interesting commands like `rf -rf *` (I _do_ use this, e.g. in `build` directory when switching compiler and/or CFLAGS) or `pip install --user foo` (possibly followed by `pip uninstall foo` in a different terminal).\n",
-            "created_at": "2015-09-01T20:20:33Z",
-            "html_url": "https://github.com/neovim/neovim/issues/3278#issuecomment-136849649",
-            "id": 136849649,
-            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/3278",
-            "node_id": "MDEyOklzc3VlQ29tbWVudDEzNjg0OTY0OQ==",
-            "performed_via_github_app": null,
-            "reactions": {
-                "+1": 0,
-                "-1": 0,
-                "confused": 0,
-                "eyes": 0,
-                "heart": 0,
-                "hooray": 0,
-                "laugh": 0,
-                "rocket": 0,
-                "total_count": 0,
-                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/136849649/reactions"
-            },
-            "updated_at": "2015-09-01T20:20:33Z",
-            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/136849649",
-            "user": {
-                "avatar_url": "https://avatars.githubusercontent.com/u/322097?v=4",
-                "events_url": "https://api.github.com/users/ZyX-I/events{/privacy}",
-                "followers_url": "https://api.github.com/users/ZyX-I/followers",
-                "following_url": "https://api.github.com/users/ZyX-I/following{/other_user}",
-                "gists_url": "https://api.github.com/users/ZyX-I/gists{/gist_id}",
-                "gravatar_id": "",
-                "html_url": "https://github.com/ZyX-I",
-                "id": 322097,
-                "login": "ZyX-I",
-                "node_id": "MDQ6VXNlcjMyMjA5Nw==",
-                "organizations_url": "https://api.github.com/users/ZyX-I/orgs",
-                "received_events_url": "https://api.github.com/users/ZyX-I/received_events",
-                "repos_url": "https://api.github.com/users/ZyX-I/repos",
-                "site_admin": false,
-                "starred_url": "https://api.github.com/users/ZyX-I/starred{/owner}{/repo}",
-                "subscriptions_url": "https://api.github.com/users/ZyX-I/subscriptions",
-                "type": "User",
-                "url": "https://api.github.com/users/ZyX-I"
-            }
-        },
-        {
-            "author_association": "MEMBER",
-            "body": "@ZyX-I I meant just the text available in the buffer, not the commands themselves. What would be the point in replaying that? But being able to review what happened in the previous session would be valuable.\n",
-            "created_at": "2015-09-01T20:23:44Z",
-            "html_url": "https://github.com/neovim/neovim/issues/3278#issuecomment-136850982",
-            "id": 136850982,
-            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/3278",
-            "node_id": "MDEyOklzc3VlQ29tbWVudDEzNjg1MDk4Mg==",
-            "performed_via_github_app": null,
-            "reactions": {
-                "+1": 0,
-                "-1": 0,
-                "confused": 0,
-                "eyes": 0,
-                "heart": 0,
-                "hooray": 0,
-                "laugh": 0,
-                "rocket": 0,
-                "total_count": 0,
-                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/136850982/reactions"
-            },
-            "updated_at": "2015-09-01T20:23:44Z",
-            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/136850982",
-            "user": {
-                "avatar_url": "https://avatars.githubusercontent.com/u/221465?v=4",
-                "events_url": "https://api.github.com/users/fmoralesc/events{/privacy}",
-                "followers_url": "https://api.github.com/users/fmoralesc/followers",
-                "following_url": "https://api.github.com/users/fmoralesc/following{/other_user}",
-                "gists_url": "https://api.github.com/users/fmoralesc/gists{/gist_id}",
-                "gravatar_id": "",
-                "html_url": "https://github.com/fmoralesc",
-                "id": 221465,
-                "login": "fmoralesc",
-                "node_id": "MDQ6VXNlcjIyMTQ2NQ==",
-                "organizations_url": "https://api.github.com/users/fmoralesc/orgs",
-                "received_events_url": "https://api.github.com/users/fmoralesc/received_events",
-                "repos_url": "https://api.github.com/users/fmoralesc/repos",
-                "site_admin": false,
-                "starred_url": "https://api.github.com/users/fmoralesc/starred{/owner}{/repo}",
-                "subscriptions_url": "https://api.github.com/users/fmoralesc/subscriptions",
-                "type": "User",
-                "url": "https://api.github.com/users/fmoralesc"
-            }
-        },
-        {
-            "author_association": "MEMBER",
-            "body": "@BohrShaw Do _not_ use `join(['cmd', 'arg1', 'arg2'])`. Each of the arguments (and the command itself, but this is rare*) can contain spaces, so you can’t distinguish between `join(['cmd', 'arg1 arg2'])` and `join(['cmd', 'arg1', 'arg2'])`. Using urlencode was suggested for this very reason: whatever will be the separator between arguments, it would be needed to escape it.\n\n\\* On windows this should be less rare due to names like `Program Files` in path when full paths are used for some reason.\n",
-            "created_at": "2015-09-01T20:23:53Z",
-            "html_url": "https://github.com/neovim/neovim/issues/3278#issuecomment-136851046",
-            "id": 136851046,
-            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/3278",
-            "node_id": "MDEyOklzc3VlQ29tbWVudDEzNjg1MTA0Ng==",
-            "performed_via_github_app": null,
-            "reactions": {
-                "+1": 0,
-                "-1": 0,
-                "confused": 0,
-                "eyes": 0,
-                "heart": 0,
-                "hooray": 0,
-                "laugh": 0,
-                "rocket": 0,
-                "total_count": 0,
-                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/136851046/reactions"
-            },
-            "updated_at": "2015-09-01T20:23:53Z",
-            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/136851046",
-            "user": {
-                "avatar_url": "https://avatars.githubusercontent.com/u/322097?v=4",
-                "events_url": "https://api.github.com/users/ZyX-I/events{/privacy}",
-                "followers_url": "https://api.github.com/users/ZyX-I/followers",
-                "following_url": "https://api.github.com/users/ZyX-I/following{/other_user}",
-                "gists_url": "https://api.github.com/users/ZyX-I/gists{/gist_id}",
-                "gravatar_id": "",
-                "html_url": "https://github.com/ZyX-I",
-                "id": 322097,
-                "login": "ZyX-I",
-                "node_id": "MDQ6VXNlcjMyMjA5Nw==",
-                "organizations_url": "https://api.github.com/users/ZyX-I/orgs",
-                "received_events_url": "https://api.github.com/users/ZyX-I/received_events",
-                "repos_url": "https://api.github.com/users/ZyX-I/repos",
-                "site_admin": false,
-                "starred_url": "https://api.github.com/users/ZyX-I/starred{/owner}{/repo}",
-                "subscriptions_url": "https://api.github.com/users/ZyX-I/subscriptions",
-                "type": "User",
-                "url": "https://api.github.com/users/ZyX-I"
-            }
-        },
-        {
-            "author_association": "MEMBER",
-            "body": "@fmoralesc MAXPATHL?\n\nIf it is needed to save the text, it needs to be saved somewhere else.\n",
-            "created_at": "2015-09-01T20:25:18Z",
-            "html_url": "https://github.com/neovim/neovim/issues/3278#issuecomment-136851501",
-            "id": 136851501,
-            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/3278",
-            "node_id": "MDEyOklzc3VlQ29tbWVudDEzNjg1MTUwMQ==",
-            "performed_via_github_app": null,
-            "reactions": {
-                "+1": 0,
-                "-1": 0,
-                "confused": 0,
-                "eyes": 0,
-                "heart": 0,
-                "hooray": 0,
-                "laugh": 0,
-                "rocket": 0,
-                "total_count": 0,
-                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/136851501/reactions"
-            },
-            "updated_at": "2015-09-01T20:25:18Z",
-            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/136851501",
-            "user": {
-                "avatar_url": "https://avatars.githubusercontent.com/u/322097?v=4",
-                "events_url": "https://api.github.com/users/ZyX-I/events{/privacy}",
-                "followers_url": "https://api.github.com/users/ZyX-I/followers",
-                "following_url": "https://api.github.com/users/ZyX-I/following{/other_user}",
-                "gists_url": "https://api.github.com/users/ZyX-I/gists{/gist_id}",
-                "gravatar_id": "",
-                "html_url": "https://github.com/ZyX-I",
-                "id": 322097,
-                "login": "ZyX-I",
-                "node_id": "MDQ6VXNlcjMyMjA5Nw==",
-                "organizations_url": "https://api.github.com/users/ZyX-I/orgs",
-                "received_events_url": "https://api.github.com/users/ZyX-I/received_events",
-                "repos_url": "https://api.github.com/users/ZyX-I/repos",
-                "site_admin": false,
-                "starred_url": "https://api.github.com/users/ZyX-I/starred{/owner}{/repo}",
-                "subscriptions_url": "https://api.github.com/users/ZyX-I/subscriptions",
-                "type": "User",
-                "url": "https://api.github.com/users/ZyX-I"
-            }
-        },
-        {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "@ZyX-I Sure, which is why I mentioned saving this data as views currently are now, in a special folder and under a name that can be associated to the buffer name. So if I have `terminal://whatever`, perhaps `.vim/terminal/log/whatever.log.0` can be used.\n",
             "created_at": "2015-09-01T20:27:50Z",
             "html_url": "https://github.com/neovim/neovim/issues/3278#issuecomment-136852110",
@@ -487,11 +273,12 @@
                 "starred_url": "https://api.github.com/users/fmoralesc/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/fmoralesc/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/fmoralesc"
+                "url": "https://api.github.com/users/fmoralesc",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "@fmoralesc I think that it is enough to just add a key to `termopen()` opts: `'backlog': {readfile()-style list of strings}`: everything else may be handled by a plugin which overrules `term://*` autocmd. And it should be easy to implement: when creating terminal before starting job run callbacks which will pipe the backlog to terminal stdout.\n\nBut this issue is about the URI.\n",
             "created_at": "2015-09-01T20:37:37Z",
             "html_url": "https://github.com/neovim/neovim/issues/3278#issuecomment-136854261",
@@ -531,99 +318,12 @@
                 "starred_url": "https://api.github.com/users/ZyX-I/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ZyX-I/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ZyX-I"
-            }
-        },
-        {
-            "author_association": "MEMBER",
-            "body": "@ZyX-I :+1: OK, let's focus ;)\n",
-            "created_at": "2015-09-01T20:39:33Z",
-            "html_url": "https://github.com/neovim/neovim/issues/3278#issuecomment-136854651",
-            "id": 136854651,
-            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/3278",
-            "node_id": "MDEyOklzc3VlQ29tbWVudDEzNjg1NDY1MQ==",
-            "performed_via_github_app": null,
-            "reactions": {
-                "+1": 0,
-                "-1": 0,
-                "confused": 0,
-                "eyes": 0,
-                "heart": 0,
-                "hooray": 0,
-                "laugh": 0,
-                "rocket": 0,
-                "total_count": 0,
-                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/136854651/reactions"
-            },
-            "updated_at": "2015-09-01T20:39:33Z",
-            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/136854651",
-            "user": {
-                "avatar_url": "https://avatars.githubusercontent.com/u/221465?v=4",
-                "events_url": "https://api.github.com/users/fmoralesc/events{/privacy}",
-                "followers_url": "https://api.github.com/users/fmoralesc/followers",
-                "following_url": "https://api.github.com/users/fmoralesc/following{/other_user}",
-                "gists_url": "https://api.github.com/users/fmoralesc/gists{/gist_id}",
-                "gravatar_id": "",
-                "html_url": "https://github.com/fmoralesc",
-                "id": 221465,
-                "login": "fmoralesc",
-                "node_id": "MDQ6VXNlcjIyMTQ2NQ==",
-                "organizations_url": "https://api.github.com/users/fmoralesc/orgs",
-                "received_events_url": "https://api.github.com/users/fmoralesc/received_events",
-                "repos_url": "https://api.github.com/users/fmoralesc/repos",
-                "site_admin": false,
-                "starred_url": "https://api.github.com/users/fmoralesc/starred{/owner}{/repo}",
-                "subscriptions_url": "https://api.github.com/users/fmoralesc/subscriptions",
-                "type": "User",
-                "url": "https://api.github.com/users/fmoralesc"
+                "url": "https://api.github.com/users/ZyX-I",
+                "user_view_type": "public"
             }
         },
         {
             "author_association": "CONTRIBUTOR",
-            "body": "@ZyX-I I wrote `join(['cmd', 'cmdflag', 'args'])` as a prototype to say what the buffer name should include. But you pointed out the actual reason why currently only `cmd` is included in the URI.\n",
-            "created_at": "2015-09-01T22:44:56Z",
-            "html_url": "https://github.com/neovim/neovim/issues/3278#issuecomment-136884037",
-            "id": 136884037,
-            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/3278",
-            "node_id": "MDEyOklzc3VlQ29tbWVudDEzNjg4NDAzNw==",
-            "performed_via_github_app": null,
-            "reactions": {
-                "+1": 0,
-                "-1": 0,
-                "confused": 0,
-                "eyes": 0,
-                "heart": 0,
-                "hooray": 0,
-                "laugh": 0,
-                "rocket": 0,
-                "total_count": 0,
-                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/136884037/reactions"
-            },
-            "updated_at": "2015-09-01T22:44:56Z",
-            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/136884037",
-            "user": {
-                "avatar_url": "https://avatars.githubusercontent.com/u/1585463?v=4",
-                "events_url": "https://api.github.com/users/bohrshaw/events{/privacy}",
-                "followers_url": "https://api.github.com/users/bohrshaw/followers",
-                "following_url": "https://api.github.com/users/bohrshaw/following{/other_user}",
-                "gists_url": "https://api.github.com/users/bohrshaw/gists{/gist_id}",
-                "gravatar_id": "",
-                "html_url": "https://github.com/bohrshaw",
-                "id": 1585463,
-                "login": "bohrshaw",
-                "node_id": "MDQ6VXNlcjE1ODU0NjM=",
-                "organizations_url": "https://api.github.com/users/bohrshaw/orgs",
-                "received_events_url": "https://api.github.com/users/bohrshaw/received_events",
-                "repos_url": "https://api.github.com/users/bohrshaw/repos",
-                "site_admin": false,
-                "starred_url": "https://api.github.com/users/bohrshaw/starred{/owner}{/repo}",
-                "subscriptions_url": "https://api.github.com/users/bohrshaw/subscriptions",
-                "type": "User",
-                "url": "https://api.github.com/users/bohrshaw"
-            }
-        },
-        {
-            "author_association": "NONE",
             "body": "## Workaround For Terminal Name Removal:\n\nQuick side not for those who are looking for an easy way to key their current terminals via a names in the buffer. @BohrShaw \n\n```\ncall termopen('bash;#foo')\ncall termopen('bash;#bar')\n```\n\nUsing a bash comment will at least give you more useful buffer names. \n\nWhich gives me an idea why don't we just add `#` and then `optional-name` to the end of the commands? That would be easy to implement and executing `#optional-name` in the shell is a comment... though I'm not sure that would work across different shell implementations  \n\nLet's clarify our expectations please let me know if these are correct or if you want me to add to them.\n\n## Expectations:\n\nUsing Just the URI & vim's session\n1. The shell should be able to be restarted with the correct flags\n2. The initial command set passed to the shell should be able to be invoked\n3. The buffer name should be unique\n4. There should be a way to add a easily human readable name.\n\n@ZyX-I \n\n> I ignored the URI scheme because I see no sense in following it: this is NeoVim own format. {args} is one command, because you can’t use :term with more then one command. Basically this is a translation of termopen() call. For the same reason I am not separating {args} from {shell}+{shellcmdflag}: if shell is used it will be part of {args}, if shell is not it will not be there. I do not see where you can get {cmds}, NeoVim cannot track commands that are launched after starting the shell, so {cmds} has no reason to exist.\n\nWell the URI is a good standard to follow. It will be easier for people to figure out what is going on and is a standard already used inside vim (see the scp file edit above). The point of the {cmds} is to separate the arguments passed to the shell when it is started from the initial commands that are run after the shell has begun. For example if I start the bash shell with `--rcfile` and run the command top\n\nI think we could make username@hostname optional but I would like to see it included. I was thinking a little bit more and had some ideas for features. Imagine calling `termopen(['ssh','remoteuser@server.tld', 'ls'])` and then you `gf` on a file name in the buffer and the file is opened in your current neovim session via `scp://remoteuser@server.tld//path/to/document` then you have your local vim setup with all your vimscripts ready to edit the file.\n",
             "created_at": "2015-09-02T14:35:47Z",
             "html_url": "https://github.com/neovim/neovim/issues/3278#issuecomment-137105155",
@@ -663,95 +363,8 @@
                 "starred_url": "https://api.github.com/users/vito-c/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/vito-c/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/vito-c"
-            }
-        },
-        {
-            "author_association": "NONE",
-            "body": "this also works `:terminal bash \\# some name` and `:term  bash \\# foo`\n",
-            "created_at": "2015-12-15T05:22:43Z",
-            "html_url": "https://github.com/neovim/neovim/issues/3278#issuecomment-164648005",
-            "id": 164648005,
-            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/3278",
-            "node_id": "MDEyOklzc3VlQ29tbWVudDE2NDY0ODAwNQ==",
-            "performed_via_github_app": null,
-            "reactions": {
-                "+1": 0,
-                "-1": 0,
-                "confused": 0,
-                "eyes": 0,
-                "heart": 0,
-                "hooray": 0,
-                "laugh": 0,
-                "rocket": 0,
-                "total_count": 0,
-                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/164648005/reactions"
-            },
-            "updated_at": "2015-12-15T05:23:07Z",
-            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/164648005",
-            "user": {
-                "avatar_url": "https://avatars.githubusercontent.com/u/820137?v=4",
-                "events_url": "https://api.github.com/users/vito-c/events{/privacy}",
-                "followers_url": "https://api.github.com/users/vito-c/followers",
-                "following_url": "https://api.github.com/users/vito-c/following{/other_user}",
-                "gists_url": "https://api.github.com/users/vito-c/gists{/gist_id}",
-                "gravatar_id": "",
-                "html_url": "https://github.com/vito-c",
-                "id": 820137,
-                "login": "vito-c",
-                "node_id": "MDQ6VXNlcjgyMDEzNw==",
-                "organizations_url": "https://api.github.com/users/vito-c/orgs",
-                "received_events_url": "https://api.github.com/users/vito-c/received_events",
-                "repos_url": "https://api.github.com/users/vito-c/repos",
-                "site_admin": false,
-                "starred_url": "https://api.github.com/users/vito-c/starred{/owner}{/repo}",
-                "subscriptions_url": "https://api.github.com/users/vito-c/subscriptions",
-                "type": "User",
-                "url": "https://api.github.com/users/vito-c"
-            }
-        },
-        {
-            "author_association": "NONE",
-            "body": "there is also apparently `:file SomeName` which renames the terminal buffer to be a friendly name. I wonder if there was any side effects with that.\n",
-            "created_at": "2015-12-15T08:29:26Z",
-            "html_url": "https://github.com/neovim/neovim/issues/3278#issuecomment-164682826",
-            "id": 164682826,
-            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/3278",
-            "node_id": "MDEyOklzc3VlQ29tbWVudDE2NDY4MjgyNg==",
-            "performed_via_github_app": null,
-            "reactions": {
-                "+1": 3,
-                "-1": 0,
-                "confused": 0,
-                "eyes": 0,
-                "heart": 1,
-                "hooray": 1,
-                "laugh": 0,
-                "rocket": 1,
-                "total_count": 6,
-                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/164682826/reactions"
-            },
-            "updated_at": "2015-12-15T08:29:26Z",
-            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/164682826",
-            "user": {
-                "avatar_url": "https://avatars.githubusercontent.com/u/820137?v=4",
-                "events_url": "https://api.github.com/users/vito-c/events{/privacy}",
-                "followers_url": "https://api.github.com/users/vito-c/followers",
-                "following_url": "https://api.github.com/users/vito-c/following{/other_user}",
-                "gists_url": "https://api.github.com/users/vito-c/gists{/gist_id}",
-                "gravatar_id": "",
-                "html_url": "https://github.com/vito-c",
-                "id": 820137,
-                "login": "vito-c",
-                "node_id": "MDQ6VXNlcjgyMDEzNw==",
-                "organizations_url": "https://api.github.com/users/vito-c/orgs",
-                "received_events_url": "https://api.github.com/users/vito-c/received_events",
-                "repos_url": "https://api.github.com/users/vito-c/repos",
-                "site_admin": false,
-                "starred_url": "https://api.github.com/users/vito-c/starred{/owner}{/repo}",
-                "subscriptions_url": "https://api.github.com/users/vito-c/subscriptions",
-                "type": "User",
-                "url": "https://api.github.com/users/vito-c"
+                "url": "https://api.github.com/users/vito-c",
+                "user_view_type": "public"
             }
         },
         {
@@ -795,7 +408,8 @@
                 "starred_url": "https://api.github.com/users/adigitoleo/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/adigitoleo/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/adigitoleo"
+                "url": "https://api.github.com/users/adigitoleo",
+                "user_view_type": "public"
             }
         },
         {
@@ -839,16 +453,68 @@
                 "starred_url": "https://api.github.com/users/ernstwi/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ernstwi/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ernstwi"
+                "url": "https://api.github.com/users/ernstwi",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "We can still plan to implement an improved URI, but meanwhile:\n\n- https://github.com/neovim/neovim/pull/35951 sets the command+args as a JSON array, instead of the currently (very fragile) space-separated format. \n    - Note that this will \"break\" the `call termopen('bash;#foo')` [workaround](https://github.com/neovim/neovim/issues/3278#issuecomment-137105155). \n\n",
+            "created_at": "2025-09-29T21:49:00Z",
+            "html_url": "https://github.com/neovim/neovim/issues/3278#issuecomment-3349170701",
+            "id": 3349170701,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/3278",
+            "node_id": "IC_kwDOAPphoM7HoEoN",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3349170701/reactions"
+            },
+            "updated_at": "2025-09-29T22:35:30Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3349170701",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         }
     ],
-    "comments": 19,
+    "comments": 11,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/3278/comments",
     "created_at": "2015-08-31T16:58:23Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/3278/events",
     "html_url": "https://github.com/neovim/neovim/issues/3278",
     "id": 104090902,
+    "issue_dependencies_summary": {
+        "blocked_by": 0,
+        "blocking": 0,
+        "total_blocked_by": 0,
+        "total_blocking": 0
+    },
     "labels": [
         {
             "color": "FBCA04",
@@ -873,7 +539,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 601,
+        "closed_issues": 745,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -893,19 +559,20 @@
             "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/justinmk"
+            "url": "https://api.github.com/users/justinmk",
+            "user_view_type": "public"
         },
-        "description": "Low priority. Not planned for the current target, may be reassigned.",
+        "description": "Low priority items. We plan to work on this but don't have a target date.",
         "due_on": null,
         "html_url": "https://github.com/neovim/neovim/milestone/6",
         "id": 655037,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 515,
+        "open_issues": 634,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2024-04-01T02:46:11Z",
+        "updated_at": "2025-09-28T04:43:06Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "MDU6SXNzdWUxMDQwOTA5MDI=",
@@ -926,9 +593,15 @@
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "open",
     "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/3278/timeline",
     "title": "URI for terminal  (term://...)",
-    "updated_at": "2024-03-30T13:06:26Z",
+    "type": null,
+    "updated_at": "2025-09-29T22:35:30Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/3278",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/820137?v=4",
@@ -948,6 +621,7 @@
         "starred_url": "https://api.github.com/users/vito-c/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/vito-c/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/vito-c"
+        "url": "https://api.github.com/users/vito-c",
+        "user_view_type": "public"
     }
 }

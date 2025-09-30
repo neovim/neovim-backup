@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/35627"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/18f07137d092f261c52834893ab43d1919b75b74"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/40b51f4fbc0d9e4fa07a4e71b6d099bcacb38abf"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6319,
-            "forks_count": 6319,
+            "forks": 6343,
+            "forks_count": 6343,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -119,11 +119,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2025-09-16T01:58:34Z",
+            "pushed_at": "2025-09-30T01:54:02Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 342721,
+            "size": 344511,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 92776,
+            "stargazers_count": 93098,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -141,14 +141,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2025-09-16T02:14:35Z",
+            "updated_at": "2025-09-30T01:54:08Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 92776,
-            "watchers_count": 92776,
+            "watchers": 93098,
+            "watchers_count": 93098,
             "web_commit_signoff_required": false
         },
-        "sha": "8e922c657c2d28a2320920d165bf0a6a8cd937d9",
+        "sha": "f2df98e849b7cea2c2c0579cba70dd9e8d07a656",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -396,7 +396,7 @@
             },
             "author_association": "MEMBER",
             "body": "Very readable tests 👍 ",
-            "commit_id": "18f07137d092f261c52834893ab43d1919b75b74",
+            "commit_id": "40b51f4fbc0d9e4fa07a4e71b6d099bcacb38abf",
             "created_at": "2025-09-07T21:27:13Z",
             "diff_hunk": "@@ -0,0 +1,135 @@\n+local t = require('test.testutil')\n+local n = require('test.functional.testnvim')()\n+\n+local clear = n.clear\n+local eq = t.eq\n+local exec = n.exec\n+local api = n.api\n+local dedent = t.dedent\n+\n+---@param reverse_tree {[integer]:integer}\n+local function generate_undo_tree_from_rev(reverse_tree)\n+  for k, v in ipairs(reverse_tree) do\n+    exec('undo ' .. v)\n+    api.nvim_buf_set_lines(0, 0, -1, true, { tostring(k) })\n+  end\n+end\n+---@param buf integer\n+---@return string\n+local function buf_get_lines_and_extmark(buf)\n+  local lines = api.nvim_buf_get_lines(buf, 0, -1, true)\n+  local ns = api.nvim_create_namespace('nvim.undotree')\n+  local extmarks = api.nvim_buf_get_extmarks(buf, ns, 0, -1, { details = true })\n+  for i = #extmarks, 1, -1 do\n+    local extmark = extmarks[i]\n+    ---@type nil,integer,nil,vim.api.keyset.extmark_details\n+    local _, row, _, opts = unpack(extmark)\n+    local virt_lines = assert(opts.virt_lines)\n+    for _, v in ipairs(virt_lines) do\n+      local virt_line = v[1][1]\n+      table.insert(lines, row + 2, virt_line)\n+    end\n+  end\n+  return table.concat(lines, '\\n')\n+end\n+\n+local function strip_time(text)\n+  return text:gsub('%s-%(.-%)', '')\n+end\n+\n+describe(':Undotree', function()\n+  before_each(function()\n+    clear({ args = { '--clean' } })\n+  end)\n+\n+  it('works', function()\n+    api.nvim_set_current_line('foo')\n+    exec 'Undotree'\n+    local buf = api.nvim_get_current_buf()\n+    local win = api.nvim_get_current_win()\n+    eq(\n+      dedent [[\n+    *    0\n+    *    1]],\n+      strip_time(buf_get_lines_and_extmark(buf))\n+    )\n+    eq(2, api.nvim_win_get_cursor(win)[1])\n+    exec 'wincmd w'\n+\n+    -- Doing changes moves cursor in undotree\n+    exec 'undo'\n+    eq(1, api.nvim_win_get_cursor(win)[1])\n+    api.nvim_set_current_line('bar')\n+    eq(3, api.nvim_win_get_cursor(win)[1])\n+\n+    eq(\n+      dedent [[\n+    *    0\n+    |\\\n+    | *    1\n+    *    2]],\n+      strip_time(buf_get_lines_and_extmark(buf))\n+    )\n+\n+    -- Moving the cursor in undotree changes the buffer\n+    eq('bar', api.nvim_get_current_line())\n+    exec 'wincmd w'\n+    exec '2'\n+    exec 'wincmd w'\n+    eq('foo', api.nvim_get_current_line())\n+  end)\n+\n+  describe('branch+remove is correctly graphed', function()\n+    it('when branching left', function()\n+      generate_undo_tree_from_rev({ 0, 1, 2, 3, 1, 3, 4, 3, 2, 0 })\n+      exec 'Undotree'\n+      eq(\n+        dedent([[\n+        *    0\n+        |\\\n+        | *    1\n+        | |\\\n+        | | *    2\n+        | | |\\\n+        | | | *    3\n+        | | | |\\\n+        | | | | *    4\n+        | * | | |    5\n+        |  / /| |]] --[[This is the line being tested, e.g. remove&branch left]] .. '\\n' .. [[",
             "html_url": "https://github.com/neovim/neovim/pull/35627#discussion_r2328852856",
@@ -797,6 +797,144 @@
                 "subscriptions_url": "https://api.github.com/users/yochem/subscriptions",
                 "type": "User",
                 "url": "https://api.github.com/users/yochem",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/35627#discussion_r2377214398"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/35627"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2377214398"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Let's try to use common names. Seems like `open()` fits here. That is also what   the imminent \"difftool\" plugin uses: https://github.com/neovim/neovim/pull/35448/files\n\nand has a 👍  from `:help dev-name-common`\n\n",
+            "commit_id": "474b844d337cbe96d28d68cadcf847dd9f79038e",
+            "created_at": "2025-09-24T22:24:29Z",
+            "diff_hunk": "@@ -157,4 +158,33 @@ tohtml({winid}, {opt})                                       *tohtml.tohtml()*\n         (`string[]`)\n \n \n+==============================================================================\n+Builtin plugin: undotree                                            *undotree*\n+\n+undotree({opts})                                         *undotree.undotree()*",
+            "html_url": "https://github.com/neovim/neovim/pull/35627#discussion_r2377214398",
+            "id": 2377214398,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM6NsWm-",
+            "original_commit_id": "474b844d337cbe96d28d68cadcf847dd9f79038e",
+            "original_line": 164,
+            "original_position": 15,
+            "original_start_line": null,
+            "path": "runtime/doc/plugins.txt",
+            "position": 1,
+            "pull_request_review_id": 3264917334,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/35627",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2377214398/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-09-24T22:24:29Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2377214398",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/35627#discussion_r2377216877"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/35627"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2377216877"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "why is `ns` on the public interface ?",
+            "commit_id": "474b844d337cbe96d28d68cadcf847dd9f79038e",
+            "created_at": "2025-09-24T22:26:32Z",
+            "diff_hunk": "@@ -0,0 +1,406 @@\n+--- @class (private) vim.undotree.tree.entry\n+--- @field child integer[]\n+--- @field time integer\n+\n+--- @alias vim.undotree.tree {[integer]: vim.undotree.tree.entry}\n+\n+local M = {\n+  ns = vim.api.nvim_create_namespace('nvim.undotree'),\n+}\n+\n+--- @param buf integer\n+--- @return vim.fn.undotree.entry[]\n+--- @return integer\n+local function get_undotree_entries(buf)\n+  local undotree = vim.fn.undotree(buf)\n+  local entries = undotree.entries\n+\n+  --Maybe: `:undo 0` and then `undotree` to get seq 0 time\n+  table.insert(entries, 1, { seq = 0, time = -1 })\n+\n+  return entries, undotree.seq_cur\n+end\n+\n+--- @param ent vim.fn.undotree.entry[]\n+--- @param _tree vim.undotree.tree?\n+--- @param _last integer?\n+--- @return vim.undotree.tree\n+local function treefy(ent, _tree, _last)\n+  local tree = _tree or {}\n+  local last = _last or nil\n+\n+  for idx, v in ipairs(ent) do\n+    local seq = v.seq\n+\n+    if last then\n+      table.insert(tree[last].child, seq)\n+    else\n+      assert(idx == 1 and not _tree)\n+    end\n+\n+    tree[seq] = { child = {}, time = v.time }\n+    if v.alt then\n+      assert(last)\n+      treefy(v.alt, tree, last)\n+    end\n+    last = seq\n+  end\n+\n+  return tree\n+end\n+\n+--- @class (private) vim.undotree.graph_line\n+--- @field kind 'node'|'remove'|'branch'|'remove+branch'|'nochange_remove'\n+--- @field index integer\n+--- @field node_count integer\n+--- @field node integer|integer[]\n+--- @field index2 integer? -- for branch-index in `remove+branch`\n+\n+--- @param tree vim.undotree.tree\n+--- @return vim.undotree.graph_line[]\n+local function tree_to_graph_lines(tree)\n+  --- @type vim.undotree.graph_line[]\n+  local graph_lines = {}\n+\n+  assert(tree[0], \"tree doesn't have 0-th node\")\n+  --- @type (integer[]|integer)[]\n+  local nodes = { 0 }\n+\n+  while #nodes > 0 do\n+    local minseq = math.huge\n+    --- @type integer\n+    local index\n+    --- @type integer\n+    local node_index\n+\n+    for k, v in ipairs(nodes) do\n+      if type(v) == 'table' then\n+        for i, j in ipairs(v) do\n+          if j < minseq then\n+            minseq = j\n+            index = k\n+            node_index = i\n+          end\n+        end\n+      elseif v < minseq then\n+        assert(type(v) == 'number')\n+        minseq = v\n+        index = k\n+      end\n+    end\n+\n+    local node = nodes[index]\n+\n+    --- @param kind 'node'|'remove'|'branch'|'nochange_remove'\n+    local function add_graph_line(kind)\n+      table.insert(graph_lines, { kind = kind, index = index, node_count = #nodes, node = node })\n+    end\n+\n+    if type(node) == 'number' then\n+      add_graph_line('node')\n+\n+      local child = tree[node].child\n+      if #child == 0 then\n+        if index ~= #nodes then\n+          add_graph_line('remove')\n+        else\n+          add_graph_line('nochange_remove')\n+        end\n+\n+        table.remove(nodes, index)\n+      elseif #child == 1 then\n+        nodes[index] = child[1]\n+      else\n+        nodes[index] = child\n+      end\n+    else\n+      assert(type(node) == 'table')\n+\n+      add_graph_line('branch')\n+\n+      table.remove(nodes, index)\n+      if #node == 2 then\n+        table.insert(nodes, index, math.min(unpack(node)))\n+        table.insert(nodes, index, math.max(unpack(node)))\n+      elseif #node > 2 then\n+        table.insert(nodes, index, node[node_index])\n+        table.insert(nodes, index, node)\n+        table.remove(node, node_index)\n+      end\n+    end\n+  end\n+\n+  for k, v in ipairs(graph_lines) do\n+    if v.kind == 'remove' and (graph_lines[k + 1] or {}).kind == 'branch' then\n+      v.kind = 'remove+branch'\n+      v.index2 = graph_lines[k + 1].index\n+      table.remove(graph_lines, k + 1)\n+    end\n+  end\n+\n+  return graph_lines\n+end\n+\n+--- @param time integer\n+--- @return string\n+local function undo_fmt_time(time)\n+  if time == -1 then\n+    return 'origin'\n+  end\n+\n+  local diff = os.time() - time\n+\n+  if diff >= 100 then\n+    if diff < (60 * 60 * 12) then\n+      return os.date('%H:%M:%S', time) --[[@as string]]\n+    else\n+      return os.date('%Y/%m/%d %H:%M:%S', time) --[[@as string]]\n+    end\n+  else\n+    return ('%d second%s ago'):format(diff, diff == 1 and '' or 's')\n+  end\n+end\n+\n+--- @param tree vim.undotree.tree\n+--- @param graph_lines vim.undotree.graph_line[]\n+--- @param buf integer\n+--- @param meta {[integer]:integer}\n+--- @param find_seq? integer\n+--- @return integer?\n+local function buf_apply_graph_lines(tree, graph_lines, buf, meta, find_seq)\n+  -- As in io-buffer, not vim-buffer\n+  local line_buffer = {}\n+  local extmark_buffer = {}\n+\n+  --- @type integer?\n+  local found_seq\n+\n+  for k, v in ipairs(graph_lines) do\n+    local is_last = k == #graph_lines\n+\n+    --- @type string?\n+    local line\n+    if v.kind == 'node' then\n+      line = ('| '):rep(v.index - 1)\n+        .. '*'\n+        .. (' |'):rep(v.node_count - v.index)\n+        .. '    '\n+        .. v.node\n+        .. '    ('\n+        .. undo_fmt_time(tree[v.node].time)\n+        .. ')'\n+    elseif v.kind == 'remove' then\n+      line = ('| '):rep(v.index - 1) .. (' /'):rep(v.node_count - v.index)\n+    elseif v.kind == 'branch' then\n+      line = ('| '):rep(v.index - 1) .. '|\\\\' .. (' \\\\'):rep(v.node_count - v.index)\n+    elseif v.kind == 'remove+branch' then\n+      if v.index2 < v.index then\n+        line = ('| '):rep(v.index2 - 1)\n+          .. '|\\\\'\n+          .. (' \\\\'):rep(v.index - v.index2 - 1)\n+          .. ' '\n+          .. (' |'):rep(v.node_count - v.index)\n+      else\n+        line = ('| '):rep(v.index - 1)\n+          .. (' /'):rep(v.index2 - v.index)\n+          .. ' /|'\n+          .. (' |'):rep(v.node_count - v.index2 - 1)\n+      end\n+    elseif v.kind == 'nochange_remove' then\n+      line = nil\n+    else\n+      error 'unreachable'\n+    end\n+\n+    if v.kind == 'node' then\n+      table.insert(line_buffer, line)\n+      table.insert(meta, v.node)\n+\n+      if v.node == find_seq then\n+        found_seq = #meta\n+      end\n+    elseif line then\n+      table.insert(extmark_buffer, { { line, 'Comment' } })\n+    end\n+\n+    if next(extmark_buffer) and (v.kind == 'node' or is_last) then\n+      local row = vim.api.nvim_buf_line_count(buf)\n+      vim.api.nvim_buf_set_extmark(buf, M.ns, row - 1, 0, { virt_lines = extmark_buffer })\n+      extmark_buffer = {}\n+    end\n+\n+    if next(line_buffer) and (v.kind ~= 'node' or is_last) then\n+      vim.api.nvim_buf_set_lines(buf, -1, -1, true, line_buffer)\n+\n+      if #line_buffer > 3 then\n+        local end_ = vim.api.nvim_buf_line_count(buf) - 1\n+        local start = end_ - #line_buffer + 3\n+        vim.api.nvim_buf_call(buf, function()\n+          vim.cmd.fold { range = { start, end_ } }\n+        end)\n+      end\n+\n+      line_buffer = {}\n+    end\n+  end\n+\n+  vim.api.nvim_buf_set_lines(buf, 0, 1, true, {})\n+\n+  return found_seq\n+end\n+\n+---@param inbuf integer\n+---@param outbuf integer\n+---@return {[integer]:integer}\n+local function draw(inbuf, outbuf)\n+  local entries, curseq = get_undotree_entries(inbuf)\n+  local tree = treefy(entries)\n+  local graph_lines = tree_to_graph_lines(tree)\n+\n+  local meta = {}\n+  vim.bo[outbuf].modifiable = true\n+  vim.api.nvim_buf_set_lines(outbuf, 0, -1, true, {})\n+  vim.api.nvim_buf_clear_namespace(outbuf, M.ns, 0, -1)",
+            "html_url": "https://github.com/neovim/neovim/pull/35627#discussion_r2377216877",
+            "id": 2377216877,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM6NsXNt",
+            "original_commit_id": "474b844d337cbe96d28d68cadcf847dd9f79038e",
+            "original_line": 263,
+            "original_position": 263,
+            "original_start_line": null,
+            "path": "runtime/pack/dist/opt/nvim.undotree/lua/undotree.lua",
+            "position": 1,
+            "pull_request_review_id": 3264920199,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/35627",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2377216877/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-09-24T22:26:32Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2377216877",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
                 "user_view_type": "public"
             }
         }
@@ -1212,9 +1350,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/altermo/neovim-fork/pulls{/number}",
-            "pushed_at": "2025-09-15T06:36:45Z",
+            "pushed_at": "2025-09-29T17:50:12Z",
             "releases_url": "https://api.github.com/repos/altermo/neovim-fork/releases{/id}",
-            "size": 331976,
+            "size": 334085,
             "ssh_url": "git@github.com:altermo/neovim-fork.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/altermo/neovim-fork/stargazers",
@@ -1233,7 +1371,7 @@
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "18f07137d092f261c52834893ab43d1919b75b74",
+        "sha": "40b51f4fbc0d9e4fa07a4e71b6d099bcacb38abf",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/107814000?v=4",
             "events_url": "https://api.github.com/users/altermo/events{/privacy}",
@@ -1261,7 +1399,7 @@
     "issue_url": "https://api.github.com/repos/neovim/neovim/issues/35627",
     "labels": [],
     "locked": false,
-    "merge_commit_sha": null,
+    "merge_commit_sha": "a6a38c867dcc99e3b28cb7b73636d973c9d00115",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM6m3_xd",
@@ -1272,9 +1410,9 @@
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/35627/comments",
     "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/18f07137d092f261c52834893ab43d1919b75b74",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/40b51f4fbc0d9e4fa07a4e71b6d099bcacb38abf",
     "title": "feat: undotree ui",
-    "updated_at": "2025-09-15T06:36:46Z",
+    "updated_at": "2025-09-29T17:50:14Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/35627",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/107814000?v=4",
