@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/35743"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/0b1197db8609c15637c7967382085fe403527dad"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/644061b5ad0400b1ba21400b521c83b5480717fb"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6319,
-            "forks_count": 6319,
+            "forks": 6358,
+            "forks_count": 6358,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1996,
-            "open_issues_count": 1996,
+            "open_issues": 2001,
+            "open_issues_count": 2001,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -119,11 +119,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2025-09-16T01:58:34Z",
+            "pushed_at": "2025-10-14T02:23:27Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 342721,
+            "size": 347842,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 92776,
+            "stargazers_count": 93440,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -141,14 +141,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2025-09-16T02:14:35Z",
+            "updated_at": "2025-10-14T02:23:32Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 92776,
-            "watchers_count": 92776,
+            "watchers": 93440,
+            "watchers_count": 93440,
             "web_commit_signoff_required": false
         },
-        "sha": "f89e1eb036f1028f41b439a58e6a44dff3bf7e5c",
+        "sha": "446161ae08b50c6a174ba7f82ffa14aefa1817f4",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -171,7 +171,7 @@
             "user_view_type": "public"
         }
     },
-    "body": "Problem:\r\nrpc.lua throws errors due to BOM from omnisharp-mono server.\r\n\r\nSolution:\r\ntrim BOM when parsing content-length from header\r\n\r\nfix #33564\r\n<!--\r\n  Thank you for contributing to Neovim!\r\n  If this is your first time, check out https://github.com/neovim/neovim/blob/master/CONTRIBUTING.md#pull-requests-prs\r\n  for our PR guidelines.\r\n-->\r\n",
+    "body": "Problem:\r\nError extracting content-length causes all future coroutine resumes to\r\nfail.\r\n\r\nSolution:\r\nterminate lsp client in this case.\r\n\r\n<!--\r\n  Thank you for contributing to Neovim!\r\n  If this is your first time, check out https://github.com/neovim/neovim/blob/master/CONTRIBUTING.md#pull-requests-prs\r\n  for our PR guidelines.\r\n-->\r\n",
     "closed_at": null,
     "comment_data": [],
     "comment_regular_data": [
@@ -217,6 +217,51 @@
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
                 "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "Hi, sorry it took so long to update, I spent about a month looking deeper into this and some findings might help.  😄\r\n\r\n> `get_content_length` is presumably not the only place where a BOM could cause problems in the LSP layer\r\n\r\nFor issue #33564, BOM only appears once, at the beginning of `stdout` stream and as part of header field name.\r\nI also created [#2691](https://github.com/OmniSharp/omnisharp-roslyn/issues/2691) in `omnisharp-roslyn`. BTW, if I understand [#2647](https://github.com/OmniSharp/omnisharp-roslyn/issues/2647) correctly, once they drop mono and require users to install .NET runtime, this problem will disappear, since the .NET runtime stopped writing BOM to `stdout` [years ago](https://github.com/dotnet/runtime/blob/aed1aadd99f8825f913f9eb862da0bb2f7b74433/src/libraries/Common/src/System/Text/ConsoleEncoding.cs#L19-L20), while mono still does.\r\n\r\n> So even if there are objections to this PR as it currently is, at least detecting the BOM and showing a useful error is something we should do.\r\n\r\nThe latest commit shows a simple message when extracting `Content-Length` fails, terminates the client and stops repeatedly resuming dead coroutine:\r\n```log\r\nLSP[omnisharp_mono]: Error INVALID_SERVER_MESSAGE: \"...ary/www/github/neovim/neovim/runtime/lua/vim/lsp/rpc.lua:33: Content-Length not found in header: <feff>Content-Length: 185\\r\\n\"\r\n```\r\n\r\nAdditionally, I ran simple startup tests for 373 LSP configs in `nvim-lspconfig`, result is\r\n* 366 ✅\r\n* 1 doesn't actually implement lsp (i.e., [statix](https://github.com/neovim/nvim-lspconfig/blob/master/doc/configs.md#statix), which only reads file content from stdin and returns diagnostics) \r\n* 6 ❌\r\n\r\n| config | lsp header | repo | last_commit |\r\n|--------|----------|--------|--------|\r\n| [bright_script](https://github.com/neovim/nvim-lspconfig/blob/master/doc/configs.md#bright_script) | `[11:30:33:468 PM][LOG  ] prj0 Using config file: \"/xxxx/bsconfig.json\"\\n[11:30:33:470 PM][LOG  ] prj0 Loading 0 plugins for cwd \"/xxxx\" []\\n[11:30:33:475 PM][LOG  ] prj0 Parsing files\\n[11:30:33:483 PM][LOG  ] prj0 Parsing files finished. (7.753ms)\\n[11:30:33:484 PM][LOG  ] prj0 Validating project\\n[11:30:33:484 PM][LOG  ] prj0 Validating project finished. (0.643ms)\\nContent-Length: 387\\r\\n` | [brighterscript](https://github.com/RokuCommunity/brighterscript) | 2 days ago |\r\n| [custom_elements_ls](https://github.com/neovim/nvim-lspconfig/blob/master/doc/configs.md#custom_elements_ls) | `NODE VERSION:  v22.15.1\\nStartup at  2025-10-12T15:38:57.914Z\\nInitializing connection\\nInitializing documents\\nInitializing workspaces.\\nInitializing workspace /xxxx @ file:///xxxx\\nPackage JSON path  /xxxx/package.json\\nContent-Length: 275\\r\\n` | [custom-elements-language-server](https://github.com/Matsuuu/custom-elements-language-server) | 2 years ago |\r\n| [ltex](https://github.com/neovim/nvim-lspconfig/blob/master/doc/configs.md#ltex) | `WARN: no common words file defined for Khmer - this language might not be correctly auto-detected\\nWARN: no common words file defined for Japanese - this language might not be correctly auto-detected\\nContent-Length: 260\\r\\n` | [ltex-ls](https://github.com/valentjn/ltex-ls) | 2 years ago |\r\n| [pico8_ls](https://github.com/neovim/nvim-lspconfig/blob/master/doc/configs.md#pico8_ls) | `PICO-8 Language Server starting.\\nPICO-8 Language Server launched.\\nContent-Length: 535\\r\\n` | [pico8-ls](https://github.com/japhib/pico8-ls) | 3 weeks ago |\r\n| [sqlls](https://github.com/neovim/nvim-lspconfig/blob/master/doc/configs.md#sqlls) | `addCandidatesForFunctions: 0.046ms\\ncomplete: 4.274ms\\nContent-Length: 36\\r\\n` | [sql-language-server](https://github.com/joe-re/sql-language-server) | 10 months ago | \r\n| [pug](https://github.com/neovim/nvim-lspconfig/blob/master/doc/configs.md#pug) | `[TODO]: \"Is 5 enough?\"\\nContent-Length: 299\\r\\n` | [pug-lsp](https://github.com/opa-oz/pug-lsp) | 11 months ago |\r\n\r\nThe commonality among them is that they all write one or more log lines to `stdout` before the lsp header, and each ending with `\\n`. They may be primarily designed for vscode client, and can work well in its `TransportKind.ipc` mode, but cause header parsing issue in `stdio` mode. My tests were fairly simple, so I’m not sure if other configs might also write log lines to `stdout` in some cases.\r\n\r\nIf we think the message in this commit is enough and keep strict parsing, then no changes to `get_content_length` are needed. However, if we want to show more specific message (like, `invalid token: <feff>`) or be more lenient by ignoring invalid log lines so these servers can still run, we might need a small header parser function. I’ve also experimented with a rough implementation, which is faster than the current regex, I can provide it later if needed. ",
+            "created_at": "2025-10-13T02:11:34Z",
+            "html_url": "https://github.com/neovim/neovim/pull/35743#issuecomment-3395646442",
+            "id": 3395646442,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/35743",
+            "node_id": "IC_kwDOAPphoM7KZXPq",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 1,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3395646442/reactions"
+            },
+            "updated_at": "2025-10-13T02:11:34Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3395646442",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/8579651?v=4",
+                "events_url": "https://api.github.com/users/ntdiary/events{/privacy}",
+                "followers_url": "https://api.github.com/users/ntdiary/followers",
+                "following_url": "https://api.github.com/users/ntdiary/following{/other_user}",
+                "gists_url": "https://api.github.com/users/ntdiary/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/ntdiary",
+                "id": 8579651,
+                "login": "ntdiary",
+                "node_id": "MDQ6VXNlcjg1Nzk2NTE=",
+                "organizations_url": "https://api.github.com/users/ntdiary/orgs",
+                "received_events_url": "https://api.github.com/users/ntdiary/received_events",
+                "repos_url": "https://api.github.com/users/ntdiary/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/ntdiary/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/ntdiary/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/ntdiary",
                 "user_view_type": "public"
             }
         }
@@ -315,9 +360,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/ntdiary/neovim/pulls{/number}",
-            "pushed_at": "2025-09-13T08:26:18Z",
+            "pushed_at": "2025-10-13T02:08:52Z",
             "releases_url": "https://api.github.com/repos/ntdiary/neovim/releases{/id}",
-            "size": 331587,
+            "size": 335766,
             "ssh_url": "git@github.com:ntdiary/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/ntdiary/neovim/stargazers",
@@ -336,7 +381,7 @@
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "0b1197db8609c15637c7967382085fe403527dad",
+        "sha": "644061b5ad0400b1ba21400b521c83b5480717fb",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/8579651?v=4",
             "events_url": "https://api.github.com/users/ntdiary/events{/privacy}",
@@ -374,7 +419,7 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "9e29c09d2eb64b1357a92a527668b2f93e5f825b",
+    "merge_commit_sha": "e4ebdebada5bd31fa6f59bd9d65d0e199b905bbb",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM6oYCNA",
@@ -385,9 +430,9 @@
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/35743/comments",
     "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/0b1197db8609c15637c7967382085fe403527dad",
-    "title": "fix(lsp): trim BOM from omnisharp-mono server",
-    "updated_at": "2025-09-13T21:34:25Z",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/644061b5ad0400b1ba21400b521c83b5480717fb",
+    "title": "fix(lsp): stop repeatedly resuming dead coroutine",
+    "updated_at": "2025-10-13T09:04:37Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/35743",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/8579651?v=4",
