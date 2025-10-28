@@ -54,7 +54,7 @@
         },
         {
             "author_association": "NONE",
-            "body": "@justinmk This I don't understand. What is it supposed to do?",
+            "body": "@justinmk This I don't understand. What is it supposed to do?\n\nEDIT: Ah I think you want to delete the arglist completely, but the session saver will still insert an `edit ` command to basically overwrite what you last looked at. Also, in case I don't use -S flag behavior should be as usual.\n\nSo after playing around I came up with this quite verbose and probably brittle way to patch the session:\n\n```\nfunction! s:PatchSession() abort\n    \" 1) Read sessionfile\n\n    let sessionfile = v:this_session\n    if !filereadable(sessionfile)\n        echoerr \"Sessionfile doesn't exist or is not readable, aborting\"\n        return\n    endif\n    let lines = readfile(sessionfile)\n\n    \"2) Patch session to make args passed to nvim -S <session> propagate\n    \" with priority over the args setup by the session\n    let idx1 = -1\n    for i in range(0, len(lines) - 1)\n        if lines[i] =~# '^argglobal'\n            let idx1 = i\n            break\n        endif\n    endfor\n   \n    let idx2 = -1 \n    let pats = ['\\v\\%argdel', '\\v^\\$argadd\\s(.*)$', '\\v^\\d+argu', '^argglobal', '\\v^edit\\s(.*)$'] \n    for i in range(idx1+1, len(lines) -1)\n        if !s:MatchesAny(lines[i], pats)\n            let idx2 = i \"sentinel not included in deleted lines\n            break\n        endif\n    endfor\n    \" If no second marker, take end of file\n    if idx2 < 0\n        let idx2 = len(lines)\n    endif\n\n    \" Start with the global arglist\n    let files = argv(-1)\n\n    \" Absolute path of current buffer (empty if unnamed)\n    let cur = expand('%:p')\n\n    \" Add it if it’s a real file and not already in the list\n    if !empty(cur)\n        \" compare as absolute paths to avoid dupes with relative entries\n        let abs_files = map(copy(files), {_, v -> fnamemodify(v, ':p')})\n        if index(abs_files, cur) < 0\n            call add(files, cur)\n        endif\n    endif\n\n    \" Now build the commands (reverse because we use 0argadd)\n    let argcmds = map(reverse(copy(files)),\n                \\ {_, f -> printf('0argadd %s', fnameescape(f))})\n\n    \" Remove the block [idx1, idx2]\n    call remove(lines, idx1, idx2)\n\n    \" Assemble new block\n    let block = [\n                \\ '\" --- custom argglobal begin ---',\n                \\ 'argglobal',\n                \\ ]\n    call extend(block, argcmds) \n    call add(block, 'last')\n    call add(block, '\" --- custom argglobal end ---')\n\n    \" Insert to main block\n    call extend(lines, block, idx1)\n\n    call writefile(lines, sessionfile)\n    echom 'Patched: ' . sessionfile\nendfunc\n\n\n```\n\nWould be easier if it was not written in the first place...",
             "created_at": "2025-10-20T05:30:10Z",
             "html_url": "https://github.com/neovim/neovim/issues/36230#issuecomment-3420624706",
             "id": 3420624706,
@@ -73,7 +73,7 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3420624706/reactions"
             },
-            "updated_at": "2025-10-20T05:30:10Z",
+            "updated_at": "2025-10-21T06:32:51Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3420624706",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/52746180?v=4",
@@ -159,7 +159,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyv",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2025-10-20T05:30:10Z",
+    "updated_at": "2025-10-21T06:32:51Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/36230",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/52746180?v=4",
