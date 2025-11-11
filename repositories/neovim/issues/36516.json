@@ -1,0 +1,103 @@
+{
+    "active_lock_reason": null,
+    "assignee": null,
+    "assignees": [],
+    "author_association": "NONE",
+    "body": "### Problem\n\n### Environment\n\n- Operating System: Ubuntu Server 24.04.3 LTS\n- Platforms:\n- Milk-V Mars SBC (RISC-V 64-bit)\n- Raspberry Pi 4 (ARM 64-bit)\n- NeoVim Version: v0.11.5 (also reproducible on master)\n- Build Configuration: CMAKE_EXTRA_FLAGS=\"-DPREFER_LUA=ON\" (to force Lua 5.1 fallback)\n\n### Description\n\nI have a Milk-V Mars SBC (RISC-V) running Ubuntu Server 24.04.3 LTS. I know that NeoVim 0.9.5 is available in the standard repos, but not NeoVim 0.10+. However, I need NeoVim 0.10+ because it has native support for OSC 52 and I prefer to keep the NeoVim instances on my different machines consistent.\n\nThe main issue is that NeoVim is usually built with LuaJIT, but LuaJIT doesn’t yet support RISC-V.\n\nI attempted to build NeoVim using the PREFER_LUA=ON flag to force a fallback to the system's Lua 5.1. This build fails due to a cascade of issues in the build scripts that incorrectly assume LuaJIT is present or fail to link dependencies correctly.\n\nI confirmed this is not a RISC-V bug, but a \"NeoVim without LuaJIT\" bug, as I hit a similar (though not identical) linker error on an RPi4 (ARM) using the same build flags.\n\nThe build can be fixed by manually patching the build scripts to:\n\n- Correctly link the lpeg dependency against liblua5.1.so.\n- (On RISC-V) Force the dependency builder to skip its bundled luajit build.\n\n\n### Steps to reproduce\n\n1. Install Dependencies\n\n```\nsudo apt install \\\n  build-essential \\\n  git make ninja-build gettext cmake unzip curl \\\n  g++ \\\n  libtool pkg-config autoconf automake \\\n  lua5.1 liblua5.1-0-dev \\\n  libunibilium-dev \\\n  libmsgpack-dev \\\n  libuv1-dev \\\n  libvterm-dev \\\n  libtree-sitter-dev\n```\n\n2. Clone and Prepare Source\n\n```\ngit clone https://github.com/neovim/neovim.git\ncd neovim\ngit checkout v0.11.5\nmake distclean\n\n```\n\n3. Patch and Build (Platform-Specific)\n\nThe RPi4 (ARM) build only requires patching the lpeg build script to link against Lua by name.\n\n```\n# 1. Patch the lpeg build script\nsed -i '$ a target_link_libraries(lpeg PRIVATE lua5.1 m)' cmake.deps/cmake/LpegCMakeLists.txt\n\n# 2. Export C include path\nexport C_INCLUDE_PATH=/usr/include/lua5.1\n\n# 3. Run the build\nmake -j1 CMAKE_BUILD_TYPE=Release \\\n  CMAKE_EXTRA_FLAGS=\"-DPREFER_LUA=ON\"\n\n```\n\nThe Mars (RISC-V) build fails earlier in the dependency stage and its linker is stricter. It requires an extra DEPS_CMAKE_FLAGS and an lpeg patch with absolute paths.\n\n```\n# 1. Patch the lpeg build script (with absolute paths)\nsed -i '$ a target_link_libraries(lpeg PRIVATE /usr/lib/riscv64-linux-gnu/liblua5.1.so /usr/lib/riscv64-linux-gnu/libm.so)' cmake.deps/cmake/LpegCMakeLists.txt\n\n# 2. Export C include path\nexport C_INCLUDE_PATH=/usr/include/lua5.1\n\n# 3. Run the build\nmake -j1 CMAKE_BUILD_TYPE=Release \\\n  DEPS_CMAKE_FLAGS=\"-DUSE_BUNDLED_LUAJIT=OFF\" \\\n  CMAKE_EXTRA_FLAGS=\"-DPREFER_LUA=ON\"\n\n4. Install (Common for Both)\nsudo make install\n```\n\n\n### Expected behavior\n\nNeoVim should be easy to build for platforms not yet supported by LuaJIT.\n\n### Nvim version (nvim -v)\n\n0.11.5 and master\n\n### Vim (not Nvim) behaves the same?\n\nn/a\n\n### Operating system/version\n\nUbuntu Server 24.04.3\n\n### Terminal name/version\n\nwezterm\n\n### $TERM environment variable\n\nwezterm\n\n### Installation\n\nfrom git source",
+    "closed_at": null,
+    "closed_by": null,
+    "comment_data": [],
+    "comments": 0,
+    "comments_url": "https://api.github.com/repos/neovim/neovim/issues/36516/comments",
+    "created_at": "2025-11-11T02:17:35Z",
+    "events_url": "https://api.github.com/repos/neovim/neovim/issues/36516/events",
+    "html_url": "https://github.com/neovim/neovim/issues/36516",
+    "id": 3610406963,
+    "issue_dependencies_summary": {
+        "blocked_by": 0,
+        "blocking": 0,
+        "total_blocked_by": 0,
+        "total_blocking": 0
+    },
+    "labels": [
+        {
+            "color": "c5def5",
+            "default": false,
+            "description": "building and installing Neovim using the provided scripts",
+            "id": 84723321,
+            "name": "build",
+            "node_id": "MDU6TGFiZWw4NDcyMzMyMQ==",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/build"
+        },
+        {
+            "color": "c5def5",
+            "default": false,
+            "description": "build dependencies (LuaJIT, LibUV, etc.)",
+            "id": 1205400704,
+            "name": "dependencies",
+            "node_id": "MDU6TGFiZWwxMjA1NDAwNzA0",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/dependencies"
+        }
+    ],
+    "labels_url": "https://api.github.com/repos/neovim/neovim/issues/36516/labels{/name}",
+    "locked": false,
+    "milestone": null,
+    "node_id": "I_kwDOAPphoM7XMnAz",
+    "number": 36516,
+    "performed_via_github_app": null,
+    "reactions": {
+        "+1": 0,
+        "-1": 0,
+        "confused": 0,
+        "eyes": 0,
+        "heart": 0,
+        "hooray": 0,
+        "laugh": 0,
+        "rocket": 0,
+        "total_count": 0,
+        "url": "https://api.github.com/repos/neovim/neovim/issues/36516/reactions"
+    },
+    "repository_url": "https://api.github.com/repos/neovim/neovim",
+    "state": "open",
+    "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
+    "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/36516/timeline",
+    "title": "building NeoVim for RISC-V *without* LuaJIT",
+    "type": {
+        "color": "red",
+        "created_at": "2024-01-25T10:10:19Z",
+        "description": "An unexpected problem or behavior",
+        "id": 597163,
+        "is_enabled": true,
+        "name": "Bug",
+        "node_id": "IT_kwDOAGK_Pc4ACRyr",
+        "updated_at": "2024-07-26T10:12:30Z"
+    },
+    "updated_at": "2025-11-11T02:26:44Z",
+    "url": "https://api.github.com/repos/neovim/neovim/issues/36516",
+    "user": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/5192798?v=4",
+        "events_url": "https://api.github.com/users/highpost/events{/privacy}",
+        "followers_url": "https://api.github.com/users/highpost/followers",
+        "following_url": "https://api.github.com/users/highpost/following{/other_user}",
+        "gists_url": "https://api.github.com/users/highpost/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/highpost",
+        "id": 5192798,
+        "login": "highpost",
+        "node_id": "MDQ6VXNlcjUxOTI3OTg=",
+        "organizations_url": "https://api.github.com/users/highpost/orgs",
+        "received_events_url": "https://api.github.com/users/highpost/received_events",
+        "repos_url": "https://api.github.com/users/highpost/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/highpost/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/highpost/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/highpost",
+        "user_view_type": "public"
+    }
+}
