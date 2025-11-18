@@ -4,8 +4,28 @@
     "assignees": [],
     "author_association": "CONTRIBUTOR",
     "body": "### Problem\n\nWhen opening a non-file backed buffer that still matches a lsp filetype, duplicate lsp servers are started with a rootPath set to `/.`\n\nFor example, with `emmylua_ls`, opening a file named `diffview:///Users/cam/Dev/neovim-dev/opencode.nvim/.git/:0:/lua/opencode/state.lua` will start a duplicate `emmylua_ls` server and that server will start indexing `/` (i.e. the whole filesystem).\n\nI traced it down and it's happening in `lsp.start`:\n\nhttps://github.com/neovim/neovim/blob/16c8152229c6d11ed3647ba01c4bcd70d11b7f11/runtime/lua/vim/lsp.lua#L668-L678 \n\nFor non-file backed buffers, `vim.fs.root` starts looking in the current directory and, if it matches, it returns a relative directory.\n\nThat relative directory doesn't match the checks in `reuse_client_default` so new servers are spawned.\n\nThe incorrect `rootPath` comes from `Client:initialize`:\n\nhttps://github.com/neovim/neovim/blob/16c8152229c6d11ed3647ba01c4bcd70d11b7f11/runtime/lua/vim/lsp/client.lua#L503-L515\n\n`vim.uri_to_fname` translates the `file://.` to `/.` which is what the language server receives.\n\nTo fix, I think we just have to pass the return from `vim.fs.root` to `vim.fn.fnamemodify`:\n\n```lua\n    config.root_dir = vim.fn.fnamemodify(vim.fs.root(bufnr, opts._root_markers), ':p:h')\n```\n\n### Steps to reproduce using \"nvim -u minimal_init.lua\"\n\nminimal_init.lua\n```lua\nlocal pattern = 'lua'\nlocal cmd = { 'emmylua_ls' }\n-- Add files/folders here that indicate the root of a project\nlocal root_markers = { '.luarc.json', '.emmyrc.json', '.luacheckrc', '.git' }\n-- Change to table with settings if required\nlocal settings = vim.empty_dict()\n\nvim.api.nvim_create_autocmd('FileType', {\n  pattern = pattern,\n  callback = function(args)\n    vim.lsp.start({\n      name = 'emmylua_ls',\n      cmd = cmd,\n      settings = settings,\n    }, { _root_markers = root_markers })\n  end,\n})\n```\n\nRepro:\n1. touch `.emmyrc.json`\n2. `nvim -u minimal_init.lua minimal_init.lua` (second arg is to load a lua file to trigger `emmylua_ls`)\n3. `:e diffview:///Users/cam/Dev/neovim-dev/opencode.nvim/.git/:0:/lua/opencode/state.lua` (diffview is not required, file does not need to exist)\n4. `:lua print(vim.inspect(#vim.lsp.get_active_clients()))`\n\n### Expected behavior\n\nNo new lsp servers should be spawned (and, even if they were, they should have the correct rootPath).\n\n### Nvim version (nvim -v)\n\nNVIM v0.12.0-dev-1569+g16c8152229\n\n### Language server name/version\n\nemmylua_ls 0.16.0\n\n### Operating system/version\n\nmacOS 15.6.1\n\n### Log file\n\nhttps://gist.github.com/cameronr/3e9ee385af755fcbe5c2b5d333c04b0b",
-    "closed_at": null,
-    "closed_by": null,
+    "closed_at": "2025-11-17T05:41:28Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+        "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+        "followers_url": "https://api.github.com/users/justinmk/followers",
+        "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+        "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/justinmk",
+        "id": 1359421,
+        "login": "justinmk",
+        "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+        "organizations_url": "https://api.github.com/users/justinmk/orgs",
+        "received_events_url": "https://api.github.com/users/justinmk/received_events",
+        "repos_url": "https://api.github.com/users/justinmk/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
+    },
     "comment_data": [],
     "comments": 0,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/36464/comments",
@@ -28,6 +48,15 @@
             "name": "lsp",
             "node_id": "MDU6TGFiZWw2NjI1NjYzNzA=",
             "url": "https://api.github.com/repos/neovim/neovim/labels/lsp"
+        },
+        {
+            "color": "0052CC",
+            "default": false,
+            "description": "",
+            "id": 8431892071,
+            "name": "ci:backport release-0.11",
+            "node_id": "LA_kwDOAPphoM8AAAAB9pR2Zw",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/ci:backport%20release-0.11"
         }
     ],
     "labels_url": "https://api.github.com/repos/neovim/neovim/issues/36464/labels{/name}",
@@ -49,8 +78,8 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/36464/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "sub_issues_summary": {
         "completed": 0,
         "percent_completed": 0,
@@ -68,7 +97,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyr",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2025-11-06T19:23:47Z",
+    "updated_at": "2025-11-17T05:43:55Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/36464",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/38429?v=4",
