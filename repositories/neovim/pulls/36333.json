@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6377,
-            "forks_count": 6377,
+            "forks": 6429,
+            "forks_count": 6429,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 2034,
-            "open_issues_count": 2034,
+            "open_issues": 2027,
+            "open_issues_count": 2027,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -119,11 +119,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2025-10-28T00:12:21Z",
+            "pushed_at": "2025-11-25T01:10:51Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 349562,
+            "size": 352207,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 93755,
+            "stargazers_count": 94510,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -141,11 +141,11 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2025-10-28T02:36:29Z",
+            "updated_at": "2025-11-25T02:41:34Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 93755,
-            "watchers_count": 93755,
+            "watchers": 94510,
+            "watchers_count": 94510,
             "web_commit_signoff_required": false
         },
         "sha": "1b27d8f42840e3057814e126d505b1b28b6f658f",
@@ -173,7 +173,77 @@
     },
     "body": "Problem:\r\n1. outdated `bufstate.client_hints` weren't removed on a document version change\r\n2. `bufstate.applied` didn't distinguish added/removed client_hints from different clients with the same document version\r\n\r\nSolution:\r\n1. remove outdated `bufstate.client_hints` after version change in `on_inlayhint`\r\n2. track `bufstate.applied` version for each line and client separately in `on_win`\r\n",
     "closed_at": null,
-    "comment_data": [],
+    "comment_data": [
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/36333#discussion_r2540621844"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/36333"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2540621844"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "why keep this old code?",
+            "commit_id": "d98fba8ffa5b78a144d129599c065743b838042c",
+            "created_at": "2025-11-19T05:45:25Z",
+            "diff_hunk": "@@ -52,36 +77,44 @@ function M.on_inlayhint(err, result, ctx)\n     return\n   end\n   local client_id = ctx.client_id\n+  local client = assert(vim.lsp.get_client_by_id(client_id))\n   local bufstate = bufstates[bufnr]\n-  if not (bufstate.client_hints and bufstate.version) then\n-    bufstate.client_hints = vim.defaulttable()\n-    bufstate.version = ctx.version\n+  if not bufstate.client_hints then\n+    bufstate.client_hints = {}\n   end\n-  local client_hints = bufstate.client_hints\n-  local client = assert(vim.lsp.get_client_by_id(client_id))\n-\n-  local new_lnum_hints = vim.defaulttable()\n-  local num_unprocessed = #result\n-  if num_unprocessed == 0 then\n-    client_hints[client_id] = {}\n+  if not bufstate.version then\n     bufstate.version = ctx.version\n-    api.nvim__redraw({ buf = bufnr, valid = true, flush = false })\n-    return\n-  end\n-\n-  local lines = api.nvim_buf_get_lines(bufnr, 0, -1, false)\n-\n-  for _, hint in ipairs(result) do\n-    local lnum = hint.position.line\n-    local line = lines and lines[lnum + 1] or ''\n-    hint.position.character =\n-      vim.str_byteindex(line, client.offset_encoding, hint.position.character, false)\n-    table.insert(new_lnum_hints[lnum], hint)\n+  elseif bufstate.version < ctx.version then\n+    bufstate.version = ctx.version\n+    -- remove outdated client hints\n+    bufstate.client_hints = {}\n   end\n \n-  client_hints[client_id] = new_lnum_hints\n-  bufstate.version = ctx.version\n+  bufstate.client_hints[client_id] = extract_lnum_hints(client, bufnr, result)\n   api.nvim__redraw({ buf = bufnr, valid = true, flush = false })\n+\n+  -- local new_lnum_hints = vim.defaulttable()\n+  -- local num_unprocessed = #result\n+  -- if num_unprocessed == 0 then\n+  --   client_hints[client_id] = {}\n+  --   bufstate.version = ctx.version\n+  --   api.nvim__redraw({ buf = bufnr, valid = true, flush = false })\n+  --   return\n+  -- end\n+\n+  -- local lines = api.nvim_buf_get_lines(bufnr, 0, -1, false)",
+            "html_url": "https://github.com/neovim/neovim/pull/36333#discussion_r2540621844",
+            "id": 2540621844,
+            "line": 105,
+            "node_id": "PRRC_kwDOAPphoM6XbtAU",
+            "original_commit_id": "d98fba8ffa5b78a144d129599c065743b838042c",
+            "original_line": 105,
+            "original_position": 97,
+            "original_start_line": 96,
+            "path": "runtime/lua/vim/lsp/inlay_hint.lua",
+            "position": 97,
+            "pull_request_review_id": 3480911755,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/36333",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2540621844/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 96,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2025-11-19T05:45:25Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2540621844",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        }
+    ],
     "comment_regular_data": [
         {
             "author_association": "NONE",
@@ -217,6 +287,51 @@
                 "subscriptions_url": "https://api.github.com/users/tobias-haenel/subscriptions",
                 "type": "User",
                 "url": "https://api.github.com/users/tobias-haenel",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "Is there a test in `test/functional/plugin/lsp/inlay_hint_spec.lua` that can be tweaked to maybe exercise the scenario you found?\r\n\r\nAlso, can you check the failing CI job.\r\n\r\nThen LGTM\r\n\r\n> I applied this change to release 0.11 because I use AstroNvim locally which doesn't support nvim nightly officially. I can also port my changes to master if that is also necessary.\r\n\r\nNo problem, though usually we work on master and we have a bot that attempts to backport patches to the 0.11 branch. ",
+            "created_at": "2025-11-19T05:48:12Z",
+            "html_url": "https://github.com/neovim/neovim/pull/36333#issuecomment-3550913586",
+            "id": 3550913586,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/36333",
+            "node_id": "IC_kwDOAPphoM7TpqQy",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3550913586/reactions"
+            },
+            "updated_at": "2025-11-19T05:48:12Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3550913586",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
                 "user_view_type": "public"
             }
         }
@@ -383,7 +498,7 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "9de8f0eec132fe93ea63e9db828d13c37f205b6e",
+    "merge_commit_sha": "1b2767ff791e23832ab73917f029098275c9c1b3",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM6vvcka",
@@ -418,7 +533,7 @@
     "state": "open",
     "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/d98fba8ffa5b78a144d129599c065743b838042c",
     "title": "fix(lsp): handle inlay hint versions from multiple clients correctly (#36318)",
-    "updated_at": "2025-10-26T13:31:42Z",
+    "updated_at": "2025-11-19T05:48:12Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/36333",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/6195791?v=4",
