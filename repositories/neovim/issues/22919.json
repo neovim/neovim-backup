@@ -231,14 +231,65 @@
                 "url": "https://api.github.com/users/zeertzjq",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "I am working on a fix for issue #32319 and #31002, and i was trying to create a scenario where assert(to_scroll >= 0) fires.\n\nand i might have came across another edge case.\n\nstep to reproduce:\nrun the build with --clean flag and source this file\n\n```vim\n\" tiny screen\nset lines=10 cmdheight=1\n\n\" Enable verbose output (equivalent to nvim -V2)\nset verbose=2\n\n\" messages into the message grid\nfor i in range(1, 100)\n  echomsg \"msg \" . i\nendfor\n\n\"Autocmd that forces redraw (causes msg_grid_pos & discount desync)\nautocmd VimResized * redraw\n\n\"multiple rapid resizes, triggering flush() repeatedly\nset lines=15\nset lines=8\nset lines=12\nset lines=9\nset lines=14\n```\n\n\nwhen you see the screen:\n\n<img width=\"661\" height=\"470\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/3890d005-360b-4282-a57e-53add79dd48b\" />\n\nhit k or up arrow key, to make the screen scrolling up one line:\n\n<img width=\"1396\" height=\"595\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/da8625ed-63ee-434f-8cd3-28634eefb80a\" />\n\n\nnow hold space to scroll all the way down, and you should see another crash related to assert failure:\n\nsrc/nvim/ui.c:463: ui_line: Assertion `0 <= row && row < grid->rows' failed. \n\nback trace:\n```gdb\n#0  __pthread_kill_implementation (no_tid=0, signo=6, threadid=<optimized out>) at ./nptl/pthread_kill.c:44\n#1  __pthread_kill_internal (signo=6, threadid=<optimized out>) at ./nptl/pthread_kill.c:78\n#2  __GI___pthread_kill (threadid=<optimized out>, signo=signo@entry=6) at ./nptl/pthread_kill.c:89\n#3  0x00007ffff7c4527e in __GI_raise (sig=sig@entry=6) at ../sysdeps/posix/raise.c:26\n#4  0x00007ffff7c288ff in __GI_abort () at ./stdlib/abort.c:79\n#5  0x00007ffff7c2881b in __assert_fail_base (fmt=0x7ffff7dd01e8 \"%s%s%s:%u: %s%sAssertion `%s' failed.\\n%n\", \n    assertion=assertion@entry=0x555555b3237d \"0 <= row && row < grid->rows\", \n    file=file@entry=0x555555b32358 \"/home/lpiombini/neovim/src/nvim/ui.c\", line=line@entry=463, \n    function=function@entry=0x555555b324a0 <__PRETTY_FUNCTION__.3> \"ui_line\") at ./assert/assert.c:96\n#6  0x00007ffff7c3b517 in __assert_fail (assertion=0x555555b3237d \"0 <= row && row < grid->rows\", \n    file=0x555555b32358 \"/home/lpiombini/neovim/src/nvim/ui.c\", line=463, \n    function=0x555555b324a0 <__PRETTY_FUNCTION__.3> \"ui_line\") at ./assert/assert.c:105\n#7  0x0000555555962040 in ui_line (grid=0x555555c3fbe0 <msg_grid>, row=14, invalid_row=false, startcol=0, \n    endcol=-1815690620, clearcol=118, clearattr=1, wrap=false) at /home/lpiombini/neovim/src/nvim/ui.c:463\n#8  0x000055555581f19f in msg_scroll_flush () at /home/lpiombini/neovim/src/nvim/message.c:2614\n#9  0x000055555596230f in ui_flush () at /home/lpiombini/neovim/src/nvim/ui.c:555\n#10 0x0000555555732e68 in ex_redraw (eap=0x7fffffffb850) at /home/lpiombini/neovim/src/nvim/ex_docmd.c:6779\n#11 0x00005555557265e7 in execute_cmd0 (retv=0x7fffffffb808, eap=0x7fffffffb850, errormsg=0x7fffffffb820, \n    preview=false) at /home/lpiombini/neovim/src/nvim/ex_docmd.c:1762\n#12 0x0000555555728424 in do_one_cmd (cmdlinep=0x7fffffffba70, flags=7, cstack=0x7fffffffbb80, \n    fgetline=0x55555564f347 <getnextac>, cookie=0x7fffffffc1a0) at /home/lpiombini/neovim/src/nvim/ex_docmd.c:2392\n#13 0x0000555555723dee in do_cmdline (cmdline=0x0, fgetline=0x55555564f347 <getnextac>, cookie=0x7fffffffc1a0, \n    flags=7) at /home/lpiombini/neovim/src/nvim/ex_docmd.c:679\n#14 0x000055555564e679 in apply_autocmds_group (event=EVENT_VIMRESIZED, fname=0x555555c897e0 \"\", fname_io=0x0, \n    force=false, group=-3, buf=0x555555c79550, eap=0x0, data=0x0) at /home/lpiombini/neovim/src/nvim/autocmd.c:1872\n#15 0x000055555564da88 in apply_autocmds (event=EVENT_VIMRESIZED, fname=0x0, fname_io=0x0, force=false, \n    buf=0x555555c79550) at /home/lpiombini/neovim/src/nvim/autocmd.c:1507\n#16 0x000055555569e2f3 in screen_resize (width=118, height=15) at /home/lpiombini/neovim/src/nvim/drawscreen.c:352\n#17 0x0000555555855490 in did_set_lines_or_columns (args=0x7fffffffc430)\n    at /home/lpiombini/neovim/src/nvim/option.c:2135\n#18 0x00005555558583a7 in did_set_option (opt_idx=kOptLines, varp=0x555555c5b9a0 <p_lines>, old_value=..., \n    new_value=..., opt_flags=0, set_sid=0, direct=false, value_replaced=true, errbuf=0x7fffffffc7a0 \"\\001\", \n    errbuflen=80) at /home/lpiombini/neovim/src/nvim/option.c:3485\n#19 0x0000555555859127 in set_option (opt_idx=kOptLines, value=..., opt_flags=0, set_sid=0, direct=false, \n    value_replaced=true, errbuf=0x7fffffffc7a0 \"\\001\", errbuflen=80) at /home/lpiombini/neovim/src/nvim/option.c:3719\n#20 0x00005555558535d2 in do_one_set_option (opt_flags=0, argp=0x7fffffffc778, did_show=0x7fffffffc787, \n    errbuf=0x7fffffffc7a0 \"\\001\", errbuflen=80, errmsg=0x7fffffffc790)\n    at /home/lpiombini/neovim/src/nvim/option.c:1335\n#21 0x0000555555853799 in do_set (arg=0x555555cc2719 \"=15\", opt_flags=0)\n    at /home/lpiombini/neovim/src/nvim/option.c:1384\n#22 0x0000555555851d38 in ex_set (eap=0x7fffffffc910) at /home/lpiombini/neovim/src/nvim/option.c:733\n#23 0x00005555557265e7 in execute_cmd0 (retv=0x7fffffffc8c8, eap=0x7fffffffc910, errormsg=0x7fffffffc8e0, \n    preview=false) at /home/lpiombini/neovim/src/nvim/ex_docmd.c:1762\n#24 0x0000555555728424 in do_one_cmd (cmdlinep=0x7fffffffcb30, flags=7, cstack=0x7fffffffcc40, \n    fgetline=0x5555558d2722 <getsourceline>, cookie=0x7fffffffd240)\n    at /home/lpiombini/neovim/src/nvim/ex_docmd.c:2392\n#25 0x0000555555723dee in do_cmdline (\n    cmdline=0x555555cc1e80 \"\\\" Make the screen tiny (forces heavy message scrolling)\", \n    fgetline=0x5555558d2722 <getsourceline>, cookie=0x7fffffffd240, flags=7)\n    at /home/lpiombini/neovim/src/nvim/ex_docmd.c:679\n#26 0x00005555558d190b in do_source_ext (fname=0x555555cc32f7 \"trigger_assert_toscroll\", check_other=false, \n    is_vimrc=0, ret_sid=0x0, eap=0x0, ex_lua=false, str=0x0) at /home/lpiombini/neovim/src/nvim/runtime.c:2294\n#27 0x00005555558d1cec in do_source (fname=0x555555cc32f7 \"trigger_assert_toscroll\", check_other=false, is_vimrc=0, \n    ret_sid=0x0) at /home/lpiombini/neovim/src/nvim/runtime.c:2369\n#28 0x00005555558d070b in cmd_source (fname=0x555555cc32f7 \"trigger_assert_toscroll\", eap=0x7fffffffd420)\n    at /home/lpiombini/neovim/src/nvim/runtime.c:1861\n#29 0x00005555558d075d in ex_source (eap=0x7fffffffd420) at /home/lpiombini/neovim/src/nvim/runtime.c:1869\n#30 0x00005555557265e7 in execute_cmd0 (retv=0x7fffffffd3d8, eap=0x7fffffffd420, errormsg=0x7fffffffd3f0, \n    preview=false) at /home/lpiombini/neovim/src/nvim/ex_docmd.c:1762\n#31 0x0000555555728424 in do_one_cmd (cmdlinep=0x7fffffffd640, flags=0, cstack=0x7fffffffd750,\n#22 0x0000555555851d38 in ex_set (eap=0x7fffffffc910) at /home/lpiombini/neovim/src/nvim/option.c:733\n#23 0x00005555557265e7 in execute_cmd0 (retv=0x7fffffffc8c8, eap=0x7fffffffc910, errormsg=0x7fffffffc8e0, \n    preview=false) at /home/lpiombini/neovim/src/nvim/ex_docmd.c:1762\n#24 0x0000555555728424 in do_one_cmd (cmdlinep=0x7fffffffcb30, flags=7, cstack=0x7fffffffcc40, \n    fgetline=0x5555558d2722 <getsourceline>, cookie=0x7fffffffd240)\n    at /home/lpiombini/neovim/src/nvim/ex_docmd.c:2392\n#25 0x0000555555723dee in do_cmdline (\n    cmdline=0x555555cc1e80 \"\\\" Make the screen tiny (forces heavy message scrolling)\", \n    fgetline=0x5555558d2722 <getsourceline>, cookie=0x7fffffffd240, flags=7)\n    at /home/lpiombini/neovim/src/nvim/ex_docmd.c:679\n#26 0x00005555558d190b in do_source_ext (fname=0x555555cc32f7 \"trigger_assert_toscroll\", check_other=false, \n    is_vimrc=0, ret_sid=0x0, eap=0x0, ex_lua=false, str=0x0) at /home/lpiombini/neovim/src/nvim/runtime.c:2294\n#27 0x00005555558d1cec in do_source (fname=0x555555cc32f7 \"trigger_assert_toscroll\", check_other=false, is_vimrc=0, \n    ret_sid=0x0) at /home/lpiombini/neovim/src/nvim/runtime.c:2369\n#28 0x00005555558d070b in cmd_source (fname=0x555555cc32f7 \"trigger_assert_toscroll\", eap=0x7fffffffd420)\n    at /home/lpiombini/neovim/src/nvim/runtime.c:1861\n#29 0x00005555558d075d in ex_source (eap=0x7fffffffd420) at /home/lpiombini/neovim/src/nvim/runtime.c:1869\n#30 0x00005555557265e7 in execute_cmd0 (retv=0x7fffffffd3d8, eap=0x7fffffffd420, errormsg=0x7fffffffd3f0, \n    preview=false) at /home/lpiombini/neovim/src/nvim/ex_docmd.c:1762\n#31 0x0000555555728424 in do_one_cmd (cmdlinep=0x7fffffffd640, flags=0, cstack=0x7fffffffd750, \n--Type <RET> for more, q to quit, c to continue without paging--\n    fgetline=0x55555574250c <getexline>, cookie=0x0) at /home/lpiombini/neovim/src/nvim/ex_docmd.c:2392\n#32 0x0000555555723dee in do_cmdline (cmdline=0x0, fgetline=0x55555574250c <getexline>, cookie=0x0, flags=0)\n    at /home/lpiombini/neovim/src/nvim/ex_docmd.c:679\n#33 0x000055555583b456 in nv_colon (cap=0x7fffffffddc0) at /home/lpiombini/neovim/src/nvim/normal.c:3197\n#34 0x0000555555836ebc in normal_execute (state=0x7fffffffdd50, key=58)\n    at /home/lpiombini/neovim/src/nvim/normal.c:1253\n#35 0x000055555591583a in state_enter (s=0x7fffffffdd50) at /home/lpiombini/neovim/src/nvim/state.c:100\n#36 0x0000555555834fb0 in normal_enter (cmdwin=false, noexmode=false) at /home/lpiombini/neovim/src/nvim/normal.c:523\n#37 0x00005555557d5bae in main (argc=3, argv=0x7fffffffe158) at /home/lpiombini/neovim/src/nvim/main.c:658\n```\nit does happen only with this steps. \n\nif you go up one line on the first screen, and scroll line by line with down arrow key or j, it won't cause assertion failure.\nif you go up one line at the first screen, and you then go down one line, and use space to fast scroll, it won't crashes\n\nmy build version is :\n\nNVIM v0.12.0-dev-1705+g1cc905ed45-dirty\nBuild type: Debug\nLuaJIT 2.1.1763318511\nCompilation: /usr/bin/cc -g  -Wall -Wextra -pedantic -Wno-unused-parameter -Wstrict-prototypes -std=gnu99 -Wshadow -Wconversion -Wvla -Wdouble-promotion -Wmissing-noreturn -Wmissing-format-attribute -Wmissing-prototypes -Wno-unused-function -fsigned-char -fstack-protector-strong -Wno-conversion -fno-common -Wimplicit-fallthrough -fdiagnostics-color=auto  -DHAVE_UNIBILIUM -DNVIM_LOG_DEBUG -DUNIT_TESTING -D_GNU_SOURCE -DUTF8PROC_STATIC -I/home/lpiombini/neovim/.deps/usr/include/luajit-2.1 -I/home/lpiombini/neovim/.deps/usr/include -I/home/lpiombini/neovim/build/src/nvim/auto -I/home/lpiombini/neovim/build/include -I/home/lpiombini/neovim/build/cmake.config -I/home/lpiombini/neovim/src -I/usr/include \n\n   system vimrc file: \"$VIM/sysinit.vim\"\n  fall-back for $VIM: \"/usr/local/share/nvim\"\n\n\nit does not happen in the older version that i have installed on my server via apt package manager:\n\n\nNVIM v0.9.5\nBuild type: Release\nLuaJIT 2.1.1703358377\n\n   system vimrc file: \"$VIM/sysinit.vim\"\n  fall-back for $VIM: \"/usr/share/nvim\"\n\ndoes it happen on your machine/set up???\n\n\n\n",
+            "created_at": "2025-11-30T19:17:44Z",
+            "html_url": "https://github.com/neovim/neovim/issues/22919#issuecomment-3593153390",
+            "id": 3593153390,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/22919",
+            "node_id": "IC_kwDOAPphoM7WKytu",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 1,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3593153390/reactions"
+            },
+            "updated_at": "2025-11-30T19:17:44Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3593153390",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/69109614?v=4",
+                "events_url": "https://api.github.com/users/LorenzoPiombini/events{/privacy}",
+                "followers_url": "https://api.github.com/users/LorenzoPiombini/followers",
+                "following_url": "https://api.github.com/users/LorenzoPiombini/following{/other_user}",
+                "gists_url": "https://api.github.com/users/LorenzoPiombini/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/LorenzoPiombini",
+                "id": 69109614,
+                "login": "LorenzoPiombini",
+                "node_id": "MDQ6VXNlcjY5MTA5NjE0",
+                "organizations_url": "https://api.github.com/users/LorenzoPiombini/orgs",
+                "received_events_url": "https://api.github.com/users/LorenzoPiombini/received_events",
+                "repos_url": "https://api.github.com/users/LorenzoPiombini/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/LorenzoPiombini/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/LorenzoPiombini/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/LorenzoPiombini",
+                "user_view_type": "public"
+            }
         }
     ],
-    "comments": 5,
+    "comments": 6,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/22919/comments",
     "created_at": "2023-04-07T09:25:34Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/22919/events",
     "html_url": "https://github.com/neovim/neovim/issues/22919",
     "id": 1658587457,
+    "issue_dependencies_summary": {
+        "blocked_by": 0,
+        "blocking": 0,
+        "total_blocked_by": 0,
+        "total_blocking": 0
+    },
     "labels": [
         {
             "color": "c5def5",
@@ -279,7 +330,7 @@
         {
             "color": "C5DEF5",
             "default": false,
-            "description": "UI messages, log messages, errors, warnings, feedback",
+            "description": "UI messages, log messages, dialogs, progress, errors, warnings, feedback",
             "id": 5637083595,
             "name": "messages",
             "node_id": "LA_kwDOAPphoM8AAAABT_8Ryw",
@@ -314,7 +365,17 @@
     },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/22919/timeline",
     "title": "Assert failure when resizing after multiline messages and calling screenstring() in VimResized",
-    "updated_at": "2025-02-14T02:20:42Z",
+    "type": {
+        "color": "red",
+        "created_at": "2024-01-25T10:10:19Z",
+        "description": "An unexpected problem or behavior",
+        "id": 597163,
+        "is_enabled": true,
+        "name": "Bug",
+        "node_id": "IT_kwDOAGK_Pc4ACRyr",
+        "updated_at": "2024-07-26T10:12:30Z"
+    },
+    "updated_at": "2025-11-30T19:17:44Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/22919",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",

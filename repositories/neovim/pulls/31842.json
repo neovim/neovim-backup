@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/31842"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/6ef43ba8a4d1d096bcfc02b154176ec35d9f289a"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/188595e78654d2da12f8da08c204b4023b47ea1b"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6429,
-            "forks_count": 6429,
+            "forks": 6450,
+            "forks_count": 6450,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 2027,
-            "open_issues_count": 2027,
+            "open_issues": 2023,
+            "open_issues_count": 2023,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -119,11 +119,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2025-11-25T01:10:51Z",
+            "pushed_at": "2025-12-02T02:52:59Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 352207,
+            "size": 353514,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 94510,
+            "stargazers_count": 94666,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -141,14 +141,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2025-11-25T02:41:34Z",
+            "updated_at": "2025-12-02T02:52:46Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 94510,
-            "watchers_count": 94510,
+            "watchers": 94666,
+            "watchers_count": 94666,
             "web_commit_signoff_required": false
         },
-        "sha": "dbd7f4587371901f927152037c8f38fb63b1f59d",
+        "sha": "0a0c349b6fee01a8365e13e5a9dc194fcad4fd0a",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -172,7 +172,7 @@
         }
     },
     "body": "Problem: there is no simple way to retrieve various pieces of information\r\nfor a bug report.\r\n\r\nSolution: add a bug report section to checkhealth in vim.health\r\n\r\nclose https://github.com/neovim/neovim/issues/31847",
-    "closed_at": null,
+    "closed_at": "2025-11-26T05:21:32Z",
     "comment_data": [
         {
             "_links": {
@@ -1007,6 +1007,2165 @@
                 "url": "https://api.github.com/users/glepnir",
                 "user_view_type": "public"
             }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/31842#discussion_r2562611886"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/31842"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2562611886"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "As always, we want to \"namespace\" anything in a global scope.\n```suggestion\n    _G._nvim_health_bugreport_open = function()\n```\n\nShould probably do something like `_G._... = nil` on BufDelete.",
+            "commit_id": "6ef43ba8a4d1d096bcfc02b154176ec35d9f289a",
+            "created_at": "2025-11-26T02:35:26Z",
+            "diff_hunk": "@@ -493,11 +493,112 @@ local function check_external_tools()\n   end\n end\n \n+local function detect_terminal()\n+  local e = vim.env\n+  if e.TERM_PROGRAM then\n+    local v = e.TERM_PROGRAM_VERSION --- @type string?\n+    return e.TERM_PROGRAM_VERSION and (e.TERM_PROGRAM .. ' ' .. v) or e.TERM_PROGRAM\n+  end\n+\n+  local map = {\n+    KITTY_WINDOW_ID = 'kitty',\n+    ALACRITTY_SOCKET = 'alacritty',\n+    ALACRITTY_LOG = 'alacritty',\n+    WEZTERM_EXECUTABLE = 'wezterm',\n+    KONSOLE_VERSION = function()\n+      return 'konsole ' .. e.KONSOLE_VERSION\n+    end,\n+    VTE_VERSION = function()\n+      return 'vte ' .. e.VTE_VERSION\n+    end,\n+  }\n+\n+  for key, val in pairs(map) do\n+    local env = e[key] --- @type string?\n+    if env then\n+      return type(val) == 'function' and val() or val\n+    end\n+  end\n+\n+  return 'unknown'\n+end\n+\n+local function check_sysinfo()\n+  vim.health.start('Bug Report Information')\n+\n+  -- Use :version because vim.version().build returns \"Homebrew\" for brew installs.\n+  local version_output = vim.api.nvim_exec2('version', { output = true }).output\n+  local nvim_version = version_output:match('NVIM v[^\\n]+') or 'unknown'\n+  local commit_hash = nvim_version:match('%+g?(%x+)')\n+  local version_for_report = nvim_version\n+  if commit_hash then\n+    version_for_report = nvim_version:gsub('%+g' .. commit_hash, ' neovim/neovim@' .. commit_hash)\n+    local result = vim\n+      .system({ 'git', 'ls-remote', 'https://github.com/neovim/neovim', 'HEAD' }, { text = true })\n+      :wait()\n+\n+    if result.code == 0 then\n+      local sha = result.stdout:match('^(%x+)')\n+      local latest_commit = sha:sub(1, 10) --- @type string?\n+      if latest_commit and commit_hash ~= latest_commit then\n+        vim.health.warn(\n+          string.format('Build is outdated. Local: %s, Latest: %s', commit_hash, latest_commit)\n+        )\n+      end\n+    end\n+  end\n+\n+  local os_info = vim.uv.os_uname()\n+  local os_string = os_info.sysname .. ' ' .. os_info.release\n+  local terminal = detect_terminal()\n+  local term_env = vim.env.TERM or 'unknown'\n+\n+  vim.health.info('Nvim version: ' .. nvim_version)\n+  vim.health.info('Operating system: ' .. os_string)\n+  vim.health.info('Terminal: ' .. terminal)\n+  vim.health.info('$TERM: ' .. term_env)\n+\n+  local body = vim.text.indent(\n+    0,\n+    string.format(\n+      '## Problem:\\n\\n\\n\\n'\n+        .. '## Steps to reproduce:\\n\\n```\\nnvim --clean\\n\\n```\\n\\n'\n+        .. '## Expected behavior:\\n\\n\\n\\n'\n+        .. '## Nvim version (nvim -v):\\n\\n%s\\n\\n'\n+        .. '## Vim (not Nvim) behaves the same?\\n\\n\\n\\n'\n+        .. '## Operating system/version:\\n\\n%s\\n\\n'\n+        .. '## Terminal name/version:\\n\\n%s\\n\\n'\n+        .. '## $TERM environment variable:\\n\\n%s\\n\\n'\n+        .. '## Installation:\\n\\n',\n+      version_for_report,\n+      os_string,\n+      terminal,\n+      term_env\n+    )\n+  )\n+\n+  local encoded_body = vim.uri_encode(body) --- @type string\n+  local issue_url = 'https://github.com/neovim/neovim/issues/new?labels=bug&body=' .. encoded_body\n+  vim.schedule(function()\n+    local win = vim.api.nvim_get_current_win()\n+    local buf = vim.api.nvim_win_get_buf(win)\n+    if vim.bo[buf].filetype ~= 'checkhealth' then\n+      return\n+    end\n+    _G._bugreport_open = function()",
+            "html_url": "https://github.com/neovim/neovim/pull/31842#discussion_r2562611886",
+            "id": 2562611886,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM6Yvlqu",
+            "original_commit_id": "6ef43ba8a4d1d096bcfc02b154176ec35d9f289a",
+            "original_line": 588,
+            "original_position": 96,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/health/health.lua",
+            "position": 1,
+            "pull_request_review_id": 3508155105,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31842",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2562611886/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-11-26T02:36:12Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2562611886",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/31842#discussion_r2562619484"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/31842"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2562619484"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "we have `vim.text.indent(0, [[..]])` which dedents text. Never need to concat a bunch of strings like this.",
+            "commit_id": "b3d626f20f296d9215186c4e08b692a927a6496a",
+            "created_at": "2025-11-26T02:37:18Z",
+            "diff_hunk": "@@ -493,11 +493,112 @@ local function check_external_tools()\n   end\n end\n \n+local function detect_terminal()\n+  local e = vim.env\n+  if e.TERM_PROGRAM then\n+    local v = e.TERM_PROGRAM_VERSION --- @type string?\n+    return e.TERM_PROGRAM_VERSION and (e.TERM_PROGRAM .. ' ' .. v) or e.TERM_PROGRAM\n+  end\n+\n+  local map = {\n+    KITTY_WINDOW_ID = 'kitty',\n+    ALACRITTY_SOCKET = 'alacritty',\n+    ALACRITTY_LOG = 'alacritty',\n+    WEZTERM_EXECUTABLE = 'wezterm',\n+    KONSOLE_VERSION = function()\n+      return 'konsole ' .. e.KONSOLE_VERSION\n+    end,\n+    VTE_VERSION = function()\n+      return 'vte ' .. e.VTE_VERSION\n+    end,\n+  }\n+\n+  for key, val in pairs(map) do\n+    local env = e[key] --- @type string?\n+    if env then\n+      return type(val) == 'function' and val() or val\n+    end\n+  end\n+\n+  return 'unknown'\n+end\n+\n+local function check_sysinfo()\n+  vim.health.start('Bug Report Information')\n+\n+  -- Use :version because vim.version().build returns \"Homebrew\" for brew installs.\n+  local version_output = vim.api.nvim_exec2('version', { output = true }).output\n+  local nvim_version = version_output:match('NVIM v[^\\n]+') or 'unknown'\n+  local commit_hash = nvim_version:match('%+g?(%x+)')\n+  local version_for_report = nvim_version\n+  if commit_hash then\n+    version_for_report = nvim_version:gsub('%+g' .. commit_hash, ' neovim/neovim@' .. commit_hash)\n+    local result = vim\n+      .system({ 'git', 'ls-remote', 'https://github.com/neovim/neovim', 'HEAD' }, { text = true })\n+      :wait()\n+\n+    if result.code == 0 then\n+      local sha = result.stdout:match('^(%x+)')\n+      local latest_commit = sha:sub(1, 10) --- @type string?\n+      if latest_commit and commit_hash ~= latest_commit then\n+        vim.health.warn(\n+          string.format('Build is outdated. Local: %s, Latest: %s', commit_hash, latest_commit)\n+        )\n+      end\n+    end\n+  end\n+\n+  local os_info = vim.uv.os_uname()\n+  local os_string = os_info.sysname .. ' ' .. os_info.release\n+  local terminal = detect_terminal()\n+  local term_env = vim.env.TERM or 'unknown'\n+\n+  vim.health.info('Nvim version: ' .. nvim_version)\n+  vim.health.info('Operating system: ' .. os_string)\n+  vim.health.info('Terminal: ' .. terminal)\n+  vim.health.info('$TERM: ' .. term_env)\n+\n+  local body = vim.text.indent(\n+    0,\n+    string.format(\n+      '## Problem:\\n\\n\\n\\n'\n+        .. '## Steps to reproduce:\\n\\n```\\nnvim --clean\\n\\n```\\n\\n'",
+            "html_url": "https://github.com/neovim/neovim/pull/31842#discussion_r2562619484",
+            "id": 2562619484,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM6Yvnhc",
+            "original_commit_id": "6ef43ba8a4d1d096bcfc02b154176ec35d9f289a",
+            "original_line": 578,
+            "original_position": 73,
+            "original_start_line": 563,
+            "path": "runtime/lua/vim/health/health.lua",
+            "position": 1,
+            "pull_request_review_id": 3508165262,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31842",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2562619484/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2025-11-26T02:37:46Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2562619484",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/31842#discussion_r2562629660"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/31842"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2562629660"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "nice 👍 ",
+            "commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "created_at": "2025-11-26T02:39:41Z",
+            "diff_hunk": "@@ -493,11 +493,112 @@ local function check_external_tools()\n   end\n end\n \n+local function detect_terminal()\n+  local e = vim.env\n+  if e.TERM_PROGRAM then\n+    local v = e.TERM_PROGRAM_VERSION --- @type string?\n+    return e.TERM_PROGRAM_VERSION and (e.TERM_PROGRAM .. ' ' .. v) or e.TERM_PROGRAM\n+  end\n+\n+  local map = {\n+    KITTY_WINDOW_ID = 'kitty',\n+    ALACRITTY_SOCKET = 'alacritty',\n+    ALACRITTY_LOG = 'alacritty',\n+    WEZTERM_EXECUTABLE = 'wezterm',\n+    KONSOLE_VERSION = function()\n+      return 'konsole ' .. e.KONSOLE_VERSION\n+    end,\n+    VTE_VERSION = function()\n+      return 'vte ' .. e.VTE_VERSION\n+    end,\n+  }\n+\n+  for key, val in pairs(map) do\n+    local env = e[key] --- @type string?\n+    if env then\n+      return type(val) == 'function' and val() or val\n+    end\n+  end\n+\n+  return 'unknown'\n+end\n+\n+local function check_sysinfo()\n+  vim.health.start('Bug Report Information')\n+\n+  -- Use :version because vim.version().build returns \"Homebrew\" for brew installs.\n+  local version_output = vim.api.nvim_exec2('version', { output = true }).output\n+  local nvim_version = version_output:match('NVIM v[^\\n]+') or 'unknown'\n+  local commit_hash = nvim_version:match('%+g?(%x+)')\n+  local version_for_report = nvim_version\n+  if commit_hash then\n+    version_for_report = nvim_version:gsub('%+g' .. commit_hash, ' neovim/neovim@' .. commit_hash)",
+            "html_url": "https://github.com/neovim/neovim/pull/31842#discussion_r2562629660",
+            "id": 2562629660,
+            "line": 535,
+            "node_id": "PRRC_kwDOAPphoM6YvqAc",
+            "original_commit_id": "6ef43ba8a4d1d096bcfc02b154176ec35d9f289a",
+            "original_line": 535,
+            "original_position": 43,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/health/health.lua",
+            "position": 43,
+            "pull_request_review_id": 3508178244,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31842",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2562629660/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-11-26T02:39:41Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2562629660",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/31842#discussion_r2562637043"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/31842"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2562637043"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "let's call it System Info. the bug report button tells its own story, don't need to repeat the story in this heading.",
+            "commit_id": "6ef43ba8a4d1d096bcfc02b154176ec35d9f289a",
+            "created_at": "2025-11-26T02:41:21Z",
+            "diff_hunk": "@@ -493,11 +493,112 @@ local function check_external_tools()\n   end\n end\n \n+local function detect_terminal()\n+  local e = vim.env\n+  if e.TERM_PROGRAM then\n+    local v = e.TERM_PROGRAM_VERSION --- @type string?\n+    return e.TERM_PROGRAM_VERSION and (e.TERM_PROGRAM .. ' ' .. v) or e.TERM_PROGRAM\n+  end\n+\n+  local map = {\n+    KITTY_WINDOW_ID = 'kitty',\n+    ALACRITTY_SOCKET = 'alacritty',\n+    ALACRITTY_LOG = 'alacritty',\n+    WEZTERM_EXECUTABLE = 'wezterm',\n+    KONSOLE_VERSION = function()\n+      return 'konsole ' .. e.KONSOLE_VERSION\n+    end,\n+    VTE_VERSION = function()\n+      return 'vte ' .. e.VTE_VERSION\n+    end,\n+  }\n+\n+  for key, val in pairs(map) do\n+    local env = e[key] --- @type string?\n+    if env then\n+      return type(val) == 'function' and val() or val\n+    end\n+  end\n+\n+  return 'unknown'\n+end\n+\n+local function check_sysinfo()\n+  vim.health.start('Bug Report Information')",
+            "html_url": "https://github.com/neovim/neovim/pull/31842#discussion_r2562637043",
+            "id": 2562637043,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM6Yvrzz",
+            "original_commit_id": "6ef43ba8a4d1d096bcfc02b154176ec35d9f289a",
+            "original_line": 527,
+            "original_position": 35,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/health/health.lua",
+            "position": 1,
+            "pull_request_review_id": 3508187144,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31842",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2562637043/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-11-26T02:41:21Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2562637043",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/31842#discussion_r2562638795"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/31842"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2562638795"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\n  vim.health.start('System Info')\n```",
+            "commit_id": "6ef43ba8a4d1d096bcfc02b154176ec35d9f289a",
+            "created_at": "2025-11-26T02:41:40Z",
+            "diff_hunk": "@@ -493,11 +493,112 @@ local function check_external_tools()\n   end\n end\n \n+local function detect_terminal()\n+  local e = vim.env\n+  if e.TERM_PROGRAM then\n+    local v = e.TERM_PROGRAM_VERSION --- @type string?\n+    return e.TERM_PROGRAM_VERSION and (e.TERM_PROGRAM .. ' ' .. v) or e.TERM_PROGRAM\n+  end\n+\n+  local map = {\n+    KITTY_WINDOW_ID = 'kitty',\n+    ALACRITTY_SOCKET = 'alacritty',\n+    ALACRITTY_LOG = 'alacritty',\n+    WEZTERM_EXECUTABLE = 'wezterm',\n+    KONSOLE_VERSION = function()\n+      return 'konsole ' .. e.KONSOLE_VERSION\n+    end,\n+    VTE_VERSION = function()\n+      return 'vte ' .. e.VTE_VERSION\n+    end,\n+  }\n+\n+  for key, val in pairs(map) do\n+    local env = e[key] --- @type string?\n+    if env then\n+      return type(val) == 'function' and val() or val\n+    end\n+  end\n+\n+  return 'unknown'\n+end\n+\n+local function check_sysinfo()\n+  vim.health.start('Bug Report Information')",
+            "html_url": "https://github.com/neovim/neovim/pull/31842#discussion_r2562638795",
+            "id": 2562638795,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM6YvsPL",
+            "original_commit_id": "6ef43ba8a4d1d096bcfc02b154176ec35d9f289a",
+            "original_line": 527,
+            "original_position": 35,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/health/health.lua",
+            "position": 1,
+            "pull_request_review_id": 3508189086,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31842",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2562638795/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-11-26T02:41:40Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2562638795",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/31842#discussion_r2562645326"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/31842"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2562645326"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "what happens if `git` is not on the system? checkhealth shouldn't just fail. this will raise an error. ",
+            "commit_id": "6ef43ba8a4d1d096bcfc02b154176ec35d9f289a",
+            "created_at": "2025-11-26T02:43:07Z",
+            "diff_hunk": "@@ -493,11 +493,112 @@ local function check_external_tools()\n   end\n end\n \n+local function detect_terminal()\n+  local e = vim.env\n+  if e.TERM_PROGRAM then\n+    local v = e.TERM_PROGRAM_VERSION --- @type string?\n+    return e.TERM_PROGRAM_VERSION and (e.TERM_PROGRAM .. ' ' .. v) or e.TERM_PROGRAM\n+  end\n+\n+  local map = {\n+    KITTY_WINDOW_ID = 'kitty',\n+    ALACRITTY_SOCKET = 'alacritty',\n+    ALACRITTY_LOG = 'alacritty',\n+    WEZTERM_EXECUTABLE = 'wezterm',\n+    KONSOLE_VERSION = function()\n+      return 'konsole ' .. e.KONSOLE_VERSION\n+    end,\n+    VTE_VERSION = function()\n+      return 'vte ' .. e.VTE_VERSION\n+    end,\n+  }\n+\n+  for key, val in pairs(map) do\n+    local env = e[key] --- @type string?\n+    if env then\n+      return type(val) == 'function' and val() or val\n+    end\n+  end\n+\n+  return 'unknown'\n+end\n+\n+local function check_sysinfo()\n+  vim.health.start('Bug Report Information')\n+\n+  -- Use :version because vim.version().build returns \"Homebrew\" for brew installs.\n+  local version_output = vim.api.nvim_exec2('version', { output = true }).output\n+  local nvim_version = version_output:match('NVIM v[^\\n]+') or 'unknown'\n+  local commit_hash = nvim_version:match('%+g?(%x+)')\n+  local version_for_report = nvim_version\n+  if commit_hash then\n+    version_for_report = nvim_version:gsub('%+g' .. commit_hash, ' neovim/neovim@' .. commit_hash)\n+    local result = vim\n+      .system({ 'git', 'ls-remote', 'https://github.com/neovim/neovim', 'HEAD' }, { text = true })\n+      :wait()",
+            "html_url": "https://github.com/neovim/neovim/pull/31842#discussion_r2562645326",
+            "id": 2562645326,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM6Yvt1O",
+            "original_commit_id": "6ef43ba8a4d1d096bcfc02b154176ec35d9f289a",
+            "original_line": 538,
+            "original_position": 46,
+            "original_start_line": 536,
+            "path": "runtime/lua/vim/health/health.lua",
+            "position": 1,
+            "pull_request_review_id": 3508196921,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31842",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2562645326/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2025-11-26T02:43:07Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2562645326",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/31842#discussion_r2562651628"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/31842"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2562651628"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "it should check `nightly`, otherwise it will always show \"outdated\" because HEAD almost always has new commits",
+            "commit_id": "6ef43ba8a4d1d096bcfc02b154176ec35d9f289a",
+            "created_at": "2025-11-26T02:44:26Z",
+            "diff_hunk": "@@ -493,11 +493,112 @@ local function check_external_tools()\n   end\n end\n \n+local function detect_terminal()\n+  local e = vim.env\n+  if e.TERM_PROGRAM then\n+    local v = e.TERM_PROGRAM_VERSION --- @type string?\n+    return e.TERM_PROGRAM_VERSION and (e.TERM_PROGRAM .. ' ' .. v) or e.TERM_PROGRAM\n+  end\n+\n+  local map = {\n+    KITTY_WINDOW_ID = 'kitty',\n+    ALACRITTY_SOCKET = 'alacritty',\n+    ALACRITTY_LOG = 'alacritty',\n+    WEZTERM_EXECUTABLE = 'wezterm',\n+    KONSOLE_VERSION = function()\n+      return 'konsole ' .. e.KONSOLE_VERSION\n+    end,\n+    VTE_VERSION = function()\n+      return 'vte ' .. e.VTE_VERSION\n+    end,\n+  }\n+\n+  for key, val in pairs(map) do\n+    local env = e[key] --- @type string?\n+    if env then\n+      return type(val) == 'function' and val() or val\n+    end\n+  end\n+\n+  return 'unknown'\n+end\n+\n+local function check_sysinfo()\n+  vim.health.start('Bug Report Information')\n+\n+  -- Use :version because vim.version().build returns \"Homebrew\" for brew installs.\n+  local version_output = vim.api.nvim_exec2('version', { output = true }).output\n+  local nvim_version = version_output:match('NVIM v[^\\n]+') or 'unknown'\n+  local commit_hash = nvim_version:match('%+g?(%x+)')\n+  local version_for_report = nvim_version\n+  if commit_hash then\n+    version_for_report = nvim_version:gsub('%+g' .. commit_hash, ' neovim/neovim@' .. commit_hash)\n+    local result = vim\n+      .system({ 'git', 'ls-remote', 'https://github.com/neovim/neovim', 'HEAD' }, { text = true })",
+            "html_url": "https://github.com/neovim/neovim/pull/31842#discussion_r2562651628",
+            "id": 2562651628,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM6YvvXs",
+            "original_commit_id": "6ef43ba8a4d1d096bcfc02b154176ec35d9f289a",
+            "original_line": 537,
+            "original_position": 45,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/health/health.lua",
+            "position": 1,
+            "pull_request_review_id": 3508204168,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31842",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2562651628/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-11-26T02:44:26Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2562651628",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/31842#discussion_r2562655376"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/31842"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2562655376"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "this is a great idea for HEAD users. Since this is in `if commit_hash`, it won't show for stable users, which is good 👍 ",
+            "commit_id": "6ef43ba8a4d1d096bcfc02b154176ec35d9f289a",
+            "created_at": "2025-11-26T02:45:16Z",
+            "diff_hunk": "@@ -493,11 +493,112 @@ local function check_external_tools()\n   end\n end\n \n+local function detect_terminal()\n+  local e = vim.env\n+  if e.TERM_PROGRAM then\n+    local v = e.TERM_PROGRAM_VERSION --- @type string?\n+    return e.TERM_PROGRAM_VERSION and (e.TERM_PROGRAM .. ' ' .. v) or e.TERM_PROGRAM\n+  end\n+\n+  local map = {\n+    KITTY_WINDOW_ID = 'kitty',\n+    ALACRITTY_SOCKET = 'alacritty',\n+    ALACRITTY_LOG = 'alacritty',\n+    WEZTERM_EXECUTABLE = 'wezterm',\n+    KONSOLE_VERSION = function()\n+      return 'konsole ' .. e.KONSOLE_VERSION\n+    end,\n+    VTE_VERSION = function()\n+      return 'vte ' .. e.VTE_VERSION\n+    end,\n+  }\n+\n+  for key, val in pairs(map) do\n+    local env = e[key] --- @type string?\n+    if env then\n+      return type(val) == 'function' and val() or val\n+    end\n+  end\n+\n+  return 'unknown'\n+end\n+\n+local function check_sysinfo()\n+  vim.health.start('Bug Report Information')\n+\n+  -- Use :version because vim.version().build returns \"Homebrew\" for brew installs.\n+  local version_output = vim.api.nvim_exec2('version', { output = true }).output\n+  local nvim_version = version_output:match('NVIM v[^\\n]+') or 'unknown'\n+  local commit_hash = nvim_version:match('%+g?(%x+)')\n+  local version_for_report = nvim_version\n+  if commit_hash then\n+    version_for_report = nvim_version:gsub('%+g' .. commit_hash, ' neovim/neovim@' .. commit_hash)\n+    local result = vim\n+      .system({ 'git', 'ls-remote', 'https://github.com/neovim/neovim', 'HEAD' }, { text = true })\n+      :wait()\n+\n+    if result.code == 0 then\n+      local sha = result.stdout:match('^(%x+)')\n+      local latest_commit = sha:sub(1, 10) --- @type string?\n+      if latest_commit and commit_hash ~= latest_commit then\n+        vim.health.warn(\n+          string.format('Build is outdated. Local: %s, Latest: %s', commit_hash, latest_commit)",
+            "html_url": "https://github.com/neovim/neovim/pull/31842#discussion_r2562655376",
+            "id": 2562655376,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM6YvwSQ",
+            "original_commit_id": "6ef43ba8a4d1d096bcfc02b154176ec35d9f289a",
+            "original_line": 545,
+            "original_position": 53,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/health/health.lua",
+            "position": 1,
+            "pull_request_review_id": 3508208368,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31842",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2562655376/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-11-26T02:45:16Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2562655376",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/31842#discussion_r2562659855"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/31842"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2562659855"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "should be the first one i guess. not randomly in the middle.",
+            "commit_id": "6ef43ba8a4d1d096bcfc02b154176ec35d9f289a",
+            "created_at": "2025-11-26T02:46:09Z",
+            "diff_hunk": "@@ -493,11 +493,112 @@ local function check_external_tools()\n   end\n end\n \n+local function detect_terminal()\n+  local e = vim.env\n+  if e.TERM_PROGRAM then\n+    local v = e.TERM_PROGRAM_VERSION --- @type string?\n+    return e.TERM_PROGRAM_VERSION and (e.TERM_PROGRAM .. ' ' .. v) or e.TERM_PROGRAM\n+  end\n+\n+  local map = {\n+    KITTY_WINDOW_ID = 'kitty',\n+    ALACRITTY_SOCKET = 'alacritty',\n+    ALACRITTY_LOG = 'alacritty',\n+    WEZTERM_EXECUTABLE = 'wezterm',\n+    KONSOLE_VERSION = function()\n+      return 'konsole ' .. e.KONSOLE_VERSION\n+    end,\n+    VTE_VERSION = function()\n+      return 'vte ' .. e.VTE_VERSION\n+    end,\n+  }\n+\n+  for key, val in pairs(map) do\n+    local env = e[key] --- @type string?\n+    if env then\n+      return type(val) == 'function' and val() or val\n+    end\n+  end\n+\n+  return 'unknown'\n+end\n+\n+local function check_sysinfo()\n+  vim.health.start('Bug Report Information')\n+\n+  -- Use :version because vim.version().build returns \"Homebrew\" for brew installs.\n+  local version_output = vim.api.nvim_exec2('version', { output = true }).output\n+  local nvim_version = version_output:match('NVIM v[^\\n]+') or 'unknown'\n+  local commit_hash = nvim_version:match('%+g?(%x+)')\n+  local version_for_report = nvim_version\n+  if commit_hash then\n+    version_for_report = nvim_version:gsub('%+g' .. commit_hash, ' neovim/neovim@' .. commit_hash)\n+    local result = vim\n+      .system({ 'git', 'ls-remote', 'https://github.com/neovim/neovim', 'HEAD' }, { text = true })\n+      :wait()\n+\n+    if result.code == 0 then\n+      local sha = result.stdout:match('^(%x+)')\n+      local latest_commit = sha:sub(1, 10) --- @type string?\n+      if latest_commit and commit_hash ~= latest_commit then\n+        vim.health.warn(\n+          string.format('Build is outdated. Local: %s, Latest: %s', commit_hash, latest_commit)\n+        )\n+      end\n+    end\n+  end\n+\n+  local os_info = vim.uv.os_uname()\n+  local os_string = os_info.sysname .. ' ' .. os_info.release\n+  local terminal = detect_terminal()\n+  local term_env = vim.env.TERM or 'unknown'\n+\n+  vim.health.info('Nvim version: ' .. nvim_version)\n+  vim.health.info('Operating system: ' .. os_string)\n+  vim.health.info('Terminal: ' .. terminal)\n+  vim.health.info('$TERM: ' .. term_env)\n+\n+  local body = vim.text.indent(\n+    0,\n+    string.format(\n+      '## Problem:\\n\\n\\n\\n'\n+        .. '## Steps to reproduce:\\n\\n```\\nnvim --clean\\n\\n```\\n\\n'\n+        .. '## Expected behavior:\\n\\n\\n\\n'\n+        .. '## Nvim version (nvim -v):\\n\\n%s\\n\\n'\n+        .. '## Vim (not Nvim) behaves the same?\\n\\n\\n\\n'\n+        .. '## Operating system/version:\\n\\n%s\\n\\n'\n+        .. '## Terminal name/version:\\n\\n%s\\n\\n'\n+        .. '## $TERM environment variable:\\n\\n%s\\n\\n'\n+        .. '## Installation:\\n\\n',\n+      version_for_report,\n+      os_string,\n+      terminal,\n+      term_env\n+    )\n+  )\n+\n+  local encoded_body = vim.uri_encode(body) --- @type string\n+  local issue_url = 'https://github.com/neovim/neovim/issues/new?labels=bug&body=' .. encoded_body\n+  vim.schedule(function()\n+    local win = vim.api.nvim_get_current_win()\n+    local buf = vim.api.nvim_win_get_buf(win)\n+    if vim.bo[buf].filetype ~= 'checkhealth' then\n+      return\n+    end\n+    _G._bugreport_open = function()\n+      vim.ui.open(issue_url)\n+    end\n+    vim.wo[win].winbar =\n+      '%#WarningMsg#%@v:lua._bugreport_open@Click to Create Bug Report on GitHub%X%*'\n+  end)\n+end\n+\n function M.check()\n   check_config()\n   check_runtime()\n   check_performance()\n   check_rplugin_manifest()\n+  check_sysinfo()",
+            "html_url": "https://github.com/neovim/neovim/pull/31842#discussion_r2562659855",
+            "id": 2562659855,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM6YvxYP",
+            "original_commit_id": "6ef43ba8a4d1d096bcfc02b154176ec35d9f289a",
+            "original_line": 601,
+            "original_position": 109,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/health/health.lua",
+            "position": 1,
+            "pull_request_review_id": 3508213192,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31842",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2562659855/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-11-26T02:46:09Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2562659855",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/31842#discussion_r2563232430"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/31842"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2563232430"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Er... why does this assume that `commit_hash ~= latest_commit` means \"outdated\" ? :)",
+            "commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "created_at": "2025-11-26T05:29:22Z",
+            "diff_hunk": "@@ -493,7 +493,153 @@ local function check_external_tools()\n   end\n end\n \n+local function detect_terminal()\n+  local e = vim.env\n+  if e.TERM_PROGRAM then\n+    local v = e.TERM_PROGRAM_VERSION --- @type string?\n+    return e.TERM_PROGRAM_VERSION and (e.TERM_PROGRAM .. ' ' .. v) or e.TERM_PROGRAM\n+  end\n+\n+  local map = {\n+    KITTY_WINDOW_ID = 'kitty',\n+    ALACRITTY_SOCKET = 'alacritty',\n+    ALACRITTY_LOG = 'alacritty',\n+    WEZTERM_EXECUTABLE = 'wezterm',\n+    KONSOLE_VERSION = function()\n+      return 'konsole ' .. e.KONSOLE_VERSION\n+    end,\n+    VTE_VERSION = function()\n+      return 'vte ' .. e.VTE_VERSION\n+    end,\n+  }\n+\n+  for key, val in pairs(map) do\n+    local env = e[key] --- @type string?\n+    if env then\n+      return type(val) == 'function' and val() or val\n+    end\n+  end\n+\n+  return 'unknown'\n+end\n+\n+local function check_sysinfo()\n+  vim.health.start('System Info')\n+\n+  -- Use :version because vim.version().build returns \"Homebrew\" for brew installs.\n+  local version_output = vim.api.nvim_exec2('version', { output = true }).output\n+  local nvim_version = version_output:match('NVIM v[^\\n]+') or 'unknown'\n+  local commit_hash = nvim_version:match('%+g?(%x+)')\n+  local version_for_report = nvim_version\n+  if commit_hash then\n+    version_for_report = nvim_version:gsub('%+g' .. commit_hash, ' neovim/neovim@' .. commit_hash)\n+    local has_git = vim.fn.executable('git') == 0\n+    local has_curl = vim.fn.executable('curl') == 1\n+    local cmd = has_git and { 'git', 'ls-remote', 'https://github.com/neovim/neovim', 'nightly' }\n+      or has_curl and {\n+        'curl',\n+        '-s',\n+        'https://api.github.com/repos/neovim/neovim/commits/nightly',\n+        '-H',\n+        'Accept: application/vnd.github.sha',\n+      }\n+      or nil\n+\n+    if cmd then\n+      local result = vim.system(cmd, { text = true }):wait()\n+      if result.code == 0 then\n+        local sha = has_git and result.stdout:match('^(%x+)') or result.stdout\n+        local latest_commit = sha and sha:sub(1, 10)\n+        if latest_commit and commit_hash ~= latest_commit then\n+          vim.health.warn(\n+            string.format('Build is outdated. Local: %s, Latest: %s', commit_hash, latest_commit)",
+            "html_url": "https://github.com/neovim/neovim/pull/31842#discussion_r2563232430",
+            "id": 2563232430,
+            "line": 555,
+            "node_id": "PRRC_kwDOAPphoM6Yx9Ku",
+            "original_commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "original_line": 555,
+            "original_position": 63,
+            "original_start_line": 553,
+            "path": "runtime/lua/vim/health/health.lua",
+            "position": 63,
+            "pull_request_review_id": 3508847727,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31842",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2563232430/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 553,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2025-11-26T05:29:22Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2563232430",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/31842#discussion_r2563277084"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/31842"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2563277084"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "build hash does not match the nightly hash, does that indicate the build is outdated?",
+            "commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "created_at": "2025-11-26T05:39:29Z",
+            "diff_hunk": "@@ -493,7 +493,153 @@ local function check_external_tools()\n   end\n end\n \n+local function detect_terminal()\n+  local e = vim.env\n+  if e.TERM_PROGRAM then\n+    local v = e.TERM_PROGRAM_VERSION --- @type string?\n+    return e.TERM_PROGRAM_VERSION and (e.TERM_PROGRAM .. ' ' .. v) or e.TERM_PROGRAM\n+  end\n+\n+  local map = {\n+    KITTY_WINDOW_ID = 'kitty',\n+    ALACRITTY_SOCKET = 'alacritty',\n+    ALACRITTY_LOG = 'alacritty',\n+    WEZTERM_EXECUTABLE = 'wezterm',\n+    KONSOLE_VERSION = function()\n+      return 'konsole ' .. e.KONSOLE_VERSION\n+    end,\n+    VTE_VERSION = function()\n+      return 'vte ' .. e.VTE_VERSION\n+    end,\n+  }\n+\n+  for key, val in pairs(map) do\n+    local env = e[key] --- @type string?\n+    if env then\n+      return type(val) == 'function' and val() or val\n+    end\n+  end\n+\n+  return 'unknown'\n+end\n+\n+local function check_sysinfo()\n+  vim.health.start('System Info')\n+\n+  -- Use :version because vim.version().build returns \"Homebrew\" for brew installs.\n+  local version_output = vim.api.nvim_exec2('version', { output = true }).output\n+  local nvim_version = version_output:match('NVIM v[^\\n]+') or 'unknown'\n+  local commit_hash = nvim_version:match('%+g?(%x+)')\n+  local version_for_report = nvim_version\n+  if commit_hash then\n+    version_for_report = nvim_version:gsub('%+g' .. commit_hash, ' neovim/neovim@' .. commit_hash)\n+    local has_git = vim.fn.executable('git') == 0\n+    local has_curl = vim.fn.executable('curl') == 1\n+    local cmd = has_git and { 'git', 'ls-remote', 'https://github.com/neovim/neovim', 'nightly' }\n+      or has_curl and {\n+        'curl',\n+        '-s',\n+        'https://api.github.com/repos/neovim/neovim/commits/nightly',\n+        '-H',\n+        'Accept: application/vnd.github.sha',\n+      }\n+      or nil\n+\n+    if cmd then\n+      local result = vim.system(cmd, { text = true }):wait()\n+      if result.code == 0 then\n+        local sha = has_git and result.stdout:match('^(%x+)') or result.stdout\n+        local latest_commit = sha and sha:sub(1, 10)\n+        if latest_commit and commit_hash ~= latest_commit then\n+          vim.health.warn(\n+            string.format('Build is outdated. Local: %s, Latest: %s', commit_hash, latest_commit)",
+            "html_url": "https://github.com/neovim/neovim/pull/31842#discussion_r2563277084",
+            "id": 2563277084,
+            "in_reply_to_id": 2563232430,
+            "line": 555,
+            "node_id": "PRRC_kwDOAPphoM6YyIEc",
+            "original_commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "original_line": 555,
+            "original_position": 63,
+            "original_start_line": 553,
+            "path": "runtime/lua/vim/health/health.lua",
+            "position": 63,
+            "pull_request_review_id": 3508898088,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31842",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2563277084/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 553,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2025-11-26T05:39:29Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2563277084",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",
+                "events_url": "https://api.github.com/users/glepnir/events{/privacy}",
+                "followers_url": "https://api.github.com/users/glepnir/followers",
+                "following_url": "https://api.github.com/users/glepnir/following{/other_user}",
+                "gists_url": "https://api.github.com/users/glepnir/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/glepnir",
+                "id": 41671631,
+                "login": "glepnir",
+                "node_id": "MDQ6VXNlcjQxNjcxNjMx",
+                "organizations_url": "https://api.github.com/users/glepnir/orgs",
+                "received_events_url": "https://api.github.com/users/glepnir/received_events",
+                "repos_url": "https://api.github.com/users/glepnir/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/glepnir/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/glepnir/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/glepnir",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/31842#discussion_r2563311109"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/31842"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2563311109"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "hashes can be anything. Note that `:version` shows `0.12.0-dev-1688-...`, where the `-1688` is a hint that I have 1688 commits since the last tag (`v0.11.x`). So if that is available, that could be compared. But then the logic would also need to count the commits in github.\r\n\r\nI think this check should be skipped for now. ",
+            "commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "created_at": "2025-11-26T05:47:41Z",
+            "diff_hunk": "@@ -493,7 +493,153 @@ local function check_external_tools()\n   end\n end\n \n+local function detect_terminal()\n+  local e = vim.env\n+  if e.TERM_PROGRAM then\n+    local v = e.TERM_PROGRAM_VERSION --- @type string?\n+    return e.TERM_PROGRAM_VERSION and (e.TERM_PROGRAM .. ' ' .. v) or e.TERM_PROGRAM\n+  end\n+\n+  local map = {\n+    KITTY_WINDOW_ID = 'kitty',\n+    ALACRITTY_SOCKET = 'alacritty',\n+    ALACRITTY_LOG = 'alacritty',\n+    WEZTERM_EXECUTABLE = 'wezterm',\n+    KONSOLE_VERSION = function()\n+      return 'konsole ' .. e.KONSOLE_VERSION\n+    end,\n+    VTE_VERSION = function()\n+      return 'vte ' .. e.VTE_VERSION\n+    end,\n+  }\n+\n+  for key, val in pairs(map) do\n+    local env = e[key] --- @type string?\n+    if env then\n+      return type(val) == 'function' and val() or val\n+    end\n+  end\n+\n+  return 'unknown'\n+end\n+\n+local function check_sysinfo()\n+  vim.health.start('System Info')\n+\n+  -- Use :version because vim.version().build returns \"Homebrew\" for brew installs.\n+  local version_output = vim.api.nvim_exec2('version', { output = true }).output\n+  local nvim_version = version_output:match('NVIM v[^\\n]+') or 'unknown'\n+  local commit_hash = nvim_version:match('%+g?(%x+)')\n+  local version_for_report = nvim_version\n+  if commit_hash then\n+    version_for_report = nvim_version:gsub('%+g' .. commit_hash, ' neovim/neovim@' .. commit_hash)\n+    local has_git = vim.fn.executable('git') == 0\n+    local has_curl = vim.fn.executable('curl') == 1\n+    local cmd = has_git and { 'git', 'ls-remote', 'https://github.com/neovim/neovim', 'nightly' }\n+      or has_curl and {\n+        'curl',\n+        '-s',\n+        'https://api.github.com/repos/neovim/neovim/commits/nightly',\n+        '-H',\n+        'Accept: application/vnd.github.sha',\n+      }\n+      or nil\n+\n+    if cmd then\n+      local result = vim.system(cmd, { text = true }):wait()\n+      if result.code == 0 then\n+        local sha = has_git and result.stdout:match('^(%x+)') or result.stdout\n+        local latest_commit = sha and sha:sub(1, 10)\n+        if latest_commit and commit_hash ~= latest_commit then\n+          vim.health.warn(\n+            string.format('Build is outdated. Local: %s, Latest: %s', commit_hash, latest_commit)",
+            "html_url": "https://github.com/neovim/neovim/pull/31842#discussion_r2563311109",
+            "id": 2563311109,
+            "in_reply_to_id": 2563232430,
+            "line": 555,
+            "node_id": "PRRC_kwDOAPphoM6YyQYF",
+            "original_commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "original_line": 555,
+            "original_position": 63,
+            "original_start_line": 553,
+            "path": "runtime/lua/vim/health/health.lua",
+            "position": 63,
+            "pull_request_review_id": 3508938516,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31842",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2563311109/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 553,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2025-11-26T05:48:03Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2563311109",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/31842#discussion_r2563325195"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/31842"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2563325195"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Here it is matching the `g+commit hash` not commits ",
+            "commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "created_at": "2025-11-26T05:51:04Z",
+            "diff_hunk": "@@ -493,7 +493,153 @@ local function check_external_tools()\n   end\n end\n \n+local function detect_terminal()\n+  local e = vim.env\n+  if e.TERM_PROGRAM then\n+    local v = e.TERM_PROGRAM_VERSION --- @type string?\n+    return e.TERM_PROGRAM_VERSION and (e.TERM_PROGRAM .. ' ' .. v) or e.TERM_PROGRAM\n+  end\n+\n+  local map = {\n+    KITTY_WINDOW_ID = 'kitty',\n+    ALACRITTY_SOCKET = 'alacritty',\n+    ALACRITTY_LOG = 'alacritty',\n+    WEZTERM_EXECUTABLE = 'wezterm',\n+    KONSOLE_VERSION = function()\n+      return 'konsole ' .. e.KONSOLE_VERSION\n+    end,\n+    VTE_VERSION = function()\n+      return 'vte ' .. e.VTE_VERSION\n+    end,\n+  }\n+\n+  for key, val in pairs(map) do\n+    local env = e[key] --- @type string?\n+    if env then\n+      return type(val) == 'function' and val() or val\n+    end\n+  end\n+\n+  return 'unknown'\n+end\n+\n+local function check_sysinfo()\n+  vim.health.start('System Info')\n+\n+  -- Use :version because vim.version().build returns \"Homebrew\" for brew installs.\n+  local version_output = vim.api.nvim_exec2('version', { output = true }).output\n+  local nvim_version = version_output:match('NVIM v[^\\n]+') or 'unknown'\n+  local commit_hash = nvim_version:match('%+g?(%x+)')\n+  local version_for_report = nvim_version\n+  if commit_hash then\n+    version_for_report = nvim_version:gsub('%+g' .. commit_hash, ' neovim/neovim@' .. commit_hash)\n+    local has_git = vim.fn.executable('git') == 0\n+    local has_curl = vim.fn.executable('curl') == 1\n+    local cmd = has_git and { 'git', 'ls-remote', 'https://github.com/neovim/neovim', 'nightly' }\n+      or has_curl and {\n+        'curl',\n+        '-s',\n+        'https://api.github.com/repos/neovim/neovim/commits/nightly',\n+        '-H',\n+        'Accept: application/vnd.github.sha',\n+      }\n+      or nil\n+\n+    if cmd then\n+      local result = vim.system(cmd, { text = true }):wait()\n+      if result.code == 0 then\n+        local sha = has_git and result.stdout:match('^(%x+)') or result.stdout\n+        local latest_commit = sha and sha:sub(1, 10)\n+        if latest_commit and commit_hash ~= latest_commit then\n+          vim.health.warn(\n+            string.format('Build is outdated. Local: %s, Latest: %s', commit_hash, latest_commit)",
+            "html_url": "https://github.com/neovim/neovim/pull/31842#discussion_r2563325195",
+            "id": 2563325195,
+            "in_reply_to_id": 2563232430,
+            "line": 555,
+            "node_id": "PRRC_kwDOAPphoM6YyT0L",
+            "original_commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "original_line": 555,
+            "original_position": 63,
+            "original_start_line": 553,
+            "path": "runtime/lua/vim/health/health.lua",
+            "position": 63,
+            "pull_request_review_id": 3508954131,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31842",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2563325195/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 553,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2025-11-26T05:51:04Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2563325195",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",
+                "events_url": "https://api.github.com/users/glepnir/events{/privacy}",
+                "followers_url": "https://api.github.com/users/glepnir/followers",
+                "following_url": "https://api.github.com/users/glepnir/following{/other_user}",
+                "gists_url": "https://api.github.com/users/glepnir/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/glepnir",
+                "id": 41671631,
+                "login": "glepnir",
+                "node_id": "MDQ6VXNlcjQxNjcxNjMx",
+                "organizations_url": "https://api.github.com/users/glepnir/orgs",
+                "received_events_url": "https://api.github.com/users/glepnir/received_events",
+                "repos_url": "https://api.github.com/users/glepnir/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/glepnir/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/glepnir/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/glepnir",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/31842#discussion_r2563338427"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/31842"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2563338427"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Actually, since it's getting the latest nightly, you are right that it can be assumed the upstream commit is probably newer.\r\n\r\nMaybe this is fine for now, although it will be wrong for core developers.\r\n\r\nBut also not sure if this is actually useful because anyone that didn't update in the last 24 hours will see an \"outdated\" message.",
+            "commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "created_at": "2025-11-26T05:55:27Z",
+            "diff_hunk": "@@ -493,7 +493,153 @@ local function check_external_tools()\n   end\n end\n \n+local function detect_terminal()\n+  local e = vim.env\n+  if e.TERM_PROGRAM then\n+    local v = e.TERM_PROGRAM_VERSION --- @type string?\n+    return e.TERM_PROGRAM_VERSION and (e.TERM_PROGRAM .. ' ' .. v) or e.TERM_PROGRAM\n+  end\n+\n+  local map = {\n+    KITTY_WINDOW_ID = 'kitty',\n+    ALACRITTY_SOCKET = 'alacritty',\n+    ALACRITTY_LOG = 'alacritty',\n+    WEZTERM_EXECUTABLE = 'wezterm',\n+    KONSOLE_VERSION = function()\n+      return 'konsole ' .. e.KONSOLE_VERSION\n+    end,\n+    VTE_VERSION = function()\n+      return 'vte ' .. e.VTE_VERSION\n+    end,\n+  }\n+\n+  for key, val in pairs(map) do\n+    local env = e[key] --- @type string?\n+    if env then\n+      return type(val) == 'function' and val() or val\n+    end\n+  end\n+\n+  return 'unknown'\n+end\n+\n+local function check_sysinfo()\n+  vim.health.start('System Info')\n+\n+  -- Use :version because vim.version().build returns \"Homebrew\" for brew installs.\n+  local version_output = vim.api.nvim_exec2('version', { output = true }).output\n+  local nvim_version = version_output:match('NVIM v[^\\n]+') or 'unknown'\n+  local commit_hash = nvim_version:match('%+g?(%x+)')\n+  local version_for_report = nvim_version\n+  if commit_hash then\n+    version_for_report = nvim_version:gsub('%+g' .. commit_hash, ' neovim/neovim@' .. commit_hash)\n+    local has_git = vim.fn.executable('git') == 0\n+    local has_curl = vim.fn.executable('curl') == 1\n+    local cmd = has_git and { 'git', 'ls-remote', 'https://github.com/neovim/neovim', 'nightly' }\n+      or has_curl and {\n+        'curl',\n+        '-s',\n+        'https://api.github.com/repos/neovim/neovim/commits/nightly',\n+        '-H',\n+        'Accept: application/vnd.github.sha',\n+      }\n+      or nil\n+\n+    if cmd then\n+      local result = vim.system(cmd, { text = true }):wait()\n+      if result.code == 0 then\n+        local sha = has_git and result.stdout:match('^(%x+)') or result.stdout\n+        local latest_commit = sha and sha:sub(1, 10)\n+        if latest_commit and commit_hash ~= latest_commit then\n+          vim.health.warn(\n+            string.format('Build is outdated. Local: %s, Latest: %s', commit_hash, latest_commit)",
+            "html_url": "https://github.com/neovim/neovim/pull/31842#discussion_r2563338427",
+            "id": 2563338427,
+            "in_reply_to_id": 2563232430,
+            "line": 555,
+            "node_id": "PRRC_kwDOAPphoM6YyXC7",
+            "original_commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "original_line": 555,
+            "original_position": 63,
+            "original_start_line": 553,
+            "path": "runtime/lua/vim/health/health.lua",
+            "position": 63,
+            "pull_request_review_id": 3508968789,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31842",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2563338427/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 553,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2025-11-26T05:57:01Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2563338427",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/31842#discussion_r2563381266"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/31842"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2563381266"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Initially I compared against HEAD to ensure it was always checked against the latest commits, since some users' builds are outdated. This helps remind them to try the latest build before reporting an issue, as the problem may already have been fixed in a recent commit.",
+            "commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "created_at": "2025-11-26T06:03:48Z",
+            "diff_hunk": "@@ -493,7 +493,153 @@ local function check_external_tools()\n   end\n end\n \n+local function detect_terminal()\n+  local e = vim.env\n+  if e.TERM_PROGRAM then\n+    local v = e.TERM_PROGRAM_VERSION --- @type string?\n+    return e.TERM_PROGRAM_VERSION and (e.TERM_PROGRAM .. ' ' .. v) or e.TERM_PROGRAM\n+  end\n+\n+  local map = {\n+    KITTY_WINDOW_ID = 'kitty',\n+    ALACRITTY_SOCKET = 'alacritty',\n+    ALACRITTY_LOG = 'alacritty',\n+    WEZTERM_EXECUTABLE = 'wezterm',\n+    KONSOLE_VERSION = function()\n+      return 'konsole ' .. e.KONSOLE_VERSION\n+    end,\n+    VTE_VERSION = function()\n+      return 'vte ' .. e.VTE_VERSION\n+    end,\n+  }\n+\n+  for key, val in pairs(map) do\n+    local env = e[key] --- @type string?\n+    if env then\n+      return type(val) == 'function' and val() or val\n+    end\n+  end\n+\n+  return 'unknown'\n+end\n+\n+local function check_sysinfo()\n+  vim.health.start('System Info')\n+\n+  -- Use :version because vim.version().build returns \"Homebrew\" for brew installs.\n+  local version_output = vim.api.nvim_exec2('version', { output = true }).output\n+  local nvim_version = version_output:match('NVIM v[^\\n]+') or 'unknown'\n+  local commit_hash = nvim_version:match('%+g?(%x+)')\n+  local version_for_report = nvim_version\n+  if commit_hash then\n+    version_for_report = nvim_version:gsub('%+g' .. commit_hash, ' neovim/neovim@' .. commit_hash)\n+    local has_git = vim.fn.executable('git') == 0\n+    local has_curl = vim.fn.executable('curl') == 1\n+    local cmd = has_git and { 'git', 'ls-remote', 'https://github.com/neovim/neovim', 'nightly' }\n+      or has_curl and {\n+        'curl',\n+        '-s',\n+        'https://api.github.com/repos/neovim/neovim/commits/nightly',\n+        '-H',\n+        'Accept: application/vnd.github.sha',\n+      }\n+      or nil\n+\n+    if cmd then\n+      local result = vim.system(cmd, { text = true }):wait()\n+      if result.code == 0 then\n+        local sha = has_git and result.stdout:match('^(%x+)') or result.stdout\n+        local latest_commit = sha and sha:sub(1, 10)\n+        if latest_commit and commit_hash ~= latest_commit then\n+          vim.health.warn(\n+            string.format('Build is outdated. Local: %s, Latest: %s', commit_hash, latest_commit)",
+            "html_url": "https://github.com/neovim/neovim/pull/31842#discussion_r2563381266",
+            "id": 2563381266,
+            "in_reply_to_id": 2563232430,
+            "line": 555,
+            "node_id": "PRRC_kwDOAPphoM6YyhgS",
+            "original_commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "original_line": 555,
+            "original_position": 63,
+            "original_start_line": 553,
+            "path": "runtime/lua/vim/health/health.lua",
+            "position": 63,
+            "pull_request_review_id": 3509013952,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31842",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2563381266/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 553,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2025-11-26T06:03:48Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2563381266",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",
+                "events_url": "https://api.github.com/users/glepnir/events{/privacy}",
+                "followers_url": "https://api.github.com/users/glepnir/followers",
+                "following_url": "https://api.github.com/users/glepnir/following{/other_user}",
+                "gists_url": "https://api.github.com/users/glepnir/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/glepnir",
+                "id": 41671631,
+                "login": "glepnir",
+                "node_id": "MDQ6VXNlcjQxNjcxNjMx",
+                "organizations_url": "https://api.github.com/users/glepnir/orgs",
+                "received_events_url": "https://api.github.com/users/glepnir/received_events",
+                "repos_url": "https://api.github.com/users/glepnir/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/glepnir/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/glepnir/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/glepnir",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/31842#discussion_r2563439706"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/31842"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2563439706"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Yes, but the message will almost always show \"outdated\", so people will stop noticing it. It will get ignored.\r\n\r\nCounting commits would give a sense of how outdated they are. ",
+            "commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "created_at": "2025-11-26T06:19:10Z",
+            "diff_hunk": "@@ -493,7 +493,153 @@ local function check_external_tools()\n   end\n end\n \n+local function detect_terminal()\n+  local e = vim.env\n+  if e.TERM_PROGRAM then\n+    local v = e.TERM_PROGRAM_VERSION --- @type string?\n+    return e.TERM_PROGRAM_VERSION and (e.TERM_PROGRAM .. ' ' .. v) or e.TERM_PROGRAM\n+  end\n+\n+  local map = {\n+    KITTY_WINDOW_ID = 'kitty',\n+    ALACRITTY_SOCKET = 'alacritty',\n+    ALACRITTY_LOG = 'alacritty',\n+    WEZTERM_EXECUTABLE = 'wezterm',\n+    KONSOLE_VERSION = function()\n+      return 'konsole ' .. e.KONSOLE_VERSION\n+    end,\n+    VTE_VERSION = function()\n+      return 'vte ' .. e.VTE_VERSION\n+    end,\n+  }\n+\n+  for key, val in pairs(map) do\n+    local env = e[key] --- @type string?\n+    if env then\n+      return type(val) == 'function' and val() or val\n+    end\n+  end\n+\n+  return 'unknown'\n+end\n+\n+local function check_sysinfo()\n+  vim.health.start('System Info')\n+\n+  -- Use :version because vim.version().build returns \"Homebrew\" for brew installs.\n+  local version_output = vim.api.nvim_exec2('version', { output = true }).output\n+  local nvim_version = version_output:match('NVIM v[^\\n]+') or 'unknown'\n+  local commit_hash = nvim_version:match('%+g?(%x+)')\n+  local version_for_report = nvim_version\n+  if commit_hash then\n+    version_for_report = nvim_version:gsub('%+g' .. commit_hash, ' neovim/neovim@' .. commit_hash)\n+    local has_git = vim.fn.executable('git') == 0\n+    local has_curl = vim.fn.executable('curl') == 1\n+    local cmd = has_git and { 'git', 'ls-remote', 'https://github.com/neovim/neovim', 'nightly' }\n+      or has_curl and {\n+        'curl',\n+        '-s',\n+        'https://api.github.com/repos/neovim/neovim/commits/nightly',\n+        '-H',\n+        'Accept: application/vnd.github.sha',\n+      }\n+      or nil\n+\n+    if cmd then\n+      local result = vim.system(cmd, { text = true }):wait()\n+      if result.code == 0 then\n+        local sha = has_git and result.stdout:match('^(%x+)') or result.stdout\n+        local latest_commit = sha and sha:sub(1, 10)\n+        if latest_commit and commit_hash ~= latest_commit then\n+          vim.health.warn(\n+            string.format('Build is outdated. Local: %s, Latest: %s', commit_hash, latest_commit)",
+            "html_url": "https://github.com/neovim/neovim/pull/31842#discussion_r2563439706",
+            "id": 2563439706,
+            "in_reply_to_id": 2563232430,
+            "line": 555,
+            "node_id": "PRRC_kwDOAPphoM6Yyvxa",
+            "original_commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "original_line": 555,
+            "original_position": 63,
+            "original_start_line": 553,
+            "path": "runtime/lua/vim/health/health.lua",
+            "position": 63,
+            "pull_request_review_id": 3509081559,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31842",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2563439706/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 553,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2025-11-26T06:20:05Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2563439706",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/31842#discussion_r2563585895"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/31842"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2563585895"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "tried it. commits are based on `git describe --first-parent`. package management may be based on a different branch like  homebrew outputs `-dev-3779`.",
+            "commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "created_at": "2025-11-26T07:00:18Z",
+            "diff_hunk": "@@ -493,7 +493,153 @@ local function check_external_tools()\n   end\n end\n \n+local function detect_terminal()\n+  local e = vim.env\n+  if e.TERM_PROGRAM then\n+    local v = e.TERM_PROGRAM_VERSION --- @type string?\n+    return e.TERM_PROGRAM_VERSION and (e.TERM_PROGRAM .. ' ' .. v) or e.TERM_PROGRAM\n+  end\n+\n+  local map = {\n+    KITTY_WINDOW_ID = 'kitty',\n+    ALACRITTY_SOCKET = 'alacritty',\n+    ALACRITTY_LOG = 'alacritty',\n+    WEZTERM_EXECUTABLE = 'wezterm',\n+    KONSOLE_VERSION = function()\n+      return 'konsole ' .. e.KONSOLE_VERSION\n+    end,\n+    VTE_VERSION = function()\n+      return 'vte ' .. e.VTE_VERSION\n+    end,\n+  }\n+\n+  for key, val in pairs(map) do\n+    local env = e[key] --- @type string?\n+    if env then\n+      return type(val) == 'function' and val() or val\n+    end\n+  end\n+\n+  return 'unknown'\n+end\n+\n+local function check_sysinfo()\n+  vim.health.start('System Info')\n+\n+  -- Use :version because vim.version().build returns \"Homebrew\" for brew installs.\n+  local version_output = vim.api.nvim_exec2('version', { output = true }).output\n+  local nvim_version = version_output:match('NVIM v[^\\n]+') or 'unknown'\n+  local commit_hash = nvim_version:match('%+g?(%x+)')\n+  local version_for_report = nvim_version\n+  if commit_hash then\n+    version_for_report = nvim_version:gsub('%+g' .. commit_hash, ' neovim/neovim@' .. commit_hash)\n+    local has_git = vim.fn.executable('git') == 0\n+    local has_curl = vim.fn.executable('curl') == 1\n+    local cmd = has_git and { 'git', 'ls-remote', 'https://github.com/neovim/neovim', 'nightly' }\n+      or has_curl and {\n+        'curl',\n+        '-s',\n+        'https://api.github.com/repos/neovim/neovim/commits/nightly',\n+        '-H',\n+        'Accept: application/vnd.github.sha',\n+      }\n+      or nil\n+\n+    if cmd then\n+      local result = vim.system(cmd, { text = true }):wait()\n+      if result.code == 0 then\n+        local sha = has_git and result.stdout:match('^(%x+)') or result.stdout\n+        local latest_commit = sha and sha:sub(1, 10)\n+        if latest_commit and commit_hash ~= latest_commit then\n+          vim.health.warn(\n+            string.format('Build is outdated. Local: %s, Latest: %s', commit_hash, latest_commit)",
+            "html_url": "https://github.com/neovim/neovim/pull/31842#discussion_r2563585895",
+            "id": 2563585895,
+            "in_reply_to_id": 2563232430,
+            "line": 555,
+            "node_id": "PRRC_kwDOAPphoM6YzTdn",
+            "original_commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "original_line": 555,
+            "original_position": 63,
+            "original_start_line": 553,
+            "path": "runtime/lua/vim/health/health.lua",
+            "position": 63,
+            "pull_request_review_id": 3509252564,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31842",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2563585895/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 553,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2025-11-26T07:00:18Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2563585895",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",
+                "events_url": "https://api.github.com/users/glepnir/events{/privacy}",
+                "followers_url": "https://api.github.com/users/glepnir/followers",
+                "following_url": "https://api.github.com/users/glepnir/following{/other_user}",
+                "gists_url": "https://api.github.com/users/glepnir/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/glepnir",
+                "id": 41671631,
+                "login": "glepnir",
+                "node_id": "MDQ6VXNlcjQxNjcxNjMx",
+                "organizations_url": "https://api.github.com/users/glepnir/orgs",
+                "received_events_url": "https://api.github.com/users/glepnir/received_events",
+                "repos_url": "https://api.github.com/users/glepnir/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/glepnir/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/glepnir/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/glepnir",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/31842#discussion_r2564261620"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/31842"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2564261620"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Not nice: For people building from HEAD, this prints a warning that the build is outdated (even though it's not).",
+            "commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "created_at": "2025-11-26T09:41:18Z",
+            "diff_hunk": "@@ -493,7 +493,153 @@ local function check_external_tools()\n   end\n end\n \n+local function detect_terminal()\n+  local e = vim.env\n+  if e.TERM_PROGRAM then\n+    local v = e.TERM_PROGRAM_VERSION --- @type string?\n+    return e.TERM_PROGRAM_VERSION and (e.TERM_PROGRAM .. ' ' .. v) or e.TERM_PROGRAM\n+  end\n+\n+  local map = {\n+    KITTY_WINDOW_ID = 'kitty',\n+    ALACRITTY_SOCKET = 'alacritty',\n+    ALACRITTY_LOG = 'alacritty',\n+    WEZTERM_EXECUTABLE = 'wezterm',\n+    KONSOLE_VERSION = function()\n+      return 'konsole ' .. e.KONSOLE_VERSION\n+    end,\n+    VTE_VERSION = function()\n+      return 'vte ' .. e.VTE_VERSION\n+    end,\n+  }\n+\n+  for key, val in pairs(map) do\n+    local env = e[key] --- @type string?\n+    if env then\n+      return type(val) == 'function' and val() or val\n+    end\n+  end\n+\n+  return 'unknown'\n+end\n+\n+local function check_sysinfo()\n+  vim.health.start('System Info')\n+\n+  -- Use :version because vim.version().build returns \"Homebrew\" for brew installs.\n+  local version_output = vim.api.nvim_exec2('version', { output = true }).output\n+  local nvim_version = version_output:match('NVIM v[^\\n]+') or 'unknown'\n+  local commit_hash = nvim_version:match('%+g?(%x+)')\n+  local version_for_report = nvim_version\n+  if commit_hash then\n+    version_for_report = nvim_version:gsub('%+g' .. commit_hash, ' neovim/neovim@' .. commit_hash)\n+    local has_git = vim.fn.executable('git') == 0\n+    local has_curl = vim.fn.executable('curl') == 1\n+    local cmd = has_git and { 'git', 'ls-remote', 'https://github.com/neovim/neovim', 'nightly' }",
+            "html_url": "https://github.com/neovim/neovim/pull/31842#discussion_r2564261620",
+            "id": 2564261620,
+            "line": 538,
+            "node_id": "PRRC_kwDOAPphoM6Y14b0",
+            "original_commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "original_line": 538,
+            "original_position": 46,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/health/health.lua",
+            "position": 46,
+            "pull_request_review_id": 3510049099,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31842",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2564261620/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-11-26T09:53:06Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2564261620",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/2361214?v=4",
+                "events_url": "https://api.github.com/users/clason/events{/privacy}",
+                "followers_url": "https://api.github.com/users/clason/followers",
+                "following_url": "https://api.github.com/users/clason/following{/other_user}",
+                "gists_url": "https://api.github.com/users/clason/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/clason",
+                "id": 2361214,
+                "login": "clason",
+                "node_id": "MDQ6VXNlcjIzNjEyMTQ=",
+                "organizations_url": "https://api.github.com/users/clason/orgs",
+                "received_events_url": "https://api.github.com/users/clason/received_events",
+                "repos_url": "https://api.github.com/users/clason/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/31842#discussion_r2564286032"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/31842"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2564286032"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "originally, comparing HEAD..but nowuse nightly with the source build compare  would trigger an “outdated” warning. I'm still experimenting with the commit count.",
+            "commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "created_at": "2025-11-26T09:46:13Z",
+            "diff_hunk": "@@ -493,7 +493,153 @@ local function check_external_tools()\n   end\n end\n \n+local function detect_terminal()\n+  local e = vim.env\n+  if e.TERM_PROGRAM then\n+    local v = e.TERM_PROGRAM_VERSION --- @type string?\n+    return e.TERM_PROGRAM_VERSION and (e.TERM_PROGRAM .. ' ' .. v) or e.TERM_PROGRAM\n+  end\n+\n+  local map = {\n+    KITTY_WINDOW_ID = 'kitty',\n+    ALACRITTY_SOCKET = 'alacritty',\n+    ALACRITTY_LOG = 'alacritty',\n+    WEZTERM_EXECUTABLE = 'wezterm',\n+    KONSOLE_VERSION = function()\n+      return 'konsole ' .. e.KONSOLE_VERSION\n+    end,\n+    VTE_VERSION = function()\n+      return 'vte ' .. e.VTE_VERSION\n+    end,\n+  }\n+\n+  for key, val in pairs(map) do\n+    local env = e[key] --- @type string?\n+    if env then\n+      return type(val) == 'function' and val() or val\n+    end\n+  end\n+\n+  return 'unknown'\n+end\n+\n+local function check_sysinfo()\n+  vim.health.start('System Info')\n+\n+  -- Use :version because vim.version().build returns \"Homebrew\" for brew installs.\n+  local version_output = vim.api.nvim_exec2('version', { output = true }).output\n+  local nvim_version = version_output:match('NVIM v[^\\n]+') or 'unknown'\n+  local commit_hash = nvim_version:match('%+g?(%x+)')\n+  local version_for_report = nvim_version\n+  if commit_hash then\n+    version_for_report = nvim_version:gsub('%+g' .. commit_hash, ' neovim/neovim@' .. commit_hash)\n+    local has_git = vim.fn.executable('git') == 0\n+    local has_curl = vim.fn.executable('curl') == 1\n+    local cmd = has_git and { 'git', 'ls-remote', 'https://github.com/neovim/neovim', 'nightly' }",
+            "html_url": "https://github.com/neovim/neovim/pull/31842#discussion_r2564286032",
+            "id": 2564286032,
+            "in_reply_to_id": 2564261620,
+            "line": 538,
+            "node_id": "PRRC_kwDOAPphoM6Y1-ZQ",
+            "original_commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "original_line": 538,
+            "original_position": 46,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/health/health.lua",
+            "position": 46,
+            "pull_request_review_id": 3510080376,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31842",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2564286032/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-11-26T09:53:13Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2564286032",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",
+                "events_url": "https://api.github.com/users/glepnir/events{/privacy}",
+                "followers_url": "https://api.github.com/users/glepnir/followers",
+                "following_url": "https://api.github.com/users/glepnir/following{/other_user}",
+                "gists_url": "https://api.github.com/users/glepnir/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/glepnir",
+                "id": 41671631,
+                "login": "glepnir",
+                "node_id": "MDQ6VXNlcjQxNjcxNjMx",
+                "organizations_url": "https://api.github.com/users/glepnir/orgs",
+                "received_events_url": "https://api.github.com/users/glepnir/received_events",
+                "repos_url": "https://api.github.com/users/glepnir/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/glepnir/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/glepnir/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/glepnir",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/31842#discussion_r2564301693"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/31842"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2564301693"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "I’m confused. If a commit hash is detected, meaning it’s a source build or a nightly build, shouldn’t it be compared against HEAD to determine whether it’s outdated?",
+            "commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "created_at": "2025-11-26T09:49:59Z",
+            "diff_hunk": "@@ -493,7 +493,153 @@ local function check_external_tools()\n   end\n end\n \n+local function detect_terminal()\n+  local e = vim.env\n+  if e.TERM_PROGRAM then\n+    local v = e.TERM_PROGRAM_VERSION --- @type string?\n+    return e.TERM_PROGRAM_VERSION and (e.TERM_PROGRAM .. ' ' .. v) or e.TERM_PROGRAM\n+  end\n+\n+  local map = {\n+    KITTY_WINDOW_ID = 'kitty',\n+    ALACRITTY_SOCKET = 'alacritty',\n+    ALACRITTY_LOG = 'alacritty',\n+    WEZTERM_EXECUTABLE = 'wezterm',\n+    KONSOLE_VERSION = function()\n+      return 'konsole ' .. e.KONSOLE_VERSION\n+    end,\n+    VTE_VERSION = function()\n+      return 'vte ' .. e.VTE_VERSION\n+    end,\n+  }\n+\n+  for key, val in pairs(map) do\n+    local env = e[key] --- @type string?\n+    if env then\n+      return type(val) == 'function' and val() or val\n+    end\n+  end\n+\n+  return 'unknown'\n+end\n+\n+local function check_sysinfo()\n+  vim.health.start('System Info')\n+\n+  -- Use :version because vim.version().build returns \"Homebrew\" for brew installs.\n+  local version_output = vim.api.nvim_exec2('version', { output = true }).output\n+  local nvim_version = version_output:match('NVIM v[^\\n]+') or 'unknown'\n+  local commit_hash = nvim_version:match('%+g?(%x+)')\n+  local version_for_report = nvim_version\n+  if commit_hash then\n+    version_for_report = nvim_version:gsub('%+g' .. commit_hash, ' neovim/neovim@' .. commit_hash)\n+    local has_git = vim.fn.executable('git') == 0\n+    local has_curl = vim.fn.executable('curl') == 1\n+    local cmd = has_git and { 'git', 'ls-remote', 'https://github.com/neovim/neovim', 'nightly' }\n+      or has_curl and {\n+        'curl',\n+        '-s',\n+        'https://api.github.com/repos/neovim/neovim/commits/nightly',\n+        '-H',\n+        'Accept: application/vnd.github.sha',\n+      }\n+      or nil\n+\n+    if cmd then\n+      local result = vim.system(cmd, { text = true }):wait()\n+      if result.code == 0 then\n+        local sha = has_git and result.stdout:match('^(%x+)') or result.stdout\n+        local latest_commit = sha and sha:sub(1, 10)\n+        if latest_commit and commit_hash ~= latest_commit then\n+          vim.health.warn(\n+            string.format('Build is outdated. Local: %s, Latest: %s', commit_hash, latest_commit)",
+            "html_url": "https://github.com/neovim/neovim/pull/31842#discussion_r2564301693",
+            "id": 2564301693,
+            "in_reply_to_id": 2563232430,
+            "line": 555,
+            "node_id": "PRRC_kwDOAPphoM6Y2CN9",
+            "original_commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "original_line": 555,
+            "original_position": 63,
+            "original_start_line": 553,
+            "path": "runtime/lua/vim/health/health.lua",
+            "position": 63,
+            "pull_request_review_id": 3510099490,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31842",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2564301693/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 553,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2025-11-26T09:49:59Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2564301693",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",
+                "events_url": "https://api.github.com/users/glepnir/events{/privacy}",
+                "followers_url": "https://api.github.com/users/glepnir/followers",
+                "following_url": "https://api.github.com/users/glepnir/following{/other_user}",
+                "gists_url": "https://api.github.com/users/glepnir/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/glepnir",
+                "id": 41671631,
+                "login": "glepnir",
+                "node_id": "MDQ6VXNlcjQxNjcxNjMx",
+                "organizations_url": "https://api.github.com/users/glepnir/orgs",
+                "received_events_url": "https://api.github.com/users/glepnir/received_events",
+                "repos_url": "https://api.github.com/users/glepnir/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/glepnir/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/glepnir/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/glepnir",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/31842#discussion_r2564306233"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/31842"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2564306233"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Yeah, you can't have it both ways. (And this will be even worse for stable users once 0.12 is released, who will constantly be taunted with being outdated -- pushing more people to use nightly even when they shouldn't.)\r\n\r\nAlso, remember that people use Neovim in airgapped systems -- will this trigger an error for them?\r\n\r\nPersonally, I think this is cute but not worth the complexity (and it'd need a lot more complexity to make it working robustly for all users).",
+            "commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "created_at": "2025-11-26T09:51:27Z",
+            "diff_hunk": "@@ -493,7 +493,153 @@ local function check_external_tools()\n   end\n end\n \n+local function detect_terminal()\n+  local e = vim.env\n+  if e.TERM_PROGRAM then\n+    local v = e.TERM_PROGRAM_VERSION --- @type string?\n+    return e.TERM_PROGRAM_VERSION and (e.TERM_PROGRAM .. ' ' .. v) or e.TERM_PROGRAM\n+  end\n+\n+  local map = {\n+    KITTY_WINDOW_ID = 'kitty',\n+    ALACRITTY_SOCKET = 'alacritty',\n+    ALACRITTY_LOG = 'alacritty',\n+    WEZTERM_EXECUTABLE = 'wezterm',\n+    KONSOLE_VERSION = function()\n+      return 'konsole ' .. e.KONSOLE_VERSION\n+    end,\n+    VTE_VERSION = function()\n+      return 'vte ' .. e.VTE_VERSION\n+    end,\n+  }\n+\n+  for key, val in pairs(map) do\n+    local env = e[key] --- @type string?\n+    if env then\n+      return type(val) == 'function' and val() or val\n+    end\n+  end\n+\n+  return 'unknown'\n+end\n+\n+local function check_sysinfo()\n+  vim.health.start('System Info')\n+\n+  -- Use :version because vim.version().build returns \"Homebrew\" for brew installs.\n+  local version_output = vim.api.nvim_exec2('version', { output = true }).output\n+  local nvim_version = version_output:match('NVIM v[^\\n]+') or 'unknown'\n+  local commit_hash = nvim_version:match('%+g?(%x+)')\n+  local version_for_report = nvim_version\n+  if commit_hash then\n+    version_for_report = nvim_version:gsub('%+g' .. commit_hash, ' neovim/neovim@' .. commit_hash)\n+    local has_git = vim.fn.executable('git') == 0\n+    local has_curl = vim.fn.executable('curl') == 1\n+    local cmd = has_git and { 'git', 'ls-remote', 'https://github.com/neovim/neovim', 'nightly' }",
+            "html_url": "https://github.com/neovim/neovim/pull/31842#discussion_r2564306233",
+            "id": 2564306233,
+            "in_reply_to_id": 2564261620,
+            "line": 538,
+            "node_id": "PRRC_kwDOAPphoM6Y2DU5",
+            "original_commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "original_line": 538,
+            "original_position": 46,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/health/health.lua",
+            "position": 46,
+            "pull_request_review_id": 3510104916,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31842",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2564306233/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-11-26T09:53:19Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2564306233",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/2361214?v=4",
+                "events_url": "https://api.github.com/users/clason/events{/privacy}",
+                "followers_url": "https://api.github.com/users/clason/followers",
+                "following_url": "https://api.github.com/users/clason/following{/other_user}",
+                "gists_url": "https://api.github.com/users/clason/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/clason",
+                "id": 2361214,
+                "login": "clason",
+                "node_id": "MDQ6VXNlcjIzNjEyMTQ=",
+                "organizations_url": "https://api.github.com/users/clason/orgs",
+                "received_events_url": "https://api.github.com/users/clason/received_events",
+                "repos_url": "https://api.github.com/users/clason/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/31842#discussion_r2564311313"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/31842"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2564311313"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Sorry, I see now that this was already discussed earlier. Ignore me and concentrate on the other discussion.",
+            "commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "created_at": "2025-11-26T09:53:02Z",
+            "diff_hunk": "@@ -493,7 +493,153 @@ local function check_external_tools()\n   end\n end\n \n+local function detect_terminal()\n+  local e = vim.env\n+  if e.TERM_PROGRAM then\n+    local v = e.TERM_PROGRAM_VERSION --- @type string?\n+    return e.TERM_PROGRAM_VERSION and (e.TERM_PROGRAM .. ' ' .. v) or e.TERM_PROGRAM\n+  end\n+\n+  local map = {\n+    KITTY_WINDOW_ID = 'kitty',\n+    ALACRITTY_SOCKET = 'alacritty',\n+    ALACRITTY_LOG = 'alacritty',\n+    WEZTERM_EXECUTABLE = 'wezterm',\n+    KONSOLE_VERSION = function()\n+      return 'konsole ' .. e.KONSOLE_VERSION\n+    end,\n+    VTE_VERSION = function()\n+      return 'vte ' .. e.VTE_VERSION\n+    end,\n+  }\n+\n+  for key, val in pairs(map) do\n+    local env = e[key] --- @type string?\n+    if env then\n+      return type(val) == 'function' and val() or val\n+    end\n+  end\n+\n+  return 'unknown'\n+end\n+\n+local function check_sysinfo()\n+  vim.health.start('System Info')\n+\n+  -- Use :version because vim.version().build returns \"Homebrew\" for brew installs.\n+  local version_output = vim.api.nvim_exec2('version', { output = true }).output\n+  local nvim_version = version_output:match('NVIM v[^\\n]+') or 'unknown'\n+  local commit_hash = nvim_version:match('%+g?(%x+)')\n+  local version_for_report = nvim_version\n+  if commit_hash then\n+    version_for_report = nvim_version:gsub('%+g' .. commit_hash, ' neovim/neovim@' .. commit_hash)\n+    local has_git = vim.fn.executable('git') == 0\n+    local has_curl = vim.fn.executable('curl') == 1\n+    local cmd = has_git and { 'git', 'ls-remote', 'https://github.com/neovim/neovim', 'nightly' }",
+            "html_url": "https://github.com/neovim/neovim/pull/31842#discussion_r2564311313",
+            "id": 2564311313,
+            "in_reply_to_id": 2564261620,
+            "line": 538,
+            "node_id": "PRRC_kwDOAPphoM6Y2EkR",
+            "original_commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "original_line": 538,
+            "original_position": 46,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/health/health.lua",
+            "position": 46,
+            "pull_request_review_id": 3510111107,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31842",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2564311313/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-11-26T09:53:24Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2564311313",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/2361214?v=4",
+                "events_url": "https://api.github.com/users/clason/events{/privacy}",
+                "followers_url": "https://api.github.com/users/clason/followers",
+                "following_url": "https://api.github.com/users/clason/following{/other_user}",
+                "gists_url": "https://api.github.com/users/clason/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/clason",
+                "id": 2361214,
+                "login": "clason",
+                "node_id": "MDQ6VXNlcjIzNjEyMTQ=",
+                "organizations_url": "https://api.github.com/users/clason/orgs",
+                "received_events_url": "https://api.github.com/users/clason/received_events",
+                "repos_url": "https://api.github.com/users/clason/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/31842#discussion_r2565698911"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/31842"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2565698911"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Again, it will almost always show \"outdated\" so it's not useful. Counting commits probably also won't work for various reasons.",
+            "commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "created_at": "2025-11-26T16:38:13Z",
+            "diff_hunk": "@@ -493,7 +493,153 @@ local function check_external_tools()\n   end\n end\n \n+local function detect_terminal()\n+  local e = vim.env\n+  if e.TERM_PROGRAM then\n+    local v = e.TERM_PROGRAM_VERSION --- @type string?\n+    return e.TERM_PROGRAM_VERSION and (e.TERM_PROGRAM .. ' ' .. v) or e.TERM_PROGRAM\n+  end\n+\n+  local map = {\n+    KITTY_WINDOW_ID = 'kitty',\n+    ALACRITTY_SOCKET = 'alacritty',\n+    ALACRITTY_LOG = 'alacritty',\n+    WEZTERM_EXECUTABLE = 'wezterm',\n+    KONSOLE_VERSION = function()\n+      return 'konsole ' .. e.KONSOLE_VERSION\n+    end,\n+    VTE_VERSION = function()\n+      return 'vte ' .. e.VTE_VERSION\n+    end,\n+  }\n+\n+  for key, val in pairs(map) do\n+    local env = e[key] --- @type string?\n+    if env then\n+      return type(val) == 'function' and val() or val\n+    end\n+  end\n+\n+  return 'unknown'\n+end\n+\n+local function check_sysinfo()\n+  vim.health.start('System Info')\n+\n+  -- Use :version because vim.version().build returns \"Homebrew\" for brew installs.\n+  local version_output = vim.api.nvim_exec2('version', { output = true }).output\n+  local nvim_version = version_output:match('NVIM v[^\\n]+') or 'unknown'\n+  local commit_hash = nvim_version:match('%+g?(%x+)')\n+  local version_for_report = nvim_version\n+  if commit_hash then\n+    version_for_report = nvim_version:gsub('%+g' .. commit_hash, ' neovim/neovim@' .. commit_hash)\n+    local has_git = vim.fn.executable('git') == 0\n+    local has_curl = vim.fn.executable('curl') == 1\n+    local cmd = has_git and { 'git', 'ls-remote', 'https://github.com/neovim/neovim', 'nightly' }\n+      or has_curl and {\n+        'curl',\n+        '-s',\n+        'https://api.github.com/repos/neovim/neovim/commits/nightly',\n+        '-H',\n+        'Accept: application/vnd.github.sha',\n+      }\n+      or nil\n+\n+    if cmd then\n+      local result = vim.system(cmd, { text = true }):wait()\n+      if result.code == 0 then\n+        local sha = has_git and result.stdout:match('^(%x+)') or result.stdout\n+        local latest_commit = sha and sha:sub(1, 10)\n+        if latest_commit and commit_hash ~= latest_commit then\n+          vim.health.warn(\n+            string.format('Build is outdated. Local: %s, Latest: %s', commit_hash, latest_commit)",
+            "html_url": "https://github.com/neovim/neovim/pull/31842#discussion_r2565698911",
+            "id": 2565698911,
+            "in_reply_to_id": 2563232430,
+            "line": 555,
+            "node_id": "PRRC_kwDOAPphoM6Y7XVf",
+            "original_commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "original_line": 555,
+            "original_position": 63,
+            "original_start_line": 553,
+            "path": "runtime/lua/vim/health/health.lua",
+            "position": 63,
+            "pull_request_review_id": 3511807925,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31842",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2565698911/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 553,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2025-11-26T16:38:13Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2565698911",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/31842#discussion_r2567093063"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/31842"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2567093063"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "emm not exactly .. run neovim which i build yesterday it show me outdated \r\n<img width=\"1434\" height=\"560\" alt=\"image\" src=\"https://github.com/user-attachments/assets/7be0681b-1322-4f3e-a5aa-0f9246678b3d\" />\r\n\r\nbuild with latest commit  there is no warning..\r\n\r\n<img width=\"1204\" height=\"538\" alt=\"image\" src=\"https://github.com/user-attachments/assets/26241ada-93d4-4fd8-8e09-bb0418f3315b\" />\r\n",
+            "commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "created_at": "2025-11-27T03:49:37Z",
+            "diff_hunk": "@@ -493,7 +493,153 @@ local function check_external_tools()\n   end\n end\n \n+local function detect_terminal()\n+  local e = vim.env\n+  if e.TERM_PROGRAM then\n+    local v = e.TERM_PROGRAM_VERSION --- @type string?\n+    return e.TERM_PROGRAM_VERSION and (e.TERM_PROGRAM .. ' ' .. v) or e.TERM_PROGRAM\n+  end\n+\n+  local map = {\n+    KITTY_WINDOW_ID = 'kitty',\n+    ALACRITTY_SOCKET = 'alacritty',\n+    ALACRITTY_LOG = 'alacritty',\n+    WEZTERM_EXECUTABLE = 'wezterm',\n+    KONSOLE_VERSION = function()\n+      return 'konsole ' .. e.KONSOLE_VERSION\n+    end,\n+    VTE_VERSION = function()\n+      return 'vte ' .. e.VTE_VERSION\n+    end,\n+  }\n+\n+  for key, val in pairs(map) do\n+    local env = e[key] --- @type string?\n+    if env then\n+      return type(val) == 'function' and val() or val\n+    end\n+  end\n+\n+  return 'unknown'\n+end\n+\n+local function check_sysinfo()\n+  vim.health.start('System Info')\n+\n+  -- Use :version because vim.version().build returns \"Homebrew\" for brew installs.\n+  local version_output = vim.api.nvim_exec2('version', { output = true }).output\n+  local nvim_version = version_output:match('NVIM v[^\\n]+') or 'unknown'\n+  local commit_hash = nvim_version:match('%+g?(%x+)')\n+  local version_for_report = nvim_version\n+  if commit_hash then\n+    version_for_report = nvim_version:gsub('%+g' .. commit_hash, ' neovim/neovim@' .. commit_hash)\n+    local has_git = vim.fn.executable('git') == 0\n+    local has_curl = vim.fn.executable('curl') == 1\n+    local cmd = has_git and { 'git', 'ls-remote', 'https://github.com/neovim/neovim', 'nightly' }\n+      or has_curl and {\n+        'curl',\n+        '-s',\n+        'https://api.github.com/repos/neovim/neovim/commits/nightly',\n+        '-H',\n+        'Accept: application/vnd.github.sha',\n+      }\n+      or nil\n+\n+    if cmd then\n+      local result = vim.system(cmd, { text = true }):wait()\n+      if result.code == 0 then\n+        local sha = has_git and result.stdout:match('^(%x+)') or result.stdout\n+        local latest_commit = sha and sha:sub(1, 10)\n+        if latest_commit and commit_hash ~= latest_commit then\n+          vim.health.warn(\n+            string.format('Build is outdated. Local: %s, Latest: %s', commit_hash, latest_commit)",
+            "html_url": "https://github.com/neovim/neovim/pull/31842#discussion_r2567093063",
+            "id": 2567093063,
+            "in_reply_to_id": 2563232430,
+            "line": 555,
+            "node_id": "PRRC_kwDOAPphoM6ZArtH",
+            "original_commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "original_line": 555,
+            "original_position": 63,
+            "original_start_line": 553,
+            "path": "runtime/lua/vim/health/health.lua",
+            "position": 63,
+            "pull_request_review_id": 3513464379,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31842",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2567093063/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 553,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2025-11-27T03:49:38Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2567093063",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",
+                "events_url": "https://api.github.com/users/glepnir/events{/privacy}",
+                "followers_url": "https://api.github.com/users/glepnir/followers",
+                "following_url": "https://api.github.com/users/glepnir/following{/other_user}",
+                "gists_url": "https://api.github.com/users/glepnir/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/glepnir",
+                "id": 41671631,
+                "login": "glepnir",
+                "node_id": "MDQ6VXNlcjQxNjcxNjMx",
+                "organizations_url": "https://api.github.com/users/glepnir/orgs",
+                "received_events_url": "https://api.github.com/users/glepnir/received_events",
+                "repos_url": "https://api.github.com/users/glepnir/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/glepnir/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/glepnir/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/glepnir",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/31842#discussion_r2567116982"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/31842"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2567116982"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "> build with latest commit there is no warning\r\n\r\nYes. But every day there are new commits. So the warning isn't useful.",
+            "commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "created_at": "2025-11-27T04:10:57Z",
+            "diff_hunk": "@@ -493,7 +493,153 @@ local function check_external_tools()\n   end\n end\n \n+local function detect_terminal()\n+  local e = vim.env\n+  if e.TERM_PROGRAM then\n+    local v = e.TERM_PROGRAM_VERSION --- @type string?\n+    return e.TERM_PROGRAM_VERSION and (e.TERM_PROGRAM .. ' ' .. v) or e.TERM_PROGRAM\n+  end\n+\n+  local map = {\n+    KITTY_WINDOW_ID = 'kitty',\n+    ALACRITTY_SOCKET = 'alacritty',\n+    ALACRITTY_LOG = 'alacritty',\n+    WEZTERM_EXECUTABLE = 'wezterm',\n+    KONSOLE_VERSION = function()\n+      return 'konsole ' .. e.KONSOLE_VERSION\n+    end,\n+    VTE_VERSION = function()\n+      return 'vte ' .. e.VTE_VERSION\n+    end,\n+  }\n+\n+  for key, val in pairs(map) do\n+    local env = e[key] --- @type string?\n+    if env then\n+      return type(val) == 'function' and val() or val\n+    end\n+  end\n+\n+  return 'unknown'\n+end\n+\n+local function check_sysinfo()\n+  vim.health.start('System Info')\n+\n+  -- Use :version because vim.version().build returns \"Homebrew\" for brew installs.\n+  local version_output = vim.api.nvim_exec2('version', { output = true }).output\n+  local nvim_version = version_output:match('NVIM v[^\\n]+') or 'unknown'\n+  local commit_hash = nvim_version:match('%+g?(%x+)')\n+  local version_for_report = nvim_version\n+  if commit_hash then\n+    version_for_report = nvim_version:gsub('%+g' .. commit_hash, ' neovim/neovim@' .. commit_hash)\n+    local has_git = vim.fn.executable('git') == 0\n+    local has_curl = vim.fn.executable('curl') == 1\n+    local cmd = has_git and { 'git', 'ls-remote', 'https://github.com/neovim/neovim', 'nightly' }\n+      or has_curl and {\n+        'curl',\n+        '-s',\n+        'https://api.github.com/repos/neovim/neovim/commits/nightly',\n+        '-H',\n+        'Accept: application/vnd.github.sha',\n+      }\n+      or nil\n+\n+    if cmd then\n+      local result = vim.system(cmd, { text = true }):wait()\n+      if result.code == 0 then\n+        local sha = has_git and result.stdout:match('^(%x+)') or result.stdout\n+        local latest_commit = sha and sha:sub(1, 10)\n+        if latest_commit and commit_hash ~= latest_commit then\n+          vim.health.warn(\n+            string.format('Build is outdated. Local: %s, Latest: %s', commit_hash, latest_commit)",
+            "html_url": "https://github.com/neovim/neovim/pull/31842#discussion_r2567116982",
+            "id": 2567116982,
+            "in_reply_to_id": 2563232430,
+            "line": 555,
+            "node_id": "PRRC_kwDOAPphoM6ZAxi2",
+            "original_commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "original_line": 555,
+            "original_position": 63,
+            "original_start_line": 553,
+            "path": "runtime/lua/vim/health/health.lua",
+            "position": 63,
+            "pull_request_review_id": 3513489222,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31842",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2567116982/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 553,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2025-11-27T04:10:57Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2567116982",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/31842#discussion_r2567124750"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/31842"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2567124750"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Some package managers update  nightly builds  slowly, and some people build Neovim from older commits, so their installation can be outdated for a long time. In those cases, this warning is useful. Of course, if you think it’s unnecessary, we can remove this check later since there still need a refactor for plugin :)",
+            "commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "created_at": "2025-11-27T04:17:54Z",
+            "diff_hunk": "@@ -493,7 +493,153 @@ local function check_external_tools()\n   end\n end\n \n+local function detect_terminal()\n+  local e = vim.env\n+  if e.TERM_PROGRAM then\n+    local v = e.TERM_PROGRAM_VERSION --- @type string?\n+    return e.TERM_PROGRAM_VERSION and (e.TERM_PROGRAM .. ' ' .. v) or e.TERM_PROGRAM\n+  end\n+\n+  local map = {\n+    KITTY_WINDOW_ID = 'kitty',\n+    ALACRITTY_SOCKET = 'alacritty',\n+    ALACRITTY_LOG = 'alacritty',\n+    WEZTERM_EXECUTABLE = 'wezterm',\n+    KONSOLE_VERSION = function()\n+      return 'konsole ' .. e.KONSOLE_VERSION\n+    end,\n+    VTE_VERSION = function()\n+      return 'vte ' .. e.VTE_VERSION\n+    end,\n+  }\n+\n+  for key, val in pairs(map) do\n+    local env = e[key] --- @type string?\n+    if env then\n+      return type(val) == 'function' and val() or val\n+    end\n+  end\n+\n+  return 'unknown'\n+end\n+\n+local function check_sysinfo()\n+  vim.health.start('System Info')\n+\n+  -- Use :version because vim.version().build returns \"Homebrew\" for brew installs.\n+  local version_output = vim.api.nvim_exec2('version', { output = true }).output\n+  local nvim_version = version_output:match('NVIM v[^\\n]+') or 'unknown'\n+  local commit_hash = nvim_version:match('%+g?(%x+)')\n+  local version_for_report = nvim_version\n+  if commit_hash then\n+    version_for_report = nvim_version:gsub('%+g' .. commit_hash, ' neovim/neovim@' .. commit_hash)\n+    local has_git = vim.fn.executable('git') == 0\n+    local has_curl = vim.fn.executable('curl') == 1\n+    local cmd = has_git and { 'git', 'ls-remote', 'https://github.com/neovim/neovim', 'nightly' }\n+      or has_curl and {\n+        'curl',\n+        '-s',\n+        'https://api.github.com/repos/neovim/neovim/commits/nightly',\n+        '-H',\n+        'Accept: application/vnd.github.sha',\n+      }\n+      or nil\n+\n+    if cmd then\n+      local result = vim.system(cmd, { text = true }):wait()\n+      if result.code == 0 then\n+        local sha = has_git and result.stdout:match('^(%x+)') or result.stdout\n+        local latest_commit = sha and sha:sub(1, 10)\n+        if latest_commit and commit_hash ~= latest_commit then\n+          vim.health.warn(\n+            string.format('Build is outdated. Local: %s, Latest: %s', commit_hash, latest_commit)",
+            "html_url": "https://github.com/neovim/neovim/pull/31842#discussion_r2567124750",
+            "id": 2567124750,
+            "in_reply_to_id": 2563232430,
+            "line": 555,
+            "node_id": "PRRC_kwDOAPphoM6ZAzcO",
+            "original_commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "original_line": 555,
+            "original_position": 63,
+            "original_start_line": 553,
+            "path": "runtime/lua/vim/health/health.lua",
+            "position": 63,
+            "pull_request_review_id": 3513497410,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31842",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2567124750/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 553,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2025-11-27T04:18:08Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2567124750",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",
+                "events_url": "https://api.github.com/users/glepnir/events{/privacy}",
+                "followers_url": "https://api.github.com/users/glepnir/followers",
+                "following_url": "https://api.github.com/users/glepnir/following{/other_user}",
+                "gists_url": "https://api.github.com/users/glepnir/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/glepnir",
+                "id": 41671631,
+                "login": "glepnir",
+                "node_id": "MDQ6VXNlcjQxNjcxNjMx",
+                "organizations_url": "https://api.github.com/users/glepnir/orgs",
+                "received_events_url": "https://api.github.com/users/glepnir/received_events",
+                "repos_url": "https://api.github.com/users/glepnir/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/glepnir/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/glepnir/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/glepnir",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/31842#discussion_r2567128350"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/31842"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2567128350"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "In those cases the warning will say \"outdated\" even more often than people building from source.\r\n\r\nI build from source every day and this will still show \"outdated\" more often than not. People using slow nightly builds will just always see \"outdated\". That is not useful.",
+            "commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "created_at": "2025-11-27T04:21:01Z",
+            "diff_hunk": "@@ -493,7 +493,153 @@ local function check_external_tools()\n   end\n end\n \n+local function detect_terminal()\n+  local e = vim.env\n+  if e.TERM_PROGRAM then\n+    local v = e.TERM_PROGRAM_VERSION --- @type string?\n+    return e.TERM_PROGRAM_VERSION and (e.TERM_PROGRAM .. ' ' .. v) or e.TERM_PROGRAM\n+  end\n+\n+  local map = {\n+    KITTY_WINDOW_ID = 'kitty',\n+    ALACRITTY_SOCKET = 'alacritty',\n+    ALACRITTY_LOG = 'alacritty',\n+    WEZTERM_EXECUTABLE = 'wezterm',\n+    KONSOLE_VERSION = function()\n+      return 'konsole ' .. e.KONSOLE_VERSION\n+    end,\n+    VTE_VERSION = function()\n+      return 'vte ' .. e.VTE_VERSION\n+    end,\n+  }\n+\n+  for key, val in pairs(map) do\n+    local env = e[key] --- @type string?\n+    if env then\n+      return type(val) == 'function' and val() or val\n+    end\n+  end\n+\n+  return 'unknown'\n+end\n+\n+local function check_sysinfo()\n+  vim.health.start('System Info')\n+\n+  -- Use :version because vim.version().build returns \"Homebrew\" for brew installs.\n+  local version_output = vim.api.nvim_exec2('version', { output = true }).output\n+  local nvim_version = version_output:match('NVIM v[^\\n]+') or 'unknown'\n+  local commit_hash = nvim_version:match('%+g?(%x+)')\n+  local version_for_report = nvim_version\n+  if commit_hash then\n+    version_for_report = nvim_version:gsub('%+g' .. commit_hash, ' neovim/neovim@' .. commit_hash)\n+    local has_git = vim.fn.executable('git') == 0\n+    local has_curl = vim.fn.executable('curl') == 1\n+    local cmd = has_git and { 'git', 'ls-remote', 'https://github.com/neovim/neovim', 'nightly' }\n+      or has_curl and {\n+        'curl',\n+        '-s',\n+        'https://api.github.com/repos/neovim/neovim/commits/nightly',\n+        '-H',\n+        'Accept: application/vnd.github.sha',\n+      }\n+      or nil\n+\n+    if cmd then\n+      local result = vim.system(cmd, { text = true }):wait()\n+      if result.code == 0 then\n+        local sha = has_git and result.stdout:match('^(%x+)') or result.stdout\n+        local latest_commit = sha and sha:sub(1, 10)\n+        if latest_commit and commit_hash ~= latest_commit then\n+          vim.health.warn(\n+            string.format('Build is outdated. Local: %s, Latest: %s', commit_hash, latest_commit)",
+            "html_url": "https://github.com/neovim/neovim/pull/31842#discussion_r2567128350",
+            "id": 2567128350,
+            "in_reply_to_id": 2563232430,
+            "line": 555,
+            "node_id": "PRRC_kwDOAPphoM6ZA0Ue",
+            "original_commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "original_line": 555,
+            "original_position": 63,
+            "original_start_line": 553,
+            "path": "runtime/lua/vim/health/health.lua",
+            "position": 63,
+            "pull_request_review_id": 3513500969,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31842",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2567128350/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 553,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2025-11-27T04:21:41Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2567128350",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/31842#discussion_r2567141878"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/31842"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2567141878"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "I’ve thought about this before. I noticed that most PRs are merged during the night for people in certain time zones, so they rarely encounter merges during their daytime, which means the “outdated” warning doesn’t show up very often. There may not be a good solution for this. I just wanted a way to remind them to try building from the latest commit first and then verify whether the issue still exists, so  can avoid wasting the maintainers’ time 😮‍💨 ",
+            "commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "created_at": "2025-11-27T04:31:25Z",
+            "diff_hunk": "@@ -493,7 +493,153 @@ local function check_external_tools()\n   end\n end\n \n+local function detect_terminal()\n+  local e = vim.env\n+  if e.TERM_PROGRAM then\n+    local v = e.TERM_PROGRAM_VERSION --- @type string?\n+    return e.TERM_PROGRAM_VERSION and (e.TERM_PROGRAM .. ' ' .. v) or e.TERM_PROGRAM\n+  end\n+\n+  local map = {\n+    KITTY_WINDOW_ID = 'kitty',\n+    ALACRITTY_SOCKET = 'alacritty',\n+    ALACRITTY_LOG = 'alacritty',\n+    WEZTERM_EXECUTABLE = 'wezterm',\n+    KONSOLE_VERSION = function()\n+      return 'konsole ' .. e.KONSOLE_VERSION\n+    end,\n+    VTE_VERSION = function()\n+      return 'vte ' .. e.VTE_VERSION\n+    end,\n+  }\n+\n+  for key, val in pairs(map) do\n+    local env = e[key] --- @type string?\n+    if env then\n+      return type(val) == 'function' and val() or val\n+    end\n+  end\n+\n+  return 'unknown'\n+end\n+\n+local function check_sysinfo()\n+  vim.health.start('System Info')\n+\n+  -- Use :version because vim.version().build returns \"Homebrew\" for brew installs.\n+  local version_output = vim.api.nvim_exec2('version', { output = true }).output\n+  local nvim_version = version_output:match('NVIM v[^\\n]+') or 'unknown'\n+  local commit_hash = nvim_version:match('%+g?(%x+)')\n+  local version_for_report = nvim_version\n+  if commit_hash then\n+    version_for_report = nvim_version:gsub('%+g' .. commit_hash, ' neovim/neovim@' .. commit_hash)\n+    local has_git = vim.fn.executable('git') == 0\n+    local has_curl = vim.fn.executable('curl') == 1\n+    local cmd = has_git and { 'git', 'ls-remote', 'https://github.com/neovim/neovim', 'nightly' }\n+      or has_curl and {\n+        'curl',\n+        '-s',\n+        'https://api.github.com/repos/neovim/neovim/commits/nightly',\n+        '-H',\n+        'Accept: application/vnd.github.sha',\n+      }\n+      or nil\n+\n+    if cmd then\n+      local result = vim.system(cmd, { text = true }):wait()\n+      if result.code == 0 then\n+        local sha = has_git and result.stdout:match('^(%x+)') or result.stdout\n+        local latest_commit = sha and sha:sub(1, 10)\n+        if latest_commit and commit_hash ~= latest_commit then\n+          vim.health.warn(\n+            string.format('Build is outdated. Local: %s, Latest: %s', commit_hash, latest_commit)",
+            "html_url": "https://github.com/neovim/neovim/pull/31842#discussion_r2567141878",
+            "id": 2567141878,
+            "in_reply_to_id": 2563232430,
+            "line": 555,
+            "node_id": "PRRC_kwDOAPphoM6ZA3n2",
+            "original_commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "original_line": 555,
+            "original_position": 63,
+            "original_start_line": 553,
+            "path": "runtime/lua/vim/health/health.lua",
+            "position": 63,
+            "pull_request_review_id": 3513515160,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31842",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2567141878/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 553,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2025-11-27T04:31:25Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2567141878",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",
+                "events_url": "https://api.github.com/users/glepnir/events{/privacy}",
+                "followers_url": "https://api.github.com/users/glepnir/followers",
+                "following_url": "https://api.github.com/users/glepnir/following{/other_user}",
+                "gists_url": "https://api.github.com/users/glepnir/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/glepnir",
+                "id": 41671631,
+                "login": "glepnir",
+                "node_id": "MDQ6VXNlcjQxNjcxNjMx",
+                "organizations_url": "https://api.github.com/users/glepnir/orgs",
+                "received_events_url": "https://api.github.com/users/glepnir/received_events",
+                "repos_url": "https://api.github.com/users/glepnir/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/glepnir/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/glepnir/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/glepnir",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/31842#discussion_r2567152124"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/31842"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2567152124"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "It definitely would be useful if we have a way to compare the age. And also if they are using an older stable release. We *should* show a warning if they are using 0.10 or 0.11.3, instead of the latest stable release.",
+            "commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "created_at": "2025-11-27T04:40:12Z",
+            "diff_hunk": "@@ -493,7 +493,153 @@ local function check_external_tools()\n   end\n end\n \n+local function detect_terminal()\n+  local e = vim.env\n+  if e.TERM_PROGRAM then\n+    local v = e.TERM_PROGRAM_VERSION --- @type string?\n+    return e.TERM_PROGRAM_VERSION and (e.TERM_PROGRAM .. ' ' .. v) or e.TERM_PROGRAM\n+  end\n+\n+  local map = {\n+    KITTY_WINDOW_ID = 'kitty',\n+    ALACRITTY_SOCKET = 'alacritty',\n+    ALACRITTY_LOG = 'alacritty',\n+    WEZTERM_EXECUTABLE = 'wezterm',\n+    KONSOLE_VERSION = function()\n+      return 'konsole ' .. e.KONSOLE_VERSION\n+    end,\n+    VTE_VERSION = function()\n+      return 'vte ' .. e.VTE_VERSION\n+    end,\n+  }\n+\n+  for key, val in pairs(map) do\n+    local env = e[key] --- @type string?\n+    if env then\n+      return type(val) == 'function' and val() or val\n+    end\n+  end\n+\n+  return 'unknown'\n+end\n+\n+local function check_sysinfo()\n+  vim.health.start('System Info')\n+\n+  -- Use :version because vim.version().build returns \"Homebrew\" for brew installs.\n+  local version_output = vim.api.nvim_exec2('version', { output = true }).output\n+  local nvim_version = version_output:match('NVIM v[^\\n]+') or 'unknown'\n+  local commit_hash = nvim_version:match('%+g?(%x+)')\n+  local version_for_report = nvim_version\n+  if commit_hash then\n+    version_for_report = nvim_version:gsub('%+g' .. commit_hash, ' neovim/neovim@' .. commit_hash)\n+    local has_git = vim.fn.executable('git') == 0\n+    local has_curl = vim.fn.executable('curl') == 1\n+    local cmd = has_git and { 'git', 'ls-remote', 'https://github.com/neovim/neovim', 'nightly' }\n+      or has_curl and {\n+        'curl',\n+        '-s',\n+        'https://api.github.com/repos/neovim/neovim/commits/nightly',\n+        '-H',\n+        'Accept: application/vnd.github.sha',\n+      }\n+      or nil\n+\n+    if cmd then\n+      local result = vim.system(cmd, { text = true }):wait()\n+      if result.code == 0 then\n+        local sha = has_git and result.stdout:match('^(%x+)') or result.stdout\n+        local latest_commit = sha and sha:sub(1, 10)\n+        if latest_commit and commit_hash ~= latest_commit then\n+          vim.health.warn(\n+            string.format('Build is outdated. Local: %s, Latest: %s', commit_hash, latest_commit)",
+            "html_url": "https://github.com/neovim/neovim/pull/31842#discussion_r2567152124",
+            "id": 2567152124,
+            "in_reply_to_id": 2563232430,
+            "line": 555,
+            "node_id": "PRRC_kwDOAPphoM6ZA6H8",
+            "original_commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "original_line": 555,
+            "original_position": 63,
+            "original_start_line": 553,
+            "path": "runtime/lua/vim/health/health.lua",
+            "position": 63,
+            "pull_request_review_id": 3513525938,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31842",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2567152124/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 553,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2025-11-27T04:40:12Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2567152124",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/31842#discussion_r2567191291"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/31842"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2567191291"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Check the release might be easier.\r\n\r\n<img width=\"1528\" height=\"1512\" alt=\"image\" src=\"https://github.com/user-attachments/assets/3a1777c4-a83c-4ea6-85d9-4d427c5fce36\" />\r\n",
+            "commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "created_at": "2025-11-27T05:09:59Z",
+            "diff_hunk": "@@ -493,7 +493,153 @@ local function check_external_tools()\n   end\n end\n \n+local function detect_terminal()\n+  local e = vim.env\n+  if e.TERM_PROGRAM then\n+    local v = e.TERM_PROGRAM_VERSION --- @type string?\n+    return e.TERM_PROGRAM_VERSION and (e.TERM_PROGRAM .. ' ' .. v) or e.TERM_PROGRAM\n+  end\n+\n+  local map = {\n+    KITTY_WINDOW_ID = 'kitty',\n+    ALACRITTY_SOCKET = 'alacritty',\n+    ALACRITTY_LOG = 'alacritty',\n+    WEZTERM_EXECUTABLE = 'wezterm',\n+    KONSOLE_VERSION = function()\n+      return 'konsole ' .. e.KONSOLE_VERSION\n+    end,\n+    VTE_VERSION = function()\n+      return 'vte ' .. e.VTE_VERSION\n+    end,\n+  }\n+\n+  for key, val in pairs(map) do\n+    local env = e[key] --- @type string?\n+    if env then\n+      return type(val) == 'function' and val() or val\n+    end\n+  end\n+\n+  return 'unknown'\n+end\n+\n+local function check_sysinfo()\n+  vim.health.start('System Info')\n+\n+  -- Use :version because vim.version().build returns \"Homebrew\" for brew installs.\n+  local version_output = vim.api.nvim_exec2('version', { output = true }).output\n+  local nvim_version = version_output:match('NVIM v[^\\n]+') or 'unknown'\n+  local commit_hash = nvim_version:match('%+g?(%x+)')\n+  local version_for_report = nvim_version\n+  if commit_hash then\n+    version_for_report = nvim_version:gsub('%+g' .. commit_hash, ' neovim/neovim@' .. commit_hash)\n+    local has_git = vim.fn.executable('git') == 0\n+    local has_curl = vim.fn.executable('curl') == 1\n+    local cmd = has_git and { 'git', 'ls-remote', 'https://github.com/neovim/neovim', 'nightly' }\n+      or has_curl and {\n+        'curl',\n+        '-s',\n+        'https://api.github.com/repos/neovim/neovim/commits/nightly',\n+        '-H',\n+        'Accept: application/vnd.github.sha',\n+      }\n+      or nil\n+\n+    if cmd then\n+      local result = vim.system(cmd, { text = true }):wait()\n+      if result.code == 0 then\n+        local sha = has_git and result.stdout:match('^(%x+)') or result.stdout\n+        local latest_commit = sha and sha:sub(1, 10)\n+        if latest_commit and commit_hash ~= latest_commit then\n+          vim.health.warn(\n+            string.format('Build is outdated. Local: %s, Latest: %s', commit_hash, latest_commit)",
+            "html_url": "https://github.com/neovim/neovim/pull/31842#discussion_r2567191291",
+            "id": 2567191291,
+            "in_reply_to_id": 2563232430,
+            "line": 555,
+            "node_id": "PRRC_kwDOAPphoM6ZBDr7",
+            "original_commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "original_line": 555,
+            "original_position": 63,
+            "original_start_line": 553,
+            "path": "runtime/lua/vim/health/health.lua",
+            "position": 63,
+            "pull_request_review_id": 3513567622,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31842",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 1,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2567191291/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 553,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2025-11-27T05:09:59Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2567191291",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",
+                "events_url": "https://api.github.com/users/glepnir/events{/privacy}",
+                "followers_url": "https://api.github.com/users/glepnir/followers",
+                "following_url": "https://api.github.com/users/glepnir/following{/other_user}",
+                "gists_url": "https://api.github.com/users/glepnir/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/glepnir",
+                "id": 41671631,
+                "login": "glepnir",
+                "node_id": "MDQ6VXNlcjQxNjcxNjMx",
+                "organizations_url": "https://api.github.com/users/glepnir/orgs",
+                "received_events_url": "https://api.github.com/users/glepnir/received_events",
+                "repos_url": "https://api.github.com/users/glepnir/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/glepnir/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/glepnir/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/glepnir",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/31842#discussion_r2567207901"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/31842"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2567207901"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "https://github.com/neovim/neovim/pull/36715",
+            "commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "created_at": "2025-11-27T05:20:48Z",
+            "diff_hunk": "@@ -493,7 +493,153 @@ local function check_external_tools()\n   end\n end\n \n+local function detect_terminal()\n+  local e = vim.env\n+  if e.TERM_PROGRAM then\n+    local v = e.TERM_PROGRAM_VERSION --- @type string?\n+    return e.TERM_PROGRAM_VERSION and (e.TERM_PROGRAM .. ' ' .. v) or e.TERM_PROGRAM\n+  end\n+\n+  local map = {\n+    KITTY_WINDOW_ID = 'kitty',\n+    ALACRITTY_SOCKET = 'alacritty',\n+    ALACRITTY_LOG = 'alacritty',\n+    WEZTERM_EXECUTABLE = 'wezterm',\n+    KONSOLE_VERSION = function()\n+      return 'konsole ' .. e.KONSOLE_VERSION\n+    end,\n+    VTE_VERSION = function()\n+      return 'vte ' .. e.VTE_VERSION\n+    end,\n+  }\n+\n+  for key, val in pairs(map) do\n+    local env = e[key] --- @type string?\n+    if env then\n+      return type(val) == 'function' and val() or val\n+    end\n+  end\n+\n+  return 'unknown'\n+end\n+\n+local function check_sysinfo()\n+  vim.health.start('System Info')\n+\n+  -- Use :version because vim.version().build returns \"Homebrew\" for brew installs.\n+  local version_output = vim.api.nvim_exec2('version', { output = true }).output\n+  local nvim_version = version_output:match('NVIM v[^\\n]+') or 'unknown'\n+  local commit_hash = nvim_version:match('%+g?(%x+)')\n+  local version_for_report = nvim_version\n+  if commit_hash then\n+    version_for_report = nvim_version:gsub('%+g' .. commit_hash, ' neovim/neovim@' .. commit_hash)\n+    local has_git = vim.fn.executable('git') == 0\n+    local has_curl = vim.fn.executable('curl') == 1\n+    local cmd = has_git and { 'git', 'ls-remote', 'https://github.com/neovim/neovim', 'nightly' }\n+      or has_curl and {\n+        'curl',\n+        '-s',\n+        'https://api.github.com/repos/neovim/neovim/commits/nightly',\n+        '-H',\n+        'Accept: application/vnd.github.sha',\n+      }\n+      or nil\n+\n+    if cmd then\n+      local result = vim.system(cmd, { text = true }):wait()\n+      if result.code == 0 then\n+        local sha = has_git and result.stdout:match('^(%x+)') or result.stdout\n+        local latest_commit = sha and sha:sub(1, 10)\n+        if latest_commit and commit_hash ~= latest_commit then\n+          vim.health.warn(\n+            string.format('Build is outdated. Local: %s, Latest: %s', commit_hash, latest_commit)",
+            "html_url": "https://github.com/neovim/neovim/pull/31842#discussion_r2567207901",
+            "id": 2567207901,
+            "in_reply_to_id": 2563232430,
+            "line": 555,
+            "node_id": "PRRC_kwDOAPphoM6ZBHvd",
+            "original_commit_id": "188595e78654d2da12f8da08c204b4023b47ea1b",
+            "original_line": 555,
+            "original_position": 63,
+            "original_start_line": 553,
+            "path": "runtime/lua/vim/health/health.lua",
+            "position": 63,
+            "pull_request_review_id": 3513585882,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31842",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2567207901/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 553,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2025-11-27T05:20:48Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2567207901",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",
+                "events_url": "https://api.github.com/users/glepnir/events{/privacy}",
+                "followers_url": "https://api.github.com/users/glepnir/followers",
+                "following_url": "https://api.github.com/users/glepnir/following{/other_user}",
+                "gists_url": "https://api.github.com/users/glepnir/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/glepnir",
+                "id": 41671631,
+                "login": "glepnir",
+                "node_id": "MDQ6VXNlcjQxNjcxNjMx",
+                "organizations_url": "https://api.github.com/users/glepnir/orgs",
+                "received_events_url": "https://api.github.com/users/glepnir/received_events",
+                "repos_url": "https://api.github.com/users/glepnir/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/glepnir/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/glepnir/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/glepnir",
+                "user_view_type": "public"
+            }
         }
     ],
     "comment_regular_data": [
@@ -1504,6 +3663,51 @@
                 "url": "https://api.github.com/users/glepnir",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "We will probably improve this but it's a good start. Some important ideas from https://github.com/neovim/neovim/issues/31847 which we should do in the future:\r\n\r\n- let other plugins use this\r\n- let healthchecks say which info should be included in the bugreport\r\n    - especially don't want private info in the bugreport",
+            "created_at": "2025-11-26T05:22:59Z",
+            "html_url": "https://github.com/neovim/neovim/pull/31842#issuecomment-3579227450",
+            "id": 3579227450,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31842",
+            "node_id": "IC_kwDOAPphoM7VVq06",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3579227450/reactions"
+            },
+            "updated_at": "2025-11-26T05:22:59Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3579227450",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
         }
     ],
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/31842/comments",
@@ -1600,9 +3804,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/glepnir/neovim/pulls{/number}",
-            "pushed_at": "2025-11-24T05:15:54Z",
+            "pushed_at": "2025-12-01T11:37:05Z",
             "releases_url": "https://api.github.com/repos/glepnir/neovim/releases{/id}",
-            "size": 344695,
+            "size": 345792,
             "ssh_url": "git@github.com:glepnir/neovim.git",
             "stargazers_count": 2,
             "stargazers_url": "https://api.github.com/repos/glepnir/neovim/stargazers",
@@ -1614,14 +3818,14 @@
             "teams_url": "https://api.github.com/repos/glepnir/neovim/teams",
             "topics": [],
             "trees_url": "https://api.github.com/repos/glepnir/neovim/git/trees{/sha}",
-            "updated_at": "2025-11-24T04:26:11Z",
+            "updated_at": "2025-12-01T03:24:14Z",
             "url": "https://api.github.com/repos/glepnir/neovim",
             "visibility": "public",
             "watchers": 2,
             "watchers_count": 2,
             "web_commit_signoff_required": false
         },
-        "sha": "6ef43ba8a4d1d096bcfc02b154176ec35d9f289a",
+        "sha": "188595e78654d2da12f8da08c204b4023b47ea1b",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",
             "events_url": "https://api.github.com/users/glepnir/events{/privacy}",
@@ -1659,8 +3863,8 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "502e9b28693d43401bf80ec438099d47ab8120b3",
-    "merged_at": null,
+    "merge_commit_sha": "13ed2250541020901b1ebeec29ec5cc9c376f532",
+    "merged_at": "2025-11-26T05:21:32Z",
     "milestone": null,
     "node_id": "PR_kwDOAPphoM6Gpmkr",
     "number": 31842,
@@ -1669,10 +3873,10 @@
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/31842/comments",
-    "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/6ef43ba8a4d1d096bcfc02b154176ec35d9f289a",
+    "state": "closed",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/188595e78654d2da12f8da08c204b4023b47ea1b",
     "title": "feat(health): add bug report section",
-    "updated_at": "2025-11-24T05:01:27Z",
+    "updated_at": "2025-11-27T05:20:48Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/31842",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",

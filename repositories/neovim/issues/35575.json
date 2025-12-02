@@ -2,7 +2,7 @@
     "active_lock_reason": null,
     "assignee": null,
     "assignees": [],
-    "author_association": "NONE",
+    "author_association": "CONTRIBUTOR",
     "body": "### Problem\n\nWhen wrap is disabled, depending on the size of the gutter, certain Treesitter highlights fail to show.\n\nShowing the tabline can also affect which highlights fail to show\n\nThis issue occurs if I build from commit 5edbabd, but not 118e7e7\n\n### Steps to reproduce\n\n```nvim --clean -u``` from the following file:\n\n``` lua\n-- Wrap must be set for false\nvim.api.nvim_set_option_value(\"wrap\", false, { scope = \"global\" })\n\n-- This combination of options will cause highlighting in the foo table to fail after the\n-- fourth left curly brace plus the \"global\" in the nu setting\nvim.api.nvim_set_option_value(\"nu\", true, { scope = \"global\" })\nvim.api.nvim_set_option_value(\"nuw\", 8, { scope = \"global\" })\n\n-- This will cause highlighting in the foo table on and after the fourth left curly brace\n-- vim.api.nvim_set_option_value(\"scl\", \"yes:5\", { scope = \"global\" })\n\n-- This set of options causes \"global\" in wrap and scl to fail to highlight\n-- vim.api.nvim_set_option_value(\"nu\", true, { scope = \"global\" })\n-- vim.api.nvim_set_option_value(\"nuw\", 5, { scope = \"global\" })\n-- vim.api.nvim_set_option_value(\"rnu\", true, { scope = \"global\" })\n-- vim.api.nvim_set_option_value(\"scl\", \"yes:1\", { scope = \"global\" })\n\n-- Showing the tabline also affects which highlights fail\n-- vim.api.nvim_set_option_value(\"stal\", 2, { scope = \"global\" })\n\nlocal foo = { { severity = 0 }, { severity = 1 }, { severity = 2 }, { severity = 3 } }\n\n```\n\n### Expected behavior\n\nTreesitter highlights should display properly\n\n### Nvim version (nvim -v)\n\nNVIM v0.12.0-dev-1107+g5edbabdbec\n\n### Vim (not Nvim) behaves the same?\n\nN/A\n\n### Operating system/version\n\nLinux Mint 22.1 x86_64\n\n### Terminal name/version\n\nGhostty 1.1.3\n\n### $TERM environment variable\n\ntmux-256color\n\n### Installation\n\nBuild from source",
     "closed_at": null,
     "closed_by": null,
@@ -62,7 +62,7 @@
             "node_id": "IC_kwDOAPphoM7BJl_r",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 1,
+                "+1": 2,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -70,7 +70,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 1,
+                "total_count": 2,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3240517611/reactions"
             },
             "updated_at": "2025-09-01T00:06:58Z",
@@ -98,7 +98,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "> `{ scope = \"global\" }` doesn't seem necessary, and makes reproducing the issue harder.\n\nPlayed around with this again using Window local options:\n\n```lua\n-- For visibility\nvim.api.nvim_set_hl(0, \"Constant\", { link = \"Identifier\" }) \nvim.api.nvim_set_hl(0, \"@variable.member.lua\", {}) \n\nlocal function foo()\n    for _, d in ipairs(vim.diagnostic.get(opts.buf or nil)) do\n        if d.severity == vim.diagnostic.severity.ERROR then\n            return vim.diagnostic.severity.ERROR\n        elseif d.severity == vim.diagnostic.severity.WARN then\n            has_warn = true\n        elseif d.severity == vim.diagnostic.severity.INFO then\n            has_info = true\n        elseif d.severity == vim.diagnostic.severity.HINT then\n            has_hint = true\n        end\n    end\nend\n\nlocal foo = { { severity = 0 }, { severity = 1 }, { severity = 2 }, { severity = 3 } }\n\n-- Running this makes bold highlight on do go away\n-- vim.api.nvim_set_option_value(\"wrap\", false, { win = 0})\n-- Running these two will cause the highlighting in the second half of the foo table\n-- to fail\n-- vim.api.nvim_set_option_value(\"nu\", true, { win = 0})\n-- vim.api.nvim_set_option_value(\"nuw\", 8, { win = 0 })\n-- If I run this, it opens in a split above the initial window. The foo table\n-- displays properly, but the first ERROR on line 7 now does not have a constant highlight\n-- :h lua\n-- Running this makes the ERROR highlight appear again as well as the do highlight\n-- vim.api.nvim_set_option_value(\"stal\", 2, { scope = \"global\" })\n-- Then if I close the help window, the do highlight disappears\n-- If I run this, the foo table highlights improperly, but do is still highlighted\n-- vim.api.nvim_set_option_value(\"stal\", 0, { scope = \"global\" })\n-- Run this again. Foo table is correct, do highlight disappears\n-- vim.api.nvim_set_option_value(\"stal\", 2, { scope = \"global\" })\n```\n\nEDIT If I take a window with the contents above them open a horizontal tmux split below it, the highlights will display correctly\n\nIf I take the same window contents and create a tmux vertical split, nothing changes\n\nBut then if I take the Neovim window in the tmux vsplit, then do a Neovim vsplit the highlighting in those Nvim windows is correct. \n\nIf I do a Neovim vsplit and type beyond the width of the split, the highlighting becomes correct, even when I exit to Normal mode. I can then $/0 on the extended line and watch the highlighting switch between correct/incorrect\n\nIf I go back to the beginning of this long line then use l to increment slowly past the boundary in normal mode, it alternates between correct and not correct\n\nI opened a non-tmux Terminal to make sure this behavior still existed there and it does",
             "created_at": "2025-09-01T00:27:48Z",
             "html_url": "https://github.com/neovim/neovim/issues/35575#issuecomment-3240540991",
@@ -141,9 +141,54 @@
                 "url": "https://api.github.com/users/mikejmcguirk",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "Made another attempt at reproducing. ``nvim --clean`` then open a lua file that contains the text below. The commands to run are in the comments:\n\n```lua\nlocal api = vim.api\nlocal fn = vim.fn\nlocal lsp = vim.lsp\n-- textDocument/definition --\nlocal definition = ok and fzflua.lsp_definitions or lsp.buf.definition ---@type function\n\n-- set nu\n-- set rnu\n-- set scl=yes:1\n-- set stal=2\n-- set nuw=5\n-- lua vim.treesitter.query.get(\"lua\", \"highlights\").query:disable_capture(\"variable\")\n-- set nowrap\n```\n\nExpected: ``---@type function`` will highlight as a comment\nResult: It does not have a highlight\n\n(NOTE: Disabling variable is not a typo)\n(EDIT: Same result if setlocal is used for nu, rnu, scl, and nuw)\n\nversion output:\n```\nNVIM v0.12.0-dev-bfc13dd67c\nBuild type: Release\nLuaJIT 2.1.1763318511\nRun \":verbose version\" for more info\n```\n\nThis is easier to work around because I can just enable the capture, but, like before, it relies on nowrap being set, as well as specific gutter/tabline settings. It will also go away based on certain window/split sizings in Nvim/Tmux.",
+            "created_at": "2025-11-26T05:03:07Z",
+            "html_url": "https://github.com/neovim/neovim/issues/35575#issuecomment-3579145436",
+            "id": 3579145436,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/35575",
+            "node_id": "IC_kwDOAPphoM7VVWzc",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3579145436/reactions"
+            },
+            "updated_at": "2025-11-26T05:08:21Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3579145436",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/62523234?v=4",
+                "events_url": "https://api.github.com/users/mikejmcguirk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/mikejmcguirk/followers",
+                "following_url": "https://api.github.com/users/mikejmcguirk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/mikejmcguirk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/mikejmcguirk",
+                "id": 62523234,
+                "login": "mikejmcguirk",
+                "node_id": "MDQ6VXNlcjYyNTIzMjM0",
+                "organizations_url": "https://api.github.com/users/mikejmcguirk/orgs",
+                "received_events_url": "https://api.github.com/users/mikejmcguirk/received_events",
+                "repos_url": "https://api.github.com/users/mikejmcguirk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/mikejmcguirk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/mikejmcguirk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/mikejmcguirk",
+                "user_view_type": "public"
+            }
         }
     ],
-    "comments": 3,
+    "comments": 4,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/35575/comments",
     "created_at": "2025-08-31T23:43:19Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/35575/events",
@@ -197,7 +242,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 113,
+        "closed_issues": 171,
         "created_at": "2024-05-16T14:11:54Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -221,16 +266,16 @@
             "user_view_type": "public"
         },
         "description": "",
-        "due_on": null,
+        "due_on": "2025-12-25T00:00:00Z",
         "html_url": "https://github.com/neovim/neovim/milestone/43",
         "id": 11063573,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/43/labels",
         "node_id": "MI_kwDOAPphoM4AqNEV",
         "number": 43,
-        "open_issues": 73,
+        "open_issues": 81,
         "state": "open",
         "title": "0.12",
-        "updated_at": "2025-09-01T15:30:32Z",
+        "updated_at": "2025-12-01T22:00:35Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/43"
     },
     "node_id": "I_kwDOAPphoM7I6g-m",
@@ -268,7 +313,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyr",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2025-09-01T00:43:58Z",
+    "updated_at": "2025-11-26T05:08:21Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/35575",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/62523234?v=4",

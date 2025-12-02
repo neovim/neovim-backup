@@ -74,7 +74,7 @@
         },
         {
             "author_association": "NONE",
-            "body": "as this is not planned, related vim issue was closed and 33188 has also no progress for months.\ni'd like to add an user-land quick solution to this issue i found last night, based on the fact that search.c::findmatch() is callable through luajit ffi:\n\n<details>\n\n    <summary>\n    this is just for reference, as it's copied from my nvim config requiring some private modules)\n    </summary>\n\n```\nlocal M = {}\n\n---NB: there is only one current buf/win, therefor only one match\n\nlocal augroups = require(\"infra.augroups\")\nlocal ni = require(\"infra.ni\")\nlocal prefer = require(\"infra.prefer\")\nlocal unsafe = require(\"infra.unsafe\")\n\nlocal uv = vim.uv\n\nlocal facts = {\n  xmark_ns = ni.create_namespace(\"showmatch://xmark\"),\n  remain_time = 500, --in ms; see &matchtime\n}\n\nlocal marker = {}\ndo\n  marker.xmid = nil\n  marker.bufnr = nil\n\n  function marker:clear()\n    if self.xmid == nil then return end\n    local bufnr, xmid = self.bufnr, self.xmid\n    self.bufnr, self.xmid = nil, nil\n    ni.buf_del_extmark(bufnr, facts.xmark_ns, xmid)\n  end\n\n  ---@param bufnr integer\n  ---@param lnum integer @0-based\n  ---@param col integer @0-based\n  function marker:set(bufnr, lnum, col)\n    self:clear()\n    local xmid = ni.buf_set_extmark(bufnr, facts.xmark_ns, lnum, col, { end_row = lnum, end_col = col + 1, hl_group = \"MatchParen\" })\n    self.bufnr, self.xmid = bufnr, xmid\n  end\nend\n\nlocal aug\nlocal timer = uv.new_timer()\nlocal clear_match = vim.schedule_wrap(function() marker:clear() end)\n\nfunction M.activate()\n  if aug ~= nil then return end\n  aug = augroups.Augroup(\"showmatch://\")\n  aug:repeats(\"InsertCharPre\", {\n    callback = function(args)\n      local bufnr = ni.get_current_buf()\n      assert(args.buf == bufnr)\n      if prefer.bo(bufnr, \"buftype\") == \"terminal\" then return end\n      vim.schedule(function()\n        local lnum, col = unsafe.findmatch()\n        if not (lnum and col) then return end\n        marker:set(bufnr, lnum, col)\n        timer:start(facts.remain_time, 0, clear_match)\n      end)\n    end,\n  })\nend\n\nfunction M.deactivate()\n  if aug == nil then return end\n\n  aug:unlink()\n  aug = nil\n\n  timer:stop()\n  marker:clear()\nend\n\nreturn M\n```\n\n</details>\n",
+            "body": "as this is not planned, related vim issue was closed and 33188 has also no progress for months. i scratched an user-land quick solution to this issue, based on the fact that search.c::findmatch() is callable through luajit ffi.\n\n--- update\nit took me a while to discover the MatchParen plugin.",
             "created_at": "2025-11-25T01:31:00Z",
             "html_url": "https://github.com/neovim/neovim/issues/36677#issuecomment-3573405122",
             "id": 3573405122,
@@ -93,7 +93,7 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3573405122/reactions"
             },
-            "updated_at": "2025-11-25T01:31:00Z",
+            "updated_at": "2025-11-26T04:31:04Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3573405122",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6236829?v=4",
@@ -206,7 +206,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyv",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2025-11-25T01:31:00Z",
+    "updated_at": "2025-11-26T04:31:04Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/36677",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/6236829?v=4",
