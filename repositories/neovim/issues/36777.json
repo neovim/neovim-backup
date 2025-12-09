@@ -4,8 +4,28 @@
     "assignees": [],
     "author_association": "CONTRIBUTOR",
     "body": "### Problem\n\nA connection to a remote Neovim instance over slower network fails:\n\n```\n[I] sakhnik@vivo ~ [1]> nvim --remote-ui --server 10.0.3.100:11111\nRemote ui failed to start: connection refused\n```\n\nStrace revealed that the connection wasn't actually refused, but was still in progress:\n```\n15:52:50.678223 socket(AF_INET, SOCK_STREAM|SOCK_CLOEXEC|SOCK_NONBLOCK, IPPROTO_IP) = 11\n15:52:50.678278 setsockopt(11, SOL_TCP, TCP_NODELAY, [1], 4) = 0\n15:52:50.678320 connect(11, {sa_family=AF_INET, sin_port=htons(11111), sin_addr=inet_addr(\"10.0.3.100\")}, 16) = -1 EINPROGRESS (Дія зараз виконується)\n15:52:50.678443 clock_gettime(CLOCK_MONOTONIC, {tv_sec=21736, tv_nsec=57625406}) = 0\n15:52:50.678489 io_uring_enter(4, 3, 3, IORING_ENTER_GETEVENTS, NULL, 0) = 3\n15:52:50.678544 epoll_pwait(3, [], 1024, 50, NULL, 8) = 0\n15:52:50.728911 clock_gettime(CLOCK_MONOTONIC, {tv_sec=21736, tv_nsec=108159596}) = 0\n15:52:50.729203 epoll_ctl(3, EPOLL_CTL_DEL, 11, 0x7ffd6ec9a3bc) = 0\n15:52:50.729527 close(11)               = 0\n```\n\nIt appears that only a 50 ms timeout is hardcoded in the source code. When I raise the timeout to 500 ms, Neovim connects successfully.\n\n```\ndiff --git a/src/nvim/main.c b/src/nvim/main.c\nindex 71ba002d76..f0f00387a4 100644\n--- a/src/nvim/main.c\n+++ b/src/nvim/main.c\n@@ -927,7 +927,7 @@ static uint64_t server_connect(char *server_addr, const char **errmsg)\n   const char *error = NULL;\n   bool is_tcp = strrchr(server_addr, ':') ? true : false;\n   // connected to channel\n-  uint64_t chan = channel_connect(is_tcp, server_addr, true, on_data, 50, &error);\n+  uint64_t chan = channel_connect(is_tcp, server_addr, true, on_data, 500, &error);\n   if (error) {\n     *errmsg = error;\n     return 0;\n```\n\n### Steps to reproduce\n\nnvim --clean --remote-ui --server 10.0.3.100:11111\n\n\n### Expected behavior\n\nNeovim UI connects to a remote instance\n\n### Nvim version (nvim -v)\n\nNVIM v0.11.5 Build type: RelWithDebInfo LuaJIT 2.1.1763318511\n\n### Vim (not Nvim) behaves the same?\n\nNo\n\n### Operating system/version\n\nLinux\n\n### Terminal name/version\n\nkitty 0.44.0\n\n### $TERM environment variable\n\nxterm-256color\n\n### Installation\n\nappimage",
-    "closed_at": null,
-    "closed_by": null,
+    "closed_at": "2025-12-02T16:14:11Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+        "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+        "followers_url": "https://api.github.com/users/justinmk/followers",
+        "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+        "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/justinmk",
+        "id": 1359421,
+        "login": "justinmk",
+        "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+        "organizations_url": "https://api.github.com/users/justinmk/orgs",
+        "received_events_url": "https://api.github.com/users/justinmk/received_events",
+        "repos_url": "https://api.github.com/users/justinmk/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -51,9 +71,54 @@
                 "url": "https://api.github.com/users/justinmk",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "There it is #36800 ",
+            "created_at": "2025-12-02T14:33:54Z",
+            "html_url": "https://github.com/neovim/neovim/issues/36777#issuecomment-3602361165",
+            "id": 3602361165,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/36777",
+            "node_id": "IC_kwDOAPphoM7Wt6tN",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3602361165/reactions"
+            },
+            "updated_at": "2025-12-02T14:33:54Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3602361165",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/364912?v=4",
+                "events_url": "https://api.github.com/users/sakhnik/events{/privacy}",
+                "followers_url": "https://api.github.com/users/sakhnik/followers",
+                "following_url": "https://api.github.com/users/sakhnik/following{/other_user}",
+                "gists_url": "https://api.github.com/users/sakhnik/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/sakhnik",
+                "id": 364912,
+                "login": "sakhnik",
+                "node_id": "MDQ6VXNlcjM2NDkxMg==",
+                "organizations_url": "https://api.github.com/users/sakhnik/orgs",
+                "received_events_url": "https://api.github.com/users/sakhnik/received_events",
+                "repos_url": "https://api.github.com/users/sakhnik/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/sakhnik/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/sakhnik/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/sakhnik",
+                "user_view_type": "public"
+            }
         }
     ],
-    "comments": 1,
+    "comments": 2,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/36777/comments",
     "created_at": "2025-12-01T14:00:58Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/36777/events",
@@ -89,7 +154,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 21,
+        "closed_issues": 23,
         "created_at": "2025-11-02T23:16:37Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
@@ -122,7 +187,7 @@
         "open_issues": 17,
         "state": "open",
         "title": "0.11.6",
-        "updated_at": "2025-12-02T02:52:42Z",
+        "updated_at": "2025-12-08T21:26:09Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/54"
     },
     "node_id": "I_kwDOAPphoM7baftc",
@@ -141,8 +206,8 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/36777/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "sub_issues_summary": {
         "completed": 0,
         "percent_completed": 0,
@@ -160,7 +225,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyr",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2025-12-01T17:49:29Z",
+    "updated_at": "2025-12-02T16:14:12Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/36777",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/364912?v=4",

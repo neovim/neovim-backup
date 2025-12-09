@@ -4,8 +4,28 @@
     "assignees": [],
     "author_association": "MEMBER",
     "body": "## Problem\n\n(Extracted from https://github.com/neovim/neovim/pull/34285#issuecomment-3194613064 )\n\nThe main reason that new autocmds are a pain is because they execute code in completely random low-level places where it's not expected that user-defined script can be executed.\n\n\n\n## Expected behavior\n\nInstead of immediately executing the autocmd handlers, don't execute handlers until a known safe-state. ~~That could be [here](https://github.com/neovim/neovim/blob/7eb9badd9384ee5970245e2c6f25f170dea91ce8/src/nvim/state.c#L298-L308) perhaps.~~ (Edit: `SafeState` is [too limited](https://github.com/neovim/neovim/pull/34285#issuecomment-3194653155)).\n\nThe safe-state can just be \"the next time we're about to execute user code\". Anything more \"immediate\" than that is just out of scope for all new events going forward.\n\nWe don't necessarily need to migrate all autocmds to use this approach, but:\n\n- use it as the default approach going forward\n- migrate some existing autocmds where it makes sense to do so\n\n## Implementation\n\nunless you know better, here's a proposed approach:\n\n1. append to a global ~~\"pending queue\" (like [ch_before_blocking_events](https://github.com/neovim/neovim/blob/126b2d8a17e70b5f1b251a04b39abf133cfa2b0a/src/nvim/os/input.c#L512))~~ (edit: or just `main_loop.events` ?), with allocated data as needed.\n    - allocate its state (`v:event`, `event-data`, window-id, buffer-id, ...)\n2. when we reach the safe-state, unwind all of the pending events on the event-loop\n    - if *their* handlers trigger deferred events, those new deferred events get queued for the next safe-state \"tick\"...\n\nProbably want a similar approach as `vim.schedule()`: https://github.com/neovim/neovim/blob/e887602eb5451bde2fe3241b2408c0ae7816ca3c/src/nvim/lua/executor.c#L398-L407",
-    "closed_at": null,
-    "closed_by": null,
+    "closed_at": "2025-12-07T20:13:32Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+        "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+        "followers_url": "https://api.github.com/users/justinmk/followers",
+        "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+        "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/justinmk",
+        "id": 1359421,
+        "login": "justinmk",
+        "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+        "organizations_url": "https://api.github.com/users/justinmk/orgs",
+        "received_events_url": "https://api.github.com/users/justinmk/received_events",
+        "repos_url": "https://api.github.com/users/justinmk/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "CONTRIBUTOR",
@@ -368,8 +388,8 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 743,
-        "created_at": "2014-05-10T20:43:04Z",
+        "closed_issues": 182,
+        "created_at": "2024-05-16T14:11:54Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
             "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
@@ -391,18 +411,18 @@
             "url": "https://api.github.com/users/justinmk",
             "user_view_type": "public"
         },
-        "description": "Low priority items. We plan to work on this but don't have a target date.",
-        "due_on": null,
-        "html_url": "https://github.com/neovim/neovim/milestone/6",
-        "id": 655037,
-        "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
-        "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
-        "number": 6,
-        "open_issues": 637,
+        "description": "",
+        "due_on": "2026-02-14T00:00:00Z",
+        "html_url": "https://github.com/neovim/neovim/milestone/43",
+        "id": 11063573,
+        "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/43/labels",
+        "node_id": "MI_kwDOAPphoM4AqNEV",
+        "number": 43,
+        "open_issues": 80,
         "state": "open",
-        "title": "backlog",
-        "updated_at": "2025-09-22T19:59:53Z",
-        "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
+        "title": "0.12",
+        "updated_at": "2025-12-08T21:34:43Z",
+        "url": "https://api.github.com/repos/neovim/neovim/milestones/43"
     },
     "node_id": "I_kwDOAPphoM7GZrP0",
     "number": 35366,
@@ -421,8 +441,8 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/35366/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "sub_issues_summary": {
         "completed": 0,
         "percent_completed": 0,
@@ -440,7 +460,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyv",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2025-09-22T03:48:32Z",
+    "updated_at": "2025-12-07T20:13:44Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/35366",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
