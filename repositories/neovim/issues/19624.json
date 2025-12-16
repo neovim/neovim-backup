@@ -3474,51 +3474,6 @@
         },
         {
             "author_association": "CONTRIBUTOR",
-            "body": "I found out that Python's [toolz](https://toolz.readthedocs.io/en/latest/api.html#toolz.functoolz.pipe) library has a `pipe()` function that just take a value and then function(s) as argument. Is it something wanted in Nvim stdlib?",
-            "created_at": "2025-04-22T17:08:56Z",
-            "html_url": "https://github.com/neovim/neovim/issues/19624#issuecomment-2821965585",
-            "id": 2821965585,
-            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/19624",
-            "node_id": "IC_kwDOAPphoM6oM8cR",
-            "performed_via_github_app": null,
-            "reactions": {
-                "+1": 0,
-                "-1": 0,
-                "confused": 0,
-                "eyes": 0,
-                "heart": 0,
-                "hooray": 0,
-                "laugh": 0,
-                "rocket": 0,
-                "total_count": 0,
-                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2821965585/reactions"
-            },
-            "updated_at": "2025-06-16T01:59:49Z",
-            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/2821965585",
-            "user": {
-                "avatar_url": "https://avatars.githubusercontent.com/u/111893501?v=4",
-                "events_url": "https://api.github.com/users/brianhuster/events{/privacy}",
-                "followers_url": "https://api.github.com/users/brianhuster/followers",
-                "following_url": "https://api.github.com/users/brianhuster/following{/other_user}",
-                "gists_url": "https://api.github.com/users/brianhuster/gists{/gist_id}",
-                "gravatar_id": "",
-                "html_url": "https://github.com/brianhuster",
-                "id": 111893501,
-                "login": "brianhuster",
-                "node_id": "U_kgDOBqtb_Q",
-                "organizations_url": "https://api.github.com/users/brianhuster/orgs",
-                "received_events_url": "https://api.github.com/users/brianhuster/received_events",
-                "repos_url": "https://api.github.com/users/brianhuster/repos",
-                "site_admin": false,
-                "starred_url": "https://api.github.com/users/brianhuster/starred{/owner}{/repo}",
-                "subscriptions_url": "https://api.github.com/users/brianhuster/subscriptions",
-                "type": "User",
-                "url": "https://api.github.com/users/brianhuster",
-                "user_view_type": "public"
-            }
-        },
-        {
-            "author_association": "CONTRIBUTOR",
             "body": "On the matter of cancellation, what do you think of the `CancellationToken` abstraction from VSCode? The idea is as follows: the asynchronous functions get an object that lets you subscribe to a cancellation event and register a callback to cancel whatever task you are implementing. The subscription to this event gives you back a callback to unsubscribe, say, after the request has been fulfilled, to not keep the referenced objects around in memory. When a cancellation is detected, the function it was called from should return some null value, which will be detected and propagated by the caller function and so on. In pseudocode, this would look something like this:\n\n```lua\nlocal function lsp_hover(client: lsp.Client, token: async.CancellationToken)\n  local req = client.request('textDocument/hover') -- Let's imagine that client.request is a fafcf\n  local unsubscribe = token.subscribe(function() req:cancel() end)\n  local err, res = req:await()\n  unsubscribe()\n  if token.cancelled then\n    return nil\n  end\n  -- All good, do something useful\nend\n```\n\nTo cancel the request one would store the token somewhere and call `cancel()` on it, or something along those lines, i.e.:\n\n```lua\nlocal token = async.CancellationToken.new()\nautocmd('CursorMoved', function() token:cancel() end)\nlsp_hover(client, token)\n```\n\nI chose the LSP hover method in this example purely because incidentally I was working on something similar, this really can be any asynchronous API. As far as I can tell from my experience with the codebase of VSCode and coc.nvim (which only involves reading code, not writing anything, but still) this kind of cancellation API jives really well with javascript's async/await style concurrency, which I think can be more-or-less mapped 1-to-1 to fafcfs. Its main benefit is in the fact that once an API supports a cancellation token, its application is a matter of calling a cancellable function and checking if its return value is `nil` or `token.cancelled` is true, e.g.:\n\n```lua\nlocal function lsp_hover(client: lsp.Client, token: async.CancellationToken)\n  -- The subscription and unsubscription are encapsulated in `client.request`\n  local err, res = client.request(token, 'textDocument/hover'):await()\n  if not err and not res then -- The request must've been cancelled, propagate this info\n    return nil\n  end\n  -- All good, do something useful\nend\n```\n\nMixing this pattern with error handling is TBD.\n\nP. S. As for fafcf-style async in Lua in general, here's a short helper I came up with for my personal plugins:\n\n```lua\n--- Helper for turning callback-based APIs into asynchronous functions. Based on\n--- <https://github.com/gregorias/coerce.nvim/blob/4ea7e31b95209105899ee6360c2a3a30e09d361d/lua/coerce/coroutine.lua>\n--- and <https://gregorias.github.io/posts/using-coroutines-in-neovim-lua/>.\n---@param fn fun(callback: fun(...))\n---@return ...\nfunction M.await(fn)\n  local co = assert(coroutine.running(), 'needs to be called within a coroutine')\n  local results = nil\n\n  local function async_callback(...)\n    results = { n = select('#', ...), ... }\n    if coroutine.status(co) == 'suspended' then\n      local ok, err = coroutine.resume(co)\n      if not ok then error(debug.traceback(co, err)) end\n    end\n  end\n\n  fn(async_callback)\n\n  if not results then coroutine.yield() end\n  assert(results, 'async callback did not get called')\n  return unpack(results, 1, results.n)\nend\n```",
             "created_at": "2025-06-10T22:18:17Z",
             "html_url": "https://github.com/neovim/neovim/issues/19624#issuecomment-2960707718",
@@ -3849,8 +3804,8 @@
                 "heart": 0,
                 "hooray": 0,
                 "laugh": 0,
-                "rocket": 4,
-                "total_count": 4,
+                "rocket": 5,
+                "total_count": 5,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3055731864/reactions"
             },
             "updated_at": "2025-07-10T06:09:29Z",
@@ -4058,12 +4013,18 @@
             }
         }
     ],
-    "comments": 90,
+    "comments": 89,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/19624/comments",
     "created_at": "2022-08-02T11:39:42Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/19624/events",
     "html_url": "https://github.com/neovim/neovim/issues/19624",
     "id": 1325723545,
+    "issue_dependencies_summary": {
+        "blocked_by": 0,
+        "blocking": 0,
+        "total_blocked_by": 0,
+        "total_blocking": 0
+    },
     "labels": [
         {
             "color": "c5def5",
@@ -4097,7 +4058,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 734,
+        "closed_issues": 762,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -4127,17 +4088,17 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 635,
+        "open_issues": 641,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2025-08-03T21:37:35Z",
+        "updated_at": "2025-12-15T19:01:37Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM5PBO-Z",
     "number": 19624,
     "performed_via_github_app": null,
     "reactions": {
-        "+1": 4,
+        "+1": 5,
         "-1": 0,
         "confused": 0,
         "eyes": 0,
@@ -4145,7 +4106,7 @@
         "hooray": 25,
         "laugh": 0,
         "rocket": 0,
-        "total_count": 40,
+        "total_count": 41,
         "url": "https://api.github.com/repos/neovim/neovim/issues/19624/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
@@ -4168,7 +4129,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyv",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2025-07-29T06:35:07Z",
+    "updated_at": "2025-12-15T05:11:28Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/19624",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",

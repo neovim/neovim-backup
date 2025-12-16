@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/36847"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/b5e741e55015dd787001db53eb3b59af47c08726"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/da928f0e92e68ff618e3dac00da9588a0d58ab46"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6464,
-            "forks_count": 6464,
+            "forks": 6460,
+            "forks_count": 6460,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 2020,
-            "open_issues_count": 2020,
+            "open_issues": 2031,
+            "open_issues_count": 2031,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -119,11 +119,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2025-12-09T01:08:10Z",
+            "pushed_at": "2025-12-15T23:50:03Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 354992,
+            "size": 355921,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 94818,
+            "stargazers_count": 94967,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -141,14 +141,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2025-12-09T02:18:49Z",
+            "updated_at": "2025-12-16T02:41:18Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 94818,
-            "watchers_count": 94818,
+            "watchers": 94967,
+            "watchers_count": 94967,
             "web_commit_signoff_required": false
         },
-        "sha": "647f11e6ae795901e9bf5d0f4d84f73eab2b836b",
+        "sha": "c40cb2a4cf324812d46479480f6065e2c28bcb80",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -171,8 +171,8 @@
             "user_view_type": "public"
         }
     },
-    "body": "Fixes #33883.\r\n\r\n### Root cause\r\n---\r\nwhen the view is completely full of windows (like in this extreme case), there simply aren’t enough columns left to redraw all the existing windows in the shrinking terminal window.\r\n\r\nNeovim basically tries to draw outside the boundaries of the resized terminal, and the assert stops it, causing a crash.\r\n\r\n## Problem\r\nWhen the terminal shrinks, Neovim tries to recompute the layout and adjust every window so that the total width matches the new Columns.\r\nBut in this extreme scenario (tons of windows split horizontally), there is simply not enough space for all of them.\r\nthe frame width (topframe->fr_width) never reaches the new Columns value , the logic tries to redistribute this negative space across child frames, but it triggers the assert.\r\n\r\ni think the real solution could be :\r\n - move the extra windows in a buffer or a tab when the terminal shrunk\r\n - decide on a fixed number of windows split, (the view full of one column windows does not  seem to be very useful)\r\n \r\nThis PR is clearly a bandaid to avoid the crash for now, but it needs a better fix, i just want to discuss the fix before implementing it since it seems to be substantial.",
-    "closed_at": null,
+    "body": "Fixes #33883.\r\n\r\n### Root cause\r\n---\r\nwhen the view is completely full of windows (like in this extreme case), there simply aren’t enough columns left to redraw all the existing windows in the shrinking terminal window.\r\n\r\nNeovim basically tries to draw outside the boundaries of the resized terminal, and the assert stops it, causing a crash.\r\n\r\n## Problem\r\nWhen the terminal shrinks, Neovim tries to recompute the layout and adjust every window so that the total width matches the new Columns.\r\nBut in this extreme scenario (tons of windows split horizontally), there is simply not enough space for all of them.\r\nthe frame width (topframe->fr_width) never reaches the new Columns value , the logic tries to redistribute this negative space across child frames, but it triggers the assert.\r\n\r\n as a solution I suggest to simply not draw the windows after the Column boundaries.",
+    "closed_at": "2025-12-10T05:32:52Z",
     "comment_data": [
         {
             "_links": {
@@ -193,14 +193,14 @@
             "diff_hunk": "@@ -592,6 +600,16 @@ void grid_line_flush(void)\n   ScreenGrid *grid = grid_line_grid;\n   grid_line_grid = NULL;\n   grid_line_clear_to = MAX(grid_line_last, grid_line_clear_to);\n+\n+  // In extreme layouts we may end up with grid_line_clear_to slightly past grid_line_maxcol,\n+  // clamp it so we never try to clear beyond the available segment.\n+  if (grid_line_clear_to > grid_line_maxcol) {\n+    if (grid_line_maxcol < 0) {\n+      grid_line_maxcol = 0;\n+    }\n+    grid_line_clear_to = grid_line_maxcol;\n+  }\n+\n   assert(grid_line_clear_to <= grid_line_maxcol);",
             "html_url": "https://github.com/neovim/neovim/pull/36847#discussion_r2596436675",
             "id": 2596436675,
-            "line": 608,
+            "line": null,
             "node_id": "PRRC_kwDOAPphoM6awnrD",
             "original_commit_id": "c8d164c193f62c62d2b8dd7234516df349440cfa",
             "original_line": 608,
             "original_position": 31,
             "original_start_line": 604,
             "path": "src/nvim/grid.c",
-            "position": 26,
+            "position": 1,
             "pull_request_review_id": 3549412055,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/36847",
             "reactions": {
@@ -216,7 +216,7 @@
                 "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2596436675/reactions"
             },
             "side": "RIGHT",
-            "start_line": 599,
+            "start_line": null,
             "start_side": "RIGHT",
             "subject_type": "line",
             "updated_at": "2025-12-07T16:44:04Z",
@@ -332,14 +332,14 @@
             "html_url": "https://github.com/neovim/neovim/pull/36847#discussion_r2597025367",
             "id": 2597025367,
             "in_reply_to_id": 2596436675,
-            "line": 608,
+            "line": null,
             "node_id": "PRRC_kwDOAPphoM6ay3ZX",
             "original_commit_id": "c8d164c193f62c62d2b8dd7234516df349440cfa",
             "original_line": 608,
             "original_position": 31,
             "original_start_line": 604,
             "path": "src/nvim/grid.c",
-            "position": 26,
+            "position": 1,
             "pull_request_review_id": 3550101903,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/36847",
             "reactions": {
@@ -355,7 +355,7 @@
                 "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2597025367/reactions"
             },
             "side": "RIGHT",
-            "start_line": 599,
+            "start_line": null,
             "start_side": "RIGHT",
             "subject_type": "line",
             "updated_at": "2025-12-08T04:48:40Z",
@@ -379,6 +379,283 @@
                 "subscriptions_url": "https://api.github.com/users/LorenzoPiombini/subscriptions",
                 "type": "User",
                 "url": "https://api.github.com/users/LorenzoPiombini",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/36847#discussion_r2603439197"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/36847"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2603439197"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "thanks for your feedback Justin!\r\nI think i better understood the problem, and I have a proper fix now!\r\n\r\nless code, and no workaround.\r\n",
+            "commit_id": "b5e741e55015dd787001db53eb3b59af47c08726",
+            "created_at": "2025-12-09T16:37:10Z",
+            "diff_hunk": "@@ -592,6 +600,16 @@ void grid_line_flush(void)\n   ScreenGrid *grid = grid_line_grid;\n   grid_line_grid = NULL;\n   grid_line_clear_to = MAX(grid_line_last, grid_line_clear_to);\n+\n+  // In extreme layouts we may end up with grid_line_clear_to slightly past grid_line_maxcol,\n+  // clamp it so we never try to clear beyond the available segment.\n+  if (grid_line_clear_to > grid_line_maxcol) {\n+    if (grid_line_maxcol < 0) {\n+      grid_line_maxcol = 0;\n+    }\n+    grid_line_clear_to = grid_line_maxcol;\n+  }\n+\n   assert(grid_line_clear_to <= grid_line_maxcol);",
+            "html_url": "https://github.com/neovim/neovim/pull/36847#discussion_r2603439197",
+            "id": 2603439197,
+            "in_reply_to_id": 2596436675,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM6bLVRd",
+            "original_commit_id": "c8d164c193f62c62d2b8dd7234516df349440cfa",
+            "original_line": 608,
+            "original_position": 31,
+            "original_start_line": 604,
+            "path": "src/nvim/grid.c",
+            "position": 1,
+            "pull_request_review_id": 3558441997,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/36847",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 1,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2603439197/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2025-12-09T16:37:10Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2603439197",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/69109614?v=4",
+                "events_url": "https://api.github.com/users/LorenzoPiombini/events{/privacy}",
+                "followers_url": "https://api.github.com/users/LorenzoPiombini/followers",
+                "following_url": "https://api.github.com/users/LorenzoPiombini/following{/other_user}",
+                "gists_url": "https://api.github.com/users/LorenzoPiombini/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/LorenzoPiombini",
+                "id": 69109614,
+                "login": "LorenzoPiombini",
+                "node_id": "MDQ6VXNlcjY5MTA5NjE0",
+                "organizations_url": "https://api.github.com/users/LorenzoPiombini/orgs",
+                "received_events_url": "https://api.github.com/users/LorenzoPiombini/received_events",
+                "repos_url": "https://api.github.com/users/LorenzoPiombini/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/LorenzoPiombini/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/LorenzoPiombini/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/LorenzoPiombini",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/36847#discussion_r2604709665"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/36847"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2604709665"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\r\n  if (wp->w_grid.target == &default_grid && wp->w_wincol >= Columns) {\r\n```",
+            "commit_id": "e20300e198eb50876c8869b84d930bd543035d7f",
+            "created_at": "2025-12-09T23:42:25Z",
+            "diff_hunk": "@@ -1367,6 +1367,11 @@ static void draw_sep_connectors_win(win_T *wp)\n /// bot: from bot_start to last row (when scrolled up)\n static void win_update(win_T *wp)\n {\n+  if (!wp->w_floating && wp->w_wincol >= Columns) {",
+            "html_url": "https://github.com/neovim/neovim/pull/36847#discussion_r2604709665",
+            "id": 2604709665,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM6bQLch",
+            "original_commit_id": "e20300e198eb50876c8869b84d930bd543035d7f",
+            "original_line": 1370,
+            "original_position": 4,
+            "original_start_line": null,
+            "path": "src/nvim/drawscreen.c",
+            "position": 1,
+            "pull_request_review_id": 3560156503,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/36847",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2604709665/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-12-09T23:42:32Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2604709665",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+                "followers_url": "https://api.github.com/users/zeertzjq/followers",
+                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/zeertzjq",
+                "id": 35768171,
+                "login": "zeertzjq",
+                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+                "repos_url": "https://api.github.com/users/zeertzjq/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/36847#discussion_r2605151609"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/36847"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2605151609"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "\"from this windows forward\" doesn't seem to match the purpose of this `return` statement.",
+            "commit_id": "66a6f6c2d82cc460b122c880d24dab03db935b00",
+            "created_at": "2025-12-10T04:31:09Z",
+            "diff_hunk": "@@ -1367,6 +1367,11 @@ static void draw_sep_connectors_win(win_T *wp)\n /// bot: from bot_start to last row (when scrolled up)\n static void win_update(win_T *wp)\n {\n+  if (wp->w_grid.target == &default_grid && wp->w_wincol >= Columns) {\n+    // No need to update/redraw from this windows forward",
+            "html_url": "https://github.com/neovim/neovim/pull/36847#discussion_r2605151609",
+            "id": 2605151609,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM6bR3V5",
+            "original_commit_id": "66a6f6c2d82cc460b122c880d24dab03db935b00",
+            "original_line": 1371,
+            "original_position": 5,
+            "original_start_line": null,
+            "path": "src/nvim/drawscreen.c",
+            "position": 1,
+            "pull_request_review_id": 3560658414,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/36847",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2605151609/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-12-10T04:31:29Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2605151609",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+                "followers_url": "https://api.github.com/users/zeertzjq/followers",
+                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/zeertzjq",
+                "id": 35768171,
+                "login": "zeertzjq",
+                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+                "repos_url": "https://api.github.com/users/zeertzjq/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/36847#discussion_r2605153321"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/36847"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2605153321"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\r\n    it('does not crash when windows fill the screen #33883', function()\r\n```",
+            "commit_id": "66a6f6c2d82cc460b122c880d24dab03db935b00",
+            "created_at": "2025-12-10T04:32:10Z",
+            "diff_hunk": "@@ -646,6 +646,20 @@ local function screen_tests(linegrid)\n       ]])\n     end)\n \n+    it('does not crash Neovim #33883', function()",
+            "html_url": "https://github.com/neovim/neovim/pull/36847#discussion_r2605153321",
+            "id": 2605153321,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM6bR3wp",
+            "original_commit_id": "66a6f6c2d82cc460b122c880d24dab03db935b00",
+            "original_line": 649,
+            "original_position": 13,
+            "original_start_line": null,
+            "path": "test/functional/ui/screen_basic_spec.lua",
+            "position": 1,
+            "pull_request_review_id": 3560660435,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/36847",
+            "reactions": {
+                "+1": 2,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 2,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2605153321/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2025-12-10T04:32:10Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2605153321",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+                "followers_url": "https://api.github.com/users/zeertzjq/followers",
+                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/zeertzjq",
+                "id": 35768171,
+                "login": "zeertzjq",
+                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+                "repos_url": "https://api.github.com/users/zeertzjq/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/zeertzjq",
                 "user_view_type": "public"
             }
         }
@@ -540,7 +817,7 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3624372471/reactions"
             },
-            "updated_at": "2025-12-08T03:02:22Z",
+            "updated_at": "2025-12-09T17:47:13Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3624372471",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/69109614?v=4",
@@ -659,9 +936,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/LorenzoPiombini/neovim/pulls{/number}",
-            "pushed_at": "2025-12-08T03:36:28Z",
+            "pushed_at": "2025-12-12T05:06:03Z",
             "releases_url": "https://api.github.com/repos/LorenzoPiombini/neovim/releases{/id}",
-            "size": 342520,
+            "size": 342374,
             "ssh_url": "git@github.com:LorenzoPiombini/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/LorenzoPiombini/neovim/stargazers",
@@ -680,7 +957,7 @@
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "b5e741e55015dd787001db53eb3b59af47c08726",
+        "sha": "da928f0e92e68ff618e3dac00da9588a0d58ab46",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/69109614?v=4",
             "events_url": "https://api.github.com/users/LorenzoPiombini/events{/privacy}",
@@ -708,8 +985,8 @@
     "issue_url": "https://api.github.com/repos/neovim/neovim/issues/36847",
     "labels": [],
     "locked": false,
-    "merge_commit_sha": "f1732d48e7dc69a69821726334808e9b8eb76c65",
-    "merged_at": null,
+    "merge_commit_sha": "aeebc5185171d29767097d5b6240134bc19cee48",
+    "merged_at": "2025-12-10T05:32:52Z",
     "milestone": null,
     "node_id": "PR_kwDOAPphoM63h44c",
     "number": 36847,
@@ -718,10 +995,10 @@
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/36847/comments",
-    "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/b5e741e55015dd787001db53eb3b59af47c08726",
+    "state": "closed",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/da928f0e92e68ff618e3dac00da9588a0d58ab46",
     "title": "fix(grid): prevent overflows during extreme resize layouts",
-    "updated_at": "2025-12-08T04:48:40Z",
+    "updated_at": "2025-12-10T05:32:52Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/36847",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/69109614?v=4",
