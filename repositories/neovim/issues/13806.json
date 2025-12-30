@@ -8,7 +8,7 @@
     "closed_by": null,
     "comment_data": [
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "I am not sure if the problem is the function or the documentation, as `tbl_filter` seems to only operate on list-like tables.\r\nI am not a lua runtime expert though, so I can't tell wether the implementation or the documentation is wrong.\r\n\r\nI'll open a pr trying to fix that.",
             "created_at": "2021-01-26T18:14:19Z",
             "html_url": "https://github.com/neovim/neovim/issues/13806#issuecomment-767730680",
@@ -53,7 +53,7 @@
             }
         },
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "Looking at the test, I think the documentation is unclear, and it should be added that `tbl_filter` only operates on `list-like tables`.",
             "created_at": "2021-01-26T18:16:00Z",
             "html_url": "https://github.com/neovim/neovim/issues/13806#issuecomment-767731702",
@@ -143,7 +143,7 @@
             }
         },
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "Indeed, you are right.\r\n\r\nI changed the aforementionned Pr to add a new function named `list_filter`, and slightly changed the behavior of `tbl_filter` to retain keys.",
             "created_at": "2021-01-27T15:19:53Z",
             "html_url": "https://github.com/neovim/neovim/issues/13806#issuecomment-768357674",
@@ -186,14 +186,65 @@
                 "url": "https://api.github.com/users/vigoux",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "I stumbled into this myself. Worth noting:\n\n```lua\n--- Filter a table using a predicate function\n---\n---@generic T\n---@param fn fun(value: T): boolean (function) Function\n---@param t table<any, T> (table) Table\n---@return T[] : Table of filtered values\nfunction vim.tbl_filter(fn, t)\n  vim.validate('fn', fn, 'callable')\n  vim.validate('t', t, 'table')\n  --- @cast t table<any,any>\n\n  local rettab = {} --- @type table<any,any>\n  for _, entry in pairs(t) do\n    if fn(entry) then\n      rettab[#rettab + 1] = entry\n    end\n  end\n  return rettab\nend\n```\n\nThe function iterates using pairs (doesn't guarantee order, returns all keys) and inserts into rettab using numbered, ordered indexing. So even if a new function were added, this one would still have inconsistent behavior.\n\nLooking at the runtime, it seems like the function is used to filter through lists. But that doesn't account for the plugin/config space.\n\nPotential solution:\n\n```lua\nfunction vim.tbl_filter(fn, t)\n  vim.validate('fn', fn, 'callable')\n  vim.validate('t', t, 'table')\n  --- @cast t table<any,any>\n\n  local rettab = {} --- @type table<any,any>\n  for k, v in pairs(t) do\n    if fn(v) then\n      rettab[k] = v\n    end\n  end\n  return rettab\nend\n```\n\nThis aligns with the described behavior in the docs (doesn't specify list or keys based), but would contradict the old return type. Should be fine in the runtime, but would probably have broader implications.",
+            "created_at": "2025-12-28T18:38:24Z",
+            "html_url": "https://github.com/neovim/neovim/issues/13806#issuecomment-3694950788",
+            "id": 3694950788,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/13806",
+            "node_id": "IC_kwDOAPphoM7cPHmE",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3694950788/reactions"
+            },
+            "updated_at": "2025-12-29T07:10:29Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3694950788",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/62523234?v=4",
+                "events_url": "https://api.github.com/users/mikejmcguirk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/mikejmcguirk/followers",
+                "following_url": "https://api.github.com/users/mikejmcguirk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/mikejmcguirk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/mikejmcguirk",
+                "id": 62523234,
+                "login": "mikejmcguirk",
+                "node_id": "MDQ6VXNlcjYyNTIzMjM0",
+                "organizations_url": "https://api.github.com/users/mikejmcguirk/orgs",
+                "received_events_url": "https://api.github.com/users/mikejmcguirk/received_events",
+                "repos_url": "https://api.github.com/users/mikejmcguirk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/mikejmcguirk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/mikejmcguirk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/mikejmcguirk",
+                "user_view_type": "public"
+            }
         }
     ],
-    "comments": 4,
+    "comments": 5,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/13806/comments",
     "created_at": "2021-01-20T14:53:13Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/13806/events",
     "html_url": "https://github.com/neovim/neovim/issues/13806",
     "id": 790050325,
+    "issue_dependencies_summary": {
+        "blocked_by": 0,
+        "blocking": 0,
+        "total_blocked_by": 0,
+        "total_blocking": 0
+    },
     "labels": [
         {
             "color": "c5def5",
@@ -212,7 +263,7 @@
     "number": 13806,
     "performed_via_github_app": null,
     "reactions": {
-        "+1": 1,
+        "+1": 2,
         "-1": 0,
         "confused": 0,
         "eyes": 0,
@@ -220,7 +271,7 @@
         "hooray": 0,
         "laugh": 0,
         "rocket": 0,
-        "total_count": 1,
+        "total_count": 2,
         "url": "https://api.github.com/repos/neovim/neovim/issues/13806/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
@@ -243,7 +294,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyr",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2025-07-02T08:36:18Z",
+    "updated_at": "2025-12-29T07:10:29Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/13806",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/291639?v=4",
