@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/37221"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/1853f17fa515d39437bb99960337f278dda39d38"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/35534280803aab46e07fa9a3e4b553d37394d990"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6505,
-            "forks_count": 6505,
+            "forks": 6515,
+            "forks_count": 6515,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -94,8 +94,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 2077,
-            "open_issues_count": 2077,
+            "open_issues": 2069,
+            "open_issues_count": 2069,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -119,11 +119,11 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2026-01-06T00:34:51Z",
+            "pushed_at": "2026-01-12T18:58:01Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 367191,
+            "size": 367238,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 95440,
+            "stargazers_count": 95630,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -141,14 +141,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2026-01-06T02:49:38Z",
+            "updated_at": "2026-01-13T01:33:59Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 95440,
-            "watchers_count": 95440,
+            "watchers": 95630,
+            "watchers_count": 95630,
             "web_commit_signoff_required": false
         },
-        "sha": "efa6d91132c71d6efca1b813b0129b1085389a48",
+        "sha": "d2ca90d87e3246b5b827ed08f8c0dfc8ad6ae4c8",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -173,7 +173,1050 @@
     },
     "body": "Work on #37166 \r\n- Capability Checking\r\n\r\nFully closes #37150\r\n\r\nFollow up to the relevant conversation here from when `textDocument/diagnostics` was implemented\r\nhttps://github.com/neovim/neovim/pull/24128/changes#r1253360435\r\n\r\nDiscussion points: \r\n- Naming\r\n- Because we will handle the multiple registrations, there will be lots of iterations from the callers, even though often there will just be one item, is there a better API design here? ",
     "closed_at": null,
-    "comment_data": [],
+    "comment_data": [
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/37221#discussion_r2670632888"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/37221"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2670632888"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "would `vim.tbl_extend()` be clearer here",
+            "commit_id": "1853f17fa515d39437bb99960337f278dda39d38",
+            "created_at": "2026-01-08T02:16:18Z",
+            "diff_hunk": "@@ -616,19 +616,28 @@ end\n function Client:_process_static_registrations()\n   local static_registrations = {} ---@type lsp.Registration[]\n \n-  for method, capability in pairs(lsp.protocol._request_name_to_server_capability) do\n+  for method, _ in pairs(lsp.protocol._method_allows_static_registration) do\n+    local capability = lsp.protocol._request_name_to_server_capability[method]\n     if\n-      vim.tbl_get(self.server_capabilities, unpack(capability), 'id')\n+      vim.tbl_get(self.server_capabilities, capability[1], 'id')\n       --- @cast method vim.lsp.protocol.Method\n       and self:_supports_registration(method)\n     then\n-      local cap = vim.tbl_get(self.server_capabilities, unpack(capability))\n+      local cap = vim.tbl_get(self.server_capabilities, capability[1])\n       static_registrations[#static_registrations + 1] = {\n         id = cap.id,\n         method = method,\n-        registerOptions = {\n-          documentSelector = cap.documentSelector, ---@type lsp.DocumentSelector|lsp.null\n-        },\n+        registerOptions = (function()\n+          local opts = {}\n+          ---@diagnostic disable-next-line: no-unknown\n+          for k, v in pairs(cap) do\n+            if k ~= 'id' then\n+              ---@diagnostic disable-next-line: no-unknown\n+              opts[k] = v",
+            "html_url": "https://github.com/neovim/neovim/pull/37221#discussion_r2670632888",
+            "id": 2670632888,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM6fLp-4",
+            "original_commit_id": "1853f17fa515d39437bb99960337f278dda39d38",
+            "original_line": 636,
+            "original_position": 27,
+            "original_start_line": 631,
+            "path": "runtime/lua/vim/lsp/client.lua",
+            "position": 1,
+            "pull_request_review_id": 3637431864,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/37221",
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2670632888/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-01-08T02:16:18Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2670632888",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/37221#discussion_r2670640423"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/37221"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2670640423"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\n  ['workspace/didChangeWorkspaceFolders'] = true\n```",
+            "commit_id": "1853f17fa515d39437bb99960337f278dda39d38",
+            "created_at": "2026-01-08T02:22:06Z",
+            "diff_hunk": "@@ -1359,4 +1338,52 @@ protocol._request_name_allows_registration = {\n }\n -- stylua: ignore end\n \n+-- stylua: ignore start\n+-- Generated by gen_lsp.lua, keep at end of file.\n+protocol._method_allows_static_registration = {\n+  ['textDocument/codeAction'] = true,\n+  ['textDocument/codeLens'] = true,\n+  ['textDocument/colorPresentation'] = true,\n+  ['textDocument/completion'] = true,\n+  ['textDocument/declaration'] = true,\n+  ['textDocument/definition'] = true,\n+  ['textDocument/diagnostic'] = true,\n+  ['textDocument/didChange'] = true,\n+  ['textDocument/documentColor'] = true,\n+  ['textDocument/documentHighlight'] = true,\n+  ['textDocument/documentLink'] = true,\n+  ['textDocument/documentSymbol'] = true,\n+  ['textDocument/foldingRange'] = true,\n+  ['textDocument/formatting'] = true,\n+  ['textDocument/hover'] = true,\n+  ['textDocument/implementation'] = true,\n+  ['textDocument/inlayHint'] = true,\n+  ['textDocument/inlineCompletion'] = true,\n+  ['textDocument/inlineValue'] = true,\n+  ['textDocument/linkedEditingRange'] = true,\n+  ['textDocument/moniker'] = true,\n+  ['textDocument/onTypeFormatting'] = true,\n+  ['textDocument/prepareCallHierarchy'] = true,\n+  ['textDocument/prepareTypeHierarchy'] = true,\n+  ['textDocument/rangeFormatting'] = true,\n+  ['textDocument/references'] = true,\n+  ['textDocument/rename'] = true,\n+  ['textDocument/selectionRange'] = true,\n+  ['textDocument/semanticTokens/full'] = true,\n+  ['textDocument/signatureHelp'] = true,\n+  ['textDocument/typeDefinition'] = true,\n+  ['workspace/executeCommand'] = true,\n+  ['workspace/symbol'] = true,\n+}\n+-- stylua: ignore end\n+\n+-- stylua: ignore start\n+-- Generated by gen_lsp.lua, keep at end of file.\n+-- These methods have no registration options but can still be registered dynamically.\n+protocol._methods_with_no_registration_options =\n+{\n+  [\"workspace/didChangeWorkspaceFolders\"] = true",
+            "html_url": "https://github.com/neovim/neovim/pull/37221#discussion_r2670640423",
+            "id": 2670640423,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM6fLr0n",
+            "original_commit_id": "1853f17fa515d39437bb99960337f278dda39d38",
+            "original_line": 1385,
+            "original_position": 201,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/lsp/protocol.lua",
+            "position": 1,
+            "pull_request_review_id": 3637439572,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/37221",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2670640423/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-01-08T02:22:06Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2670640423",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/37221#discussion_r2670642612"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/37221"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2670642612"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "is there a difference between \"allow\" vs \"supports\" (`_method_supports_dynamic_registration`)? if not can we use consistent names. ",
+            "commit_id": "1853f17fa515d39437bb99960337f278dda39d38",
+            "created_at": "2026-01-08T02:23:40Z",
+            "diff_hunk": "@@ -1359,4 +1338,52 @@ protocol._request_name_allows_registration = {\n }\n -- stylua: ignore end\n \n+-- stylua: ignore start\n+-- Generated by gen_lsp.lua, keep at end of file.\n+protocol._method_allows_static_registration = {",
+            "html_url": "https://github.com/neovim/neovim/pull/37221#discussion_r2670642612",
+            "id": 2670642612,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM6fLsW0",
+            "original_commit_id": "1853f17fa515d39437bb99960337f278dda39d38",
+            "original_line": 1343,
+            "original_position": 159,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/lsp/protocol.lua",
+            "position": 1,
+            "pull_request_review_id": 3637441736,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/37221",
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2670642612/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-01-08T02:23:40Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2670642612",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/37221#discussion_r2670654938"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/37221"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2670654938"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "\"data\" like this should live at the top of the file i guess, since it needs to be maintained.",
+            "commit_id": "35534280803aab46e07fa9a3e4b553d37394d990",
+            "created_at": "2026-01-08T02:32:00Z",
+            "diff_hunk": "@@ -280,25 +286,65 @@ local function write_to_vim_protocol(protocol)\n       )\n     end\n \n+    --- workspace/didChangeWatchedFiles has no server capability but we need to map it for\n+    --- registration\n+    output[#output + 1] = (\"  ['%s'] = { '%s' },\"):format(\n+      'workspace/didChangeWatchedFiles',\n+      'workspace/didChangeWatchedFiles'\n+    )\n+\n     output[#output + 1] = '}'\n     output[#output + 1] = '-- stylua: ignore end'\n \n     vim.list_extend(output, {\n       '',\n       '-- stylua: ignore start',\n       '-- Generated by gen_lsp.lua, keep at end of file.',\n-      '--- Maps method names to the required client capability',\n-      'protocol._request_name_allows_registration = {',\n+      'protocol._method_supports_dynamic_registration = {',\n     })\n \n+    --- These methods have no registrationOptions but can still be registered\n+    local methods_with_no_registration_options = {\n+      ['workspace/didChangeWorkspaceFolders'] = true,\n+    }",
+            "html_url": "https://github.com/neovim/neovim/pull/37221#discussion_r2670654938",
+            "id": 2670654938,
+            "line": 309,
+            "node_id": "PRRC_kwDOAPphoM6fLvXa",
+            "original_commit_id": "1853f17fa515d39437bb99960337f278dda39d38",
+            "original_line": 309,
+            "original_position": 51,
+            "original_start_line": 306,
+            "path": "src/gen/gen_lsp.lua",
+            "position": 51,
+            "pull_request_review_id": 3637452971,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/37221",
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2670654938/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 306,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-01-08T02:32:00Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2670654938",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/37221#discussion_r2670655964"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/37221"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2670655964"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "split(vim.inspect()) seems ... fragile. \n\n",
+            "commit_id": "1853f17fa515d39437bb99960337f278dda39d38",
+            "created_at": "2026-01-08T02:32:48Z",
+            "diff_hunk": "@@ -280,25 +286,65 @@ local function write_to_vim_protocol(protocol)\n       )\n     end\n \n+    --- workspace/didChangeWatchedFiles has no server capability but we need to map it for\n+    --- registration\n+    output[#output + 1] = (\"  ['%s'] = { '%s' },\"):format(\n+      'workspace/didChangeWatchedFiles',\n+      'workspace/didChangeWatchedFiles'\n+    )\n+\n     output[#output + 1] = '}'\n     output[#output + 1] = '-- stylua: ignore end'\n \n     vim.list_extend(output, {\n       '',\n       '-- stylua: ignore start',\n       '-- Generated by gen_lsp.lua, keep at end of file.',\n-      '--- Maps method names to the required client capability',\n-      'protocol._request_name_allows_registration = {',\n+      'protocol._method_supports_dynamic_registration = {',\n     })\n \n+    --- These methods have no registrationOptions but can still be registered\n+    local methods_with_no_registration_options = {\n+      ['workspace/didChangeWorkspaceFolders'] = true,\n+    }\n+\n     for _, item in ipairs(all) do\n-      if item.registrationOptions then\n+      if item.registrationOptions or methods_with_no_registration_options[item.method] then\n         output[#output + 1] = (\"  ['%s'] = %s,\"):format(item.method, true)\n       end\n     end\n \n     output[#output + 1] = '}'\n     output[#output + 1] = '-- stylua: ignore end'\n+\n+    vim.list_extend(output, {\n+      '',\n+      '-- stylua: ignore start',\n+      '-- Generated by gen_lsp.lua, keep at end of file.',\n+      'protocol._method_allows_static_registration = {',\n+    })\n+\n+    for _, item in ipairs(all) do\n+      if\n+        item.registrationOptions\n+        and (item.serverCapability and not item.serverCapability:find('%.'))\n+      then\n+        output[#output + 1] = (\"  ['%s'] = %s,\"):format(item.method, true)\n+      end\n+    end\n+\n+    output[#output + 1] = '}'\n+    output[#output + 1] = '-- stylua: ignore end'\n+\n+    vim.list_extend(output, {\n+      '',\n+      '-- stylua: ignore start',\n+      '-- Generated by gen_lsp.lua, keep at end of file.',\n+      '-- These methods have no registration options but can still be registered dynamically.',\n+      'protocol._methods_with_no_registration_options =',\n+    })\n+    vim.list_extend(output, vim.split(vim.inspect(methods_with_no_registration_options), '\\n'))",
+            "html_url": "https://github.com/neovim/neovim/pull/37221#discussion_r2670655964",
+            "id": 2670655964,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM6fLvnc",
+            "original_commit_id": "1853f17fa515d39437bb99960337f278dda39d38",
+            "original_line": 346,
+            "original_position": 89,
+            "original_start_line": null,
+            "path": "src/gen/gen_lsp.lua",
+            "position": 1,
+            "pull_request_review_id": 3637453974,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/37221",
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2670655964/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-01-08T02:32:48Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2670655964",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/37221#discussion_r2670656471"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/37221"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2670656471"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "at this point it seems like the 4th time we have written this logic, is there any way to dedupe it",
+            "commit_id": "35534280803aab46e07fa9a3e4b553d37394d990",
+            "created_at": "2026-01-08T02:33:12Z",
+            "diff_hunk": "@@ -280,25 +286,65 @@ local function write_to_vim_protocol(protocol)\n       )\n     end\n \n+    --- workspace/didChangeWatchedFiles has no server capability but we need to map it for\n+    --- registration\n+    output[#output + 1] = (\"  ['%s'] = { '%s' },\"):format(\n+      'workspace/didChangeWatchedFiles',\n+      'workspace/didChangeWatchedFiles'\n+    )\n+\n     output[#output + 1] = '}'\n     output[#output + 1] = '-- stylua: ignore end'\n \n     vim.list_extend(output, {\n       '',\n       '-- stylua: ignore start',\n       '-- Generated by gen_lsp.lua, keep at end of file.',\n-      '--- Maps method names to the required client capability',\n-      'protocol._request_name_allows_registration = {',\n+      'protocol._method_supports_dynamic_registration = {',\n     })\n \n+    --- These methods have no registrationOptions but can still be registered\n+    local methods_with_no_registration_options = {\n+      ['workspace/didChangeWorkspaceFolders'] = true,\n+    }\n+\n     for _, item in ipairs(all) do\n-      if item.registrationOptions then\n+      if item.registrationOptions or methods_with_no_registration_options[item.method] then\n         output[#output + 1] = (\"  ['%s'] = %s,\"):format(item.method, true)\n       end\n     end\n \n     output[#output + 1] = '}'\n     output[#output + 1] = '-- stylua: ignore end'\n+\n+    vim.list_extend(output, {\n+      '',\n+      '-- stylua: ignore start',\n+      '-- Generated by gen_lsp.lua, keep at end of file.',",
+            "html_url": "https://github.com/neovim/neovim/pull/37221#discussion_r2670656471",
+            "id": 2670656471,
+            "line": 323,
+            "node_id": "PRRC_kwDOAPphoM6fLvvX",
+            "original_commit_id": "1853f17fa515d39437bb99960337f278dda39d38",
+            "original_line": 323,
+            "original_position": 66,
+            "original_start_line": 322,
+            "path": "src/gen/gen_lsp.lua",
+            "position": 66,
+            "pull_request_review_id": 3637454484,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/37221",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2670656471/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 322,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-01-08T02:33:24Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2670656471",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/37221#discussion_r2673037550"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/37221"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2673037550"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "This was a by-product of the `vim.inspect`. I have replaced with a regular loop",
+            "commit_id": "1853f17fa515d39437bb99960337f278dda39d38",
+            "created_at": "2026-01-08T16:27:22Z",
+            "diff_hunk": "@@ -1359,4 +1338,52 @@ protocol._request_name_allows_registration = {\n }\n -- stylua: ignore end\n \n+-- stylua: ignore start\n+-- Generated by gen_lsp.lua, keep at end of file.\n+protocol._method_allows_static_registration = {\n+  ['textDocument/codeAction'] = true,\n+  ['textDocument/codeLens'] = true,\n+  ['textDocument/colorPresentation'] = true,\n+  ['textDocument/completion'] = true,\n+  ['textDocument/declaration'] = true,\n+  ['textDocument/definition'] = true,\n+  ['textDocument/diagnostic'] = true,\n+  ['textDocument/didChange'] = true,\n+  ['textDocument/documentColor'] = true,\n+  ['textDocument/documentHighlight'] = true,\n+  ['textDocument/documentLink'] = true,\n+  ['textDocument/documentSymbol'] = true,\n+  ['textDocument/foldingRange'] = true,\n+  ['textDocument/formatting'] = true,\n+  ['textDocument/hover'] = true,\n+  ['textDocument/implementation'] = true,\n+  ['textDocument/inlayHint'] = true,\n+  ['textDocument/inlineCompletion'] = true,\n+  ['textDocument/inlineValue'] = true,\n+  ['textDocument/linkedEditingRange'] = true,\n+  ['textDocument/moniker'] = true,\n+  ['textDocument/onTypeFormatting'] = true,\n+  ['textDocument/prepareCallHierarchy'] = true,\n+  ['textDocument/prepareTypeHierarchy'] = true,\n+  ['textDocument/rangeFormatting'] = true,\n+  ['textDocument/references'] = true,\n+  ['textDocument/rename'] = true,\n+  ['textDocument/selectionRange'] = true,\n+  ['textDocument/semanticTokens/full'] = true,\n+  ['textDocument/signatureHelp'] = true,\n+  ['textDocument/typeDefinition'] = true,\n+  ['workspace/executeCommand'] = true,\n+  ['workspace/symbol'] = true,\n+}\n+-- stylua: ignore end\n+\n+-- stylua: ignore start\n+-- Generated by gen_lsp.lua, keep at end of file.\n+-- These methods have no registration options but can still be registered dynamically.\n+protocol._methods_with_no_registration_options =\n+{\n+  [\"workspace/didChangeWorkspaceFolders\"] = true",
+            "html_url": "https://github.com/neovim/neovim/pull/37221#discussion_r2673037550",
+            "id": 2673037550,
+            "in_reply_to_id": 2670640423,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM6fU1Du",
+            "original_commit_id": "1853f17fa515d39437bb99960337f278dda39d38",
+            "original_line": 1385,
+            "original_position": 201,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/lsp/protocol.lua",
+            "position": 1,
+            "pull_request_review_id": 3640225061,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/37221",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2673037550/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-01-08T16:27:22Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2673037550",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/18444302?v=4",
+                "events_url": "https://api.github.com/users/tris203/events{/privacy}",
+                "followers_url": "https://api.github.com/users/tris203/followers",
+                "following_url": "https://api.github.com/users/tris203/following{/other_user}",
+                "gists_url": "https://api.github.com/users/tris203/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/tris203",
+                "id": 18444302,
+                "login": "tris203",
+                "node_id": "MDQ6VXNlcjE4NDQ0MzAy",
+                "organizations_url": "https://api.github.com/users/tris203/orgs",
+                "received_events_url": "https://api.github.com/users/tris203/received_events",
+                "repos_url": "https://api.github.com/users/tris203/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/tris203/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/tris203/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/tris203",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/37221#discussion_r2673041647"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/37221"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2673041647"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "It's generator code, so I don't mind it being repetitive and explicit. If you are in here, then you are probably deep in the weeds, so I think less abstraction is better for mental capacity\r\n\r\nI can refactor into a helper function, but I would prefer to do that in a separate PR",
+            "commit_id": "35534280803aab46e07fa9a3e4b553d37394d990",
+            "created_at": "2026-01-08T16:28:36Z",
+            "diff_hunk": "@@ -280,25 +286,65 @@ local function write_to_vim_protocol(protocol)\n       )\n     end\n \n+    --- workspace/didChangeWatchedFiles has no server capability but we need to map it for\n+    --- registration\n+    output[#output + 1] = (\"  ['%s'] = { '%s' },\"):format(\n+      'workspace/didChangeWatchedFiles',\n+      'workspace/didChangeWatchedFiles'\n+    )\n+\n     output[#output + 1] = '}'\n     output[#output + 1] = '-- stylua: ignore end'\n \n     vim.list_extend(output, {\n       '',\n       '-- stylua: ignore start',\n       '-- Generated by gen_lsp.lua, keep at end of file.',\n-      '--- Maps method names to the required client capability',\n-      'protocol._request_name_allows_registration = {',\n+      'protocol._method_supports_dynamic_registration = {',\n     })\n \n+    --- These methods have no registrationOptions but can still be registered\n+    local methods_with_no_registration_options = {\n+      ['workspace/didChangeWorkspaceFolders'] = true,\n+    }\n+\n     for _, item in ipairs(all) do\n-      if item.registrationOptions then\n+      if item.registrationOptions or methods_with_no_registration_options[item.method] then\n         output[#output + 1] = (\"  ['%s'] = %s,\"):format(item.method, true)\n       end\n     end\n \n     output[#output + 1] = '}'\n     output[#output + 1] = '-- stylua: ignore end'\n+\n+    vim.list_extend(output, {\n+      '',\n+      '-- stylua: ignore start',\n+      '-- Generated by gen_lsp.lua, keep at end of file.',",
+            "html_url": "https://github.com/neovim/neovim/pull/37221#discussion_r2673041647",
+            "id": 2673041647,
+            "in_reply_to_id": 2670656471,
+            "line": 323,
+            "node_id": "PRRC_kwDOAPphoM6fU2Dv",
+            "original_commit_id": "1853f17fa515d39437bb99960337f278dda39d38",
+            "original_line": 323,
+            "original_position": 66,
+            "original_start_line": 322,
+            "path": "src/gen/gen_lsp.lua",
+            "position": 66,
+            "pull_request_review_id": 3640229645,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/37221",
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2673041647/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 322,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-01-08T16:28:37Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2673041647",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/18444302?v=4",
+                "events_url": "https://api.github.com/users/tris203/events{/privacy}",
+                "followers_url": "https://api.github.com/users/tris203/followers",
+                "following_url": "https://api.github.com/users/tris203/following{/other_user}",
+                "gists_url": "https://api.github.com/users/tris203/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/tris203",
+                "id": 18444302,
+                "login": "tris203",
+                "node_id": "MDQ6VXNlcjE4NDQ0MzAy",
+                "organizations_url": "https://api.github.com/users/tris203/orgs",
+                "received_events_url": "https://api.github.com/users/tris203/received_events",
+                "repos_url": "https://api.github.com/users/tris203/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/tris203/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/tris203/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/tris203",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/37221#discussion_r2673044891"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/37221"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2673044891"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "I have raised https://github.com/microsoft/language-server-protocol/issues/2218\r\n\r\nIf/When the spec is updated, then this could be removed entirely",
+            "commit_id": "35534280803aab46e07fa9a3e4b553d37394d990",
+            "created_at": "2026-01-08T16:29:34Z",
+            "diff_hunk": "@@ -280,25 +286,65 @@ local function write_to_vim_protocol(protocol)\n       )\n     end\n \n+    --- workspace/didChangeWatchedFiles has no server capability but we need to map it for\n+    --- registration\n+    output[#output + 1] = (\"  ['%s'] = { '%s' },\"):format(\n+      'workspace/didChangeWatchedFiles',\n+      'workspace/didChangeWatchedFiles'\n+    )\n+\n     output[#output + 1] = '}'\n     output[#output + 1] = '-- stylua: ignore end'\n \n     vim.list_extend(output, {\n       '',\n       '-- stylua: ignore start',\n       '-- Generated by gen_lsp.lua, keep at end of file.',\n-      '--- Maps method names to the required client capability',\n-      'protocol._request_name_allows_registration = {',\n+      'protocol._method_supports_dynamic_registration = {',\n     })\n \n+    --- These methods have no registrationOptions but can still be registered\n+    local methods_with_no_registration_options = {\n+      ['workspace/didChangeWorkspaceFolders'] = true,\n+    }",
+            "html_url": "https://github.com/neovim/neovim/pull/37221#discussion_r2673044891",
+            "id": 2673044891,
+            "in_reply_to_id": 2670654938,
+            "line": 309,
+            "node_id": "PRRC_kwDOAPphoM6fU22b",
+            "original_commit_id": "1853f17fa515d39437bb99960337f278dda39d38",
+            "original_line": 309,
+            "original_position": 51,
+            "original_start_line": 306,
+            "path": "src/gen/gen_lsp.lua",
+            "position": 51,
+            "pull_request_review_id": 3640233365,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/37221",
+            "reactions": {
+                "+1": 2,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 2,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2673044891/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 306,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-01-08T16:29:35Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2673044891",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/18444302?v=4",
+                "events_url": "https://api.github.com/users/tris203/events{/privacy}",
+                "followers_url": "https://api.github.com/users/tris203/followers",
+                "following_url": "https://api.github.com/users/tris203/following{/other_user}",
+                "gists_url": "https://api.github.com/users/tris203/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/tris203",
+                "id": 18444302,
+                "login": "tris203",
+                "node_id": "MDQ6VXNlcjE4NDQ0MzAy",
+                "organizations_url": "https://api.github.com/users/tris203/orgs",
+                "received_events_url": "https://api.github.com/users/tris203/received_events",
+                "repos_url": "https://api.github.com/users/tris203/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/tris203/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/tris203/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/tris203",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/37221#discussion_r2673050127"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/37221"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2673050127"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "Yes, it changes the logic slightly as `id` would be included in the registerOptions as well as in the higher-level registration table.\r\nAlthough I just checked, the VS Code implementation puts it in both places. So I don't think this is a problem",
+            "commit_id": "1853f17fa515d39437bb99960337f278dda39d38",
+            "created_at": "2026-01-08T16:31:04Z",
+            "diff_hunk": "@@ -616,19 +616,28 @@ end\n function Client:_process_static_registrations()\n   local static_registrations = {} ---@type lsp.Registration[]\n \n-  for method, capability in pairs(lsp.protocol._request_name_to_server_capability) do\n+  for method, _ in pairs(lsp.protocol._method_allows_static_registration) do\n+    local capability = lsp.protocol._request_name_to_server_capability[method]\n     if\n-      vim.tbl_get(self.server_capabilities, unpack(capability), 'id')\n+      vim.tbl_get(self.server_capabilities, capability[1], 'id')\n       --- @cast method vim.lsp.protocol.Method\n       and self:_supports_registration(method)\n     then\n-      local cap = vim.tbl_get(self.server_capabilities, unpack(capability))\n+      local cap = vim.tbl_get(self.server_capabilities, capability[1])\n       static_registrations[#static_registrations + 1] = {\n         id = cap.id,\n         method = method,\n-        registerOptions = {\n-          documentSelector = cap.documentSelector, ---@type lsp.DocumentSelector|lsp.null\n-        },\n+        registerOptions = (function()\n+          local opts = {}\n+          ---@diagnostic disable-next-line: no-unknown\n+          for k, v in pairs(cap) do\n+            if k ~= 'id' then\n+              ---@diagnostic disable-next-line: no-unknown\n+              opts[k] = v",
+            "html_url": "https://github.com/neovim/neovim/pull/37221#discussion_r2673050127",
+            "id": 2673050127,
+            "in_reply_to_id": 2670632888,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM6fU4IP",
+            "original_commit_id": "1853f17fa515d39437bb99960337f278dda39d38",
+            "original_line": 636,
+            "original_position": 27,
+            "original_start_line": 631,
+            "path": "runtime/lua/vim/lsp/client.lua",
+            "position": 1,
+            "pull_request_review_id": 3640239198,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/37221",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2673050127/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-01-08T16:31:04Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2673050127",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/18444302?v=4",
+                "events_url": "https://api.github.com/users/tris203/events{/privacy}",
+                "followers_url": "https://api.github.com/users/tris203/followers",
+                "following_url": "https://api.github.com/users/tris203/following{/other_user}",
+                "gists_url": "https://api.github.com/users/tris203/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/tris203",
+                "id": 18444302,
+                "login": "tris203",
+                "node_id": "MDQ6VXNlcjE4NDQ0MzAy",
+                "organizations_url": "https://api.github.com/users/tris203/orgs",
+                "received_events_url": "https://api.github.com/users/tris203/received_events",
+                "repos_url": "https://api.github.com/users/tris203/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/tris203/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/tris203/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/tris203",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/37221#discussion_r2673606569"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/37221"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2673606569"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Nit:\r\n```suggestion\r\n  for method in pairs(lsp.protocol._method_supports_static_registration) do\r\n```",
+            "commit_id": "2fe7d4c7ca9cf85f94096cc4c7e1315a57fdccea",
+            "created_at": "2026-01-08T19:26:19Z",
+            "diff_hunk": "@@ -616,19 +616,17 @@ end\n function Client:_process_static_registrations()\n   local static_registrations = {} ---@type lsp.Registration[]\n \n-  for method, capability in pairs(lsp.protocol._request_name_to_server_capability) do\n+  for method, _ in pairs(lsp.protocol._method_supports_static_registration) do",
+            "html_url": "https://github.com/neovim/neovim/pull/37221#discussion_r2673606569",
+            "id": 2673606569,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM6fW_-p",
+            "original_commit_id": "2fe7d4c7ca9cf85f94096cc4c7e1315a57fdccea",
+            "original_line": 618,
+            "original_position": 5,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/lsp/client.lua",
+            "position": 1,
+            "pull_request_review_id": 3640925977,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/37221",
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2673606569/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-01-08T19:29:52Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2673606569",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/62502207?v=4",
+                "events_url": "https://api.github.com/users/MariaSolOs/events{/privacy}",
+                "followers_url": "https://api.github.com/users/MariaSolOs/followers",
+                "following_url": "https://api.github.com/users/MariaSolOs/following{/other_user}",
+                "gists_url": "https://api.github.com/users/MariaSolOs/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/MariaSolOs",
+                "id": 62502207,
+                "login": "MariaSolOs",
+                "node_id": "MDQ6VXNlcjYyNTAyMjA3",
+                "organizations_url": "https://api.github.com/users/MariaSolOs/orgs",
+                "received_events_url": "https://api.github.com/users/MariaSolOs/received_events",
+                "repos_url": "https://api.github.com/users/MariaSolOs/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/MariaSolOs/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/MariaSolOs/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/MariaSolOs",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/37221#discussion_r2673610984"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/37221"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2673610984"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Why not use `cap or {}`?",
+            "commit_id": "2fe7d4c7ca9cf85f94096cc4c7e1315a57fdccea",
+            "created_at": "2026-01-08T19:27:47Z",
+            "diff_hunk": "@@ -616,19 +616,17 @@ end\n function Client:_process_static_registrations()\n   local static_registrations = {} ---@type lsp.Registration[]\n \n-  for method, capability in pairs(lsp.protocol._request_name_to_server_capability) do\n+  for method, _ in pairs(lsp.protocol._method_supports_static_registration) do\n+    local capability = lsp.protocol._request_name_to_server_capability[method]\n     if\n-      vim.tbl_get(self.server_capabilities, unpack(capability), 'id')\n-      --- @cast method vim.lsp.protocol.Method\n+      vim.tbl_get(self.server_capabilities, capability[1], 'id')\n       and self:_supports_registration(method)\n     then\n-      local cap = vim.tbl_get(self.server_capabilities, unpack(capability))\n+      local cap = vim.tbl_get(self.server_capabilities, capability[1])\n       static_registrations[#static_registrations + 1] = {\n         id = cap.id,\n         method = method,\n-        registerOptions = {\n-          documentSelector = cap.documentSelector, ---@type lsp.DocumentSelector|lsp.null\n-        },\n+        registerOptions = vim.tbl_extend('force', {}, cap),",
+            "html_url": "https://github.com/neovim/neovim/pull/37221#discussion_r2673610984",
+            "id": 2673610984,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM6fXBDo",
+            "original_commit_id": "2fe7d4c7ca9cf85f94096cc4c7e1315a57fdccea",
+            "original_line": 629,
+            "original_position": 21,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/lsp/client.lua",
+            "position": 1,
+            "pull_request_review_id": 3640925977,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/37221",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2673610984/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-01-08T19:29:52Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2673610984",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/62502207?v=4",
+                "events_url": "https://api.github.com/users/MariaSolOs/events{/privacy}",
+                "followers_url": "https://api.github.com/users/MariaSolOs/followers",
+                "following_url": "https://api.github.com/users/MariaSolOs/following{/other_user}",
+                "gists_url": "https://api.github.com/users/MariaSolOs/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/MariaSolOs",
+                "id": 62502207,
+                "login": "MariaSolOs",
+                "node_id": "MDQ6VXNlcjYyNTAyMjA3",
+                "organizations_url": "https://api.github.com/users/MariaSolOs/orgs",
+                "received_events_url": "https://api.github.com/users/MariaSolOs/received_events",
+                "repos_url": "https://api.github.com/users/MariaSolOs/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/MariaSolOs/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/MariaSolOs/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/MariaSolOs",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/37221#discussion_r2673975088"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/37221"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2673975088"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "You are absolutely right ;)\r\nI think i Just didnt see the wood for the trees and over complicated it thinking about this https://github.com/neovim/neovim/pull/37221#discussion_r2673050127",
+            "commit_id": "2fe7d4c7ca9cf85f94096cc4c7e1315a57fdccea",
+            "created_at": "2026-01-08T21:31:28Z",
+            "diff_hunk": "@@ -616,19 +616,17 @@ end\n function Client:_process_static_registrations()\n   local static_registrations = {} ---@type lsp.Registration[]\n \n-  for method, capability in pairs(lsp.protocol._request_name_to_server_capability) do\n+  for method, _ in pairs(lsp.protocol._method_supports_static_registration) do\n+    local capability = lsp.protocol._request_name_to_server_capability[method]\n     if\n-      vim.tbl_get(self.server_capabilities, unpack(capability), 'id')\n-      --- @cast method vim.lsp.protocol.Method\n+      vim.tbl_get(self.server_capabilities, capability[1], 'id')\n       and self:_supports_registration(method)\n     then\n-      local cap = vim.tbl_get(self.server_capabilities, unpack(capability))\n+      local cap = vim.tbl_get(self.server_capabilities, capability[1])\n       static_registrations[#static_registrations + 1] = {\n         id = cap.id,\n         method = method,\n-        registerOptions = {\n-          documentSelector = cap.documentSelector, ---@type lsp.DocumentSelector|lsp.null\n-        },\n+        registerOptions = vim.tbl_extend('force', {}, cap),",
+            "html_url": "https://github.com/neovim/neovim/pull/37221#discussion_r2673975088",
+            "id": 2673975088,
+            "in_reply_to_id": 2673610984,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM6fYZ8w",
+            "original_commit_id": "2fe7d4c7ca9cf85f94096cc4c7e1315a57fdccea",
+            "original_line": 629,
+            "original_position": 21,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/lsp/client.lua",
+            "position": 1,
+            "pull_request_review_id": 3641406341,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/37221",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 1,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2673975088/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-01-08T21:31:28Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2673975088",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/18444302?v=4",
+                "events_url": "https://api.github.com/users/tris203/events{/privacy}",
+                "followers_url": "https://api.github.com/users/tris203/followers",
+                "following_url": "https://api.github.com/users/tris203/following{/other_user}",
+                "gists_url": "https://api.github.com/users/tris203/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/tris203",
+                "id": 18444302,
+                "login": "tris203",
+                "node_id": "MDQ6VXNlcjE4NDQ0MzAy",
+                "organizations_url": "https://api.github.com/users/tris203/orgs",
+                "received_events_url": "https://api.github.com/users/tris203/received_events",
+                "repos_url": "https://api.github.com/users/tris203/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/tris203/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/tris203/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/tris203",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/37221#discussion_r2684161919"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/37221"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2684161919"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "I'm still not seeing this change in the PR (?).",
+            "commit_id": "2fe7d4c7ca9cf85f94096cc4c7e1315a57fdccea",
+            "created_at": "2026-01-12T22:49:27Z",
+            "diff_hunk": "@@ -616,19 +616,17 @@ end\n function Client:_process_static_registrations()\n   local static_registrations = {} ---@type lsp.Registration[]\n \n-  for method, capability in pairs(lsp.protocol._request_name_to_server_capability) do\n+  for method, _ in pairs(lsp.protocol._method_supports_static_registration) do",
+            "html_url": "https://github.com/neovim/neovim/pull/37221#discussion_r2684161919",
+            "id": 2684161919,
+            "in_reply_to_id": 2673606569,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM6f_Q9_",
+            "original_commit_id": "2fe7d4c7ca9cf85f94096cc4c7e1315a57fdccea",
+            "original_line": 618,
+            "original_position": 5,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/lsp/client.lua",
+            "position": 1,
+            "pull_request_review_id": 3653032396,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/37221",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2684161919/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-01-12T22:49:27Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2684161919",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/62502207?v=4",
+                "events_url": "https://api.github.com/users/MariaSolOs/events{/privacy}",
+                "followers_url": "https://api.github.com/users/MariaSolOs/followers",
+                "following_url": "https://api.github.com/users/MariaSolOs/following{/other_user}",
+                "gists_url": "https://api.github.com/users/MariaSolOs/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/MariaSolOs",
+                "id": 62502207,
+                "login": "MariaSolOs",
+                "node_id": "MDQ6VXNlcjYyNTAyMjA3",
+                "organizations_url": "https://api.github.com/users/MariaSolOs/orgs",
+                "received_events_url": "https://api.github.com/users/MariaSolOs/received_events",
+                "repos_url": "https://api.github.com/users/MariaSolOs/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/MariaSolOs/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/MariaSolOs/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/MariaSolOs",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/37221#discussion_r2684174137"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/37221"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2684174137"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "my mistake, i read the diff for the change i made, i thought you _wanted_ the underscore. fixed",
+            "commit_id": "2fe7d4c7ca9cf85f94096cc4c7e1315a57fdccea",
+            "created_at": "2026-01-12T22:55:41Z",
+            "diff_hunk": "@@ -616,19 +616,17 @@ end\n function Client:_process_static_registrations()\n   local static_registrations = {} ---@type lsp.Registration[]\n \n-  for method, capability in pairs(lsp.protocol._request_name_to_server_capability) do\n+  for method, _ in pairs(lsp.protocol._method_supports_static_registration) do",
+            "html_url": "https://github.com/neovim/neovim/pull/37221#discussion_r2684174137",
+            "id": 2684174137,
+            "in_reply_to_id": 2673606569,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM6f_T85",
+            "original_commit_id": "2fe7d4c7ca9cf85f94096cc4c7e1315a57fdccea",
+            "original_line": 618,
+            "original_position": 5,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/lsp/client.lua",
+            "position": 1,
+            "pull_request_review_id": 3653046181,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/37221",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 1,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2684174137/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-01-12T22:56:58Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2684174137",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/18444302?v=4",
+                "events_url": "https://api.github.com/users/tris203/events{/privacy}",
+                "followers_url": "https://api.github.com/users/tris203/followers",
+                "following_url": "https://api.github.com/users/tris203/following{/other_user}",
+                "gists_url": "https://api.github.com/users/tris203/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/tris203",
+                "id": 18444302,
+                "login": "tris203",
+                "node_id": "MDQ6VXNlcjE4NDQ0MzAy",
+                "organizations_url": "https://api.github.com/users/tris203/orgs",
+                "received_events_url": "https://api.github.com/users/tris203/received_events",
+                "repos_url": "https://api.github.com/users/tris203/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/tris203/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/tris203/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/tris203",
+                "user_view_type": "public"
+            }
+        }
+    ],
     "comment_regular_data": [],
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/37221/comments",
     "commits_url": "https://api.github.com/repos/neovim/neovim/pulls/37221/commits",
@@ -269,9 +1312,9 @@
             },
             "private": false,
             "pulls_url": "https://api.github.com/repos/tris203/neovim/pulls{/number}",
-            "pushed_at": "2026-01-05T19:37:10Z",
+            "pushed_at": "2026-01-12T22:55:18Z",
             "releases_url": "https://api.github.com/repos/tris203/neovim/releases{/id}",
-            "size": 361127,
+            "size": 361275,
             "ssh_url": "git@github.com:tris203/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/tris203/neovim/stargazers",
@@ -283,14 +1326,14 @@
             "teams_url": "https://api.github.com/repos/tris203/neovim/teams",
             "topics": [],
             "trees_url": "https://api.github.com/repos/tris203/neovim/git/trees{/sha}",
-            "updated_at": "2026-01-04T22:34:11Z",
+            "updated_at": "2026-01-12T19:59:50Z",
             "url": "https://api.github.com/repos/tris203/neovim",
             "visibility": "public",
             "watchers": 0,
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "1853f17fa515d39437bb99960337f278dda39d38",
+        "sha": "35534280803aab46e07fa9a3e4b553d37394d990",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/18444302?v=4",
             "events_url": "https://api.github.com/users/tris203/events{/privacy}",
@@ -337,34 +1380,13 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "b67cc11fb455db6cc811d411a2ad1490a7df1e6f",
+    "merge_commit_sha": "e05d3f75cb32e4590209f67169db5fd760ccbc67",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM67YJ9K",
     "number": 37221,
     "patch_url": "https://github.com/neovim/neovim/pull/37221.patch",
     "requested_reviewers": [
-        {
-            "avatar_url": "https://avatars.githubusercontent.com/u/62502207?v=4",
-            "events_url": "https://api.github.com/users/MariaSolOs/events{/privacy}",
-            "followers_url": "https://api.github.com/users/MariaSolOs/followers",
-            "following_url": "https://api.github.com/users/MariaSolOs/following{/other_user}",
-            "gists_url": "https://api.github.com/users/MariaSolOs/gists{/gist_id}",
-            "gravatar_id": "",
-            "html_url": "https://github.com/MariaSolOs",
-            "id": 62502207,
-            "login": "MariaSolOs",
-            "node_id": "MDQ6VXNlcjYyNTAyMjA3",
-            "organizations_url": "https://api.github.com/users/MariaSolOs/orgs",
-            "received_events_url": "https://api.github.com/users/MariaSolOs/received_events",
-            "repos_url": "https://api.github.com/users/MariaSolOs/repos",
-            "site_admin": false,
-            "starred_url": "https://api.github.com/users/MariaSolOs/starred{/owner}{/repo}",
-            "subscriptions_url": "https://api.github.com/users/MariaSolOs/subscriptions",
-            "type": "User",
-            "url": "https://api.github.com/users/MariaSolOs",
-            "user_view_type": "public"
-        },
         {
             "avatar_url": "https://avatars.githubusercontent.com/u/55766287?v=4",
             "events_url": "https://api.github.com/users/ribru17/events{/privacy}",
@@ -391,9 +1413,9 @@
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/37221/comments",
     "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/1853f17fa515d39437bb99960337f278dda39d38",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/35534280803aab46e07fa9a3e4b553d37394d990",
     "title": "refactor(lsp): centralize provider capability resolution",
-    "updated_at": "2026-01-04T23:48:28Z",
+    "updated_at": "2026-01-12T23:03:58Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/37221",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/18444302?v=4",
