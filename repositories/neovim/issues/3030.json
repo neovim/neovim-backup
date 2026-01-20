@@ -4,8 +4,28 @@
     "assignees": [],
     "author_association": "CONTRIBUTOR",
     "body": "I'm attempting to run a GNU Make instance with termopen, and I'm seeing messages being dropped. I'm hooking into the on_exit() callback to write the terminal buffer to an external log, as well as parse it for errors for the quickfix list.\n\nI deliberately added a compile error so that Make would error-out. When this happens, GCC prints to stderr, make exits, and my messages show up on the terminal. When I look at test.log, however, the last few lines are just _gone._\n\nRather than sharing the repository, I've managed to find a minimal case that results in lost data, namely by throwing lots of text at the terminal. I don't know if this is the same problem as the make issue, but with this test case, I get about 700 lines of \"stdout,\" when I am expecting 2000.\n\nI poked into it a bit and my guess is that data is being dropped somewhere after SIGCHLD is sent but there is still data either to be read in the TTY fds, or its already been sucked out of the fd but it makes it to the terminal buffer after the process has already exited and the exit callback has been called.\n\nI've attached a minimal test case that fails on my computer as of \n5e9f9a875645af1e3c858daba799fe4a9021a767\n\nAm I doing something stupid?\n\n```\nlet s:Output = {}\n\nfunction! s:Output.on_exit(id, code)\n    write! test.log\nendfunction\n\nfunction! s:termtest()\n    only\n    vert botright sp | enew\n    let s:Output['bufid'] = bufnr('%')\n    call termopen([&sh, &shcf, './test.sh'], s:Output)\nendfunction\n\ncommand! -nargs=0 Termtest call s:termtest()\n```\n\nEDIT (@mhinz: shortened 2000 lines of code to two loops, as suggested by @lucc):\n\n``` shell\n#!/bin/sh\nfor i in {0..1000}; do echo \"stdout $i\"; done\nfor i in {0..1000}; do echo \"stderr $i\" 1>&2; done\n```\n",
-    "closed_at": null,
-    "closed_by": null,
+    "closed_at": "2026-01-15T01:57:13Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+        "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+        "followers_url": "https://api.github.com/users/zeertzjq/followers",
+        "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+        "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/zeertzjq",
+        "id": 35768171,
+        "login": "zeertzjq",
+        "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+        "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+        "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+        "repos_url": "https://api.github.com/users/zeertzjq/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/zeertzjq",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "CONTRIBUTOR",
@@ -816,9 +836,54 @@
                 "url": "https://api.github.com/users/zeertzjq",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "Actually it's still possible that this is a libuv bug. I've reported this at <https://github.com/libuv/libuv/issues/4992> just in case.\n\nIf <https://github.com/libuv/libuv/issues/4992> is fixed for `uv_pipe_t` then this issue can be simply fixed by a small change to `flush_stream()`.",
+            "created_at": "2026-01-13T07:02:56Z",
+            "html_url": "https://github.com/neovim/neovim/issues/3030#issuecomment-3742365693",
+            "id": 3742365693,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/3030",
+            "node_id": "IC_kwDOAPphoM7fD_f9",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 1,
+                "heart": 1,
+                "hooray": 1,
+                "laugh": 0,
+                "rocket": 1,
+                "total_count": 4,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3742365693/reactions"
+            },
+            "updated_at": "2026-01-15T00:10:55Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3742365693",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+                "followers_url": "https://api.github.com/users/zeertzjq/followers",
+                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/zeertzjq",
+                "id": 35768171,
+                "login": "zeertzjq",
+                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+                "repos_url": "https://api.github.com/users/zeertzjq/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
+            }
         }
     ],
-    "comments": 18,
+    "comments": 19,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/3030/comments",
     "created_at": "2015-07-17T16:49:58Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/3030/events",
@@ -857,22 +922,13 @@
             "name": "channels-rpc",
             "node_id": "MDU6TGFiZWwyNDI1MjI3MDc=",
             "url": "https://api.github.com/repos/neovim/neovim/labels/channels-rpc"
-        },
-        {
-            "color": "BFDADC",
-            "default": false,
-            "description": "Low-risk, self-contained. Do NOT ask \"can I work on this\", just read CONTRIBUTING.md",
-            "id": 407246773,
-            "name": "complexity:low",
-            "node_id": "MDU6TGFiZWw0MDcyNDY3NzM=",
-            "url": "https://api.github.com/repos/neovim/neovim/labels/complexity:low"
         }
     ],
     "labels_url": "https://api.github.com/repos/neovim/neovim/issues/3030/labels{/name}",
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 206,
+        "closed_issues": 211,
         "created_at": "2024-05-16T14:11:54Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -905,7 +961,7 @@
         "open_issues": 80,
         "state": "open",
         "title": "0.12",
-        "updated_at": "2026-01-11T10:39:13Z",
+        "updated_at": "2026-01-17T14:31:03Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/43"
     },
     "node_id": "MDU6SXNzdWU5NTY5Njg2NA==",
@@ -924,8 +980,8 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/3030/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "sub_issues_summary": {
         "completed": 0,
         "percent_completed": 0,
@@ -943,7 +999,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyr",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2026-01-13T00:24:07Z",
+    "updated_at": "2026-01-15T01:57:14Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/3030",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/224968?v=4",
