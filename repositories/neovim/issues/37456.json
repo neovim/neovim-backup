@@ -2,13 +2,33 @@
     "active_lock_reason": null,
     "assignee": null,
     "assignees": [],
-    "author_association": "NONE",
+    "author_association": "CONTRIBUTOR",
     "body": "### Problem\n\nFunctional test failure running locally:\n\n```\nFAILED   test/functional/vimscript/has_spec.lua @ 67: has() \"terminfo\"\ntest/functional/vimscript/has_spec.lua:75: Expected objects to be the same.\nPassed in:\n(number) 1\nExpected:\n(number) 0\n```\n\nI also tested on the commit that added this test, and it fails. The logic of the test looks wrong to me: `build_flag` is set to whatever follows `HAVE_UNIBILIUM` in `:verbose version`, then the following values are checked and taken to mean \"built without Unibilium\": `''` (empty), `'false'`, `'0'`, `'off'`. But it appears that on Linux, the build argument is `-DHAVE_UNIBILIUM` with nothing after it, resulting in `build_flag` being empty. Since empty is taken to mean \"built without Unibilium\", this gives the wrong value for `is_enabled` and the test fails.\n\nNote that `is_enabled` is set to `true` in CI without checking the build string.\n\n### Steps to reproduce\n\nOn latest master:\n\n```\n$ make distclean ; TEST_FILE=test/functional/vimscript/has_spec.lua make functionaltest\n```\n\n### Expected behavior\n\nTest passes.\n\n### Nvim version (nvim -v)\n\nLatest master, f36dd7557a98e2071f607b0859ccc632b58ccc87\n\n### Vim (not Nvim) behaves the same?\n\nN/A\n\n### Operating system/version\n\nDebian Linux 13 (running in a podman container)\n\n### Terminal name/version\n\nkitty 0.26.5\n\n### $TERM environment variable\n\nxterm-kitty\n\n### Installation\n\ngit",
-    "closed_at": null,
-    "closed_by": null,
+    "closed_at": "2026-01-21T04:02:21Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+        "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+        "followers_url": "https://api.github.com/users/zeertzjq/followers",
+        "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+        "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/zeertzjq",
+        "id": 35768171,
+        "login": "zeertzjq",
+        "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+        "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+        "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+        "repos_url": "https://api.github.com/users/zeertzjq/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/zeertzjq",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "Off-the-cuff suggestion to fix this (not adequately tested):\n\n```\ndiff --git a/test/functional/vimscript/has_spec.lua b/test/functional/vimscript/has_spec.lua\nindex 3d8f626eea..b260708568 100644\n--- a/test/functional/vimscript/has_spec.lua\n+++ b/test/functional/vimscript/has_spec.lua\n@@ -68,10 +68,10 @@ describe('has()', function()\n     -- Looks like \"HAVE_UNIBILIUM \", \"HAVE_UNIBILIUM=1\", \"HAVE_UNIBILIUM off\", ….\n     -- Capture group returns the \"1\"/\"off\"/….\n     local build_flag =\n-      vim.trim((n.exec_capture('verbose version'):match('HAVE_UNIBILIUM([^-]+)') or ''):lower())\n+      vim.trim((n.exec_capture('verbose version'):match('HAVE_UNIBILIUM([^-]+)') or 'MISSING'):lower())\n     -- XXX: the match() above fails in CI so currently we assume CI always builds with unibilium.\n     local is_enabled = t.is_ci()\n-      or not (build_flag == '' or build_flag == 'false' or build_flag == '0' or build_flag == 'off')\n+      or not (build_flag == 'MISSING' or build_flag == 'false' or build_flag == '0' or build_flag == 'off')\n     eq(is_enabled and 1 or 0, fn.has('terminfo'))\n   end)\n```",
             "created_at": "2026-01-18T22:26:29Z",
             "html_url": "https://github.com/neovim/neovim/issues/37456#issuecomment-3765815364",
@@ -53,7 +73,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "Because of the `lower()` call that should actually look like this:\n\n```\ndiff --git a/test/functional/vimscript/has_spec.lua b/test/functional/vimscript/has_spec.lua\nindex 3d8f626eea..7f106e5637 100644\n--- a/test/functional/vimscript/has_spec.lua\n+++ b/test/functional/vimscript/has_spec.lua\n@@ -68,10 +68,10 @@ describe('has()', function()\n     -- Looks like \"HAVE_UNIBILIUM \", \"HAVE_UNIBILIUM=1\", \"HAVE_UNIBILIUM off\", ….\n     -- Capture group returns the \"1\"/\"off\"/….\n     local build_flag =\n-      vim.trim((n.exec_capture('verbose version'):match('HAVE_UNIBILIUM([^-]+)') or ''):lower())\n+      vim.trim((n.exec_capture('verbose version'):match('HAVE_UNIBILIUM([^-]+)') or 'missing'):lower())\n     -- XXX: the match() above fails in CI so currently we assume CI always builds with unibilium.\n     local is_enabled = t.is_ci()\n-      or not (build_flag == '' or build_flag == 'false' or build_flag == '0' or build_flag == 'off')\n+      or not (build_flag == 'missing' or build_flag == 'false' or build_flag == '0' or build_flag == 'off')\n     eq(is_enabled and 1 or 0, fn.has('terminfo'))\n   end)\n```",
             "created_at": "2026-01-18T22:34:56Z",
             "html_url": "https://github.com/neovim/neovim/issues/37456#issuecomment-3765822425",
@@ -140,8 +160,8 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/37456/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "sub_issues_summary": {
         "completed": 0,
         "percent_completed": 0,
@@ -159,7 +179,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyr",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2026-01-18T22:34:56Z",
+    "updated_at": "2026-01-21T04:02:21Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/37456",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/58675?v=4",
