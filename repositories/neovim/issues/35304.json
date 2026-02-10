@@ -4,8 +4,28 @@
     "assignees": [],
     "author_association": "NONE",
     "body": "### Problem\n\nI use xxd in neovim to deal with binary files.\nI find `:%!xxd` will give the incorrect result (the dumped file size is much larger than the actual), by inspecting the source code, I find it is because `Get-Content` is used to retrieve the buffer's content (the buffer content is stored in a temp file, for PowerShell v7 `-AsByteStream` should be used to deal with binary files), garbling the binary content.\n\n<https://github.com/neovim/neovim/blob/e3fd906b614c9ef0fdca3e456b75eae34086555b/src/nvim/ex_cmds.c#L1580>\n\nThe above issue is due to the usage of  `Get-Content` (with default UTF-8 encoding since v7) to read the temp buffer file. Since temp files are used when `shelltemp` is set, so I turn to `noshelltemp` to see if I can bypass this issue, and it works well, but with one issue illustrated below:\n\n<https://github.com/user-attachments/assets/72785ba2-7daf-4ca2-abd1-4a89dba54fde>\n\nIn the error message `xxd` is truncated to `xx`, which is very strange.\nThen I test with `:%!xxd && Start-Sleep 114514`, and in the task manager, we see that the last character `4` is truncated. Currently the workaround is to append a dummy character at the end of the command.\n\n<img width=\"1018\" height=\"997\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/fecac020-1c47-429d-abb6-283756180664\" />\n\nSuch issue may relate to the potentially problematic code below (buf size `len` may be insufficient to accommodate the command):\n\n<https://github.com/neovim/neovim/blob/e3fd906b614c9ef0fdca3e456b75eae34086555b/src/nvim/ex_cmds.c#L1579-L1590>\n\n### Steps to reproduce\n\nThe minimal config:\n\n```lua\nvim.o.shell = \"pwsh\"\nvim.o.shellcmdflag = [[-NoLogo -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -Command]]\nvim.o.shelltemp = false -- use pipes instead of temp files\nvim.o.shellquote = \"\"\nvim.o.shellxquote = \"\"\n```\n\n### Expected behavior\n\n`:%!xxd` runs normally.\n\n### Nvim version (nvim -v)\n\nv0.11.3\n\n### Vim (not Nvim) behaves the same?\n\nHaven't tested yet, but highly possible.\n\n### Operating system/version\n\nWindows 11 24H2\n\n### Terminal name/version\n\nWindows Terminal\n\n### $TERM environment variable\n\nxterm-256color\n\n### Installation\n\nwinget",
-    "closed_at": null,
-    "closed_by": null,
+    "closed_at": "2026-02-06T09:55:18Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/96627940?v=4",
+        "events_url": "https://api.github.com/users/UserNameUnavailableIsUnavailable/events{/privacy}",
+        "followers_url": "https://api.github.com/users/UserNameUnavailableIsUnavailable/followers",
+        "following_url": "https://api.github.com/users/UserNameUnavailableIsUnavailable/following{/other_user}",
+        "gists_url": "https://api.github.com/users/UserNameUnavailableIsUnavailable/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/UserNameUnavailableIsUnavailable",
+        "id": 96627940,
+        "login": "UserNameUnavailableIsUnavailable",
+        "node_id": "U_kgDOBcJs5A",
+        "organizations_url": "https://api.github.com/users/UserNameUnavailableIsUnavailable/orgs",
+        "received_events_url": "https://api.github.com/users/UserNameUnavailableIsUnavailable/received_events",
+        "repos_url": "https://api.github.com/users/UserNameUnavailableIsUnavailable/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/UserNameUnavailableIsUnavailable/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/UserNameUnavailableIsUnavailable/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/UserNameUnavailableIsUnavailable",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -16,6 +36,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/35304",
             "node_id": "IC_kwDOAPphoM69WyDh",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -61,6 +82,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/35304",
             "node_id": "IC_kwDOAPphoM69cdrU",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -106,6 +128,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/35304",
             "node_id": "IC_kwDOAPphoM69j6-h",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -151,6 +174,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/35304",
             "node_id": "IC_kwDOAPphoM69mkck",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -186,14 +210,66 @@
                 "url": "https://api.github.com/users/justinmk",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "NONE",
+            "body": "This issue gets fixed now.\n\nhttps://github.com/neovim/neovim/blob/db133879b2a115cdf982b2899f154f1851d59a60/src/nvim/ex_cmds.c#L1587\n\nI'll close this issue.",
+            "created_at": "2026-02-06T09:55:19Z",
+            "html_url": "https://github.com/neovim/neovim/issues/35304#issuecomment-3859242684",
+            "id": 3859242684,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/35304",
+            "node_id": "IC_kwDOAPphoM7mB168",
+            "performed_via_github_app": null,
+            "pin": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3859242684/reactions"
+            },
+            "updated_at": "2026-02-06T09:57:03Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3859242684",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/96627940?v=4",
+                "events_url": "https://api.github.com/users/UserNameUnavailableIsUnavailable/events{/privacy}",
+                "followers_url": "https://api.github.com/users/UserNameUnavailableIsUnavailable/followers",
+                "following_url": "https://api.github.com/users/UserNameUnavailableIsUnavailable/following{/other_user}",
+                "gists_url": "https://api.github.com/users/UserNameUnavailableIsUnavailable/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/UserNameUnavailableIsUnavailable",
+                "id": 96627940,
+                "login": "UserNameUnavailableIsUnavailable",
+                "node_id": "U_kgDOBcJs5A",
+                "organizations_url": "https://api.github.com/users/UserNameUnavailableIsUnavailable/orgs",
+                "received_events_url": "https://api.github.com/users/UserNameUnavailableIsUnavailable/received_events",
+                "repos_url": "https://api.github.com/users/UserNameUnavailableIsUnavailable/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/UserNameUnavailableIsUnavailable/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/UserNameUnavailableIsUnavailable/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/UserNameUnavailableIsUnavailable",
+                "user_view_type": "public"
+            }
         }
     ],
-    "comments": 4,
+    "comments": 5,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/35304/comments",
     "created_at": "2025-08-11T17:33:21Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/35304/events",
     "html_url": "https://github.com/neovim/neovim/issues/35304",
     "id": 3310987911,
+    "issue_dependencies_summary": {
+        "blocked_by": 0,
+        "blocking": 0,
+        "total_blocked_by": 0,
+        "total_blocking": 0
+    },
     "labels": [
         {
             "color": "d4c5f9",
@@ -251,8 +327,8 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/35304/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "sub_issues_summary": {
         "completed": 0,
         "percent_completed": 0,
@@ -270,7 +346,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyr",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2025-08-12T20:57:46Z",
+    "updated_at": "2026-02-06T09:57:03Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/35304",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/96627940?v=4",

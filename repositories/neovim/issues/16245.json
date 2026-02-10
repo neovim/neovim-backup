@@ -5,9 +5,30 @@
     "author_association": "NONE",
     "body": "### Neovim version (nvim -v)\n\nNVIM v0.5.1 (also present on HEAD)\n\n### Vim (not Nvim) behaves the same?\n\nn/a (vim doesn't have `termopen()`)\n\n### Operating system/version\n\nArchLinux\n\n### Terminal name/version\n\nkitty 0.23.1-1 (also present with xterm and a TTY)\n\n### $TERM environment variable\n\nxterm-kitty\n\n### Installation\n\npacman -S neovim\n\n### How to reproduce the issue\n\nTake the following C program that repeatedly prints a Unicode character with a pause in between:\r\n\r\n```c\r\n#include <stdio.h>\r\n\r\nint main()\r\n{\r\n    // I haven't tested other Unicode characters.\r\n    // The multilines and the initial whitespace seem to trigger it easier.\r\n    const char str[] = \"   │\\n   │\\n\"; // not ASCII bar, but U+2502\r\n\r\n    while (1)\r\n    {\r\n        // If I use fputs(), the error happens a lot less often.\r\n        for (const char* ptr = str; *ptr; ++ptr)\r\n            fputc(*ptr, stderr);\r\n\r\n        // We need some sort of pause here to trigger it.\r\n        int i;\r\n        scanf(\"%d\", &i);\r\n    }\r\n}\r\n```\r\n\r\nCompile it (e.g `gcc print.c`) and start nvim --clean. Enter `:call termopen('./a.out')` and go to insert/terminal mode. Repeatedly enter some number to execute ~10 loop iterations.\n\n### Expected behavior\n\nThe terminal buffer contains output like this:\r\n\r\n```\r\n   │\r\n   │\r\n0\r\n   │\r\n   │\r\n0\r\netc\r\n```\n\n### Actual behavior\n\nThe terminal buffer contains output like this:\r\n\r\n```\r\n   │\r\n   │\r\n0\r\n   │\r\n   │\r\n0\r\n   ��\r\n�   │\r\n0\r\n   �\r\n�   │\r\n0\r\n   │\r\n   │\r\n0\r\n   │\r\n   │\r\n0\r\n   │\r\n   │\r\n0\r\n   │\r\n   ��\r\n�0\r\n   │\r\n   ��\r\n�0\r\n```\r\n\r\nThis output was created by copy-pasting the terminal buffer, so it is not a rendering issue - it actually contains invalid Unicode. Note that not every output is mangled, only some, and this can vary from execution to execution (sometimes it works completely fine, sometimes almost everything is mangled). It also persists when you use C++'s `u8` string literal, so it's not a Unicode encoding issue of the source file or something like that.\r\n\r\nGiven this behavior and the fact that using `fputs()` over `fputc()` fixes it, I suspect it is some sort of buffering issue where neovim receives partial UTF-8 input and concludes that it has an invalid code unit: when it then receives the rest of the code point, it thinks that this is another invalid code unit, instead of combining the two into a valid code point.",
     "closed_at": "2024-03-19T08:56:52Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+        "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+        "followers_url": "https://api.github.com/users/zeertzjq/followers",
+        "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+        "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/zeertzjq",
+        "id": 35768171,
+        "login": "zeertzjq",
+        "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+        "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+        "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+        "repos_url": "https://api.github.com/users/zeertzjq/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/zeertzjq",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "This is probably a duplicate of #12609. I've been trying to debug it for a while now, and finally found the cause. This is caused by a bug in libvterm. If the sequence is incomplete when returning from [`decode_utf8()`](https://github.com/neovim/libvterm/blob/65dbda3ed214f036ee799d18b2e693a833a0e591/src/encoding.c#L28), `data->bytes_remaining` will be assigned the number of bytes remaining. However, when processing the rest of the sequence, in the following part of [`on_text()`](https://github.com/neovim/libvterm/blob/65dbda3ed214f036ee799d18b2e693a833a0e591/src/state.c#L238), a different `VTermEncodingInstance` is assigned to encoding than the previous one. Therefore, it is not processed as a continuation sequence and becomes `UNICODE_INVALID`(�, U+FFFD).\r\n\r\n```C\r\n  VTermEncodingInstance *encoding =\r\n    state->gsingle_set     ? &state->encoding[state->gsingle_set] :\r\n    !(bytes[eaten] & 0x80) ? &state->encoding[state->gl_set] :\r\n    state->vt->mode.utf8   ? &state->encoding_utf8 :\r\n                             &state->encoding[state->gr_set];\r\n```\r\n\r\nI used `fprintf` to output the `on_text()` and `decode_utf8()` status and got the following log.\r\n\r\n```\r\nstate->gsingle_set: 0\r\nstate->gl_set: 0\r\n!(bytes[eaten] & 0x80): 1\r\nstate->vt->mode.utf8: 1\r\nstate->gr_set: 1\r\nencoding: 0x14fc6e8\r\nBEGIN UTF-8, data->bytes_remaining: 0\r\nEND UTF-8, data->bytes_remaining: 1\r\nstate->gsingle_set: 0\r\nstate->gl_set: 0\r\n!(bytes[eaten] & 0x80): 0\r\nstate->vt->mode.utf8: 1\r\nstate->gr_set: 1\r\nencoding: 0x14fc748\r\nBEGIN UTF-8, data->bytes_remaining: 0\r\n```\r\n\r\nCC: @leonerd ",
             "created_at": "2021-11-06T17:14:36Z",
             "html_url": "https://github.com/neovim/neovim/issues/16245#issuecomment-962481732",
@@ -15,6 +36,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/16245",
             "node_id": "IC_kwDOAPphoM45Xk5E",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -47,7 +69,8 @@
                 "starred_url": "https://api.github.com/users/erw7/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/erw7/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/erw7"
+                "url": "https://api.github.com/users/erw7",
+                "user_view_type": "public"
             }
         },
         {
@@ -59,6 +82,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/16245",
             "node_id": "IC_kwDOAPphoM45X-ED",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -91,18 +115,20 @@
                 "starred_url": "https://api.github.com/users/foonathan/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/foonathan/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/foonathan"
+                "url": "https://api.github.com/users/foonathan",
+                "user_view_type": "public"
             }
         },
         {
             "author_association": "NONE",
-            "body": "The following patch fixes that issue:\r\n\r\n```\r\ndiff --git a/src/state.c b/src/state.c\r\nindex 9108009..6467925 100644\r\n--- a/src/state.c\r\n+++ b/src/state.c\r\n@@ -246,11 +246,16 @@ static int on_text(const char bytes[], size_t len, void *user)\r\n   int npoints = 0;\r\n   size_t eaten = 0;\r\n \r\n-  VTermEncodingInstance *encoding =\r\n-    state->gsingle_set     ? &state->encoding[state->gsingle_set] :\r\n-    !(bytes[eaten] & 0x80) ? &state->encoding[state->gl_set] :\r\n-    state->vt->mode.utf8   ? &state->encoding_utf8 :\r\n-                             &state->encoding[state->gr_set];\r\n+  VTermEncodingInstance *encoding;\r\n+  if (state->vt->mode.utf8) {\r\n+    /* If the mode has been set to UTF-8, we're ignoring all shift functions. */\r\n+    encoding = &state->encoding_utf8;\r\n+  } else {\r\n+    /* Select the encoding according to the shift functions. */\r\n+    encoding = state->gsingle_set     ? &state->encoding[state->gsingle_set] :\r\n+               !(bytes[eaten] & 0x80) ? &state->encoding[state->gl_set]      :\r\n+                                        &state->encoding[state->gr_set];\r\n+  }\r\n \r\n   (*encoding->enc->decode)(encoding->enc, encoding->data,\r\n       codepoints, &npoints, state->gsingle_set ? 1 : len,\r\n```\r\n\r\nAs @erw7 has figured out, the issue is due to the fact that a different `VTermEncodingInstance` is used for the continuation byte: as `!(bytes[eaten] & 0x80)` is `false`, it does not use `state->encoding[state->gl_set]` as for the initial bytes but `state->encoding_utf8`, which has no idea about the previous bytes.\r\n\r\nIt is my understanding that the `gl_set`/`gr_set`/`gsingle_set` are set by various control codes to change the encoding of the input. I can't imagine that anybody who enables UTF-8 for the terminal cares about that functionality, so my patch simply ignores them and uses the `encoding_utf8` member all the time.\r\n\r\nI've built nvim with that patch applied to libvterm and my original issue is fixed as well.",
+            "body": "The following patch fixes that issue:\n\n```diff\ndiff --git a/src/state.c b/src/state.c\nindex 9108009..6467925 100644\n--- a/src/state.c\n+++ b/src/state.c\n@@ -246,11 +246,16 @@ static int on_text(const char bytes[], size_t len, void *user)\n   int npoints = 0;\n   size_t eaten = 0;\n \n-  VTermEncodingInstance *encoding =\n-    state->gsingle_set     ? &state->encoding[state->gsingle_set] :\n-    !(bytes[eaten] & 0x80) ? &state->encoding[state->gl_set] :\n-    state->vt->mode.utf8   ? &state->encoding_utf8 :\n-                             &state->encoding[state->gr_set];\n+  VTermEncodingInstance *encoding;\n+  if (state->vt->mode.utf8) {\n+    /* If the mode has been set to UTF-8, we're ignoring all shift functions. */\n+    encoding = &state->encoding_utf8;\n+  } else {\n+    /* Select the encoding according to the shift functions. */\n+    encoding = state->gsingle_set     ? &state->encoding[state->gsingle_set] :\n+               !(bytes[eaten] & 0x80) ? &state->encoding[state->gl_set]      :\n+                                        &state->encoding[state->gr_set];\n+  }\n \n   (*encoding->enc->decode)(encoding->enc, encoding->data,\n       codepoints, &npoints, state->gsingle_set ? 1 : len,\n```\n\nAs @erw7 has figured out, the issue is due to the fact that a different `VTermEncodingInstance` is used for the continuation byte: as `!(bytes[eaten] & 0x80)` is `false`, it does not use `state->encoding[state->gl_set]` as for the initial bytes but `state->encoding_utf8`, which has no idea about the previous bytes.\n\nIt is my understanding that the `gl_set`/`gr_set`/`gsingle_set` are set by various control codes to change the encoding of the input. I can't imagine that anybody who enables UTF-8 for the terminal cares about that functionality, so my patch simply ignores them and uses the `encoding_utf8` member all the time.\n\nI've built nvim with that patch applied to libvterm and my original issue is fixed as well.",
             "created_at": "2021-11-07T11:12:18Z",
             "html_url": "https://github.com/neovim/neovim/issues/16245#issuecomment-962591284",
             "id": 962591284,
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/16245",
             "node_id": "IC_kwDOAPphoM45X_o0",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -115,7 +141,7 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/962591284/reactions"
             },
-            "updated_at": "2021-11-07T11:12:18Z",
+            "updated_at": "2026-02-05T08:17:54Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/962591284",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/9192733?v=4",
@@ -135,11 +161,12 @@
                 "starred_url": "https://api.github.com/users/foonathan/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/foonathan/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/foonathan"
+                "url": "https://api.github.com/users/foonathan",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "Probably, as https://github.com/neovim/neovim/issues/16245#issuecomment-962591284 says, we can use `mode.utf8` at the beginning of the condition without any problem in most cases. However, when I checked on other terminals (`xterm`, `\r\nAlacritty`, `st`, `kitty`), `smacs` worked even in UTF-8 locales. Therefore, it may be better to fix it as in the following patch.\r\n\r\n\r\n```diff\r\ndiff --git a/src/encoding.c b/src/encoding.c\r\nindex 434ac3f..44ea56e 100644\r\n--- a/src/encoding.c\r\n+++ b/src/encoding.c\r\n@@ -30,6 +30,7 @@ static void decode_utf8(VTermEncoding *enc, void *data_,\r\n                         const char bytes[], size_t *pos, size_t bytelen)\r\n {\r\n   struct UTF8DecoderData *data = data_;\r\n+  bool beginning_8bit = (bytes[*pos] & 0x80);\r\n \r\n #ifdef DEBUG_PRINT_UTF8\r\n   printf(\"BEGIN UTF-8\\n\");\r\n@@ -42,21 +43,37 @@ static void decode_utf8(VTermEncoding *enc, void *data_,\r\n     printf(\" pos=%zd c=%02x rem=%d\\n\", *pos, c, data->bytes_remaining);\r\n #endif\r\n \r\n-    if(c < 0x20) // C0\r\n+    if(c < 0x20) { // C0\r\n+      if(data->bytes_remaining)\r\n+        cp[(*cpi)++] = UNICODE_INVALID;\r\n+\r\n+      data->bytes_remaining = 0;\r\n       return;\r\n+    }\r\n \r\n     else if(c >= 0x20 && c < 0x7f) {\r\n       if(data->bytes_remaining)\r\n         cp[(*cpi)++] = UNICODE_INVALID;\r\n \r\n+      data->bytes_remaining = 0;\r\n+      if (beginning_8bit)\r\n+        return;\r\n+\r\n       cp[(*cpi)++] = c;\r\n #ifdef DEBUG_PRINT_UTF8\r\n       printf(\" UTF-8 char: U+%04x\\n\", c);\r\n #endif\r\n+    }\r\n+\r\n+    else if(c == 0x7f) { // DEL\r\n+      if(data->bytes_remaining)\r\n+        cp[(*cpi)++] = UNICODE_INVALID;\r\n+\r\n       data->bytes_remaining = 0;\r\n+      return;\r\n     }\r\n \r\n-    else if(c == 0x7f) // DEL\r\n+    else if(!beginning_8bit)\r\n       return;\r\n \r\n     else if(c >= 0x80 && c < 0xc0) {\r\n```",
             "created_at": "2021-11-09T11:45:04Z",
             "html_url": "https://github.com/neovim/neovim/issues/16245#issuecomment-964074087",
@@ -147,6 +174,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/16245",
             "node_id": "IC_kwDOAPphoM45dppn",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -179,7 +207,8 @@
                 "starred_url": "https://api.github.com/users/erw7/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/erw7/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/erw7"
+                "url": "https://api.github.com/users/erw7",
+                "user_view_type": "public"
             }
         },
         {
@@ -191,6 +220,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/16245",
             "node_id": "IC_kwDOAPphoM49RPu0",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -223,7 +253,8 @@
                 "starred_url": "https://api.github.com/users/foonathan/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/foonathan/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/foonathan"
+                "url": "https://api.github.com/users/foonathan",
+                "user_view_type": "public"
             }
         },
         {
@@ -235,6 +266,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/16245",
             "node_id": "IC_kwDOAPphoM49RQDx",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -267,7 +299,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -279,6 +312,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/16245",
             "node_id": "IC_kwDOAPphoM49RR5J",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 1,
                 "-1": 0,
@@ -311,7 +345,8 @@
                 "starred_url": "https://api.github.com/users/foonathan/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/foonathan/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/foonathan"
+                "url": "https://api.github.com/users/foonathan",
+                "user_view_type": "public"
             }
         },
         {
@@ -323,6 +358,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/16245",
             "node_id": "IC_kwDOAPphoM49RSwW",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -355,7 +391,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         }
     ],
@@ -365,20 +402,17 @@
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/16245/events",
     "html_url": "https://github.com/neovim/neovim/issues/16245",
     "id": 1046222146,
+    "issue_dependencies_summary": {
+        "blocked_by": 0,
+        "blocking": 0,
+        "total_blocked_by": 0,
+        "total_blocking": 0
+    },
     "labels": [
-        {
-            "color": "f9d0c4",
-            "default": true,
-            "description": "issues reporting wrong behavior",
-            "id": 77997474,
-            "name": "bug",
-            "node_id": "MDU6TGFiZWw3Nzk5NzQ3NA==",
-            "url": "https://api.github.com/repos/neovim/neovim/labels/bug"
-        },
         {
             "color": "c5def5",
             "default": false,
-            "description": "built-in :terminal or :shell",
+            "description": "built-in :terminal or :shell, PTY",
             "id": 212696822,
             "name": "terminal",
             "node_id": "MDU6TGFiZWwyMTI2OTY4MjI=",
@@ -397,8 +431,8 @@
     "labels_url": "https://api.github.com/repos/neovim/neovim/issues/16245/labels{/name}",
     "locked": false,
     "milestone": {
-        "closed_at": null,
-        "closed_issues": 335,
+        "closed_at": "2024-05-16T14:11:42Z",
+        "closed_issues": 441,
         "created_at": "2023-02-02T14:11:43Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1363104?v=4",
@@ -418,19 +452,20 @@
             "starred_url": "https://api.github.com/users/bfredl/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/bfredl/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/bfredl"
+            "url": "https://api.github.com/users/bfredl",
+            "user_view_type": "public"
         },
         "description": "",
-        "due_on": "2024-05-01T07:00:00Z",
+        "due_on": "2024-05-12T00:00:00Z",
         "html_url": "https://github.com/neovim/neovim/milestone/36",
         "id": 8997654,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/36/labels",
         "node_id": "MI_kwDOAPphoM4AiUsW",
         "number": 36,
-        "open_issues": 106,
-        "state": "open",
+        "open_issues": 0,
+        "state": "closed",
         "title": "0.10",
-        "updated_at": "2024-03-25T22:55:06Z",
+        "updated_at": "2026-01-28T20:48:56Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/36"
     },
     "node_id": "I_kwDOAPphoM4-XBVC",
@@ -451,9 +486,15 @@
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "closed",
     "state_reason": "completed",
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/16245/timeline",
     "title": "Unicode processing issue in terminal buffers",
-    "updated_at": "2024-03-20T23:00:38Z",
+    "type": null,
+    "updated_at": "2026-02-05T08:17:54Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/16245",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/9192733?v=4",
@@ -473,6 +514,7 @@
         "starred_url": "https://api.github.com/users/foonathan/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/foonathan/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/foonathan"
+        "url": "https://api.github.com/users/foonathan",
+        "user_view_type": "public"
     }
 }

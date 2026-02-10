@@ -3,7 +3,7 @@
     "assignee": null,
     "assignees": [],
     "author_association": "CONTRIBUTOR",
-    "body": "### Problem\n\nWhen I moved from JetBrains IDEs (tried Rider for game dev) back to Neovim, one thing I actually miss is how they handled diffs. If you move a function, it showed \"hey this moved\" instead of treating it like you deleted and rewrote it\n\n**Current Behavior (line diff)**:\n```diff\n- function calculate(x, y) { return x + y; } // looks deleted\n\n+ function calculate(x, y) {return x + y; } // looks like new code\n```\n\n### Expected behavior\n\n**What I am proposing**:\n```lua\nM | calculate()     ⤷ moved to L200\n```\nThis would make code reviews and refactoring way cleaner.\n\n## Why not just make a plugin?\nI know this was discussed way back in https://github.com/neovim/neovim/issues/15064. @lewis6991 suggested trying it as plugin first, and someone else mentioned using `diffexpr` to call external tools\nSo I tried the plugin route:\nI have a built a *proof of concept* Lua plugin that implements the GumTree algorithm with treesitter. It works(not perfectly right now), it detects moves and updates well in practice. But it hits some fundamental walls:\n- `vim.diff()` is purely line-based, no way to tell it \"these are the same even though they moved\"\n- Had to use `extmarks` with virtual text, to show the \"Moved to L...\", which imo is a good way to represent **move**, but currently it can not integrate with `:diffthis`\n- Can't use the existing diff utilities, have to reparse tree-sitter ASTs even though they are already in memory for syntax highlighting\n\nThe `diffexpr` approach could work but has downsides:\n- Need to shell out to external tools\n- Loses the benefit of tree-sitter already being in memory\n- Still can't properly integrate moves/updates into Neovim's diff UI\n- Users would need to install separate tools\n\nAfter working on diffopt(`inline:word`) improvements in https://github.com/neovim/neovim/pull/37085, I got familiar with this part of the codebase and I feel this actually needs core support to work properly. The tree-sitter integration is already there, just needs the diff engine to understand semantic operations.\n\n## The Pitch\nThis would:\n- Reuse tree-sitter parses that already happen for syntax highlighting\n- Only run when you actually diff (zero background cost)\n- Be opt-in via `diffopt+=semantic` or `diffopt+=algorithm:gumtree` or similar\n- Fall back to regular line diff if tree-sitter isn't available or cost is too high\nSo it's not trying to make Neovim heavy like Rider or something, just one feature that makes diff smarter\n**Bonus:** This would benefit plugins like gitsigns. With proper API (`vim.diff(...., {semantic = true})`), git integration plugins could show moved/renamed code in git history and blame views.\n\n## What I have built\nWorking proof of concept plugin that does(Gumtree Algorithm):\n- Top-down matching (exact subtree hash matching)\n- Bottom-up matching (matches from children to parents)\n- Simple recovery algorithm from [GumTree ICSE '24 paper](https://hal.science/hal-04855170v1/file/GumTree_simple__fine_grained__accurate_and_scalable_source_differencing.pdf) (LCS-based)\n- Action generation (moves, updates, deletes, inserts)\n- UI with virtual text annotations\n\n<img width=\"2940\" height=\"1912\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/b0789166-99f8-4627-9f3f-a6bc48c9f37d\" />\n\n**Benchmarks:**\n| Test | Lines | TopDown (ms) | BottomUp (ms) | Recovery (ms) | Actions (ms) | Total (ms) |\n|------|-------|--------------|---------------|---------------|--------------|------------|\n| ~100 lines | 94 | 4.70 | 0.38 | 2.40 | 0.73 | **8.21** |\n| ~250 lines | 229 | 7.99 | 1.66 | 8.15 | 4.31 | **22.11** |\n| ~500 lines | 454 | 17.86 | 6.74 | 28.40 | 18.43 | **71.44** |\n| ~750 lines | 679 | 28.12 | 18.03 | 50.55 | 45.41 | **142.11** |\n| ~1000 lines | 904 | 38.76 | 30.36 | 83.08 | 87.80 | **240.00** |\n\nYou can check it here: https://github.com/HarshK97/nvim-gumtree-diff\n\n## GSoC?\nI was thinking about this for GSoC 2026 if there is interest. I have worked on the prototype, and I worked before on https://github.com/neovim/neovim/pull/37085, so I am not actually starting from scratch.\nMain questions:\n1. Is this something mentors and community actually want in Neovim?\n2. Any opinion on how it should work?\n3. Would someone be around to mentor this for GSoC?\n> Note: Even if there's no mentor available for GSoC, I will still like to add this to Neovim if possible. It would improve not only my workflow but potentially many others too. GSoC would just make it happen fast with proper guidance.\nHappy to discuss or answer questions. Also fine if the answer is \"nah, we don't think this is worth it\", just wanted to put it out here\n\n<details>\n<summary>More details if you are interested</summary>\n## How it works\nSay you have this code:\n\n```lua\n-- old.lua\nfunction foo() end\nfunction bar() end\n```\n\nAnd you moved `bar` above `foo`:\n\n```lua\n-- new.lua\nfunction bar() end\nfunction foo() end\n```\n\nRegular diff says: \"deleted foo, added bar, deleted bar, added foo\" (confusing)\nGumtree does this instead:\n1. **Parse both files** - Get tree-sitter ASTs (already in memory in most cases)\n2. **Hash each subtree** - Every function/statement gets a unique hash based on its content\n3. **Match by hash** - `function foo() end` in old has same hash as `function foo() end` in new -> they are the same node!\n4. **Find unmatched nodes** - Run LCS (longest common subsequence) on remaining children to match them**\n5. **Generate actions** - If same nodes are at different positions -> *MOVE*. If hash differs but structure same -> *UPDATE*\nSo instead of \"deleted + added\", we get\n\n```lua\nM | bar() ⤷ moved to L1\n```\n\n## Implementation ideas\nWould probably look like:\n\n```\nset diffopt+=semantic or set diffopt+=algorithm:gumtree\n\" Then diffthis would show (with sign column + virtual text):\nM | function foo()     ⤷ moved to L200\n~ | local x = \"old\"    ~ updated  \n- | function deleted() ✗\n+ | function new()     +\n```\n\nCould add config for edge cases:\n\n```\nset semantic_diff_max_lines=10000  \" fallback for huge files\nset semantic_diff_timeout=500      \" bail if taking too long\n```\n\n\n## Future Work (GSoC if possible)\n1. **Core Integration in C** - This is currently a Lua prototype, porting this to C with `khash` will highly improve this functionality\n2. **Early termination** - Stop if taking too long, fall back to line diff\n3. **API Exposure** Expose `vim.diff{...., {semantic = true}}` so plugins (like gitsigns) can use move detection logic directly.\n</details>\n\n> **Related:** https://github.com/neovim/neovim/issues/15064 (the 2021 discussion about this",
+    "body": "### Problem\n\nWhen I moved from JetBrains IDEs (tried Rider for game dev) back to Neovim, one thing I actually miss is how they handled diffs. If you move a function, it showed \"hey this moved\" instead of treating it like you deleted and rewrote it\n\n**Current Behavior (line diff)**:\n```diff\n- function calculate(x, y) { return x + y; } // looks deleted\n\n+ function calculate(x, y) {return x + y; } // looks like new code\n```\n\n### Expected behavior\n\n**What I am proposing**:\n```lua\nM | calculate()     ⤷ moved to L200\n```\nThis would make code reviews and refactoring way cleaner.\n\n## Why not just make a plugin?\nI know this was discussed way back in https://github.com/neovim/neovim/issues/15064. @lewis6991 suggested trying it as plugin first, and someone else mentioned using `diffexpr` to call external tools\nSo I tried the plugin route:\nI have a built a *proof of concept* Lua plugin that implements the GumTree algorithm with treesitter. It works(not perfectly right now), it detects moves and updates well in practice. But it hits some fundamental walls:\n- `vim.diff()` is purely line-based, no way to tell it \"these are the same even though they moved\"\n- Had to use `extmarks` with virtual text, to show the \"Moved to L...\", which imo is a good way to represent **move**, but currently it can not integrate with `:diffthis`\n- Can't use the existing diff utilities, have to reparse tree-sitter ASTs even though they are already in memory for syntax highlighting\n\nThe `diffexpr` approach could work but has downsides:\n- Need to shell out to external tools\n- Loses the benefit of tree-sitter already being in memory\n- Still can't properly integrate moves/updates into Neovim's diff UI\n- Users would need to install separate tools\n\nAfter working on diffopt(`inline:word`) improvements in https://github.com/neovim/neovim/pull/37085, I got familiar with this part of the codebase and I feel this actually needs core support to work properly. The tree-sitter integration is already there, just needs the diff engine to understand semantic operations.\n\n## The Pitch\nThis would:\n- Reuse tree-sitter parses that already happen for syntax highlighting\n- Only run when you actually diff (zero background cost)\n- Be opt-in via `diffopt+=semantic` or `diffopt+=algorithm:gumtree` or similar\n- Fall back to regular line diff if tree-sitter isn't available or cost is too high\nSo it's not trying to make Neovim heavy like Rider or something, just one feature that makes diff smarter\n**Bonus:** This would benefit plugins like gitsigns. With proper API (`vim.diff(...., {semantic = true})`), git integration plugins could show moved/renamed code in git history and blame views.\n\n## What I have built\nWorking proof of concept plugin that does(Gumtree Algorithm):\n- Top-down matching (exact subtree hash matching)\n- Bottom-up matching (matches from children to parents)\n- Simple recovery algorithm from [GumTree ICSE '24 paper](https://hal.science/hal-04855170v1/file/GumTree_simple__fine_grained__accurate_and_scalable_source_differencing.pdf) (LCS-based)\n- Action generation (moves, updates, deletes, inserts)\n- UI with virtual text annotations\n\n<img width=\"2940\" height=\"1912\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/b0789166-99f8-4627-9f3f-a6bc48c9f37d\" />\n\n**Benchmarks:**\n| Test | Lines | TopDown (ms) | BottomUp (ms) | Recovery (ms) | Actions (ms) | Total (ms) |\n|------|-------|--------------|---------------|---------------|--------------|------------|\n| ~100 lines | 94 | 4.70 | 0.38 | 2.40 | 0.73 | **8.21** |\n| ~250 lines | 229 | 7.99 | 1.66 | 8.15 | 4.31 | **22.11** |\n| ~500 lines | 454 | 17.86 | 6.74 | 28.40 | 18.43 | **71.44** |\n| ~750 lines | 679 | 28.12 | 18.03 | 50.55 | 45.41 | **142.11** |\n| ~1000 lines | 904 | 38.76 | 30.36 | 83.08 | 87.80 | **240.00** |\n\nYou can check it here: https://github.com/HarshK97/diffmantic.nvim\n\n## GSoC?\nI was thinking about this for GSoC 2026 if there is interest. I have worked on the prototype, and I worked before on https://github.com/neovim/neovim/pull/37085, so I am not actually starting from scratch.\nMain questions:\n1. Is this something mentors and community actually want in Neovim?\n2. Any opinion on how it should work?\n3. Would someone be around to mentor this for GSoC?\n> Note: Even if there's no mentor available for GSoC, I will still like to add this to Neovim if possible. It would improve not only my workflow but potentially many others too. GSoC would just make it happen fast with proper guidance.\nHappy to discuss or answer questions. Also fine if the answer is \"nah, we don't think this is worth it\", just wanted to put it out here\n\n<details>\n<summary>More details if you are interested</summary>\n## How it works\nSay you have this code:\n\n```lua\n-- old.lua\nfunction foo() end\nfunction bar() end\n```\n\nAnd you moved `bar` above `foo`:\n\n```lua\n-- new.lua\nfunction bar() end\nfunction foo() end\n```\n\nRegular diff says: \"deleted foo, added bar, deleted bar, added foo\" (confusing)\nGumtree does this instead:\n1. **Parse both files** - Get tree-sitter ASTs (already in memory in most cases)\n2. **Hash each subtree** - Every function/statement gets a unique hash based on its content\n3. **Match by hash** - `function foo() end` in old has same hash as `function foo() end` in new -> they are the same node!\n4. **Find unmatched nodes** - Run LCS (longest common subsequence) on remaining children to match them**\n5. **Generate actions** - If same nodes are at different positions -> *MOVE*. If hash differs but structure same -> *UPDATE*\nSo instead of \"deleted + added\", we get\n\n```lua\nM | bar() ⤷ moved to L1\n```\n\n## Implementation ideas\nWould probably look like:\n\n```\nset diffopt+=semantic or set diffopt+=algorithm:gumtree\n\" Then diffthis would show (with sign column + virtual text):\nM | function foo()     ⤷ moved to L200\n~ | local x = \"old\"    ~ updated  \n- | function deleted() ✗\n+ | function new()     +\n```\n\nCould add config for edge cases:\n\n```\nset semantic_diff_max_lines=10000  \" fallback for huge files\nset semantic_diff_timeout=500      \" bail if taking too long\n```\n\n\n## Future Work (GSoC if possible)\n1. **Core Integration in C** - This is currently a Lua prototype, porting this to C with `khash` will highly improve this functionality\n2. **Early termination** - Stop if taking too long, fall back to line diff\n3. **API Exposure** Expose `vim.diff{...., {semantic = true}}` so plugins (like gitsigns) can use move detection logic directly.\n</details>\n\n> **Related:** https://github.com/neovim/neovim/issues/15064 (the 2021 discussion about this",
     "closed_at": null,
     "closed_by": null,
     "comment_data": [
@@ -16,6 +16,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/37674",
             "node_id": "IC_kwDOAPphoM7knbdu",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -61,6 +62,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/37674",
             "node_id": "IC_kwDOAPphoM7knr0m",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -106,6 +108,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/37674",
             "node_id": "IC_kwDOAPphoM7kn1bv",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -151,6 +154,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/37674",
             "node_id": "IC_kwDOAPphoM7kn3-6",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 1,
                 "-1": 0,
@@ -189,13 +193,14 @@
         },
         {
             "author_association": "CONTRIBUTOR",
-            "body": "@lewis6991 makes sense, thanks for the direction. Would work on polishing and actually making https://github.com/HarshK97/nvim-gumtree-diff properly work and getting adoption. ",
+            "body": "@lewis6991 makes sense, thanks for the direction. Would work on polishing and actually making https://github.com/HarshK97/diffmantic.nvim properly work and getting adoption. ",
             "created_at": "2026-02-02T15:16:10Z",
             "html_url": "https://github.com/neovim/neovim/issues/37674#issuecomment-3835766696",
             "id": 3835766696,
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/37674",
             "node_id": "IC_kwDOAPphoM7koSeo",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -208,7 +213,7 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3835766696/reactions"
             },
-            "updated_at": "2026-02-02T15:17:26Z",
+            "updated_at": "2026-02-03T04:58:48Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3835766696",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/134696869?v=4",
@@ -241,6 +246,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/37674",
             "node_id": "IC_kwDOAPphoM7koSgC",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 4,
                 "-1": 0,
@@ -286,6 +292,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/37674",
             "node_id": "IC_kwDOAPphoM7kpS11",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -331,6 +338,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/37674",
             "node_id": "IC_kwDOAPphoM7kpXPT",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 2,
                 "-1": 0,
@@ -376,6 +384,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/37674",
             "node_id": "IC_kwDOAPphoM7kpjp-",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 1,
                 "-1": 0,
@@ -421,6 +430,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/37674",
             "node_id": "IC_kwDOAPphoM7kq1mI",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 1,
                 "-1": 0,
@@ -485,7 +495,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 302,
+        "closed_issues": 303,
         "created_at": "2014-11-26T22:13:11Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -518,7 +528,7 @@
         "open_issues": 362,
         "state": "open",
         "title": "needs-owner",
-        "updated_at": "2026-02-02T15:49:26Z",
+        "updated_at": "2026-02-08T21:10:53Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/9"
     },
     "node_id": "I_kwDOAPphoM7nojIv",
@@ -556,7 +566,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyv",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2026-02-02T16:48:15Z",
+    "updated_at": "2026-02-03T04:58:48Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/37674",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/134696869?v=4",
