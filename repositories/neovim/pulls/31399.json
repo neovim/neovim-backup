@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/31399"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/a719c674a90c3d053d79cb1b20c9df657e2a4d98"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/16495e686371d45f02eafff5aa3216ca15d5f735"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6464,
-            "forks_count": 6464,
+            "forks": 6587,
+            "forks_count": 6587,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -68,6 +68,7 @@
             "has_issues": true,
             "has_pages": false,
             "has_projects": true,
+            "has_pull_requests": true,
             "has_wiki": true,
             "homepage": "https://neovim.io",
             "hooks_url": "https://api.github.com/repos/neovim/neovim/hooks",
@@ -94,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 2020,
-            "open_issues_count": 2020,
+            "open_issues": 2031,
+            "open_issues_count": 2031,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -118,12 +119,13 @@
                 "user_view_type": "public"
             },
             "private": false,
+            "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2025-12-09T01:08:10Z",
+            "pushed_at": "2026-02-17T03:34:12Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 354992,
+            "size": 369888,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 94818,
+            "stargazers_count": 96478,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -141,14 +143,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2025-12-09T02:18:49Z",
+            "updated_at": "2026-02-17T03:34:17Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 94818,
-            "watchers_count": 94818,
+            "watchers": 96478,
+            "watchers_count": 96478,
             "web_commit_signoff_required": false
         },
-        "sha": "a96665cf4867c82f5bbcae5a1c01542c0d15859e",
+        "sha": "dbe07e292ea3f56cfc5ca322ce53b7edae39f20a",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -172,7 +174,7 @@
         }
     },
     "body": "# Status\r\n\r\nThis PR serves as a nice feasibility study but has grown too large to consider merging. So it is temporarily parked while a suitable API is being discussed.\r\n\r\n----\r\n\r\n# Feature & Implementation Breakdown\r\n\r\nThe following is both a tracker and detailing of the features supported by this PR, what they look like, and a visual of each implementation (provider) in order to support as many terminals as possible, including on Windows. Monitor this top-level comment for the current API structure and visual examples of the PR in action.\r\n\r\n## Core API Structure\r\n\r\nThe API follows a simplistic, object-oriented design similar to `vim.system()`. You specify an image, optionally eagerly loading its data, and then display it within neovim. The information about where and how it is displayed is provided through a single table.\r\n\r\nEach image, once shown, returns a placement, which represents the specific instance of the image on screen. This is to support the separation of an image and its data from the details and management of displaying it.\r\n\r\nThe image API makes use of an internal `Promise<T>` class in order to support both synchronous and asynchronous operation, meaning that images can be loaded, shown, hidden, and updated asynchronously in order to be efficient, but also can manually be waited upon at any stage.\r\n\r\n- [x] A static image you can place within neovim\r\n    ```lua\r\n    -- Supports loading PNG images into memory\r\n    local img = assert(vim.ui.img.load(\"/path/to/img.png\"):wait())\r\n\r\n    -- Supports lazy-loading image, deferring to a provider\r\n    local img = vim.ui.img.new(\"/path/to/img.png\")\r\n\r\n    -- Supports specifying an image and explicitly providing the data\r\n    local img = vim.ui.img.new({ bytes = \"...\", filename = \"/path/to/img.png\" })\r\n\r\n    -- Once created, can be shown, returning an object representing the instance\r\n    local placement = img:show():wait() -- Places in top-left of editor with default size\r\n    local placement = img:show({ pos = { x = 4, y = 8, unit = 'cell' }):wait()\r\n    local placement = img:show({ relative = \"cursor\" }):wait()\r\n    ```\r\n- [x] Support deleting the image placed within neovim\r\n    ```lua\r\n    local img = vim.ui.img.new({ filename = \"/path/to/img.png\" })\r\n    local placement = assert(img:show():wait())\r\n\r\n    -- Supports hiding the specific instance of the image\r\n    placement:hide()\r\n    ```\r\n- [x] Dynamically resize/move an image\r\n    ```lua\r\n    local img = vim.ui.img.new({ filename = \"/path/to/img.png\" })\r\n    local placement = assert(img:show({ pos = { x = 1, y = 2, unit = \"cell\" } }):wait())\r\n\r\n    -- Supports updating a displayed image with a new position\r\n    placement:update({ pos = { x = 5, y = 6, unit = \"cell\" } }):wait()\r\n\r\n    -- Supports resizing a displayed image\r\n    placement:update({ size = { width = 10, height = 5, unit = \"cell\" } }):wait()\r\n    ```\r\n- [x] Asynchronous support for image operations\r\n    ```lua\r\n    img:show({ ... })\r\n        :on_ok(function(placement)\r\n            -- Use the placement once it has been confirmed as shown\r\n        end)\r\n        :on_fail(function(err)\r\n            -- Do something with the error that occurred\r\n        end)\r\n        :on_done(function(err, placement)\r\n            -- When either ok or fail happens\r\n        end)\r\n\r\n    -- The same applies for all APIs:\r\n    --\r\n    --    img.load() -> returns Promise<Image>\r\n    --    img:show() -> returns Promise<Placement>\r\n    --    placement:show() -> returns Promise<true>\r\n    --    placement:hide() -> returns Promise<true>\r\n    --    placement:update() -> returns Promise<true>\r\n    --\r\n    -- Each Promise<T> supports chaining callbacks for individual\r\n    -- conditions of success or failure as well as combining the two\r\n    -- together.\r\n    --\r\n    -- The on_* methods can be called multiple times and each\r\n    -- callback will be invoked when finished.\r\n    --\r\n    -- You can also still choose to wait in a synchronous fashion\r\n    -- using `:wait()` which supports supplying a specific timeout\r\n    -- in milliseconds.\r\n    ```\r\n\r\n## Image Manipulation & Inspection\r\n\r\nLeveraging *ImageMagick* for the functionality, this section describes features needed to manipulate and inspect images. This is particularly needed for sixel, which would normally require advanced image decoding to convert to an RGB format and then packaged in sixel's format. ImageMagick supports features like cropping and resizing, which we expose through the `convert` method.\r\n\r\nAdditionally, provides a retrieval API called `identify` (modeled after `magick identify`) to inspect images without needing advanced header parsing per image format in order to learn details like the true image format (not just reading the file extension) and pixel dimensions of the image.\r\n\r\n- [x] Manipulation an image\r\n    ```lua\r\n    -- Making use of ImageMagick, you can convert an image\r\n    -- to different formats, resize it, crop it, and more\r\n    --\r\n    -- And like all other APIs, this returns a promise\r\n    img:convert({ \r\n        format = 'jpeg', -- Supports a variety of formats, including sixel!\r\n        size = { width = 50, height = 30, unit = 'pixel' },\r\n    }):on_done(function(err, data)\r\n        -- By default, this returns the data of the image\r\n        -- instead of updating the instance or saving it\r\n        -- to disk\r\n        --\r\n        -- Use img:convert({ out = '/path/to/img.jpeg' })\r\n        -- to write to disk instead\r\n    end)\r\n    ```\r\n- [x] Retrieve information about an image\r\n    ```lua\r\n    -- Retrieving information also makes use of ImageMagick\r\n    -- to learn things like image dimensions and format\r\n    img:identify({ format = true, size = true }):on_done(function(err, info)\r\n        -- Info is a table containing the information requested by each\r\n        -- field marked true\r\n        --\r\n        -- In this case, info.format == \"PNG\" and\r\n        -- info.size == vim.ui.img.utils.Size { width = 50, height = 30, unit = 'pixel' }\r\n    end)\r\n    ```\r\n\r\n## Kitty Provider\r\n\r\nThe 1st protocol supported is [kitty graphics protocol](https://sw.kovidgoyal.net/kitty/graphics-protocol/). Aside from the obvious kitty, other graphics-accelerated terminals like Ghostty make use of this protocol to display images. This protocol only requires `magick` when attempting to load an image other than PNG, which will be converted to PNG and placed in `~/.cache/nvim/imgs/{sha256(filename)}.png`.\r\n\r\n- [x] Integration of kitty as a provider\r\n    ```lua\r\n    vim.o.imgprovider = 'sixel'\r\n    ```\r\n\r\n    https://github.com/user-attachments/assets/1f956e34-a84c-421a-a421-88040a059a03\r\n\r\n## Sixel Provider\r\n\r\nThe 2nd protocol supported is [sixel image protocol](https://en.wikipedia.org/wiki/Sixel). Windows Terminal, in particular, makes use of this protocol to display images. This protocol requires `magick` in order to convert images into the sixel format, as well as all operations like resizing and cropping.\r\n\r\n- [x] Integration of sixel as a provider\r\n    ```lua\r\n    vim.o.imgprovider = 'sixel'\r\n    ```\r\n\r\n    https://github.com/user-attachments/assets/7b592468-919c-4282-99d6-273f4e006578\r\n\r\n## iterm2 Provider\r\n\r\nThe 3rd protocol supported is [iterm2 image protocol](https://iterm2.com/documentation-images.html). WezTerm provides a GPU-accelerated implementation of this protocol. This protocol only requires `magick` in order to crop images. Resizing images does not require `magick`, and iterm2 supports multiple image formats.\r\n\r\n- [x] Integration of iterm2 as a provider\r\n    ```lua\r\n    vim.o.imgprovider = 'iterm2'\r\n    ```\r\n\r\n    https://github.com/user-attachments/assets/0ea6a248-72a8-441f-868a-4b68fc0b5b85\r\n## 3rd Party Providers\r\n\r\nTo enable GUIs and other image protocols to easily slide into neovim's API abstraction, a singular API is exposed through `vim.ui.img.providers.new`, which implementers will use to specify `show` and `hide` functions at a minimum. Each provider supports operations when `load`ing, `unload`ing, checking `supported` to see if the provider can operate in the current environment, and (if possible) specifying a more efficient `update` method.\r\n\r\nThe methods `supported`, `show`, `hide`, and `update` take a callback to support asynchronous operation, and must use it to communicate when the operation is finished. The methods `load` and `unload` are considered synchronous and should be fast to operate.\r\n\r\n- [x] Abstraction for 3rd parties to support images in neovim\r\n    ```lua\r\n    -- Providers implement a small API to support showing and hiding images\r\n    vim.ui.img.providers['neovide'] = vim.ui.img.providers.new({\r\n        ---(Optional) Called to initialize the provider.\r\n        ---@param ... any arguments for the specific provider upon loading\r\n        load = function(...)\r\n          -- Implement here\r\n        end,\r\n\r\n        ---(Optional) Called to cleanup the provider.\r\n        unload = function()\r\n          -- Implement here\r\n        end,\r\n\r\n        ---(Optional) Reports whether this provider is supported in the current environment.\r\n        ---@param on_supported? fun(supported:boolean) callback when finished checking\r\n        supported = function(on_supported)\r\n            -- Implement here\r\n        end,\r\n\r\n        ---Displays an image, returning (through callback) an id tied to the instance.\r\n        ---@param img vim.ui.Image image data container to display\r\n        ---@param opts vim.ui.img.Opts specification of how to display the image\r\n        ---@param on_shown? fun(err:string|nil, id:integer|nil) callback when finished showing\r\n        ---@return integer id unique identifier connected to the displayed image (not vim.ui.Image)\r\n        show = function(img, opts, on_shown)\r\n            -- Implement here\r\n        end,\r\n\r\n        ---Hides one or more displayed images.\r\n        ---@param ids integer[] list of displayed image ids to hide\r\n        ---@param on_hidden fun(err:string|nil, ids:integer[]|nil) callback when finished hiding\r\n        hide = function(ids, on_hidden)\r\n            -- Implement here\r\n        end,\r\n\r\n        ---(Optional) Updates an image, returning (through callback) a refreshed id tied to the instance.\r\n        ---If not specified, neovim will invoke `hide(id)` followed by `show(img, opts, on_updated)`.\r\n        ---@param id integer id of the displayed image to update\r\n        ---@param opts vim.ui.img.Opts specification of how to display the image\r\n        ---@param on_updated? fun(err:string|nil, id:integer|nil) callback when finished updating\r\n        ---@return integer id unique identifier connected to the displayed image (not vim.ui.Image)\r\n        update = function(id, opts, on_updated)\r\n            -- Implement here\r\n        end,\r\n    })\r\n    ```\r\n- Example of using the neovide 3rd party once specified above\r\n    ```lua\r\n    -- Load an image to display, nothing different here\r\n    local img = assert(vim.ui.img.load(\"/path/to/img.png\"):wait())\r\n\r\n    -- Set the global provider, which will be used for all image operations by default\r\n    vim.o.imgprovider = 'neovide'\r\n\r\n    -- Display the image, which will use the neovim provider\r\n    local placement = assert(img:show():wait())\r\n\r\n    -- Alternatively, you can manually create a placement and specify the provider\r\n    -- This will not be shown yet until specifically invoked\r\n    local placement = img:new_placement({ provider = 'neovide' })\r\n    placement:show({ size = { ... } }):wait()\r\n    ```\r\n\r\n## Maybe in scope for this PR\r\n\r\n- Injection of an image into a buffer within neovim (tracking its movement properly, possibly through the use of extmarks)\r\n    1. Support raw placement of an image on top of text in a buffer, but have the image scroll with the buffer\r\n    2. Support injecting an image into the buffer and reflowing text around it\r\n\r\n## Out of Scope for this PR\r\n\r\n- Video/gif support (there are reasons why this would be neat, but not a dealbreaker if we want to exclude this from neovim core)",
-    "closed_at": null,
+    "closed_at": "2026-02-17T02:44:55Z",
     "comment_data": [
         {
             "_links": {
@@ -3531,7 +3533,7 @@
             "line": null,
             "node_id": "PRRC_kwDOAPphoM58aZlr",
             "original_commit_id": "78d6ed5ec426ce3691b92e4e4d0c672d71e56c27",
-            "original_line": 89,
+            "original_line": 74,
             "original_position": 74,
             "original_start_line": null,
             "path": "runtime/lua/vim/ui/img/utils/region.lua",
@@ -3601,7 +3603,7 @@
             "line": null,
             "node_id": "PRRC_kwDOAPphoM58anWD",
             "original_commit_id": "78d6ed5ec426ce3691b92e4e4d0c672d71e56c27",
-            "original_line": 89,
+            "original_line": 74,
             "original_position": 74,
             "original_start_line": null,
             "path": "runtime/lua/vim/ui/img/utils/region.lua",
@@ -3671,7 +3673,7 @@
             "line": null,
             "node_id": "PRRC_kwDOAPphoM58b94V",
             "original_commit_id": "78d6ed5ec426ce3691b92e4e4d0c672d71e56c27",
-            "original_line": 89,
+            "original_line": 74,
             "original_position": 74,
             "original_start_line": null,
             "path": "runtime/lua/vim/ui/img/utils/region.lua",
@@ -3741,7 +3743,7 @@
             "line": null,
             "node_id": "PRRC_kwDOAPphoM58cNyb",
             "original_commit_id": "78d6ed5ec426ce3691b92e4e4d0c672d71e56c27",
-            "original_line": 89,
+            "original_line": 74,
             "original_position": 74,
             "original_start_line": null,
             "path": "runtime/lua/vim/ui/img/utils/region.lua",
@@ -4360,19 +4362,19 @@
             },
             "author_association": "MEMBER",
             "body": "this test looks useful, definitely keep it",
-            "commit_id": "a719c674a90c3d053d79cb1b20c9df657e2a4d98",
+            "commit_id": "cb64bbb611cf0761a8dd37b313880e25569536c5",
             "created_at": "2025-05-21T10:07:53Z",
             "diff_hunk": "@@ -0,0 +1,104 @@\n+#include <stdio.h>\n+#include <stdlib.h>\n+#include <string.h>\n+\n+#ifdef _MSC_VER\n+# include <Windows.h>\n+# define usleep(usecs) Sleep((usecs) / 1000)\n+#else\n+# include <unistd.h>\n+#endif\n+\n+static void help(void)\n+{\n+  puts(\"Print input/output\");\n+  puts(\"\");\n+  puts(\"Usage:\");\n+  puts(\"  printio-test --help\");\n+  puts(\"    Prints this help to stdout.\");\n+  puts(\"  printio-test [-a file] [-o file] [-e file] [-x code] -- {command}\");\n+  puts(\"    Saves args after -- into file specified by \\\"-a\\\".\");\n+  puts(\"    Prints file specified by \\\"-o\\\" to stdout.\");\n+  puts(\"    Prints file specified by \\\"-e\\\" to stderr.\");\n+  puts(\"    Returns exit code specified by \\\"-x\\\" (default 0).\");\n+}\n+\n+static void copy_file_to_stream(const char *path, FILE *stream) {",
             "html_url": "https://github.com/neovim/neovim/pull/31399#discussion_r2099897465",
             "id": 2099897465,
-            "line": 26,
+            "line": null,
             "node_id": "PRRC_kwDOAPphoM59KeR5",
             "original_commit_id": "ea8083808e962f43610556517192e2829010b832",
             "original_line": 26,
             "original_position": 26,
             "original_start_line": null,
             "path": "test/functional/fixtures/printio-test.c",
-            "position": 26,
+            "position": 1,
             "pull_request_review_id": 2857112608,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31399",
             "reactions": {
@@ -4848,14 +4850,14 @@
             "diff_hunk": "@@ -1,5 +1,217 @@\n local M = {}\n \n+---Endpoint for the nvim image API.\n+---\n+---The API follows a simplistic, object-oriented design similar to `vim.system()`.\n+---You specify an image, optionally eagerly loading its data, and then display it\n+---within nvim. The information about where and how it is displayed is provided\n+---through a single table.\n+---\n+---Each image, once shown, returns a placement, which represents the specific\n+---instance of the image on screen. This is to support the separation of an\n+---image and its data from the details and management of displaying it.\n+---\n+---The image API makes use of an internal `Promise<T>` class in order to support\n+---both synchronous and asynchronous operation, meaning that images can be loaded,\n+---shown, hidden, and updated asynchronously in order to be efficient, but also can\n+---manually be waited upon at any stage.\n+---\n+---Examples in action\n+---\n+---```lua\n+----- Supports loading PNG images into memory\n+---local img = assert(vim.ui.img.load(\"/path/to/img.png\"):wait())\n+---\n+----- Supports lazy-loading image for a provider to request later if needed\n+---local img = vim.ui.img.new(\"/path/to/img.png\")\n+---\n+----- Supports specifying an image and explicitly providing the data\n+---local img = vim.ui.img.new({ bytes = \"...\", filename = \"/path/to/img.png\" })\n+---```\n+---\n+---Placements are instances of images that have been \"placed\" onto the screen\n+---in nvim. Whenever you show an image, a placement is created.\n+---\n+---```lua\n+----- Once created, an image can be shown, returning an object\n+----- deemed a \"placement\" that represents the instance\n+---local placement = img:show():wait() -- Places in top-left of editor with default size\n+---local placement = img:show({ pos = { x = 4, y = 8, unit = 'cell' }):wait()\n+---local placement = img:show({ relative = 'cursor' }):wait()\n+---```\n+---\n+---```lua\n+---local placement = assert(img:hide():wait())\n+---```\n+---\n+---```lua\n+---local img = vim.ui.img.new(\"/path/to/img.png\")\n+---local placement = assert(img:show({ pos = { x = 1, y = 2, unit = 'cell' } }):wait())\n+---\n+----- Supports updating a displayed image with a new position\n+---placement:update({ pos = { x = 5, y = 6, unit = 'cell' } }):wait()\n+---\n+----- Supports resizing a displayed image\n+---placement:update({ size = { width = 10, height = 5, unit = \"cell\" } }):wait()\n+---\n+----- Of course, you can do all of this at the same time\n+---placement:update({\n+---    pos = { x = 5, y = 6, unit = 'cell' },\n+---    size = { width = 10, height = 5, unit = 'cell' },\n+---}):wait()\n+---```\n+---\n+---Backed by promises\n+---\n+---Each Promise<T> supports chaining callbacks for individual\n+---conditions of success or failure as well as combining the two\n+---together.\n+--\n+---The on_* methods can be called multiple times and each\n+---callback will be invoked when finished.\n+---\n+---You can also still choose to wait in a synchronous fashion\n+---using `:wait()` which supports supplying a specific timeout\n+---in milliseconds.\n+---\n+---```lua\n+---img:show({ ... })\n+---    :on_ok(function(placement)\n+---        -- Use the placement once it has been confirmed as shown\n+---    end)\n+---    :on_fail(function(err)\n+---        -- Do something with the error that occurred\n+---    end)\n+---    :on_done(function(err, placement)\n+---        -- When either ok or fail happens\n+---    end)\n+---```\n+---\n+---Using magic on images\n+---\n+---Leveraging *ImageMagick* for the functionality, the image API supports\n+---converting images into different formats as well as transforming them.\n+---This is particularly needed for sixel, which would normally require\n+---advanced image decoding to convert to an RGB format and then packaged in\n+---sixel's format.\n+---\n+---By default, the path to the magick binary is specified with the *imgprg* option.\n+---\n+---```lua\n+---vim.o.imgprg = 'magick'\n+---```\n+---\n+---ImageMagick supports features like cropping and resizing,\n+---which we expose through the `convert` method.\n+---\n+---```lua\n+---img:convert({\n+---    format = 'jpeg', -- Supports a variety of formats, including sixel!\n+---    size = { width = 50, height = 30, unit = 'pixel' },\n+---}):on_done(function(err, data)\n+---    -- By default, this returns the data of the image\n+---    -- instead of updating the instance or saving it\n+---    -- to disk\n+---    --\n+---    -- Use img:convert({ out = '/path/to/img.jpeg' })\n+---    -- to write to disk instead\n+---end)\n+---```\n+---\n+---Additionally, the image API provides a retrieval method called `identify`\n+---(modeled after `magick identify`) to inspect images without needing advanced\n+---header parsing per image format in order to learn details like the true image\n+---format (not just reading the file extension) and pixel dimensions of the image.\n+---\n+---```lua\n+---img:identify({ format = true, size = true }):on_done(function(err, info)\n+---    -- Info is a table containing the information requested by each\n+---    -- field marked true.\n+---    --\n+---    -- In this case,\n+---    -- info.format == \"PNG\"\n+---    -- info.size == vim.ui.img.utils.Size { width = 50, height = 30, unit = 'pixel' }\n+---    --\n+---    -- If the field is unsupported, it can still be rovided using\n+---    -- name = \"format\" syntax of ImageMagick.\n+---    --\n+---    -- img:identify({ depth = \"%z\" }) would capture image depth\n+---    -- as specified by ImageMagick's escape shorthand for metadata:\n+---    -- https://imagemagick.org/script/escape.php\n+---end)\n+---```\n+---\n+---Providing an implementation\n+---\n+---nvim comes with three providers that interface with various\n+---graphics protocols supported by |TUI|s and GUIs.\n+---\n+---1. kitty\n+---2. iterm2\n+---3. sixel\n+---\n+---The global provider to use with all placements is specified via the option,\n+---*imgprovider*, which is set to *kitty* by default. When the global provider\n+---is changed, the old provider is unloaded.\n+---\n+---```lua\n+---vim.o.imgprovider = 'kitty'\n+---```\n+---\n+---The image API also supports 3rd party provider integrations. To create a\n+---new provider, the implementer should leverage `vim.ui.img.providers.new()`.\n+---\n+---To register the provider such that it is accessible globally, the implementer\n+---should assign it with a name to the dictionary at `vim.ui.img.providers`.\n+---\n+---```lua\n+---vim.ui.img.providers['neovide'] = vim.ui.img.providers.new({\n+---    ---(Optional) Called to initialize the provider.\n+---    ---@param ... any arguments for the specific provider upon loading\n+---    load = function(...)\n+---      -- Implement here\n+---    end,\n+---\n+---    ---(Optional) Called to cleanup the provider.\n+---    unload = function()\n+---      -- Implement here\n+---    end,\n+---\n+---    ---(Optional) Reports whether this provider is supported in the current environment.\n+---    ---@param on_supported? fun(supported:boolean) callback when finished checking\n+---    supported = function(on_supported)\n+---        -- Implement here\n+---    end,\n+---\n+---    ---Displays an image, returning (through callback) an id tied to the instance.\n+---    ---@param img vim.ui.Image image data container to display\n+---    ---@param opts vim.ui.img.Opts specification of how to display the image\n+---    ---@param on_shown? fun(err:string|nil, id:integer|nil) callback when finished showing\n+---    ---@return integer id unique identifier connected to the displayed image (not vim.ui.Image)\n+---    show = function(img, opts, on_shown)\n+---        -- Implement here\n+---    end,\n+---\n+---    ---Hides one or more displayed images.\n+---    ---@param ids integer[] list of displayed image ids to hide\n+---    ---@param on_hidden fun(err:string|nil, ids:integer[]|nil) callback when finished hiding\n+---    hide = function(ids, on_hidden)\n+---        -- Implement here\n+---    end,\n+---\n+---    ---(Optional) Updates an image, returning (through callback) a refreshed id tied to the instance.\n+---    ---If not specified, nvim will invoke `hide(id)` followed by `show(img, opts, on_updated)`.\n+---    ---@param id integer id of the displayed image to update\n+---    ---@param opts vim.ui.img.Opts specification of how to display the image\n+---    ---@param on_updated? fun(err:string|nil, id:integer|nil) callback when finished updating\n+---    ---@return integer id unique identifier connected to the displayed image (not vim.ui.Image)\n+---    update = function(id, opts, on_updated)\n+---        -- Implement here\n+---    end,\n+---})\n+---```\n+M.img = require('vim.ui.img')",
             "html_url": "https://github.com/neovim/neovim/pull/31399#discussion_r2099920614",
             "id": 2099920614,
-            "line": 91,
+            "line": null,
             "node_id": "PRRC_kwDOAPphoM59Kj7m",
             "original_commit_id": "ea8083808e962f43610556517192e2829010b832",
-            "original_line": 91,
+            "original_line": 213,
             "original_position": 213,
             "original_start_line": null,
             "path": "runtime/lua/vim/ui.lua",
-            "position": 91,
+            "position": 1,
             "pull_request_review_id": 2857150614,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31399",
             "reactions": {
@@ -4917,14 +4919,14 @@
             "diff_hunk": "@@ -0,0 +1,126 @@\n+---@alias vim.ui.img.opts.Relative 'editor'|'win'|'cursor'|'mouse'\n+\n+---@class vim.ui.img.Opts\n+---@field relative? vim.ui.img.opts.Relative\n+---@field crop? vim.ui.img.utils.Region portion of image to display\n+---@field pos? vim.ui.img.utils.Position upper-left position of image within editor\n+---@field size? vim.ui.img.utils.Size explicit size to scale the image\n+---@field win? integer window to use when `relative` is `win`\n+---@field z? integer z-index of the image with lower values being drawn before higher values\n+local M = {}\n+M.__index = M\n+\n+---Creates a new image opts instance, copying from `opts` any fields.\n+---Performs type checks and transformations into typed objects.\n+---@param opts? table\n+---@return vim.ui.img.Opts\n+function M.new(opts)\n+  opts = opts or {}\n+\n+  -- NOTE: We copy the opts to ensure that other fields carry forward\n+  --       alongside the fields that we type check.\n+  local instance = vim.deepcopy(opts)\n+  setmetatable(instance, M)\n+\n+  local Position = require('vim.ui.img.utils.position')\n+  local Region = require('vim.ui.img.utils.region')\n+  local Size = require('vim.ui.img.utils.size')\n+\n+  ---@type vim.ui.img.opts.Relative|nil\n+  local relative = opts.relative\n+  vim.validate('opts.relative', relative, 'string', true)\n+\n+  ---@type vim.ui.img.utils.Region|nil\n+  local crop = opts.crop\n+  vim.validate('opts.crop', crop, 'table', true)\n+  if type(crop) == 'table' then\n+    crop = Region.new(crop)\n+  end\n+\n+  ---@type vim.ui.img.utils.Position|nil\n+  local pos = opts.pos\n+  vim.validate('opts.pos', pos, 'table', true)\n+  if type(pos) == 'table' then\n+    pos = Position.new(pos)\n+  end\n+\n+  ---@type vim.ui.img.utils.Size|nil\n+  local size = opts.size\n+  vim.validate('opts.size', size, 'table', true)\n+  if type(size) == 'table' then\n+    size = Size.new(size)\n+  end\n+\n+  ---@type integer|nil\n+  local win = opts.win\n+  vim.validate('opts.win', win, 'number', true)\n+\n+  ---@type integer|nil\n+  local z = opts.z\n+  vim.validate('opts.z', z, 'number', true)\n+\n+  instance.relative = relative\n+  instance.crop = crop\n+  instance.pos = pos\n+  instance.size = size\n+  instance.win = win\n+  instance.z = z\n+\n+  return instance\n+end\n+\n+---Calculates and returns the position dictated by `relative` and `pos`.\n+---@return vim.ui.img.utils.Position\n+function M:position()\n+  local Position = require('vim.ui.img.utils.position')\n+  local x, y = 0, 0\n+\n+  if self.pos or self.relative then\n+    local xoffset, yoffset = 0, 0\n+    local relative = self.relative\n+\n+    if self.pos then\n+      local pos_cells = self.pos:to_cells()\n+      x, y = pos_cells.x, pos_cells.y\n+    end\n+\n+    -- Adjust the x,y position using relative indicator\n+    if relative == 'editor' then\n+      xoffset = 0\n+      yoffset = 0\n+    elseif relative == 'win' then\n+      ---@type {[1]:number, [2]:number}\n+      local pos = vim.api.nvim_win_get_position(self.win or 0)",
             "html_url": "https://github.com/neovim/neovim/pull/31399#discussion_r2099929135",
             "id": 2099929135,
-            "line": 108,
+            "line": null,
             "node_id": "PRRC_kwDOAPphoM59KmAv",
             "original_commit_id": "ea8083808e962f43610556517192e2829010b832",
-            "original_line": 108,
+            "original_line": 93,
             "original_position": 93,
             "original_start_line": null,
             "path": "runtime/lua/vim/ui/img/opts.lua",
-            "position": 108,
+            "position": 1,
             "pull_request_review_id": 2857165017,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31399",
             "reactions": {
@@ -5265,7 +5267,7 @@
             "line": null,
             "node_id": "PRRC_kwDOAPphoM59Ko4Z",
             "original_commit_id": "ea8083808e962f43610556517192e2829010b832",
-            "original_line": 156,
+            "original_line": 141,
             "original_position": 141,
             "original_start_line": 138,
             "path": "runtime/lua/vim/ui/img.lua",
@@ -5752,7 +5754,7 @@
             "line": null,
             "node_id": "PRRC_kwDOAPphoM59PxM-",
             "original_commit_id": "ea8083808e962f43610556517192e2829010b832",
-            "original_line": 156,
+            "original_line": 141,
             "original_position": 141,
             "original_start_line": 138,
             "path": "runtime/lua/vim/ui/img.lua",
@@ -5962,7 +5964,7 @@
             "line": null,
             "node_id": "PRRC_kwDOAPphoM59SfSU",
             "original_commit_id": "ea8083808e962f43610556517192e2829010b832",
-            "original_line": 156,
+            "original_line": 141,
             "original_position": 141,
             "original_start_line": 138,
             "path": "runtime/lua/vim/ui/img.lua",
@@ -7426,18 +7428,18 @@
             "diff_hunk": "@@ -0,0 +1,486 @@\n+---Id of the last image created.\n+---@type integer\n+local LAST_IMAGE_ID = 0\n+\n+---@class vim.ui.Image\n+---@field id integer unique id associated with the image\n+---@field data string|nil data of the image loaded into memory\n+---@field file string path to the image on disk\n+---@field private __format string|nil\n+---@field private __id integer|nil when loaded, id is populated by provider\n+---@field private __provider string\n+---@field private __next {action:(fun():vim.ui.img._Promise<true>), promise:vim.ui.img._Promise<true>}|nil\n+---@field private __opts vim.ui.img.Opts|nil last opts of image when displayed\n+---@field private __redrawing boolean if true, image is actively redrawing itself\n+local M = {}\n+M.__index = M\n+\n+---Collection of names to associated providers used to display and manipulate images.\n+---@type vim.ui.img.Providers\n+M.providers = require('vim.ui.img.providers')\n+\n+---Creates a new image instance, optionally taking pre-loaded data.\n+---@param opts string|{data?:string, file:string}\n+---@return vim.ui.Image\n+function M.new(opts)\n+  vim.validate('opts', opts, { 'string', 'table' })\n+  if type(opts) == 'table' then\n+    vim.validate('opts.data', opts.data, 'string', true)\n+    vim.validate('opts.file', opts.file, 'string')\n+  end\n+\n+  local instance = {}\n+  setmetatable(instance, M)\n+\n+  instance.id = LAST_IMAGE_ID + 1\n+  instance.__provider = 'kitty'\n+  instance.__redrawing = false\n+\n+  if type(opts) == 'table' then\n+    instance.data = opts.data\n+    instance.file = opts.file\n+  elseif type(opts) == 'string' then\n+    instance.file = opts\n+  end\n+\n+  -- Bump our counter for future image ids\n+  LAST_IMAGE_ID = instance.id\n+\n+  return instance\n+end\n+\n+---Loads data for an image from a local file.\n+---@param file string\n+---@return vim.ui.img._Promise<vim.ui.Image>\n+function M.load(file)\n+  local promise = require('vim.ui.img._promise').new({\n+    context = 'image.load',\n+  })\n+\n+  local img = M.new({ file = file })\n+  img\n+    :reload()\n+    :on_ok(function()\n+      promise:ok(img)\n+    end)\n+    :on_fail(function(err)\n+      promise:fail(err)\n+    end)\n+\n+  return promise\n+end\n+\n+---Reloads the data for an image from its file.\n+---@return vim.ui.img._Promise<true>\n+function M:reload()\n+  local file = self.file\n+  local promise = require('vim.ui.img._promise').new({\n+    context = 'image.reload',\n+  })\n+\n+  ---@param err string|nil\n+  ---@return boolean\n+  local function report_err(err)\n+    if err then\n+      promise:fail(err)\n+    end\n+\n+    return err ~= nil\n+  end\n+\n+  vim.uv.fs_stat(file, function(stat_err, stat)\n+    if report_err(stat_err) then\n+      return\n+    end\n+    if not stat then\n+      report_err('missing stat')\n+      return\n+    end\n+\n+    vim.uv.fs_open(file, 'r', 644, function(open_err, fd)\n+      if report_err(open_err) then\n+        return\n+      end\n+      if not fd then\n+        report_err('missing fd')\n+        return\n+      end\n+\n+      vim.uv.fs_read(fd, stat.size, -1, function(read_err, data)\n+        if report_err(read_err) then\n+          return\n+        end\n+\n+        self.data = data or ''\n+        self.file = file\n+\n+        vim.uv.fs_close(fd, function()\n+          promise:ok(true)\n+        end)\n+      end)\n+    end)\n+  end)\n+\n+  return promise\n+end\n+\n+---Returns the byte length of the image's data, or 0 if not loaded.\n+---@return integer\n+function M:len()\n+  return string.len(self.data or '')\n+end\n+\n+---Returns a hash (sha256) of the image's data.\n+---@return string\n+function M:hash()\n+  return vim.fn.sha256(self.data or '')\n+end\n+\n+---Whether or not the image is actively shown.\n+---@return boolean\n+function M:is_visible()\n+  return self.__id ~= nil\n+end\n+\n+---Returns true if the image is actively redrawing itself in any situation:\n+---showing, hiding, or updating.\n+---@return boolean\n+function M:is_redrawing()\n+  return self.__redrawing\n+end\n+\n+---Check if the image is PNG format, optionally loading the magic number of the image.\n+---Will throw an error if unable to load the data of the file.\n+---Works without ImageMagick.\n+---@return boolean|nil\n+function M:is_png()\n+  if self.__format == 'PNG' then\n+    return true\n+  end\n+\n+  ---Magic number of a PNG file.\n+  ---@type string\n+  local PNG_SIGNATURE = '\\137PNG\\r\\n\\26\\n'\n+\n+  -- Use loaded data, or synchronously load the file magic number\n+  local data = self.data\n+  if not data then\n+    local fd = vim.uv.fs_open(self.file, 'r', 0)\n+    if fd then\n+      data = vim.uv.fs_read(fd, 8, nil)\n+      vim.uv.fs_close(fd, function() end)\n+    end\n+  end\n+\n+  -- If unable to load data, we return an explicitly nil\n+  -- value to differentiate from a false value\n+  if not data then\n+    return\n+  end\n+\n+  local is_png = string.sub(data, 1, #PNG_SIGNATURE) == PNG_SIGNATURE\n+  if is_png then\n+    self.__format = 'PNG'\n+  end\n+  return is_png\n+end\n+\n+---Returns an iterator over the chunks of the image, returning the chunk, byte position, and\n+---an indicator of whether the current chunk is the last chunk.\n+---\n+---If `base64=true`, will encode the data using base64 before iterating chunks.\n+---Takes an optional size to indicate how big each chunk should be, defaulting to 4096.\n+---\n+---Examples:\n+---\n+---```lua\n+----- Some predefined image\n+---local img = vim.ui.img.new({ ... })\n+---\n+------@param chunk string\n+------@param pos integer\n+------@param last boolean\n+---img:chunks():each(function(chunk, pos, last)\n+---  vim.print(\"Chunk data\", chunk)\n+---  vim.print(\"Chunk starts at\", pos)\n+---  vim.print(\"Is last chunk\", last)\n+---end)\n+---```\n+---\n+---@param opts? {base64?:boolean, size?:integer}\n+---@return Iter\n+function M:chunks(opts)\n+  opts = opts or {}\n+\n+  -- Chunk size, defaulting to 4k\n+  local chunk_size = opts.size or 4096\n+\n+  local data = self.data\n+  if not data or data == '' then\n+    return vim.iter(function()\n+      return nil, nil, nil\n+    end)\n+  end\n+\n+  if opts.base64 then\n+    data = vim.base64.encode(data)\n+  end\n+\n+  local pos = 1\n+  local len = string.len(data)\n+\n+  return vim.iter(function()\n+    -- If we are past the last chunk, this iterator should terminate\n+    if pos > len then\n+      return nil, nil, nil\n+    end\n+\n+    -- Get our next chunk from [pos, pos + chunk_size)\n+    local end_pos = pos + chunk_size - 1\n+    local chunk = data:sub(pos, end_pos)\n+\n+    -- If we have a chunk available, mark as such\n+    local last = true\n+    if string.len(chunk) > 0 then\n+      last = not (end_pos + 1 <= len)\n+    end\n+\n+    -- Mark where our current chunk is positioned\n+    local chunk_pos = pos\n+\n+    -- Update our global position\n+    pos = end_pos + 1\n+\n+    return chunk, chunk_pos, last\n+  end)\n+end\n+\n+---@private\n+---Loads the provider used to display and manage the image.\n+---@param opts? {write?:fun(...:string)}\n+---@return vim.ui.img.Provider|nil\n+function M:__load_provider(opts)\n+  return require('vim.ui.img.providers').load(self.__provider, opts)\n+end\n+\n+---Displays the image.\n+---```lua\n+----- Some predefined image\n+---local img = vim.ui.img.new({ ... })\n+---\n+-----Can be invoked synchronously\n+---assert(img:show({ ... }):wait())\n+---\n+-----Can also be invoked asynchronously\n+---img:show({ ... }):on_done(function(err)\n+---  -- Do something\n+---end)\n+---```\n+---@param opts? vim.ui.img.Opts\n+---@return vim.ui.img._Promise<true>\n+function M:show(opts)\n+  -- Update the opts to reflect what we should be showing next\n+  -- such that future updates can work properly in batch\n+  self.__opts = require('vim.ui.img.opts').new(opts)\n+\n+  return self:__schedule(self.__show, self, self.__opts:into_internal_opts())\n+end\n+\n+---@private\n+---@param opts vim.ui.img.InternalOpts\n+---@return vim.ui.img._Promise<true>\n+function M:__show(opts)\n+  local promise = require('vim.ui.img._promise').new({\n+    context = 'image.show',\n+  })\n+\n+  local provider = self:__load_provider()\n+  if not provider then\n+    promise:fail('unable to retrieve provider')\n+  else\n+    provider\n+      .show(self, opts)\n+      :on_ok(function(id)\n+        self.__id = id\n+        promise:ok(true)\n+      end)\n+      :on_fail(function(show_err)\n+        promise:fail(show_err)\n+      end)\n+  end\n+\n+  return promise\n+end\n+\n+---Hides the image.\n+---```lua\n+----- Some predefined image\n+---local img = vim.ui.img.new({ ... })\n+---\n+-----Can be invoked synchronously\n+---assert(img:hide():wait())\n+---\n+-----Can also be invoked asynchronously\n+---img:hide():on_done(function(err)\n+---  -- Do something\n+---end)\n+---```\n+---@return vim.ui.img._Promise<true>\n+function M:hide()",
             "html_url": "https://github.com/neovim/neovim/pull/31399#discussion_r2105914491",
             "id": 2105914491,
-            "line": 329,
+            "line": null,
             "node_id": "PRRC_kwDOAPphoM59hbR7",
             "original_commit_id": "a719c674a90c3d053d79cb1b20c9df657e2a4d98",
             "original_line": 329,
             "original_position": 329,
             "original_start_line": null,
             "path": "runtime/lua/vim/ui/img.lua",
-            "position": 329,
+            "position": 1,
             "pull_request_review_id": 2866413740,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31399",
             "reactions": {
-                "+1": 1,
+                "+1": 2,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -7445,7 +7447,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 1,
+                "total_count": 2,
                 "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2105914491/reactions"
             },
             "side": "RIGHT",
@@ -7495,14 +7497,14 @@
             "diff_hunk": "@@ -0,0 +1,486 @@\n+---Id of the last image created.\n+---@type integer\n+local LAST_IMAGE_ID = 0\n+\n+---@class vim.ui.Image\n+---@field id integer unique id associated with the image\n+---@field data string|nil data of the image loaded into memory\n+---@field file string path to the image on disk\n+---@field private __format string|nil\n+---@field private __id integer|nil when loaded, id is populated by provider\n+---@field private __provider string\n+---@field private __next {action:(fun():vim.ui.img._Promise<true>), promise:vim.ui.img._Promise<true>}|nil\n+---@field private __opts vim.ui.img.Opts|nil last opts of image when displayed\n+---@field private __redrawing boolean if true, image is actively redrawing itself\n+local M = {}\n+M.__index = M\n+\n+---Collection of names to associated providers used to display and manipulate images.\n+---@type vim.ui.img.Providers\n+M.providers = require('vim.ui.img.providers')\n+\n+---Creates a new image instance, optionally taking pre-loaded data.\n+---@param opts string|{data?:string, file:string}\n+---@return vim.ui.Image\n+function M.new(opts)\n+  vim.validate('opts', opts, { 'string', 'table' })\n+  if type(opts) == 'table' then\n+    vim.validate('opts.data', opts.data, 'string', true)\n+    vim.validate('opts.file', opts.file, 'string')\n+  end\n+\n+  local instance = {}\n+  setmetatable(instance, M)\n+\n+  instance.id = LAST_IMAGE_ID + 1\n+  instance.__provider = 'kitty'\n+  instance.__redrawing = false\n+\n+  if type(opts) == 'table' then\n+    instance.data = opts.data\n+    instance.file = opts.file\n+  elseif type(opts) == 'string' then\n+    instance.file = opts\n+  end\n+\n+  -- Bump our counter for future image ids\n+  LAST_IMAGE_ID = instance.id\n+\n+  return instance\n+end\n+\n+---Loads data for an image from a local file.\n+---@param file string\n+---@return vim.ui.img._Promise<vim.ui.Image>\n+function M.load(file)\n+  local promise = require('vim.ui.img._promise').new({\n+    context = 'image.load',\n+  })\n+\n+  local img = M.new({ file = file })\n+  img\n+    :reload()\n+    :on_ok(function()\n+      promise:ok(img)\n+    end)\n+    :on_fail(function(err)\n+      promise:fail(err)\n+    end)\n+\n+  return promise\n+end\n+\n+---Reloads the data for an image from its file.\n+---@return vim.ui.img._Promise<true>\n+function M:reload()\n+  local file = self.file\n+  local promise = require('vim.ui.img._promise').new({\n+    context = 'image.reload',\n+  })\n+\n+  ---@param err string|nil\n+  ---@return boolean\n+  local function report_err(err)\n+    if err then\n+      promise:fail(err)\n+    end\n+\n+    return err ~= nil\n+  end\n+\n+  vim.uv.fs_stat(file, function(stat_err, stat)\n+    if report_err(stat_err) then\n+      return\n+    end\n+    if not stat then\n+      report_err('missing stat')\n+      return\n+    end\n+\n+    vim.uv.fs_open(file, 'r', 644, function(open_err, fd)\n+      if report_err(open_err) then\n+        return\n+      end\n+      if not fd then\n+        report_err('missing fd')\n+        return\n+      end\n+\n+      vim.uv.fs_read(fd, stat.size, -1, function(read_err, data)\n+        if report_err(read_err) then\n+          return\n+        end\n+\n+        self.data = data or ''\n+        self.file = file\n+\n+        vim.uv.fs_close(fd, function()\n+          promise:ok(true)\n+        end)\n+      end)\n+    end)\n+  end)\n+\n+  return promise\n+end\n+\n+---Returns the byte length of the image's data, or 0 if not loaded.\n+---@return integer\n+function M:len()\n+  return string.len(self.data or '')\n+end\n+\n+---Returns a hash (sha256) of the image's data.\n+---@return string\n+function M:hash()\n+  return vim.fn.sha256(self.data or '')\n+end\n+\n+---Whether or not the image is actively shown.\n+---@return boolean\n+function M:is_visible()\n+  return self.__id ~= nil\n+end\n+\n+---Returns true if the image is actively redrawing itself in any situation:\n+---showing, hiding, or updating.\n+---@return boolean\n+function M:is_redrawing()\n+  return self.__redrawing\n+end\n+\n+---Check if the image is PNG format, optionally loading the magic number of the image.\n+---Will throw an error if unable to load the data of the file.\n+---Works without ImageMagick.\n+---@return boolean|nil\n+function M:is_png()\n+  if self.__format == 'PNG' then\n+    return true\n+  end\n+\n+  ---Magic number of a PNG file.\n+  ---@type string\n+  local PNG_SIGNATURE = '\\137PNG\\r\\n\\26\\n'\n+\n+  -- Use loaded data, or synchronously load the file magic number\n+  local data = self.data\n+  if not data then\n+    local fd = vim.uv.fs_open(self.file, 'r', 0)\n+    if fd then\n+      data = vim.uv.fs_read(fd, 8, nil)\n+      vim.uv.fs_close(fd, function() end)\n+    end\n+  end\n+\n+  -- If unable to load data, we return an explicitly nil\n+  -- value to differentiate from a false value\n+  if not data then\n+    return\n+  end\n+\n+  local is_png = string.sub(data, 1, #PNG_SIGNATURE) == PNG_SIGNATURE\n+  if is_png then\n+    self.__format = 'PNG'\n+  end\n+  return is_png\n+end\n+\n+---Returns an iterator over the chunks of the image, returning the chunk, byte position, and\n+---an indicator of whether the current chunk is the last chunk.\n+---\n+---If `base64=true`, will encode the data using base64 before iterating chunks.\n+---Takes an optional size to indicate how big each chunk should be, defaulting to 4096.\n+---\n+---Examples:\n+---\n+---```lua\n+----- Some predefined image\n+---local img = vim.ui.img.new({ ... })\n+---\n+------@param chunk string\n+------@param pos integer\n+------@param last boolean\n+---img:chunks():each(function(chunk, pos, last)\n+---  vim.print(\"Chunk data\", chunk)\n+---  vim.print(\"Chunk starts at\", pos)\n+---  vim.print(\"Is last chunk\", last)\n+---end)\n+---```\n+---\n+---@param opts? {base64?:boolean, size?:integer}\n+---@return Iter\n+function M:chunks(opts)\n+  opts = opts or {}\n+\n+  -- Chunk size, defaulting to 4k\n+  local chunk_size = opts.size or 4096\n+\n+  local data = self.data\n+  if not data or data == '' then\n+    return vim.iter(function()\n+      return nil, nil, nil\n+    end)\n+  end\n+\n+  if opts.base64 then\n+    data = vim.base64.encode(data)\n+  end\n+\n+  local pos = 1\n+  local len = string.len(data)\n+\n+  return vim.iter(function()\n+    -- If we are past the last chunk, this iterator should terminate\n+    if pos > len then\n+      return nil, nil, nil\n+    end\n+\n+    -- Get our next chunk from [pos, pos + chunk_size)\n+    local end_pos = pos + chunk_size - 1\n+    local chunk = data:sub(pos, end_pos)\n+\n+    -- If we have a chunk available, mark as such\n+    local last = true\n+    if string.len(chunk) > 0 then\n+      last = not (end_pos + 1 <= len)\n+    end\n+\n+    -- Mark where our current chunk is positioned\n+    local chunk_pos = pos\n+\n+    -- Update our global position\n+    pos = end_pos + 1\n+\n+    return chunk, chunk_pos, last\n+  end)\n+end\n+\n+---@private\n+---Loads the provider used to display and manage the image.\n+---@param opts? {write?:fun(...:string)}\n+---@return vim.ui.img.Provider|nil\n+function M:__load_provider(opts)\n+  return require('vim.ui.img.providers').load(self.__provider, opts)\n+end\n+\n+---Displays the image.\n+---```lua\n+----- Some predefined image\n+---local img = vim.ui.img.new({ ... })\n+---\n+-----Can be invoked synchronously\n+---assert(img:show({ ... }):wait())\n+---\n+-----Can also be invoked asynchronously\n+---img:show({ ... }):on_done(function(err)\n+---  -- Do something\n+---end)\n+---```\n+---@param opts? vim.ui.img.Opts\n+---@return vim.ui.img._Promise<true>\n+function M:show(opts)\n+  -- Update the opts to reflect what we should be showing next\n+  -- such that future updates can work properly in batch\n+  self.__opts = require('vim.ui.img.opts').new(opts)\n+\n+  return self:__schedule(self.__show, self, self.__opts:into_internal_opts())\n+end\n+\n+---@private\n+---@param opts vim.ui.img.InternalOpts\n+---@return vim.ui.img._Promise<true>\n+function M:__show(opts)\n+  local promise = require('vim.ui.img._promise').new({\n+    context = 'image.show',\n+  })\n+\n+  local provider = self:__load_provider()\n+  if not provider then\n+    promise:fail('unable to retrieve provider')\n+  else\n+    provider\n+      .show(self, opts)\n+      :on_ok(function(id)\n+        self.__id = id\n+        promise:ok(true)\n+      end)\n+      :on_fail(function(show_err)\n+        promise:fail(show_err)\n+      end)\n+  end\n+\n+  return promise\n+end\n+\n+---Hides the image.\n+---```lua\n+----- Some predefined image\n+---local img = vim.ui.img.new({ ... })\n+---\n+-----Can be invoked synchronously\n+---assert(img:hide():wait())\n+---\n+-----Can also be invoked asynchronously\n+---img:hide():on_done(function(err)\n+---  -- Do something\n+---end)\n+---```\n+---@return vim.ui.img._Promise<true>\n+function M:hide()\n+  -- Update the opts to reflect that we are showing nothing next\n+  -- such that future updates can work properly in batch\n+  self.__opts = nil\n+\n+  return self:__schedule(self.__hide, self)\n+end\n+\n+---@private\n+---@return vim.ui.img._Promise<true>\n+function M:__hide()\n+  local promise = require('vim.ui.img._promise').new({\n+    context = 'image.hide',\n+  })\n+\n+  local provider = self:__load_provider()\n+  if not provider then\n+    promise:fail('unable to retrieve provider')\n+  else\n+    provider\n+      .hide(self.__id)\n+      :on_ok(function()\n+        self.__id = nil\n+        promise:ok(true)\n+      end)\n+      :on_fail(function(hide_err)\n+        promise:fail(hide_err)\n+      end)\n+  end\n+\n+  return promise\n+end\n+\n+---Updates the image by altering any of the specified `opts`.\n+---```lua\n+----- Some predefined image\n+---local img = vim.ui.img.new({ ... })\n+---\n+-----Can be invoked synchronously\n+---assert(img:update({ ... }):wait())\n+---\n+-----Can also be invoked asynchronously\n+---img:update({ ... }):on_done(function(err)\n+---  -- Do something\n+---end)\n+---```\n+---@param opts? vim.ui.img.Opts\n+---@return vim.ui.img._Promise<true>\n+function M:update(opts)",
             "html_url": "https://github.com/neovim/neovim/pull/31399#discussion_r2105916134",
             "id": 2105916134,
-            "line": 377,
+            "line": null,
             "node_id": "PRRC_kwDOAPphoM59hbrm",
             "original_commit_id": "a719c674a90c3d053d79cb1b20c9df657e2a4d98",
             "original_line": 377,
             "original_position": 377,
             "original_start_line": null,
             "path": "runtime/lua/vim/ui/img.lua",
-            "position": 377,
+            "position": 1,
             "pull_request_review_id": 2866413740,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/31399",
             "reactions": {
@@ -7556,6 +7558,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6ViJ8O",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -7601,6 +7604,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6VkkSH",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 1,
                 "-1": 0,
@@ -7646,6 +7650,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6VlKDh",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -7691,6 +7696,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6VuRvv",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -7736,6 +7742,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6VuV9J",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -7781,6 +7788,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6XYZKq",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 3,
                 "-1": 0,
@@ -7826,6 +7834,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6XYaj4",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 3,
                 "-1": 0,
@@ -7871,6 +7880,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6XeT4Y",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -7916,6 +7926,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6XgxgK",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -7961,6 +7972,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6aUyNw",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -8006,6 +8018,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6g3Cp9",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -8051,6 +8064,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6g3gDG",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 3,
                 "-1": 0,
@@ -8096,6 +8110,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6hAeHK",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 11,
                 "-1": 0,
@@ -8141,6 +8156,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6hdeWc",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -8186,6 +8202,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6hde5P",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 1,
                 "-1": 0,
@@ -8231,6 +8248,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6hgCrA",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 2,
@@ -8276,6 +8294,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6hlXpw",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -8321,6 +8340,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6hls6M",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 1,
                 "-1": 0,
@@ -8366,6 +8386,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6hl1wc",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -8411,6 +8432,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6hmNBu",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -8456,6 +8478,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6hmShj",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -8501,6 +8524,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6pSRHe",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 3,
                 "-1": 0,
@@ -8546,6 +8570,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6peOr7",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 1,
                 "-1": 0,
@@ -8591,6 +8616,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6pgfAf",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -8636,6 +8662,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6pziAL",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -8681,6 +8708,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6pzljl",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 2,
                 "-1": 0,
@@ -8726,6 +8754,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6p1kdd",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -8771,6 +8800,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6p165Z",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -8816,6 +8846,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6qVKDo",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -8861,6 +8892,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6qWN_V",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -8906,6 +8938,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6qWU3_",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -8951,6 +8984,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6qW0l3",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -8996,6 +9030,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6qmvhp",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -9041,6 +9076,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6qoLLr",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -9086,6 +9122,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6qoUpY",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -9131,6 +9168,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6qoZhX",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -9176,6 +9214,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6qokUE",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 1,
                 "-1": 0,
@@ -9221,6 +9260,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6qp_OW",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -9266,6 +9306,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6qqUbk",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -9311,6 +9352,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6qqUwo",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 1,
                 "-1": 0,
@@ -9356,6 +9398,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6qqzfU",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -9401,6 +9444,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6qrmXv",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -9446,6 +9490,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6qrwei",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 1,
                 "-1": 0,
@@ -9491,6 +9536,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6qsKoQ",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -9536,6 +9582,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6qsTs1",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -9581,6 +9628,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6qtyKX",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -9626,6 +9674,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6qvfp4",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 1,
                 "-1": 0,
@@ -9671,6 +9720,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6qwkYB",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -9716,6 +9766,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6qwlv2",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -9761,6 +9812,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6qz2FS",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 2,
                 "-1": 0,
@@ -9806,6 +9858,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6q9HxM",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -9851,6 +9904,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6q_t0F",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -9896,6 +9950,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6q_wVr",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -9941,6 +9996,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6q_1T4",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 1,
                 "-1": 0,
@@ -9986,6 +10042,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6rD1Ex",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -10031,6 +10088,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6rOUbn",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 1,
                 "-1": 0,
@@ -10076,6 +10134,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6rcly8",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -10121,6 +10180,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6rcu7P",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -10166,6 +10226,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6rc1RL",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -10211,6 +10272,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6rc5wF",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -10256,6 +10318,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6rd-yj",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -10301,6 +10364,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6rf1qR",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -10346,6 +10410,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6ri-MU",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -10391,6 +10456,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6rjTiw",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -10436,6 +10502,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6rjZdZ",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 1,
                 "-1": 0,
@@ -10481,6 +10548,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6rwG1W",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -10526,6 +10594,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6rw6Kk",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 1,
                 "-1": 0,
@@ -10571,6 +10640,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6rw82U",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -10616,6 +10686,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6rxCcj",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 1,
                 "-1": 0,
@@ -10661,6 +10732,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6sZ8P2",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -10706,6 +10778,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6sZ-xQ",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -10751,6 +10824,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6seVr2",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -10796,6 +10870,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6ssjxm",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 1,
                 "-1": 0,
@@ -10841,6 +10916,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6s7H-o",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 3,
                 "-1": 0,
@@ -10886,6 +10962,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6s7ioU",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -10931,6 +11008,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6s7lJ-",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 4,
                 "-1": 0,
@@ -10976,6 +11054,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6s9c_F",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -11021,6 +11100,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6s9jv0",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -11066,6 +11146,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6s9ooa",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -11111,6 +11192,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6tIsbT",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 1,
                 "-1": 0,
@@ -11156,6 +11238,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6tNaM9",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -11201,6 +11284,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6tO47E",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -11246,6 +11330,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6tQawS",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -11291,6 +11376,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6tQfOk",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -11336,6 +11422,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6tRg4R",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -11381,6 +11468,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM6tVeKG",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -11426,6 +11514,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM7RvFOl",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -11471,6 +11560,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM7RvH2B",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 1,
                 "-1": 0,
@@ -11516,6 +11606,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM7RvbFv",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 2,
                 "-1": 0,
@@ -11561,6 +11652,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
             "node_id": "IC_kwDOAPphoM7X-dmI",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -11594,6 +11686,52 @@
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
                 "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "@justinmk @gpanders @lewis6991 I messed up the history so badly that it closed out this PR. Moved to #37914 to provide a cleaner, three file implementation for you guys to review.",
+            "created_at": "2026-02-17T03:07:39Z",
+            "html_url": "https://github.com/neovim/neovim/pull/31399#issuecomment-3911883110",
+            "id": 3911883110,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/31399",
+            "node_id": "IC_kwDOAPphoM7pKplm",
+            "performed_via_github_app": null,
+            "pin": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3911883110/reactions"
+            },
+            "updated_at": "2026-02-17T03:07:39Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3911883110",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/2481802?v=4",
+                "events_url": "https://api.github.com/users/chipsenkbeil/events{/privacy}",
+                "followers_url": "https://api.github.com/users/chipsenkbeil/followers",
+                "following_url": "https://api.github.com/users/chipsenkbeil/following{/other_user}",
+                "gists_url": "https://api.github.com/users/chipsenkbeil/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/chipsenkbeil",
+                "id": 2481802,
+                "login": "chipsenkbeil",
+                "node_id": "MDQ6VXNlcjI0ODE4MDI=",
+                "organizations_url": "https://api.github.com/users/chipsenkbeil/orgs",
+                "received_events_url": "https://api.github.com/users/chipsenkbeil/received_events",
+                "repos_url": "https://api.github.com/users/chipsenkbeil/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/chipsenkbeil/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/chipsenkbeil/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/chipsenkbeil",
                 "user_view_type": "public"
             }
         }
@@ -11641,6 +11779,7 @@
             "has_issues": true,
             "has_pages": false,
             "has_projects": false,
+            "has_pull_requests": true,
             "has_wiki": false,
             "homepage": "https://neovim.io",
             "hooks_url": "https://api.github.com/repos/chipsenkbeil/neovim/hooks",
@@ -11691,10 +11830,11 @@
                 "user_view_type": "public"
             },
             "private": false,
+            "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/chipsenkbeil/neovim/pulls{/number}",
-            "pushed_at": "2025-11-15T21:46:22Z",
+            "pushed_at": "2026-02-17T03:26:47Z",
             "releases_url": "https://api.github.com/repos/chipsenkbeil/neovim/releases{/id}",
-            "size": 339706,
+            "size": 356712,
             "ssh_url": "git@github.com:chipsenkbeil/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/chipsenkbeil/neovim/stargazers",
@@ -11713,7 +11853,7 @@
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "a719c674a90c3d053d79cb1b20c9df657e2a4d98",
+        "sha": "16495e686371d45f02eafff5aa3216ca15d5f735",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/2481802?v=4",
             "events_url": "https://api.github.com/users/chipsenkbeil/events{/privacy}",
@@ -11743,7 +11883,7 @@
         {
             "color": "FBCA04",
             "default": false,
-            "description": "issue needs attention from an expert, or PR proposes significant changes to architecture or API",
+            "description": "Need comments/opinions from people familiar with this topic.",
             "id": 212680983,
             "name": "needs:discussion",
             "node_id": "MDU6TGFiZWwyMTI2ODA5ODM=",
@@ -11761,10 +11901,10 @@
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/31399/comments",
-    "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/a719c674a90c3d053d79cb1b20c9df657e2a4d98",
+    "state": "closed",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/16495e686371d45f02eafff5aa3216ca15d5f735",
     "title": "feat(img): implement rudimentary image API",
-    "updated_at": "2025-12-07T21:39:41Z",
+    "updated_at": "2026-02-17T03:07:39Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/31399",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/2481802?v=4",

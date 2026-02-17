@@ -5,6 +5,7 @@
     "author_association": "CONTRIBUTOR",
     "body": "Hello, NeoVim team\n\nI am a Vim user with a non-English keyboard layout and I wonder if it would be possible to fix things in NeoVim. Is this even possible? I don't know if a terminal is able to register `ctrl` + `key` as two different keys, or if they get lumped into one control character. I know that at least my OS can do that: in Safari on OS X if I hold down the `ctrl` key the status bar says \"Display a menu\", because on OS X left-clicking while holding ctrl is like right-clicking.\n\nIf NeoVim could do that it would be a killer feature at least for me as a non-English user. I know C (see my GitHub repositories), but I have never worked on big projects, so I have no idea where to start. If this issue is feasible and someone were to tackle it I would gladly contribute as best as I can.\n## Motivation\n\nThe default keyboard commands in Vim are easy to remember and easy to type when\nyour only language is English. Keystrokes like `daw` intuitively expand to\n_delete around word_ in the user's mind and are simple enough to type quickly.\n\nHowever, when using a non-English keyboard layout Vim becomes unusable. Even if\nthe language in question is using the Latin alphabet non-letter keys will be\nawkward to reach. For instance, the `:` key will be below the `l` key on a\nGerman keyboard, making such an important key very uncomfortable to reach. If\nthe keyboard is using a different alphabet, such as Cyrillic, even the most\nbasic tasks become impossible. I am not talking about hypothetical scenarios,\nThese are the issues I face every day.\n## Possible solution in Vim - first attempt\n\nVim offers the `langmap` feature: every character gets mapped to a corresponding\nother character:\n\n```\n:set langmap=ü[,+],ö\\\\;,ä',#\\\\\\\n```\n\nThis will map the lower-case home row to act like the home row on an English\nkeyboard. This is similar to the tip about using a Dvorak keyboard with default\nVim commands:\n\nhttp://vim.wikia.com/wiki/Using_Vim_with_the_Dvorak_keyboard_layout\n\nJust as described in the link, this method has problems: for instance using the\nmapped keys is impossible in multi-key mappings:\n\n```\nnoremap <C-[> a\n```\n\nThis will work fine with the physical `[` key (alt + 5 on German Mac keyboards),\nbut not with the `ü` key which has be mapped to act like the `[` key. This is\nnot just a problem with umlauts, but with any character. Assume we wanted to\nswap the function of `:` and `;`:\n\n```\nnoremap : ;\nnoremap ; :\n```\n\nThis will again work with the physical keys, but not with the mapped ones. This\nis an inconvenience on Latin keyboards, but utterly crippling on a Cyrillic one.\n## Possible solution in Vim - second attempt\n\nLangmap is an elegant feature, but not suitable for the job. Let's get more\nlow-level by explicitly remapping keys:\n\n```\nnoremap ü [\nnoremap + ]\nnoremap ö ;\nnoremap ä '\nnoremap # \\\n```\n\nThis has the exact same limitations as the above attempt.\n## Possible solution in Vim - third attempt\n\nLooking at the two above a common theme can be seen: we map some character to\nanother character and then map that to something else. So how about condensing\nthese mapping into one? For example, swapping the `:` and `;` keys becomes:\n\n```\nnoremap ö :\nnoremap Ö ;\n```\n\nThis works great for single keys and ASCII key-combos. It does not work for key\ncombos with non-ASCII characters:\n\n```\nnoremap <C-Ü> <C-[>\n```\n\nPressing `ctrl` + `ü` won't do anything. Furthermore, one has to do this for\nevery single keyboard layout. Instead of mapping every layout to English as a\ncommon base and then mapping those keys to my liking I have to condense mappings\nmanually every time.\n## Possible solution in Vim - fourth attempt\n\nIf the problem cannot be fixed at Vim level it has to be fixed at OS level:\nchange the keyboard layout for the OS. This works perfectly, but requires\nswitching keyboard layouts all the time. We can map English characters to\nnon-English targets in insert mode, but even then the user still has to switch\nkeyboard layouts when entering Vim and when leaving Vim. This could maybe be\nautomated at the OS-level but it's still an ugly hack around a problem that's in\nVim.\n## Analysis of the solutions\n\nMy goal is to have a sort of neutral keyboard layout which can then be further\ncustomised to my liking. This keyboard layout is the English one, since that's\nwhat Vim was created for. Every other layout gets mapped to English before\nfurther mapping.  Here is a sketch:\n\n```\nGerman:   ö -> ; -> :\nCyrillic: ч -> ; -> :\n```\n\nBoth the keys `ö` and `ч` get mapped to a common base, the English key `;`.\nTherefore language mappings need to take precedence over other mappings. This\nneeds to work implicitly with key combos as well:\n\n```\nü -> [  ===>  <C-Ü> -> <C-[>\n```\n\nThe user should not have to specify the second mapping, it should be implied by\nthe first one. Using `map` instead of `noremap` is not an option either if I\nwant to swap keys:\n\n```\nmap ; :\nmap : ;\n```\n\nThis will just run in circles. Recursive mapping can also interfere with\nmappings used in plugins.\n## Conclusion\n\nUsing keys quickly enters muscle memory and it would make sense to perform the\nsame actions with the same finger motions. Manipulating lines of text is the\nsame regardless of the language the text was written in, even if the text is\nsome pseudo-Latin _Lorem ipsum_. To prevent redundancy the keys pressed by the\nuser are first mapped to their English equivalents and then the English keys are\nmapped according to the user's settings. That way the process of manipulating an\nEnglish, German or Cyrillic text is the same, and only the process of typing it\nis language-dependent.\n",
     "closed_at": null,
+    "closed_by": null,
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -15,6 +16,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/2420",
             "node_id": "MDEyOklzc3VlQ29tbWVudDkyNDQwMjAx",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -47,7 +49,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -59,6 +62,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/2420",
             "node_id": "MDEyOklzc3VlQ29tbWVudDkyNDYzOTE1",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -91,11 +95,12 @@
                 "starred_url": "https://api.github.com/users/HiPhish/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/HiPhish/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/HiPhish"
+                "url": "https://api.github.com/users/HiPhish",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "Usually in GUI apps the solution is to use scancodes translated to some default layout (I highly suggest taking “some default layout” from OS, not blindly use `us`). This thing is done by X11 when you use Control mappings (but not for Alt). I also see that fluxbox has this behaviour even when using Alt mappings.\n\nNote: I do not know how they actually implement this. What I know are the following facts:\n1. If I run `xev`, press `Control` and another key (letter) in layout `ru` I get events for pressing `Control` and this key in layout `dvp2` (which is programming dvorak with some modifications), not in `ru`. I also see the same behaviour in konsole (`<C-v><C-u>` shows `^U` in dvp2 just like pressing the same keys emits the same result in layout `ru`).\n2. If I do the same thing with `Alt` I get key in layout `ru`.\n3. Still if I use `ru` layout and press `<A-r>` (this pops yakuake) fluxbox tells yakuake to appear.\n\nConfiguration used for testing (I do not _actually_ use `ru` layout ever):\n\n```\nsetxkbmap -option 'ctrl:nocaps,grp_led:scroll,grp:lwin_switch,grp:rctrl_toggle,compose:rwin' dvp2,ru ; xmodmap ~/.Xmodmap\n```\n\n### .Xmodmap\n\n```\n! ESC\nkeycode 9 = F13\n!add Lock = Caps_Lock\n\n! Control_R\nkeycode 37 = Escape\n\n! 2*Meta_L\nkeycode 148 = Alt_L\n\n! ! Mouse\n! !+\n! keycode 123 = F13\n! !-\n! keycode 122 = F14\n```\n\nThus the suggested solution is to use whatever fluxbox uses in the GUI when in normal, operator-pending and visual modes.\n",
             "created_at": "2015-04-13T19:52:18Z",
             "html_url": "https://github.com/neovim/neovim/issues/2420#issuecomment-92477690",
@@ -103,6 +108,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/2420",
             "node_id": "MDEyOklzc3VlQ29tbWVudDkyNDc3Njkw",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -135,11 +141,12 @@
                 "starred_url": "https://api.github.com/users/ZyX-I/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ZyX-I/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ZyX-I"
+                "url": "https://api.github.com/users/ZyX-I",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "(And one more note: when I select `us` as the second layout fluxbox still responds to `<A-r>` in dvp2, no matter the layout; xev though uses whatever the current layout is for `<C-…>`.)\n",
             "created_at": "2015-04-13T19:56:15Z",
             "html_url": "https://github.com/neovim/neovim/issues/2420#issuecomment-92479375",
@@ -147,6 +154,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/2420",
             "node_id": "MDEyOklzc3VlQ29tbWVudDkyNDc5Mzc1",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -179,7 +187,8 @@
                 "starred_url": "https://api.github.com/users/ZyX-I/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/ZyX-I/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/ZyX-I"
+                "url": "https://api.github.com/users/ZyX-I",
+                "user_view_type": "public"
             }
         },
         {
@@ -191,16 +200,17 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/2420",
             "node_id": "MDEyOklzc3VlQ29tbWVudDkyNzMzMDYx",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
-                "heart": 1,
+                "heart": 2,
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 1,
+                "total_count": 2,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/92733061/reactions"
             },
             "updated_at": "2015-04-14T10:02:05Z",
@@ -223,7 +233,8 @@
                 "starred_url": "https://api.github.com/users/kopischke/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/kopischke/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/kopischke"
+                "url": "https://api.github.com/users/kopischke",
+                "user_view_type": "public"
             }
         },
         {
@@ -235,6 +246,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/2420",
             "node_id": "MDEyOklzc3VlQ29tbWVudDkyNzc2MTQw",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -267,7 +279,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -279,6 +292,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/2420",
             "node_id": "MDEyOklzc3VlQ29tbWVudDkyNzgxMDk4",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -311,7 +325,8 @@
                 "starred_url": "https://api.github.com/users/kopischke/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/kopischke/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/kopischke"
+                "url": "https://api.github.com/users/kopischke",
+                "user_view_type": "public"
             }
         },
         {
@@ -323,6 +338,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/2420",
             "node_id": "MDEyOklzc3VlQ29tbWVudDkyODAwMDUy",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -355,7 +371,8 @@
                 "starred_url": "https://api.github.com/users/HiPhish/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/HiPhish/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/HiPhish"
+                "url": "https://api.github.com/users/HiPhish",
+                "user_view_type": "public"
             }
         },
         {
@@ -367,6 +384,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/2420",
             "node_id": "MDEyOklzc3VlQ29tbWVudDk0MjcwMzQ3",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -399,7 +417,8 @@
                 "starred_url": "https://api.github.com/users/dumblob/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/dumblob/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/dumblob"
+                "url": "https://api.github.com/users/dumblob",
+                "user_view_type": "public"
             }
         },
         {
@@ -411,6 +430,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/2420",
             "node_id": "MDEyOklzc3VlQ29tbWVudDEwMjcwMTM3MQ==",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -443,7 +463,8 @@
                 "starred_url": "https://api.github.com/users/Tarmean/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/Tarmean/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/Tarmean"
+                "url": "https://api.github.com/users/Tarmean",
+                "user_view_type": "public"
             }
         },
         {
@@ -455,6 +476,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/2420",
             "node_id": "IC_kwDOAPphoM50Sh-P",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -487,7 +509,8 @@
                 "starred_url": "https://api.github.com/users/xyious/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/xyious/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/xyious"
+                "url": "https://api.github.com/users/xyious",
+                "user_view_type": "public"
             }
         },
         {
@@ -499,6 +522,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/2420",
             "node_id": "IC_kwDOAPphoM50Si2O",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 1,
                 "-1": 0,
@@ -531,7 +555,8 @@
                 "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/zeertzjq"
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
             }
         },
         {
@@ -543,6 +568,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/2420",
             "node_id": "IC_kwDOAPphoM53KCcw",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -575,7 +601,8 @@
                 "starred_url": "https://api.github.com/users/xyious/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/xyious/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/xyious"
+                "url": "https://api.github.com/users/xyious",
+                "user_view_type": "public"
             }
         }
     ],
@@ -585,22 +612,28 @@
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/2420/events",
     "html_url": "https://github.com/neovim/neovim/issues/2420",
     "id": 68056970,
+    "issue_dependencies_summary": {
+        "blocked_by": 0,
+        "blocking": 0,
+        "total_blocked_by": 0,
+        "total_blocking": 0
+    },
     "labels": [
         {
-            "color": "c7def8",
+            "color": "C5DEF5",
             "default": false,
-            "description": "user experience",
-            "id": 151718455,
-            "name": "ux",
-            "node_id": "MDU6TGFiZWwxNTE3MTg0NTU=",
-            "url": "https://api.github.com/repos/neovim/neovim/labels/ux"
+            "description": "key bindings, keycodes",
+            "id": 3304938718,
+            "name": "mappings",
+            "node_id": "MDU6TGFiZWwzMzA0OTM4NzE4",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/mappings"
         }
     ],
     "labels_url": "https://api.github.com/repos/neovim/neovim/issues/2420/labels{/name}",
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 215,
+        "closed_issues": 303,
         "created_at": "2014-11-26T22:13:11Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -620,42 +653,50 @@
             "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/justinmk"
+            "url": "https://api.github.com/users/justinmk",
+            "user_view_type": "public"
         },
-        "description": "Zero priority; no timeline. Promote an item from this state by taking ownership of it.",
+        "description": "We don't plan to work on this, but will accept high quality contributions from someone who will own the feature and follow up on bug reports.",
         "due_on": null,
         "html_url": "https://github.com/neovim/neovim/milestone/9",
         "id": 881978,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/9/labels",
         "node_id": "MDk6TWlsZXN0b25lODgxOTc4",
         "number": 9,
-        "open_issues": 235,
+        "open_issues": 363,
         "state": "open",
-        "title": "unplanned",
-        "updated_at": "2024-03-12T16:04:12Z",
+        "title": "needs-owner",
+        "updated_at": "2026-02-16T22:15:53Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/9"
     },
     "node_id": "MDU6SXNzdWU2ODA1Njk3MA==",
     "number": 2420,
     "performed_via_github_app": null,
+    "pinned_comment": null,
     "reactions": {
-        "+1": 22,
+        "+1": 29,
         "-1": 0,
         "confused": 0,
         "eyes": 0,
-        "heart": 12,
+        "heart": 15,
         "hooray": 0,
         "laugh": 0,
         "rocket": 0,
-        "total_count": 34,
+        "total_count": 44,
         "url": "https://api.github.com/repos/neovim/neovim/issues/2420/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
     "state": "open",
     "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/2420/timeline",
-    "title": "Improve 'langmap', non-English keyboards",
-    "updated_at": "2024-03-15T08:00:22Z",
+    "title": "'langmap' with non-English keyboards",
+    "type": null,
+    "updated_at": "2026-02-10T11:36:45Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/2420",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/4954650?v=4",
@@ -675,6 +716,7 @@
         "starred_url": "https://api.github.com/users/HiPhish/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/HiPhish/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/HiPhish"
+        "url": "https://api.github.com/users/HiPhish",
+        "user_view_type": "public"
     }
 }
