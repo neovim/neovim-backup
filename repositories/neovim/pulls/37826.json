@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/37826"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/677f951ceb8028d3cd38e5a66167c812e497e3ea"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/444c195edb33571cc0b653d4e2ef0fd3519cf0fd"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6587,
-            "forks_count": 6587,
+            "forks": 6598,
+            "forks_count": 6598,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -95,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 2031,
-            "open_issues_count": 2031,
+            "open_issues": 2011,
+            "open_issues_count": 2011,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -121,11 +121,11 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2026-02-17T03:34:12Z",
+            "pushed_at": "2026-02-23T22:33:57Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 369888,
+            "size": 370553,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 96478,
+            "stargazers_count": 96717,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -143,14 +143,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2026-02-17T03:34:17Z",
+            "updated_at": "2026-02-24T02:43:24Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 96478,
-            "watchers_count": 96478,
+            "watchers": 96717,
+            "watchers_count": 96717,
             "web_commit_signoff_required": false
         },
-        "sha": "6b4ec2264e1d8ba027b85f3883d532c5068be92a",
+        "sha": "dcbe5bdd96749a47098904224ceb09bfafd87ae7",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -173,9 +173,79 @@
             "user_view_type": "public"
         }
     },
-    "body": "Problem: hl_blend_attrs() through-blend path only checked HL_UNDERLINE | HL_UNDERCURL for sp_color blending, missing underdotted, combine/blend attr cache used (a << 16) + b as map key which could overflow if attr IDs ever exceed 16 bits.\r\n\r\nSolution: Use HL_UNDERLINE_MASK in the through-blend path to match all underline styles. Replace the bit-packed int key with a HlAttrKey struct (same pattern as ColorKey) so each attr ID gets its full 32-bit range. Use HLATTRS_INIT in hl_get_underline() to avoid duplicating default field values.\r\n\r\n",
-    "closed_at": null,
-    "comment_data": [],
+    "body": "Problem: hl_blend_attrs() through-blend path only checked HL_UNDERLINE | HL_UNDERCURL for sp_color blending, missing underdotted, combine/blend attr cache used (a << 16) + b as map key which could overflow if attr IDs ever exceed 16 bits.\r\n\r\nSolution: Use HL_UNDERLINE_MASK in the through-blend path to match all underline\r\nstyles. Use uint64_t with (a << 32) | b as map key via HlAttrKey macro so each\r\nattr ID gets its full 32-bit range. Use HLATTRS_INIT in hl_get_underline() to\r\navoid duplicating default field values.\r\n",
+    "closed_at": "2026-02-18T08:46:41Z",
+    "comment_data": [
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/37826#discussion_r2815936448"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/37826"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2815936448"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "on second thought maybe we should just use `uint64_t` here and `(char_attr << 32) + prim_attr`. The `HLAttrKey` macro is still a good pattern, but it could just expand to the bitshift.\n\nUnfortunately adding more specializations add more code bloat, and the uint64_t hash function seems faster and should be fully adequate for the usecase. ",
+            "commit_id": "677f951ceb8028d3cd38e5a66167c812e497e3ea",
+            "created_at": "2026-02-17T09:44:54Z",
+            "diff_hunk": "@@ -591,9 +584,8 @@ int hl_combine_attr(int char_attr, int prim_attr)\n     return char_attr;\n   }\n \n-  // TODO(bfredl): could use a struct for clearer intent.\n-  int combine_tag = (char_attr << 16) + prim_attr;\n-  int id = map_get(int, int)(&combine_attr_entries, combine_tag);\n+  HlAttrKey combine_tag = HlAttrKey(char_attr, prim_attr);",
+            "html_url": "https://github.com/neovim/neovim/pull/37826#discussion_r2815936448",
+            "id": 2815936448,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM6n18fA",
+            "original_commit_id": "677f951ceb8028d3cd38e5a66167c812e497e3ea",
+            "original_line": 587,
+            "original_position": 80,
+            "original_start_line": null,
+            "path": "src/nvim/highlight.c",
+            "position": 1,
+            "pull_request_review_id": 3812781338,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/37826",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2815936448/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-02-17T09:44:54Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2815936448",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1363104?v=4",
+                "events_url": "https://api.github.com/users/bfredl/events{/privacy}",
+                "followers_url": "https://api.github.com/users/bfredl/followers",
+                "following_url": "https://api.github.com/users/bfredl/following{/other_user}",
+                "gists_url": "https://api.github.com/users/bfredl/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/bfredl",
+                "id": 1363104,
+                "login": "bfredl",
+                "node_id": "MDQ6VXNlcjEzNjMxMDQ=",
+                "organizations_url": "https://api.github.com/users/bfredl/orgs",
+                "received_events_url": "https://api.github.com/users/bfredl/received_events",
+                "repos_url": "https://api.github.com/users/bfredl/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/bfredl/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/bfredl/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/bfredl",
+                "user_view_type": "public"
+            }
+        }
+    ],
     "comment_regular_data": [
         {
             "author_association": "MEMBER",
@@ -320,9 +390,9 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/glepnir/neovim/pulls{/number}",
-            "pushed_at": "2026-02-17T03:40:37Z",
+            "pushed_at": "2026-02-24T03:25:08Z",
             "releases_url": "https://api.github.com/repos/glepnir/neovim/releases{/id}",
-            "size": 360641,
+            "size": 361336,
             "ssh_url": "git@github.com:glepnir/neovim.git",
             "stargazers_count": 2,
             "stargazers_url": "https://api.github.com/repos/glepnir/neovim/stargazers",
@@ -334,14 +404,14 @@
             "teams_url": "https://api.github.com/repos/glepnir/neovim/teams",
             "topics": [],
             "trees_url": "https://api.github.com/repos/glepnir/neovim/git/trees{/sha}",
-            "updated_at": "2026-02-15T06:22:33Z",
+            "updated_at": "2026-02-24T02:22:23Z",
             "url": "https://api.github.com/repos/glepnir/neovim",
             "visibility": "public",
             "watchers": 2,
             "watchers_count": 2,
             "web_commit_signoff_required": false
         },
-        "sha": "677f951ceb8028d3cd38e5a66167c812e497e3ea",
+        "sha": "444c195edb33571cc0b653d4e2ef0fd3519cf0fd",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",
             "events_url": "https://api.github.com/users/glepnir/events{/privacy}",
@@ -379,8 +449,8 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "d16547b0394982468850dc636c23ef1262499115",
-    "merged_at": null,
+    "merge_commit_sha": "fa9e071b83805c0ee2289393d395e76fb559f8b3",
+    "merged_at": "2026-02-18T08:46:41Z",
     "milestone": null,
     "node_id": "PR_kwDOAPphoM7DLGZv",
     "number": 37826,
@@ -389,10 +459,10 @@
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/37826/comments",
-    "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/677f951ceb8028d3cd38e5a66167c812e497e3ea",
+    "state": "closed",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/444c195edb33571cc0b653d4e2ef0fd3519cf0fd",
     "title": "fix(highlight): blend underline check and use struct key for attr cache",
-    "updated_at": "2026-02-12T16:13:11Z",
+    "updated_at": "2026-02-18T08:46:41Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/37826",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",

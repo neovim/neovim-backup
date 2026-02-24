@@ -3,7 +3,7 @@
     "assignee": null,
     "assignees": [],
     "author_association": "MEMBER",
-    "body": "## Problem\n\nFollowup to #34296 #34354\n\n`:restart` currently depends on the UI client to spawn a new `nvim` server. This has some disadvantages:\n\n- all other UI clients detach and can't reattach to the new server.\n- if the UI client is on a different machine, it can't restart the server on the remote machine.\n\n## Expected behavior\n\n- Perform the restart on the server instead of the client. The `restart` UI event passes the listen address (instead of CLI args). \n- If Nvim doesn't know how to restart the server, show an error and cancel the `:restart`.\n\n### Benefits\n\n1. Simplier logic. ([ref](https://github.com/neovim/neovim/pull/35045#issuecomment-3146985628))\n1. All UI clients can re-attach to the new address.\n1. No race conditions?\n    - If the user config has errors / waiting for input, are all UIs able to attach while Nvim is waiting for input?\n\n### Implementation\n\nFrom https://github.com/neovim/neovim/pull/35045#issuecomment-3146985628 : \n1. server (nvim-1) starts new nvim instance (nvim-2)\n2. server emits `restart[addr, ... cmd]` ui event which includes the new listen address.\n3. ui handler:\n    1. opens a channel to nvim-2\n    2. waits for nvim-2 to die (close the channel)\n4. if the nvim-1 fails to quit:\n    - server terminates nvim-2.\n    - ui `restart` handler cancels its wait routine when it sees that nvim-2 died.\n",
+    "body": "## Problem\n\nFollowup to #34296 #34354\n\n`:restart` currently depends on the UI client to spawn a new `nvim` server. This has some disadvantages:\n\n- all other UI clients detach and can't reattach to the new server.\n- if the UI client is on a different machine, it can't restart the server on the remote machine.\n\n## Phase 1 (Nvim 0.12)\n\n- [ ] Perform the restart *on the server*, not the client. The `restart` UI event passes the listen address (instead of CLI args). https://github.com/neovim/neovim/pull/35223\n- [ ] (TBD) Should old-server include `-c <command>` when it starts new-server?\n- [ ] new-server should be started after all `*Leave` events have been triggered on the old server, to make stuff like session restoration work.\n\n## Phase 2\n\nThese improvements can be made later without requiring big changes in the UI client(s):\n\n- [ ] All UI clients can re-attach to the new address.\n    - ⚠️ [Only 1 UI should do the \"command\"](https://github.com/neovim/neovim/pull/35223#discussion_r2818453774). (TBD: this problem is eliminated if old-server includes `-c <command>` when it starts new-server.)\n- [ ] If all clients fail to reattach, this will lead to a dangling server process.\n    - Mitigation: make it easy to see recently started/dangling servers.\n- [ ] ⚠️ (TBD) With `--listen` argument, old-server and new-server cannot listen on the same address at the same time.\n    - If `--listen` arguments are stripped from the new server's command line, this means `:restart` will not work for users that use a non-UI client to control Nvim via a socket passed after `--listen`.\n\n\n### Benefits\n\n1. Simpler logic. ([ref](https://github.com/neovim/neovim/pull/35045#issuecomment-3146985628))\n1. Mitigates race conditions\n    - If the user config has errors / waiting for input, are all UIs able to attach while Nvim is waiting for input?\n\n### Implementation\n\nFrom https://github.com/neovim/neovim/pull/35045#issuecomment-3146985628 : \n1. server (nvim-1) starts new nvim instance (nvim-2)\n2. server emits `restart[addr, ... cmd]` ui event which includes the new listen address.\n3. ui handler:\n    1. opens a channel to nvim-2\n    2. waits for nvim-2 to die (close the channel)\n4. if the nvim-1 fails to quit:\n    - server terminates nvim-2.\n    - ui `restart` handler cancels its wait routine when it sees that nvim-2 died.\n",
     "closed_at": null,
     "closed_by": null,
     "comment_data": [
@@ -16,6 +16,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/34367",
             "node_id": "IC_kwDOAPphoM6wCAAS",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -61,6 +62,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/34367",
             "node_id": "IC_kwDOAPphoM6wCBZk",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -106,6 +108,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/34367",
             "node_id": "IC_kwDOAPphoM6wCPzi",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -151,6 +154,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/34367",
             "node_id": "IC_kwDOAPphoM6wCSeW",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -196,6 +200,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/34367",
             "node_id": "IC_kwDOAPphoM68p29q",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 1,
                 "-1": 0,
@@ -208,7 +213,7 @@
                 "total_count": 1,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3165089642/reactions"
             },
-            "updated_at": "2025-08-07T18:40:22Z",
+            "updated_at": "2026-02-17T21:55:25Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3165089642",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/94102031?v=4",
@@ -234,13 +239,14 @@
         },
         {
             "author_association": "MEMBER",
-            "body": "Whatever gets us to `restart[cmd, listen_addr]` , even if hacky, is better than not doing that, because we can always improve the implementation later. But finalizing the UI event unblocks the release :)\n\nAlso just for reference in case we need to be more clever: https://chatgpt.com/share/68b67241-0adc-8004-ad17-93bf92c7198a\n",
+            "body": "Whatever gets us to `restart[listen_addr, cmd]` , even if hacky, is better than not doing that, because we can always improve the implementation later. But finalizing the UI event unblocks the release :)\n\nAlso just for reference in case we need to be more clever: https://chatgpt.com/share/68b67241-0adc-8004-ad17-93bf92c7198a\n",
             "created_at": "2025-09-02T04:26:43Z",
             "html_url": "https://github.com/neovim/neovim/issues/34367#issuecomment-3243738263",
             "id": 3243738263,
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/34367",
             "node_id": "IC_kwDOAPphoM7BV4SX",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -253,8 +259,54 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3243738263/reactions"
             },
-            "updated_at": "2025-09-02T04:29:39Z",
+            "updated_at": "2026-02-17T21:55:29Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3243738263",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "I added @zeertzjq 's [callouts](https://github.com/neovim/neovim/issues/34367#issuecomment-2953379042) to the Expected Behavior. But to unblock 0.12, the only required change is `Perform the restart on the server instead of the client`. That allows us to find clever ways to support the other scenarios in the future, _without_ complicated changes in every UI client. For example, `--listen` could be supported via a naming convention (which the server will deal with).",
+            "created_at": "2026-02-17T22:01:05Z",
+            "html_url": "https://github.com/neovim/neovim/issues/34367#issuecomment-3917297922",
+            "id": 3917297922,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/34367",
+            "node_id": "IC_kwDOAPphoM7pfTkC",
+            "performed_via_github_app": null,
+            "pin": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3917297922/reactions"
+            },
+            "updated_at": "2026-02-17T22:02:03Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3917297922",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
                 "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
@@ -278,7 +330,7 @@
             }
         }
     ],
-    "comments": 6,
+    "comments": 7,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/34367/comments",
     "created_at": "2025-06-08T00:46:54Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/34367/events",
@@ -332,7 +384,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 117,
+        "closed_issues": 258,
         "created_at": "2024-05-16T14:11:54Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -356,23 +408,24 @@
             "user_view_type": "public"
         },
         "description": "",
-        "due_on": "2025-12-25T08:00:00Z",
+        "due_on": "2026-03-14T00:00:00Z",
         "html_url": "https://github.com/neovim/neovim/milestone/43",
         "id": 11063573,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/43/labels",
         "node_id": "MI_kwDOAPphoM4AqNEV",
         "number": 43,
-        "open_issues": 73,
+        "open_issues": 51,
         "state": "open",
         "title": "0.12",
-        "updated_at": "2025-09-09T00:55:00Z",
+        "updated_at": "2026-02-23T14:54:57Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/43"
     },
     "node_id": "I_kwDOAPphoM66bYL7",
     "number": 34367,
     "performed_via_github_app": null,
+    "pinned_comment": null,
     "reactions": {
-        "+1": 2,
+        "+1": 4,
         "-1": 0,
         "confused": 0,
         "eyes": 0,
@@ -380,7 +433,7 @@
         "hooray": 0,
         "laugh": 0,
         "rocket": 0,
-        "total_count": 2,
+        "total_count": 4,
         "url": "https://api.github.com/repos/neovim/neovim/issues/34367/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
@@ -403,7 +456,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyv",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2025-09-02T04:29:39Z",
+    "updated_at": "2026-02-17T22:12:01Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/34367",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",

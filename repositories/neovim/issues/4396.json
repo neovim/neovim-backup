@@ -4,8 +4,28 @@
     "assignees": [],
     "author_association": "NONE",
     "body": "- Neovim version: v0.1.3-293-g576c5f7\n- Operating system: Ubuntu Xenial beta\n- Terminal emulator: vte/gnome-terminal (git master)\n\nI have configured my gnome-terminal (in its Profile Preferences dialog) to use an I-Beam cursor. It also inherits from my global Gnome settings that the cursor is blinking.\n\nI have NVIM_TUI_ENABLE_CURSOR_SHAPE=1, so that supposedly the cursor is a rectangle in command mode, and I-Beam in insert mode.\n\nThis is true for the main lifetime of neovim, but is neither initialized correctly on startup, nor reverted correctly on exit.\n\nWhen I start up neovim, the cursor remains what it was before. That is, nvim (incorrectly) assumes it was a solid block, and does not issue the escape sequence that changes it to a block. The fix should be straightforward: initialize the cursor shape when neovim starts up.\n\nUpon exit I'm left with a solid block, and that's not what I want to have there, I'd like to get back to my generally preferred cursor shape. The fix here is trickier. There's no way to query or save/restore the cursor shape. In xterm it's probably impossible, since according to http://invisible-island.net/xterm/ctlseqs/ctlseqs.html (-> \"Set cursor style (DECSCUSR, VT520)\") you can only choose from 6 different modes, numbered from 0 to 6, whereas 0 and 1 are the same.\n\nVTE (gnome-terminal et al) intentionally differs here from xterm. Numbers 1-6 work just as in xterm: select a particular mode. However, number 0 means to revert to the terminal emulator's default, as specified in its profile preferences.\n\nOf course there's still no guarantee that someone didn't modify the cursor shape by some escape sequence prior to starting up neovim. However, setting mode 0 upon exit would be a nice step towards restoring the previous value in gnome-terminal, whereas it wouldn't hurt xterm. (Note: the parameter 0 can be omitted, \"\\e[ q\" and \"\\e[0 q\" are the same.)\n",
-    "closed_at": null,
-    "closed_by": null,
+    "closed_at": "2026-02-17T11:26:32Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+        "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+        "followers_url": "https://api.github.com/users/justinmk/followers",
+        "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+        "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/justinmk",
+        "id": 1359421,
+        "login": "justinmk",
+        "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+        "organizations_url": "https://api.github.com/users/justinmk/orgs",
+        "received_events_url": "https://api.github.com/users/justinmk/received_events",
+        "repos_url": "https://api.github.com/users/justinmk/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "NONE",
@@ -16,6 +36,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/4396",
             "node_id": "MDEyOklzc3VlQ29tbWVudDE5NjMyMzkxMw==",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -61,6 +82,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/4396",
             "node_id": "MDEyOklzc3VlQ29tbWVudDMwMjk0NTQxMA==",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -106,6 +128,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/4396",
             "node_id": "MDEyOklzc3VlQ29tbWVudDMwMzEyNDk3Mg==",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -151,6 +174,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/4396",
             "node_id": "MDEyOklzc3VlQ29tbWVudDU3NTg5MTQ4OA==",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -196,6 +220,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/4396",
             "node_id": "MDEyOklzc3VlQ29tbWVudDU3NTk1MTAzMg==",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -241,6 +266,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/4396",
             "node_id": "IC_kwDOAPphoM5SFeBx",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -286,6 +312,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/4396",
             "node_id": "IC_kwDOAPphoM5SFkao",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 9,
                 "-1": 0,
@@ -321,19 +348,71 @@
                 "url": "https://api.github.com/users/zeertzjq",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "After [#36261](https://github.com/neovim/neovim/pull/36261) the cursor shape is now reset on exit.\n\n",
+            "created_at": "2026-02-17T11:26:32Z",
+            "html_url": "https://github.com/neovim/neovim/issues/4396#issuecomment-3914147311",
+            "id": 3914147311,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/4396",
+            "node_id": "IC_kwDOAPphoM7pTSXv",
+            "performed_via_github_app": null,
+            "pin": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3914147311/reactions"
+            },
+            "updated_at": "2026-02-17T11:26:46Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3914147311",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
         }
     ],
-    "comments": 7,
+    "comments": 8,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/4396/comments",
     "created_at": "2016-03-02T18:40:52Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/4396/events",
     "html_url": "https://github.com/neovim/neovim/issues/4396",
     "id": 137956439,
+    "issue_dependencies_summary": {
+        "blocked_by": 0,
+        "blocking": 0,
+        "total_blocked_by": 0,
+        "total_blocking": 0
+    },
     "labels": [
         {
             "color": "c5def5",
             "default": false,
-            "description": "",
+            "description": "termcodes, terminfo, termcap",
             "id": 197254545,
             "name": "tui",
             "node_id": "MDU6TGFiZWwxOTcyNTQ1NDU=",
@@ -353,8 +432,8 @@
     "locked": true,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 726,
-        "created_at": "2014-05-10T20:43:04Z",
+        "closed_issues": 258,
+        "created_at": "2024-05-16T14:11:54Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
             "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
@@ -376,22 +455,23 @@
             "url": "https://api.github.com/users/justinmk",
             "user_view_type": "public"
         },
-        "description": "Low priority items. We plan to work on this but don't have a target date.",
-        "due_on": null,
-        "html_url": "https://github.com/neovim/neovim/milestone/6",
-        "id": 655037,
-        "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
-        "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
-        "number": 6,
-        "open_issues": 630,
+        "description": "",
+        "due_on": "2026-03-14T00:00:00Z",
+        "html_url": "https://github.com/neovim/neovim/milestone/43",
+        "id": 11063573,
+        "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/43/labels",
+        "node_id": "MI_kwDOAPphoM4AqNEV",
+        "number": 43,
+        "open_issues": 51,
         "state": "open",
-        "title": "backlog",
-        "updated_at": "2025-07-07T03:51:31Z",
-        "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
+        "title": "0.12",
+        "updated_at": "2026-02-23T14:54:57Z",
+        "url": "https://api.github.com/repos/neovim/neovim/milestones/43"
     },
     "node_id": "MDU6SXNzdWUxMzc5NTY0Mzk=",
     "number": 4396,
     "performed_via_github_app": null,
+    "pinned_comment": null,
     "reactions": {
         "+1": 5,
         "-1": 0,
@@ -405,8 +485,8 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/4396/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "sub_issues_summary": {
         "completed": 0,
         "percent_completed": 0,
@@ -424,7 +504,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyv",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2025-07-02T08:59:00Z",
+    "updated_at": "2026-02-17T11:26:46Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/4396",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/5750745?v=4",
