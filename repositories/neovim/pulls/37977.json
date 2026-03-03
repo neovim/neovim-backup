@@ -28,7 +28,7 @@
     "active_lock_reason": null,
     "assignee": null,
     "assignees": [],
-    "author_association": "FIRST_TIME_CONTRIBUTOR",
+    "author_association": "CONTRIBUTOR",
     "auto_merge": null,
     "base": {
         "label": "neovim:master",
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6598,
-            "forks_count": 6598,
+            "forks": 6614,
+            "forks_count": 6614,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -95,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 2011,
-            "open_issues_count": 2011,
+            "open_issues": 2002,
+            "open_issues_count": 2002,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -121,11 +121,11 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2026-02-23T22:33:57Z",
+            "pushed_at": "2026-03-03T01:57:21Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 370553,
+            "size": 370620,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 96717,
+            "stargazers_count": 96882,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -143,11 +143,11 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2026-02-24T02:43:24Z",
+            "updated_at": "2026-03-03T02:14:30Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 96717,
-            "watchers_count": 96717,
+            "watchers": 96882,
+            "watchers_count": 96882,
             "web_commit_signoff_required": false
         },
         "sha": "3f4ef487da80da73f4943d81fb8549c9de70f55f",
@@ -174,8 +174,78 @@
         }
     },
     "body": "<small>Note: Used AI to assist. Reviewed code and tested manually.</small>\r\n\r\nSolution to #37944\r\n\r\n## Problem\r\n\r\nOn Windows:\r\n\r\n1. `UV_PROCESS_DETACHED` → `DETACHED_PROCESS` → server has no console  \r\n2. No console → `CONIN$` / `CONOUT$` don't resolve → `channel_from_stdio` fails to replace stdin/stdout  \r\n3. No console → ConPTY can't attach → `:terminal` fails\r\n\r\n`CONIN$` / `CONOUT$` fails because child process (server) gets `DETACHED_PROCESS`,  \r\nso child does not get any console, but `CONIN$` / `CONOUT$` require a console by nature.\r\n\r\nConPTY — well it still needs a process that it will be attached to  \r\n(well guess `DETACHED_PROCESS` is not wired up for that?)\r\n\r\n## Solution\r\nWhen the server has no console (due to `DETACHED_PROCESS`), allocate a\r\nhidden one via `AllocConsole()` so ConPTY and `CONIN$` / `CONOUT$` work.\r\n\r\n **fwd_err**: On Windows with `DETACHED_PROCESS`, the server has no console, so inheriting `stderr` fails and `channel_from_stdio` wipes out `fd 2` before startup errors can be printed. To restore `fwd_err`, we create a dedicated pipe for stderr instead of inheriting it, forward its output through stdout (since ConPTY only captures stdout), and in the server duplicate the pipe before stdio replacement so `server_init` failures still reach the TUI. On success we close the pipe so children get a clean `CONOUT$`, and for `--remote-ui` we redirect stderr to stdout since ConPTY never captures stderr.\r\n \r\n **Bonus:** Update `os_set_cloexec` to clear `HANDLE_FLAG_INHERIT` on the RPC pipe FDs,  \r\nmatching the Unix `F_DUPFD_CLOEXEC` protection.",
-    "closed_at": null,
-    "comment_data": [],
+    "closed_at": "2026-02-28T13:21:13Z",
+    "comment_data": [
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/37977#discussion_r2867472496"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/37977"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2867472496"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "These tricky channel details suggest that `vim.system` should be implemented on top of `jobstart` (or we need to expose channel internals some other way so that `vim.system` can re-use them), rather than using naked `vim.uv`. @lewis6991\n\nRelated:\n\n- https://github.com/neovim/neovim/issues/26861\n- https://github.com/neovim/neovim/issues/24571",
+            "commit_id": "d9f9af72b47f58d83e60c4281625f2b24d7c40fd",
+            "created_at": "2026-02-28T13:28:13Z",
+            "diff_hunk": "@@ -407,6 +407,14 @@ Channel *channel_job_start(char **argv, const char *exepath, CallbackReader on_s\n     has_out = rpc || callback_reader_set(chan->on_data);\n     has_err = callback_reader_set(chan->on_stderr);\n     proc->fwd_err = chan->on_stderr.fwd_err;\n+#ifdef MSWIN\n+    // DETACHED_PROCESS can't inherit console handles (like ConPTY stderr).\n+    // Use a pipe relay: libuv creates a pipe, on_channel_output writes to stderr.\n+    if (!has_err && proc->fwd_err && proc->detach) {",
+            "html_url": "https://github.com/neovim/neovim/pull/37977#discussion_r2867472496",
+            "id": 2867472496,
+            "line": 413,
+            "node_id": "PRRC_kwDOAPphoM6q6ihw",
+            "original_commit_id": "d9f9af72b47f58d83e60c4281625f2b24d7c40fd",
+            "original_line": 413,
+            "original_position": 7,
+            "original_start_line": null,
+            "path": "src/nvim/channel.c",
+            "position": 7,
+            "pull_request_review_id": 3870445087,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/37977",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2867472496/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-02-28T13:28:13Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2867472496",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        }
+    ],
     "comment_regular_data": [
         {
             "author_association": "MEMBER",
@@ -224,7 +294,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "**Detach:**\r\n\r\nThe order of commands: \r\n```\r\nset PIPE=\\\\.\\pipe\\nvim-1234 \r\n// setting pipe just for showcase purpose only, \r\n// you could just run nvim and get pipe name via echo v:servername\r\necho Pipe: %PIPE%\r\nbuild\\bin\\nvim.exe --listen %PIPE% --cmd \"colorscheme vim\" --clean\r\n// run :detach inside nvim\r\nnvim --remote-ui --server \\\\.\\pipe\\nvim-1234\r\n```\r\n\r\nhttps://github.com/user-attachments/assets/3590fccd-4128-4155-b16e-52232d95d2ba\r\n\r\nserver process with id 54712 is not killed thanks to conhost\r\n\r\n---\r\n\r\n**Restart:**\r\n\r\nhttps://github.com/user-attachments/assets/2d8c9ab7-c0bb-4790-9f82-0073650bce17\r\n\r\nserver & conhost is restarted and tui persists\r\n\r\n---\r\n\r\n~~### Issue:\r\nI found out that after `:detach` and then connecting via `--remote-ui` and then running `:restart` results in `restart` closing all processes. And this pr https://github.com/neovim/neovim/pull/35223 changes exactly handles this case right? (just to be sure)~~",
             "created_at": "2026-02-20T18:11:27Z",
             "html_url": "https://github.com/neovim/neovim/pull/37977#issuecomment-3936374610",
@@ -316,7 +386,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "@justinmk oh it seems i was wrong - `restart` works fine, i was just accidently using own nvim build when running reconnecting via `remote-ui` and then failing on `restart`.",
             "created_at": "2026-02-21T04:23:04Z",
             "html_url": "https://github.com/neovim/neovim/pull/37977#issuecomment-3938136467",
@@ -358,6 +428,52 @@
                 "subscriptions_url": "https://api.github.com/users/SanzharKuandyk/subscriptions",
                 "type": "User",
                 "url": "https://api.github.com/users/SanzharKuandyk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "This is an important fix so merging it before https://github.com/neovim/neovim/pull/35223 , which can now be rebased and tested against Windows @sathya-pramodh ",
+            "created_at": "2026-02-28T13:24:18Z",
+            "html_url": "https://github.com/neovim/neovim/pull/37977#issuecomment-3977163975",
+            "id": 3977163975,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/37977",
+            "node_id": "IC_kwDOAPphoM7tDrTH",
+            "performed_via_github_app": null,
+            "pin": null,
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3977163975/reactions"
+            },
+            "updated_at": "2026-02-28T13:24:18Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3977163975",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
                 "user_view_type": "public"
             }
         }
@@ -458,9 +574,9 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/SanzharKuandyk/neovim/pulls{/number}",
-            "pushed_at": "2026-02-22T14:50:15Z",
+            "pushed_at": "2026-03-02T12:56:05Z",
             "releases_url": "https://api.github.com/repos/SanzharKuandyk/neovim/releases{/id}",
-            "size": 356503,
+            "size": 357322,
             "ssh_url": "git@github.com:SanzharKuandyk/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/SanzharKuandyk/neovim/stargazers",
@@ -472,7 +588,7 @@
             "teams_url": "https://api.github.com/repos/SanzharKuandyk/neovim/teams",
             "topics": [],
             "trees_url": "https://api.github.com/repos/SanzharKuandyk/neovim/git/trees{/sha}",
-            "updated_at": "2026-02-19T07:00:49Z",
+            "updated_at": "2026-03-02T12:56:15Z",
             "url": "https://api.github.com/repos/SanzharKuandyk/neovim",
             "visibility": "public",
             "watchers": 0,
@@ -526,8 +642,8 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "8f47c76618918fd1e0d1b7ad6a5bd514ed168088",
-    "merged_at": null,
+    "merge_commit_sha": "b40ca5a01c39c2acf10ff8bcca9db18b3336540c",
+    "merged_at": "2026-02-28T13:21:13Z",
     "milestone": null,
     "node_id": "PR_kwDOAPphoM7FB2D0",
     "number": 37977,
@@ -536,10 +652,10 @@
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/37977/comments",
-    "state": "open",
+    "state": "closed",
     "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/d9f9af72b47f58d83e60c4281625f2b24d7c40fd",
     "title": "fix(channel): make :detach and :restart work on Windows",
-    "updated_at": "2026-02-22T15:29:25Z",
+    "updated_at": "2026-02-28T13:28:13Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/37977",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/92693103?v=4",

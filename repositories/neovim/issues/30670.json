@@ -6,13 +6,66 @@
     "body": "### Problem\n\nAs the title says, when both `jumpoptions=clean` and `nohidden` are set, doing `:bd<CR>` on a buffer doesn't remove it from the jumplist.\n\n### Steps to reproduce\n\n```\r\n$ nvim --clean A B C\r\n:bn<CR>\r\n:bn<CR>\r\n:bp<CR>\r\n:bd<CR>\r\n<C-o>\r\n=> Observer that you are on A\r\n```\r\n\r\n```\r\n$ nvim --clean A B C\r\n:setglobal nohidden<CR>\r\n:bn<CR>\r\n:bn<CR>\r\n:bp<CR>\r\n:bd<CR>\r\n<C-o>\r\n=> Observer that you are on B\r\n```\n\n### Expected behavior\n\nThe `<C-o>` in the second case to also skip `B` and jump to `A`.\r\n\r\nOr, for this to be explicitly documented behaviour as non-visible buffers are unloaded when `nohidden` is set:\r\n```\r\n$ nvim --clean A B C\r\n:setglobal nohidden<CR>\r\n:bn<CR>\r\n:bn<CR>\r\n:=vim.iter(vim.api.nvim_list_bufs()):map(vim.api.nvim_buf_is_loaded):totable()<CR>\r\n=> { false, false, true }\r\n```\r\n\r\nAnd that would make the jumplist nearly useless if `jumpoptions=clean` behaved the way it claims to:\r\n```\r\n          clean         Remove unloaded buffers from the jumplist.\r\n```\n\n### Nvim version (nvim -v)\n\nNVIM v0.11.0-dev-988482d94\n\n### Vim (not Nvim) behaves the same?\n\nN/A\n\n### Operating system/version\n\nnixos unstable\n\n### Terminal name/version\n\ntmux\n\n### $TERM environment variable\n\ntmux-256color\n\n### Installation\n\nCustom nixpkgs overlay",
     "closed_at": null,
     "closed_by": null,
-    "comment_data": [],
-    "comments": 0,
+    "comment_data": [
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "```diff\ndiff --git a/src/nvim/buffer.c b/src/nvim/buffer.c\nindex 829d4d2392..ef6fb8d529 100644\n--- a/src/nvim/buffer.c\n+++ b/src/nvim/buffer.c\n@@ -787,6 +787,11 @@ bool close_buffer(win_T *win, buf_T *buf, int action, bool abort_if_last, bool i\n     }\n     if (del_buf) {\n       buf->b_p_bl = false;\n+      if (jop_flags & kOptJopFlagClean) {\n+        FOR_ALL_TAB_WINDOWS(tp, wp) {\n+            mark_forget_file(wp, buf->b_fnum);\n+        }\n+      }\n     }\n   }\n```\n\nexplicitly removing buffer entries from the jumplist achieves the desired behavior. I'm still trying to figure out why there exists a mismatch between jumplist state depending on hidden flag",
+            "created_at": "2026-03-01T22:50:57Z",
+            "html_url": "https://github.com/neovim/neovim/issues/30670#issuecomment-3981216111",
+            "id": 3981216111,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/30670",
+            "node_id": "IC_kwDOAPphoM7tTIlv",
+            "performed_via_github_app": null,
+            "pin": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3981216111/reactions"
+            },
+            "updated_at": "2026-03-01T22:50:57Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3981216111",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/145352237?v=4",
+                "events_url": "https://api.github.com/users/ashab-k/events{/privacy}",
+                "followers_url": "https://api.github.com/users/ashab-k/followers",
+                "following_url": "https://api.github.com/users/ashab-k/following{/other_user}",
+                "gists_url": "https://api.github.com/users/ashab-k/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/ashab-k",
+                "id": 145352237,
+                "login": "ashab-k",
+                "node_id": "U_kgDOCKnmLQ",
+                "organizations_url": "https://api.github.com/users/ashab-k/orgs",
+                "received_events_url": "https://api.github.com/users/ashab-k/received_events",
+                "repos_url": "https://api.github.com/users/ashab-k/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/ashab-k/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/ashab-k/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/ashab-k",
+                "user_view_type": "public"
+            }
+        }
+    ],
+    "comments": 1,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/30670/comments",
     "created_at": "2024-10-05T13:54:20Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/30670/events",
     "html_url": "https://github.com/neovim/neovim/issues/30670",
     "id": 2568082043,
+    "issue_dependencies_summary": {
+        "blocked_by": 0,
+        "blocking": 0,
+        "total_blocked_by": 0,
+        "total_blocking": 0
+    },
     "labels": [
         {
             "color": "C5DEF5",
@@ -28,7 +81,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 726,
+        "closed_issues": 783,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -58,15 +111,16 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 630,
+        "open_issues": 636,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2025-07-07T03:51:31Z",
+        "updated_at": "2026-02-28T15:57:01Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM6ZEdJ7",
     "number": 30670,
     "performed_via_github_app": null,
+    "pinned_comment": null,
     "reactions": {
         "+1": 0,
         "-1": 0,
@@ -99,7 +153,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyr",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2025-07-02T08:36:33Z",
+    "updated_at": "2026-03-01T22:50:57Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/30670",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/4656860?v=4",

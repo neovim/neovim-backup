@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/nvim-lspconfig/downloads",
             "events_url": "https://api.github.com/repos/neovim/nvim-lspconfig/events",
             "fork": false,
-            "forks": 2403,
-            "forks_count": 2403,
+            "forks": 2417,
+            "forks_count": 2417,
             "forks_url": "https://api.github.com/repos/neovim/nvim-lspconfig/forks",
             "full_name": "neovim/nvim-lspconfig",
             "git_commits_url": "https://api.github.com/repos/neovim/nvim-lspconfig/git/commits{/sha}",
@@ -68,6 +68,7 @@
             "has_issues": true,
             "has_pages": false,
             "has_projects": false,
+            "has_pull_requests": true,
             "has_wiki": true,
             "homepage": "",
             "hooks_url": "https://api.github.com/repos/neovim/nvim-lspconfig/hooks",
@@ -94,8 +95,8 @@
             "name": "nvim-lspconfig",
             "node_id": "MDEwOlJlcG9zaXRvcnkyMjE1MTI0MDc=",
             "notifications_url": "https://api.github.com/repos/neovim/nvim-lspconfig/notifications{?since,all,participating}",
-            "open_issues": 40,
-            "open_issues_count": 40,
+            "open_issues": 35,
+            "open_issues_count": 35,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -118,12 +119,13 @@
                 "user_view_type": "public"
             },
             "private": false,
+            "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls{/number}",
-            "pushed_at": "2026-02-06T13:25:39Z",
+            "pushed_at": "2026-02-27T22:53:53Z",
             "releases_url": "https://api.github.com/repos/neovim/nvim-lspconfig/releases{/id}",
-            "size": 7104,
+            "size": 6934,
             "ssh_url": "git@github.com:neovim/nvim-lspconfig.git",
-            "stargazers_count": 13319,
+            "stargazers_count": 13414,
             "stargazers_url": "https://api.github.com/repos/neovim/nvim-lspconfig/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/nvim-lspconfig/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/nvim-lspconfig/subscribers",
@@ -141,11 +143,11 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/nvim-lspconfig/git/trees{/sha}",
-            "updated_at": "2026-02-10T03:47:08Z",
+            "updated_at": "2026-03-03T02:15:27Z",
             "url": "https://api.github.com/repos/neovim/nvim-lspconfig",
             "visibility": "public",
-            "watchers": 13319,
-            "watchers_count": 13319,
+            "watchers": 13414,
+            "watchers_count": 13414,
             "web_commit_signoff_required": false
         },
         "sha": "0480b120318ec8bab27b530ffab6ee76a8c4d806",
@@ -173,7 +175,146 @@
     },
     "body": "Some scripts in [neoconf.nvim](https://github.com/folke/neoconf.nvim) can automatically generate Lua types from the JSON schema of LSP server settings. This allows us to get the same code completion and diagnostics in Lua code as we do when editing JSON files when configuring language servers. I plan to bring these features into lspconfig.",
     "closed_at": null,
-    "comment_data": [],
+    "comment_data": [
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/4306#discussion_r2866169465"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/4306"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/2866169465"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "I'm not sure what the state of this PR is but can't this be `vim.json.encode(obj, { indent = '  ', sort_keys = true })`?",
+            "commit_id": "5917d3577e04485ec3c2ef1a04eb6811fd861786",
+            "created_at": "2026-02-27T20:54:14Z",
+            "diff_hunk": "@@ -0,0 +1,84 @@\n+local M = {}\n+\n+---@param t table\n+---@param ret? table\n+function M.flatten(t, ret)\n+  ret = ret or {}\n+  for _, v in pairs(t) do\n+    if type(v) == 'table' then\n+      M.flatten(v, ret)\n+    else\n+      ret[#ret + 1] = v\n+    end\n+  end\n+  return ret\n+end\n+\n+function M.path(str)\n+  local f = debug.getinfo(1, 'S').source:sub(2)\n+  return M.fqn(vim.fn.fnamemodify(f, ':h:h:h') .. '/' .. (str or ''))\n+end\n+\n+function M.read_file(file)\n+  local fd = io.open(file, 'r')\n+  if not fd then\n+    error(('Could not open file %s for reading'):format(file))\n+  end\n+  local data = fd:read('*a')\n+  fd:close()\n+  return data\n+end\n+\n+function M.write_file(file, data)\n+  local fd = io.open(file, 'w+')\n+  if not fd then\n+    error(('Could not open file %s for writing'):format(file))\n+  end\n+  fd:write(data)\n+  fd:close()\n+end\n+\n+function M.json_decode(json)\n+  json = vim.trim(json)\n+  if json == '' then\n+    json = '{}'\n+  end\n+  return require('scripts.gen_types').decode_jsonc(json)\n+end\n+\n+function M.fqn(fname)\n+  fname = vim.fn.fnamemodify(fname, ':p')\n+  return uv.fs_realpath(fname) or fname\n+end\n+\n+function M.fetch(url)\n+  local fd = io.popen(string.format('curl -s -k %q', url))\n+  if not fd then\n+    error(('Could not download %s'):format(url))\n+  end\n+  local ret = fd:read('*a')\n+  fd:close()\n+  return ret\n+end\n+\n+function M.json_format(obj)\n+  local tmp = os.tmpname()\n+  M.write_file(tmp, vim.json.encode(obj))\n+  local fd = io.popen('jq -S < ' .. tmp)\n+  if not fd then\n+    error('Could not format json')\n+  end\n+  local ret = fd:read('*a')\n+  if ret == '' then\n+    error('Could not format json')\n+  end\n+  fd:close()",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/4306#discussion_r2866169465",
+            "id": 2866169465,
+            "line": 75,
+            "node_id": "PRRC_kwDODTQC186q1kZ5",
+            "original_commit_id": "5917d3577e04485ec3c2ef1a04eb6811fd861786",
+            "original_line": 75,
+            "original_position": 75,
+            "original_start_line": 65,
+            "path": "scripts/gen_types/util.lua",
+            "position": 75,
+            "pull_request_review_id": 3869041436,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/4306",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/2866169465/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 65,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-02-27T20:54:14Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/2866169465",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/23235841?v=4",
+                "events_url": "https://api.github.com/users/yochem/events{/privacy}",
+                "followers_url": "https://api.github.com/users/yochem/followers",
+                "following_url": "https://api.github.com/users/yochem/following{/other_user}",
+                "gists_url": "https://api.github.com/users/yochem/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/yochem",
+                "id": 23235841,
+                "login": "yochem",
+                "node_id": "MDQ6VXNlcjIzMjM1ODQx",
+                "organizations_url": "https://api.github.com/users/yochem/orgs",
+                "received_events_url": "https://api.github.com/users/yochem/received_events",
+                "repos_url": "https://api.github.com/users/yochem/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/yochem/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/yochem/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/yochem",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/nvim-lspconfig/pull/4306#discussion_r2866181434"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/4306"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/2866181434"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "`vim.net.request`?",
+            "commit_id": "5917d3577e04485ec3c2ef1a04eb6811fd861786",
+            "created_at": "2026-02-27T20:57:57Z",
+            "diff_hunk": "@@ -0,0 +1,84 @@\n+local M = {}\n+\n+---@param t table\n+---@param ret? table\n+function M.flatten(t, ret)\n+  ret = ret or {}\n+  for _, v in pairs(t) do\n+    if type(v) == 'table' then\n+      M.flatten(v, ret)\n+    else\n+      ret[#ret + 1] = v\n+    end\n+  end\n+  return ret\n+end\n+\n+function M.path(str)\n+  local f = debug.getinfo(1, 'S').source:sub(2)\n+  return M.fqn(vim.fn.fnamemodify(f, ':h:h:h') .. '/' .. (str or ''))\n+end\n+\n+function M.read_file(file)\n+  local fd = io.open(file, 'r')\n+  if not fd then\n+    error(('Could not open file %s for reading'):format(file))\n+  end\n+  local data = fd:read('*a')\n+  fd:close()\n+  return data\n+end\n+\n+function M.write_file(file, data)\n+  local fd = io.open(file, 'w+')\n+  if not fd then\n+    error(('Could not open file %s for writing'):format(file))\n+  end\n+  fd:write(data)\n+  fd:close()\n+end\n+\n+function M.json_decode(json)\n+  json = vim.trim(json)\n+  if json == '' then\n+    json = '{}'\n+  end\n+  return require('scripts.gen_types').decode_jsonc(json)\n+end\n+\n+function M.fqn(fname)\n+  fname = vim.fn.fnamemodify(fname, ':p')\n+  return uv.fs_realpath(fname) or fname\n+end\n+\n+function M.fetch(url)\n+  local fd = io.popen(string.format('curl -s -k %q', url))\n+  if not fd then\n+    error(('Could not download %s'):format(url))\n+  end\n+  local ret = fd:read('*a')\n+  fd:close()\n+  return ret",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/pull/4306#discussion_r2866181434",
+            "id": 2866181434,
+            "line": 61,
+            "node_id": "PRRC_kwDODTQC186q1nU6",
+            "original_commit_id": "5917d3577e04485ec3c2ef1a04eb6811fd861786",
+            "original_line": 61,
+            "original_position": 61,
+            "original_start_line": 55,
+            "path": "scripts/gen_types/util.lua",
+            "position": 61,
+            "pull_request_review_id": 3869054528,
+            "pull_request_url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/4306",
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/2866181434/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 55,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-02-27T20:57:57Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/comments/2866181434",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/23235841?v=4",
+                "events_url": "https://api.github.com/users/yochem/events{/privacy}",
+                "followers_url": "https://api.github.com/users/yochem/followers",
+                "following_url": "https://api.github.com/users/yochem/following{/other_user}",
+                "gists_url": "https://api.github.com/users/yochem/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/yochem",
+                "id": 23235841,
+                "login": "yochem",
+                "node_id": "MDQ6VXNlcjIzMjM1ODQx",
+                "organizations_url": "https://api.github.com/users/yochem/orgs",
+                "received_events_url": "https://api.github.com/users/yochem/received_events",
+                "repos_url": "https://api.github.com/users/yochem/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/yochem/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/yochem/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/yochem",
+                "user_view_type": "public"
+            }
+        }
+    ],
     "comment_regular_data": [
         {
             "author_association": "CONTRIBUTOR",
@@ -541,6 +682,7 @@
             "has_issues": false,
             "has_pages": false,
             "has_projects": true,
+            "has_pull_requests": true,
             "has_wiki": true,
             "homepage": "",
             "hooks_url": "https://api.github.com/repos/ofseed/nvim-lspconfig/hooks",
@@ -591,6 +733,7 @@
                 "user_view_type": "public"
             },
             "private": false,
+            "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/ofseed/nvim-lspconfig/pulls{/number}",
             "pushed_at": "2026-02-05T05:55:33Z",
             "releases_url": "https://api.github.com/repos/ofseed/nvim-lspconfig/releases{/id}",
@@ -641,7 +784,7 @@
     "issue_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/4306",
     "labels": [],
     "locked": false,
-    "merge_commit_sha": "f95af849e5620ffe316718c1e7e7ab623299a65b",
+    "merge_commit_sha": "786f448f5519bee47f46fa97a32d8bbbfd7ee1ee",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDODTQC187BYVE8",
@@ -654,7 +797,7 @@
     "state": "open",
     "statuses_url": "https://api.github.com/repos/neovim/nvim-lspconfig/statuses/5917d3577e04485ec3c2ef1a04eb6811fd861786",
     "title": "ci: generate annotations for Lua types",
-    "updated_at": "2026-02-06T01:10:46Z",
+    "updated_at": "2026-02-27T20:57:57Z",
     "url": "https://api.github.com/repos/neovim/nvim-lspconfig/pulls/4306",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/61115159?v=4",
