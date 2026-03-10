@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/38116"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/c9f82fa7447cda691a5ed6aa432af382eb520d11"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/26d0593fa83e33e20bf33658fdbc933521e8f6ca"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6614,
-            "forks_count": 6614,
+            "forks": 6633,
+            "forks_count": 6633,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -95,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 2002,
-            "open_issues_count": 2002,
+            "open_issues": 1991,
+            "open_issues_count": 1991,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -121,11 +121,11 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2026-03-03T01:57:21Z",
+            "pushed_at": "2026-03-10T02:47:07Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 370620,
+            "size": 372366,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 96882,
+            "stargazers_count": 97133,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -143,14 +143,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2026-03-03T02:14:30Z",
+            "updated_at": "2026-03-10T03:24:21Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 96882,
-            "watchers_count": 96882,
+            "watchers": 97133,
+            "watchers_count": 97133,
             "web_commit_signoff_required": false
         },
-        "sha": "1a02896e169b7e22c489dd5b7f60b570c496631e",
+        "sha": "6535353b6d0ddb3e357aa70404786275a46d5934",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -175,7 +175,147 @@
     },
     "body": "Reimplement vim.wait in Lua using new vim._loop_poll,\r\nvim._check_interrupt, and vim._ui_flush bindings.\r\n\r\nSimplified the wait loop by replacing the single long\r\nLOOP_PROCESS_EVENTS_UNTIL call plus a dummy timer with repeated\r\n_loop_poll(interval) calls. Each poll blocks for up to the interval and\r\nreturns on any event, so the periodic wakeups (and early wakeups on\r\nevents) fall out naturally without a timer, while keeping the same\r\ncondition‑check cadence.\r\n\r\nFix docs to state that success returns true plus the remaining callback\r\nresults (i.e., the callback’s second return value becomes the second\r\nreturn value from vim.wait).\r\n\r\n\r\n---\r\n\r\n- [x] Can `vim._ui_flush()` be replaced with `vim.api.nvim__redraw({flush=True})` or similar?\n  - No but could be added to nvim__redraw as an option. Keeping binding for now.",
     "closed_at": null,
-    "comment_data": [],
+    "comment_data": [
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/38116#discussion_r2884271718"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/38116"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2884271718"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Isn't this losing 6 digits of precision?",
+            "commit_id": "26d0593fa83e33e20bf33658fdbc933521e8f6ca",
+            "created_at": "2026-03-04T14:57:25Z",
+            "diff_hunk": "@@ -38,6 +38,124 @@ vim._extra = {\n   inspect_pos = true,\n }\n \n+--- Waits up to `time` milliseconds, until `callback` returns `true` (success). Executes\n+--- `callback` immediately, then on user events, internal events, and approximately every\n+--- `interval` milliseconds (default 200). Returns all `callback` results on success.\n+---\n+--- Nvim processes other events while waiting.\n+--- Cannot be called during an |api-fast| event.\n+---\n+--- Examples:\n+---\n+--- ```lua\n+--- -- Wait for 100 ms, allowing other events to process.\n+--- vim.wait(100)\n+---\n+--- -- Wait up to 1000 ms or until `vim.g.foo` is true, at intervals of ~500 ms.\n+--- vim.wait(1000, function() return vim.g.foo end, 500)\n+---\n+--- -- Wait indefinitely until `vim.g.foo` is true, and get the callback results.\n+--- local ok, rv1, rv2, rv3 = vim.wait(math.huge, function()\n+---   return vim.g.foo, 'a', 42, { ok = { 'yes' } }\n+--- end)\n+---\n+--- -- Schedule a function to set a value in 100ms. This would wait 10s if blocked, but actually\n+--- -- only waits 100ms because `vim.wait` processes other events while waiting.\n+--- vim.defer_fn(function() vim.g.timer_result = true end, 100)\n+--- if vim.wait(10000, function() return vim.g.timer_result end) then\n+---   print('Only waiting a little bit of time!')\n+--- end\n+--- ```\n+---\n+--- @param time number Number of milliseconds to wait. Must be non-negative number, any fractional\n+--- part is truncated.\n+--- @param callback? fun(): boolean, ... Optional callback. Waits until {callback} returns true\n+--- @param interval? integer (Approximate) number of milliseconds to wait between polls\n+--- @param fast_only? boolean If true, only |api-fast| events will be processed.\n+--- @return boolean, nil|-1|-2, ...\n+---     - If callback returns `true` before timeout: `true, ...` (remaining callback results)\n+---     - On timeout: `false, -1`\n+---     - On interrupt: `false, -2`\n+---     - On error: the error is raised.\n+function vim.wait(time, callback, interval, fast_only)\n+  if vim.in_fast_event() then\n+    error('E5560: vim.wait must not be called in a fast event context', 0)\n+  end\n+\n+  vim.validate('time', time, 'number')\n+  if time < 0 then\n+    error('timeout must be >= 0')\n+  end\n+  -- not nan and not too big\n+  if time ~= time or time > vim._maxint then\n+    time = vim._maxint\n+  end\n+\n+  vim.validate('callback', callback, 'callable', true)\n+\n+  vim.validate('interval', interval, 'number', true)\n+  if interval then\n+    interval = math.floor(interval)\n+    if interval < 0 then\n+      error('interval must be >= 0')\n+    end\n+  else\n+    interval = 200\n+  end\n+\n+  vim.validate('fast_only', fast_only, 'boolean', true)\n+  if fast_only == nil then\n+    fast_only = false\n+  end\n+\n+  local start = vim.uv.hrtime()\n+\n+  -- Flush screen updates before blocking.\n+  vim._ui_flush()\n+\n+  while true do\n+    if vim._check_interrupt() then\n+      return false, -2\n+    end\n+\n+    if callback then\n+      local ok, results = pcall(function()\n+        return vim.F.pack_len(callback())\n+      end)\n+      if not ok then\n+        error(results, 0)\n+      end\n+      --- @cast results -string\n+      local n = results.n\n+      if n > 0 and results[1] then\n+        return true, unpack(results, 2, n)\n+      end\n+    end\n+\n+    local elapsed_ms = (vim.uv.hrtime() - start) / 1e6\n+    local remaining_ms = time - elapsed_ms\n+    if remaining_ms <= 0 then\n+      break\n+    end\n+\n+    -- By default, block until the timeout expires.\n+    local poll_ms = remaining_ms\n+    if interval > 0 then\n+      -- Wait until the next interval boundary after `elapsed_ms`.\n+      -- This keeps callback checks aligned to fixed multiples of `interval`\n+      -- in case some loops run late.\n+      local next_wakeup_ms = (math.floor(elapsed_ms / interval) + 1) * interval\n+      poll_ms = math.min(poll_ms, next_wakeup_ms - elapsed_ms)\n+    end\n+\n+    -- `_loop_poll()` needs an integer timeout and > 0 to block. Round up small values\n+    -- to avoid spinning.\n+    vim._loop_poll(math.ceil(poll_ms), fast_only)",
+            "html_url": "https://github.com/neovim/neovim/pull/38116#discussion_r2884271718",
+            "id": 2884271718,
+            "line": 153,
+            "node_id": "PRRC_kwDOAPphoM6r6n5m",
+            "original_commit_id": "26d0593fa83e33e20bf33658fdbc933521e8f6ca",
+            "original_line": 153,
+            "original_position": 116,
+            "original_start_line": 151,
+            "path": "runtime/lua/vim/_core/editor.lua",
+            "position": 116,
+            "pull_request_review_id": 3889964355,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/38116",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2884271718/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 151,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-03-04T14:57:34Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2884271718",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+                "followers_url": "https://api.github.com/users/zeertzjq/followers",
+                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/zeertzjq",
+                "id": 35768171,
+                "login": "zeertzjq",
+                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+                "repos_url": "https://api.github.com/users/zeertzjq/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/38116#discussion_r2884287697"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/38116"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2884287697"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Oh, actually it doesn't matter.",
+            "commit_id": "26d0593fa83e33e20bf33658fdbc933521e8f6ca",
+            "created_at": "2026-03-04T15:00:09Z",
+            "diff_hunk": "@@ -38,6 +38,124 @@ vim._extra = {\n   inspect_pos = true,\n }\n \n+--- Waits up to `time` milliseconds, until `callback` returns `true` (success). Executes\n+--- `callback` immediately, then on user events, internal events, and approximately every\n+--- `interval` milliseconds (default 200). Returns all `callback` results on success.\n+---\n+--- Nvim processes other events while waiting.\n+--- Cannot be called during an |api-fast| event.\n+---\n+--- Examples:\n+---\n+--- ```lua\n+--- -- Wait for 100 ms, allowing other events to process.\n+--- vim.wait(100)\n+---\n+--- -- Wait up to 1000 ms or until `vim.g.foo` is true, at intervals of ~500 ms.\n+--- vim.wait(1000, function() return vim.g.foo end, 500)\n+---\n+--- -- Wait indefinitely until `vim.g.foo` is true, and get the callback results.\n+--- local ok, rv1, rv2, rv3 = vim.wait(math.huge, function()\n+---   return vim.g.foo, 'a', 42, { ok = { 'yes' } }\n+--- end)\n+---\n+--- -- Schedule a function to set a value in 100ms. This would wait 10s if blocked, but actually\n+--- -- only waits 100ms because `vim.wait` processes other events while waiting.\n+--- vim.defer_fn(function() vim.g.timer_result = true end, 100)\n+--- if vim.wait(10000, function() return vim.g.timer_result end) then\n+---   print('Only waiting a little bit of time!')\n+--- end\n+--- ```\n+---\n+--- @param time number Number of milliseconds to wait. Must be non-negative number, any fractional\n+--- part is truncated.\n+--- @param callback? fun(): boolean, ... Optional callback. Waits until {callback} returns true\n+--- @param interval? integer (Approximate) number of milliseconds to wait between polls\n+--- @param fast_only? boolean If true, only |api-fast| events will be processed.\n+--- @return boolean, nil|-1|-2, ...\n+---     - If callback returns `true` before timeout: `true, ...` (remaining callback results)\n+---     - On timeout: `false, -1`\n+---     - On interrupt: `false, -2`\n+---     - On error: the error is raised.\n+function vim.wait(time, callback, interval, fast_only)\n+  if vim.in_fast_event() then\n+    error('E5560: vim.wait must not be called in a fast event context', 0)\n+  end\n+\n+  vim.validate('time', time, 'number')\n+  if time < 0 then\n+    error('timeout must be >= 0')\n+  end\n+  -- not nan and not too big\n+  if time ~= time or time > vim._maxint then\n+    time = vim._maxint\n+  end\n+\n+  vim.validate('callback', callback, 'callable', true)\n+\n+  vim.validate('interval', interval, 'number', true)\n+  if interval then\n+    interval = math.floor(interval)\n+    if interval < 0 then\n+      error('interval must be >= 0')\n+    end\n+  else\n+    interval = 200\n+  end\n+\n+  vim.validate('fast_only', fast_only, 'boolean', true)\n+  if fast_only == nil then\n+    fast_only = false\n+  end\n+\n+  local start = vim.uv.hrtime()\n+\n+  -- Flush screen updates before blocking.\n+  vim._ui_flush()\n+\n+  while true do\n+    if vim._check_interrupt() then\n+      return false, -2\n+    end\n+\n+    if callback then\n+      local ok, results = pcall(function()\n+        return vim.F.pack_len(callback())\n+      end)\n+      if not ok then\n+        error(results, 0)\n+      end\n+      --- @cast results -string\n+      local n = results.n\n+      if n > 0 and results[1] then\n+        return true, unpack(results, 2, n)\n+      end\n+    end\n+\n+    local elapsed_ms = (vim.uv.hrtime() - start) / 1e6\n+    local remaining_ms = time - elapsed_ms\n+    if remaining_ms <= 0 then\n+      break\n+    end\n+\n+    -- By default, block until the timeout expires.\n+    local poll_ms = remaining_ms\n+    if interval > 0 then\n+      -- Wait until the next interval boundary after `elapsed_ms`.\n+      -- This keeps callback checks aligned to fixed multiples of `interval`\n+      -- in case some loops run late.\n+      local next_wakeup_ms = (math.floor(elapsed_ms / interval) + 1) * interval\n+      poll_ms = math.min(poll_ms, next_wakeup_ms - elapsed_ms)\n+    end\n+\n+    -- `_loop_poll()` needs an integer timeout and > 0 to block. Round up small values\n+    -- to avoid spinning.\n+    vim._loop_poll(math.ceil(poll_ms), fast_only)",
+            "html_url": "https://github.com/neovim/neovim/pull/38116#discussion_r2884287697",
+            "id": 2884287697,
+            "in_reply_to_id": 2884271718,
+            "line": 153,
+            "node_id": "PRRC_kwDOAPphoM6r6rzR",
+            "original_commit_id": "26d0593fa83e33e20bf33658fdbc933521e8f6ca",
+            "original_line": 153,
+            "original_position": 116,
+            "original_start_line": 151,
+            "path": "runtime/lua/vim/_core/editor.lua",
+            "position": 116,
+            "pull_request_review_id": 3889981288,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/38116",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2884287697/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 151,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-03-04T15:00:09Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2884287697",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+                "followers_url": "https://api.github.com/users/zeertzjq/followers",
+                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/zeertzjq",
+                "id": 35768171,
+                "login": "zeertzjq",
+                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+                "repos_url": "https://api.github.com/users/zeertzjq/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
+            }
+        }
+    ],
     "comment_regular_data": [
         {
             "author_association": "MEMBER",
@@ -320,9 +460,9 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/lewis6991/neovim/pulls{/number}",
-            "pushed_at": "2026-03-02T10:41:36Z",
+            "pushed_at": "2026-03-05T07:38:58Z",
             "releases_url": "https://api.github.com/repos/lewis6991/neovim/releases{/id}",
-            "size": 358994,
+            "size": 358989,
             "ssh_url": "git@github.com:lewis6991/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/lewis6991/neovim/stargazers",
@@ -341,7 +481,7 @@
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "c9f82fa7447cda691a5ed6aa432af382eb520d11",
+        "sha": "26d0593fa83e33e20bf33658fdbc933521e8f6ca",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",
             "events_url": "https://api.github.com/users/lewis6991/events{/privacy}",
@@ -385,23 +525,54 @@
             "name": "lua",
             "node_id": "MDU6TGFiZWw1NzMyMjI2OTM=",
             "url": "https://api.github.com/repos/neovim/neovim/labels/lua"
+        },
+        {
+            "color": "8B601E",
+            "default": false,
+            "description": "Change was developed with AI",
+            "id": 9676241542,
+            "name": "AI assisted 🤖",
+            "node_id": "LA_kwDOAPphoM8AAAACQL-6hg",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/AI%20assisted%20%F0%9F%A4%96"
         }
     ],
     "locked": false,
-    "merge_commit_sha": "a7ca2a72b609a69d11b4c885f68e4767e86001c0",
+    "merge_commit_sha": "e84f10e193486714336cf2084e7bb662b5c02e4f",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM7HHsY2",
     "number": 38116,
     "patch_url": "https://github.com/neovim/neovim/pull/38116.patch",
-    "requested_reviewers": [],
+    "requested_reviewers": [
+        {
+            "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+            "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+            "followers_url": "https://api.github.com/users/justinmk/followers",
+            "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+            "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+            "gravatar_id": "",
+            "html_url": "https://github.com/justinmk",
+            "id": 1359421,
+            "login": "justinmk",
+            "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+            "organizations_url": "https://api.github.com/users/justinmk/orgs",
+            "received_events_url": "https://api.github.com/users/justinmk/received_events",
+            "repos_url": "https://api.github.com/users/justinmk/repos",
+            "site_admin": false,
+            "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+            "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+            "type": "User",
+            "url": "https://api.github.com/users/justinmk",
+            "user_view_type": "public"
+        }
+    ],
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/38116/comments",
     "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/c9f82fa7447cda691a5ed6aa432af382eb520d11",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/26d0593fa83e33e20bf33658fdbc933521e8f6ca",
     "title": "refactor(lua): reimplement vim.wait in Lua",
-    "updated_at": "2026-03-02T10:41:37Z",
+    "updated_at": "2026-03-04T15:23:53Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/38116",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",
