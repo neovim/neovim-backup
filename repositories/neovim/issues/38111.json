@@ -4,8 +4,28 @@
     "assignees": [],
     "author_association": "NONE",
     "body": "## Problem\n\nAfter commit 5cbb9d613bf6 (`fix(startup): wait for bg detection before user config`), setting `guicursor=` (empty) causes a blinking cursor in all modes. This is a regression — the cursor was steady (non-blinking) before.\n\n## Steps to reproduce\n\n```\nnvim --clean --cmd 'set guicursor='\n```\n\nThe cursor blinks. Before the startup timing change, it did not.\n\n## Root cause\n\nThe compile-time `shape_table` in `cursor_shape.c` has `blinkon=400` for normal mode:\n\n```c\n{ \"normal\", 0, 0, 0, 700, 400, 250, 0, 0, \"n\", SHAPE_CURSOR + SHAPE_MOUSE },\n```\n\nDuring startup:\n\n1. `ui_refresh()` (ui.c:248) calls `ui_mode_info_set()` when the TUI attaches, marking `pending_mode_info_update = true`. At this point, `parse_shape_opt` hasn't run yet (it runs in `set_init_3`, after `.vimrc`), so `mode_style_array()` returns the **compile-time** values (`blinkon=400`).\n\n2. The new `vim.wait(100, ...)` in `defaults.lua` (for background detection) triggers `ui_flush()`, which processes the pending mode_info_update and sends the compile-time cursor data to the TUI.\n\n3. The TUI's `tui_mode_info_set` stores these shapes and calls `tui_set_mode(tui, tui->showing_mode)` (tui.c:1313). For normal mode with `blinkon=400`: DECSCUSR = `1 + (400==0 || 250==0)` = `1` → sends `\\e[1 q` (**blinking block**).\n\n4. Later, `set_init_3()` runs `parse_shape_opt()`, which clears the shape_table (`blinkon=0`) and processes `guicursor=\"\"`. With empty guicursor, `cursor_style_enabled = false`, so **no correcting DECSCUSR is sent**. The stale `\\e[1 q` persists.\n\nWith a non-empty `guicursor` (e.g. `--clean` defaults), step 4 sends `cursor_style_enabled = true` and the TUI corrects to `\\e[2 q` (steady block). The bug only manifests with `guicursor=\"\"`.\n\n## Verification\n\nCapturing escape sequences with `script` confirms:\n\n- `nvim --clean --cmd 'set guicursor='` → 1× `\\e[1 q` (blinking block), no `\\e[2 q`\n- `nvim --clean` → 1× `\\e[1 q` followed by 3× `\\e[2 q` (steady block corrects it)\n\n## Expected behavior\n\n`guicursor=\"\"` should produce a steady block cursor (no blinking), as it did before the startup timing change.\n\n## Environment\n\n- NVIM v0.12.0-dev-2454+g32e0d05d53 (Homebrew HEAD)\n- Terminal: Ghostty 1.2.3 (with `cursor-style-blink = false`)\n- macOS (Darwin 25.3.0)\n- `TERM=xterm-ghostty`",
-    "closed_at": null,
-    "closed_by": null,
+    "closed_at": "2026-03-10T11:03:05Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+        "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+        "followers_url": "https://api.github.com/users/justinmk/followers",
+        "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+        "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/justinmk",
+        "id": 1359421,
+        "login": "justinmk",
+        "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+        "organizations_url": "https://api.github.com/users/justinmk/orgs",
+        "received_events_url": "https://api.github.com/users/justinmk/received_events",
+        "repos_url": "https://api.github.com/users/justinmk/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -161,8 +181,8 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/38111/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "sub_issues_summary": {
         "completed": 0,
         "percent_completed": 0,
@@ -180,7 +200,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyr",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2026-03-09T19:59:41Z",
+    "updated_at": "2026-03-10T11:03:05Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/38111",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/14138433?v=4",

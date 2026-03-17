@@ -46,7 +46,7 @@
     ],
     "author_association": "NONE",
     "body": "### Problem\n\nWith `completeopt=menu` (as opposed to `menuone`, and specifically without `noinsert`), if there's a single possible completion match, it gets inserted into the buffer automatically without opening the `ins-completion` menu. However, the `CompleteDone` event that fires will set `vim.v.event.reason = \"discard\"` rather than `\"accept\"`, even though `vim.v.completed_item` does correctly reflect the sole match that gets selected.\n\nPreviously, #32600 amended the `CompleteDone` event with the `discard` reason to distinguish it from `cancel`. But it appears to have missed this edge case where `accept` seems more appropriate (unless I'm missing something).\n\nThis has downstream implications for `vim.lsp.completion`, which only applies side-effects (additional edits, snippet expansion, etc) when `reason == \"accept\"`: https://github.com/neovim/neovim/blob/6beb1fe0cd686cd0fe8a2a5f72704f7d1bbd252c/runtime/lua/vim/lsp/completion.lua#L889-L892 That said, if I patch this locally to always call `on_complete_done()`, there does seem to be a separate issue downstream of *that* where additional LSP text edits that I'm expecting are prevented by the logic here: https://github.com/neovim/neovim/blob/6beb1fe0cd686cd0fe8a2a5f72704f7d1bbd252c/runtime/lua/vim/lsp/completion.lua#L795-L801 So it could be that the insertion of the only match is updating `changedtick` in a way that's not anticipated by LSP completion either. But that's a separate issue I haven't fully dug into.\n\n### Steps to reproduce\n\nrepro.lua\n\n```lua\nvim.o.completeopt = \"menu\"\n\nlocal group = vim.api.nvim_create_augroup(\"repro\", { clear = true })\n\nvim.api.nvim_create_autocmd(\"CompleteDone\", {\n  group = group,\n  callback = function()\n    vim.print({\n      event = vim.v.event,\n      completed_item = vim.v.completed_item,\n    })\n  end,\n})\n\nvim.api.nvim_create_autocmd(\"UIEnter\", {\n  group = group,\n  callback = function()\n    local keys = vim.api.nvim_replace_termcodes(\"itest<cr><c-n><esc>\", true, false, true)\n    vim.fn.feedkeys(keys, \"nt\")\n  end,\n})\n```\n\n```console\n$ nvim --clean -u repro.lua\n```\n\nAfter some setup to ensure `completeopt=menu` and to add some debug printing around the `CompleteDone` event, this repro will add the word `test` to the buffer, then use `<c-n>` to trigger keyword completion. With `test` being the only keyword, that's what gets inserted. However, the data set for `CompleteDone` tells a different story:\n\n```\n{\n  completed_item = {\n    abbr = \"\",\n    info = \"\",\n    kind = \"\",\n    menu = \"\",\n    user_data = \"\",\n    word = \"test\"\n  },\n  event = {\n    complete_type = \"keyword\",\n    complete_word = \"\",\n    reason = \"discard\"\n  }\n}\n```\n\n### Expected behavior\n\nI expected `event.reason` to be `\"accept\"`, as the acceptance of the first/only result is automatic in this configuration. I also would expect `event.complete_word` to be `\"test\"` rather than empty in this repro.\n\n### Nvim version (nvim -v)\n\nNVIM v0.11.6 Build type: Release LuaJIT 2.1.1767980792\n\n### Vim (not Nvim) behaves the same?\n\nno, vim doesn't include the `reason` key at all in `v:event` (AFAICT)\n\n### Operating system/version\n\nmacOS 26.3\n\n### Terminal name/version\n\nWezTerm 20240203-110809-5046fc22\n\n### $TERM environment variable\n\nxterm-256color\n\n### Installation\n\nHomebrew",
-    "closed_at": "2026-03-09T11:58:15Z",
+    "closed_at": "2026-03-13T10:14:00Z",
     "closed_by": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
         "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
@@ -96,7 +96,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 280,
+        "closed_issues": 304,
         "created_at": "2024-05-16T14:11:54Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -126,10 +126,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/43/labels",
         "node_id": "MI_kwDOAPphoM4AqNEV",
         "number": 43,
-        "open_issues": 38,
+        "open_issues": 23,
         "state": "open",
         "title": "0.12",
-        "updated_at": "2026-03-09T23:20:27Z",
+        "updated_at": "2026-03-16T23:29:50Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/43"
     },
     "node_id": "I_kwDOAPphoM7v5pNt",
@@ -168,7 +168,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyr",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2026-03-09T11:58:22Z",
+    "updated_at": "2026-03-13T10:14:00Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/38160",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/600924?v=4",

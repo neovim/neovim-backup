@@ -36,6 +36,7 @@
             "issue_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/4145",
             "node_id": "IC_kwDODTQC187M3X7q",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -81,6 +82,7 @@
             "issue_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/4145",
             "node_id": "IC_kwDODTQC187M3qCp",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -126,6 +128,7 @@
             "issue_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/4145",
             "node_id": "IC_kwDODTQC187M3srv",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -171,6 +174,7 @@
             "issue_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/4145",
             "node_id": "IC_kwDODTQC187M38Se",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -216,6 +220,7 @@
             "issue_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/4145",
             "node_id": "IC_kwDODTQC187M4I9l",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -261,16 +266,17 @@
             "issue_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/4145",
             "node_id": "IC_kwDODTQC187M5JRe",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
                 "heart": 0,
-                "hooray": 0,
+                "hooray": 1,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 0,
+                "total_count": 1,
                 "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/comments/3437532254/reactions"
             },
             "updated_at": "2025-10-23T15:09:14Z",
@@ -296,9 +302,55 @@
                 "url": "https://api.github.com/users/trueGmek",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "NONE",
+            "body": "I had a similar problem (omnisharp ignoring my `.editorconfig`) after upgrading neovim and all tools and dependencies to current versions. I dug into it and it looks like there is a difference between the old deprecated config at `lua/lspconfig/configs/omnisharp.lua` and the new `lsp/omnisharp.lua`: The old one has a `flatten()` function that converts the options into command line arguments. The new one doesn't do that. I copied that function into my config, which fixes the issue:\n\n``` lua\nlocal servers = {\n  clangd = {},\n  omnisharp = {\n    cmd = { 'dotnet', vim.fn.stdpath 'data' .. '/mason/packages/omnisharp/libexec/OmniSharp.dll', '--languageserver' },\n    settings = {\n      FormattingOptions = {\n        EnableEditorConfigSupport = true,\n      },\n      RoslynExtensionsOptions = {\n        -- ...\n      },\n    },\n  },\n\n  lua_ls = {\n    settings = {\n      -- ...\n    },\n  },\n}\n\n-- OmniSharp reads settings from cmd-line args, not LSP workspace/configuration.\n-- The old nvim-lspconfig on_new_config hook did this, but the new lsp/*.lua\n-- configs dropped it. See: lspconfig/configs/omnisharp.lua (deprecated) vs\n-- lsp/omnisharp.lua (current). Flatten settings into cmd args ourselves.\nif servers.omnisharp and servers.omnisharp.settings then\n  local function flatten(tbl)\n    local ret = {}\n    for k, v in pairs(tbl) do\n      if type(v) == 'table' then\n        for _, pair in ipairs(flatten(v)) do\n          ret[#ret + 1] = k .. ':' .. pair\n        end\n      else\n        ret[#ret + 1] = k .. '=' .. vim.inspect(v)\n      end\n    end\n    return ret\n  end\n  vim.list_extend(servers.omnisharp.cmd, flatten(servers.omnisharp.settings))\nend\n\nfor name, server in pairs(servers) do\n  vim.lsp.config(name, server)\n  vim.lsp.enable(name)\nend\n```\n\n\nI'm using:\nneovim 0.11.6\nOmniSharp v1.39.15\n\nI only poked around for an hour trying to understand the problem, it's possible that I'm holding it wrong, but that works for me. \n",
+            "created_at": "2026-03-13T14:07:57Z",
+            "html_url": "https://github.com/neovim/nvim-lspconfig/issues/4145#issuecomment-4055353373",
+            "id": 4055353373,
+            "issue_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/4145",
+            "node_id": "IC_kwDODTQC187xt8gd",
+            "performed_via_github_app": null,
+            "pin": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/comments/4055353373/reactions"
+            },
+            "updated_at": "2026-03-13T14:07:57Z",
+            "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/comments/4055353373",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/668256?v=4",
+                "events_url": "https://api.github.com/users/Theome/events{/privacy}",
+                "followers_url": "https://api.github.com/users/Theome/followers",
+                "following_url": "https://api.github.com/users/Theome/following{/other_user}",
+                "gists_url": "https://api.github.com/users/Theome/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/Theome",
+                "id": 668256,
+                "login": "Theome",
+                "node_id": "MDQ6VXNlcjY2ODI1Ng==",
+                "organizations_url": "https://api.github.com/users/Theome/orgs",
+                "received_events_url": "https://api.github.com/users/Theome/received_events",
+                "repos_url": "https://api.github.com/users/Theome/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/Theome/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/Theome/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/Theome",
+                "user_view_type": "public"
+            }
         }
     ],
-    "comments": 6,
+    "comments": 7,
     "comments_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/4145/comments",
     "created_at": "2025-10-23T12:44:22Z",
     "events_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/4145/events",
@@ -327,6 +379,7 @@
     "node_id": "I_kwDODTQC187TRVgQ",
     "number": 4145,
     "performed_via_github_app": null,
+    "pinned_comment": null,
     "reactions": {
         "+1": 0,
         "-1": 0,
@@ -350,7 +403,7 @@
     "timeline_url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/4145/timeline",
     "title": "Omnisharp dosen't respect .editorconfig settings",
     "type": null,
-    "updated_at": "2025-10-23T15:09:14Z",
+    "updated_at": "2026-03-13T14:07:58Z",
     "url": "https://api.github.com/repos/neovim/nvim-lspconfig/issues/4145",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/33727585?v=4",

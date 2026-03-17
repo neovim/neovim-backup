@@ -6,8 +6,55 @@
     "body": "### Problem\n\nThe title mostly covers it and I'll be honest, I'm kind of not too knowledgeable as to what's going on here so please bear with me.\n\nI encountered this bug initially with fzf-lua, where I found I could not delete a directory I had been working on with Neovim because I had quite literally 100 something conhost.exes idling and targeting the directory. I was able to determine this with a Windows tool called Powertoys File Locksmith which lists everything locking a file or directory. I initially thought this was just an issue with fzf-lua, but after some back and forth in this issue: https://github.com/ibhagwan/fzf-lua/issues/2413 it looks like the problem is with Neovim failing to kill conhosts properly on shutdown if a persistent executable like fzf or, humorously, Neovim itself is active in a terminal spawned from Neovim. By \"persistent\" I mean that it keeps running for some reason; with fzf for instance, this would mean calling it but simply leaving the file selector active in the spawned terminal without selecting anything.\n\nThat's about the extent of what I can tell you, the issue linked above may be more insightful or maybe @ibhagwan can explain better. The bug is trivial to reproduce for me.\n\n### Steps to reproduce\n\n1. In Windows Terminal in a cmd prompt, execute nvim.exe --clean with 11.4\n2. :sp | term\n3. Within your spawned terminal split (for me this is another cmd instance), nvim.exe --clean\n4. Do not perform any action except breaking out of the terminal with <C-\\\\>\\<C-n>\n5. :qa! in the original nvim instance\n6. At this point you should have an orphaned conhost.exe attached to your target directory.\n\nNote that other persistent executables work as well aside from Neovim itself; this was initially found with fzf with the list of files kept active in the spawned terminal.\n\nVideo evidence:\n\nhttps://github.com/user-attachments/assets/760706e6-603d-43c9-a9f7-9a2653ec236f\n\n### Expected behavior\n\nNo orphaned conhost.exe. Especially not a hundred of them accumulated over time :(\n\n### Nvim version (nvim -v)\n\nNVIM v0.11.4 \n\n### Vim (not Nvim) behaves the same?\n\nno, 9.1.1825\n\n### Operating system/version\n\nWindows 10\n\n### Terminal name/version\n\nWindows Terminal -> cmd [Version 10.0.19045.6456]\n\n### $TERM environment variable\n\nUnset\n\n### Installation\n\nPortable install off Github releases",
     "closed_at": null,
     "closed_by": null,
-    "comment_data": [],
-    "comments": 0,
+    "comment_data": [
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "This issue can only be reproduced on Windows 10 and has been [addressed](https://learn.microsoft.com/en-us/windows/console/closepseudoconsole#remarks) on Windows 11.\n\nBTW, @zshoals, curious did you have any good workaround for cleaning them up before? :)\nI tried cleaning up `conhost` using `VimLeave + jobstart/detach + powershell/nvim`, but those were sometimes not invoked, then I ask gpt to write a small c prog instead, which works well:\n```lua\nvim.api.nvim_create_autocmd('VimLeave', {\n    callback = function()\n        local pids = vim.api.nvim_get_proc_children(vim.fn.getpid())\n        if #pids <= 2 then return end\n        -- sleep 1000ms, then terminate conhost.exe\n        local args = vim.list_extend({[[E:\\workspace\\test\\demo.exe]], 1000}, pids)\n        vim.fn.jobstart(args, {detach = true})\n\tend\n})\n```\n```c\n#include <stdio.h>\n#include <windows.h>\n\nvoid kill(DWORD pid) {\n    HANDLE h = OpenProcess(PROCESS_TERMINATE | PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);\n    if (!h) return;\n    char path[MAX_PATH];\n    DWORD size = sizeof(path);\n    if (!QueryFullProcessImageNameA(h, 0, path, &size)) return;\n    char *name = strrchr(path, '\\\\');\n    if (_stricmp(name + 1, \"conhost.exe\") != 0) return;\n    TerminateProcess(h, 1);\n    CloseHandle(h);\n}\n\nint main(int argc, char **argv) {\n    Sleep(atoi(argv[1]));\n    for (int i = 2; i < argc; i++) {\n        DWORD pid = (DWORD)atoi(argv[i]);\n        if (pid) kill(pid);\n    }\n    return 0;\n}\n```",
+            "created_at": "2026-03-11T06:16:05Z",
+            "html_url": "https://github.com/neovim/neovim/issues/36395#issuecomment-4036780408",
+            "id": 4036780408,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/36395",
+            "node_id": "IC_kwDOAPphoM7wnGF4",
+            "performed_via_github_app": null,
+            "pin": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 1,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4036780408/reactions"
+            },
+            "updated_at": "2026-03-11T06:16:05Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4036780408",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/8579651?v=4",
+                "events_url": "https://api.github.com/users/ntdiary/events{/privacy}",
+                "followers_url": "https://api.github.com/users/ntdiary/followers",
+                "following_url": "https://api.github.com/users/ntdiary/following{/other_user}",
+                "gists_url": "https://api.github.com/users/ntdiary/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/ntdiary",
+                "id": 8579651,
+                "login": "ntdiary",
+                "node_id": "MDQ6VXNlcjg1Nzk2NTE=",
+                "organizations_url": "https://api.github.com/users/ntdiary/orgs",
+                "received_events_url": "https://api.github.com/users/ntdiary/received_events",
+                "repos_url": "https://api.github.com/users/ntdiary/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/ntdiary/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/ntdiary/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/ntdiary",
+                "user_view_type": "public"
+            }
+        }
+    ],
+    "comments": 1,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/36395/comments",
     "created_at": "2025-10-30T12:48:33Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/36395/events",
@@ -32,7 +79,16 @@
         {
             "color": "c5def5",
             "default": false,
-            "description": "built-in :terminal or :shell",
+            "description": "OS processes, spawn",
+            "id": 182884815,
+            "name": "job-control",
+            "node_id": "MDU6TGFiZWwxODI4ODQ4MTU=",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/job-control"
+        },
+        {
+            "color": "c5def5",
+            "default": false,
+            "description": "built-in :terminal or :shell, PTY",
             "id": 212696822,
             "name": "terminal",
             "node_id": "MDU6TGFiZWwyMTI2OTY4MjI=",
@@ -45,6 +101,7 @@
     "node_id": "I_kwDOAPphoM7U02eM",
     "number": 36395,
     "performed_via_github_app": null,
+    "pinned_comment": null,
     "reactions": {
         "+1": 0,
         "-1": 0,
@@ -77,7 +134,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyr",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2025-10-30T23:57:12Z",
+    "updated_at": "2026-03-11T09:50:20Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/36395",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/31998826?v=4",
