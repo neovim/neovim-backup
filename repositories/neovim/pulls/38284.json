@@ -28,7 +28,7 @@
     "active_lock_reason": null,
     "assignee": null,
     "assignees": [],
-    "author_association": "FIRST_TIME_CONTRIBUTOR",
+    "author_association": "CONTRIBUTOR",
     "auto_merge": null,
     "base": {
         "label": "neovim:master",
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6663,
-            "forks_count": 6663,
+            "forks": 6672,
+            "forks_count": 6672,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -95,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1948,
-            "open_issues_count": 1948,
+            "open_issues": 1905,
+            "open_issues_count": 1905,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -121,11 +121,11 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2026-03-17T00:18:19Z",
+            "pushed_at": "2026-03-24T00:01:43Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 374549,
+            "size": 374123,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 97268,
+            "stargazers_count": 97452,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -143,11 +143,11 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2026-03-17T03:40:03Z",
+            "updated_at": "2026-03-24T03:20:56Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 97268,
-            "watchers_count": 97268,
+            "watchers": 97452,
+            "watchers_count": 97452,
             "web_commit_signoff_required": false
         },
         "sha": "fd1e019e90e76bb3f6236210ac6287f3b8d4d47f",
@@ -174,7 +174,7 @@
         }
     },
     "body": "## Problem\n\nApplications running inside `:terminal` that use [DEC private mode 2026](https://gist.github.com/christianparpart/d8a62cc1ab659194337d73e399004036) (synchronized output) to batch screen updates get garbled/overlapping rendering. Neovim's TUI already supports mode 2026 as a *consumer* (via `'termsync'`, PR #25871), but the embedded libvterm in `:terminal` does not support it as a *provider* for applications running inside it.\n\nWhen applications like [Claude Code](https://github.com/anthropics/claude-code) send `\\e[?2026h` to begin a synchronized update, libvterm ignores the sequence. The intermediate screen states during the batched update leak through as visual corruption — overlapping text, duplicated menu items, and garbled permission prompts.\n\n## Solution\n\nAdd mode 2026 handling to libvterm's DEC private mode state machine and wire it through to `terminal.c`:\n\n- **`vterm_defs.h`**: Add `VTERM_PROP_SYNCOUTPUT` to the `VTermProp` enum\n- **`vterm_internal_defs.h`**: Add `synchronized_output` bit to the state mode struct\n- **`state.c`**: Handle mode 2026 in `set_dec_mode()` (routes through `settermprop`), `request_dec_mode()` (DECRQM reply), and `settermprop_internal()` (state storage)\n- **`terminal.c`**: Add `synchronized_output` flag to `Terminal` struct. When set, `invalidate_terminal()` accumulates damage but defers scheduling the refresh timer. On `VTERM_PROP_SYNCOUTPUT` disable, triggers `invalidate_terminal()` to flush all accumulated updates as a single atomic refresh\n\nThe implementation reuses the existing `settermprop` callback mechanism (same pattern as `VTERM_PROP_THEMEUPDATES`), keeping the change minimal and consistent with the codebase.\n\n**35 lines of implementation, 8 functional tests.**\n\n## Test plan\n\n- [x] `test/functional/terminal/synchronized_output_spec.lua` — 8 tests covering:\n  - Content sent inside synchronized updates renders correctly\n  - Multiple sequential sync cycles work\n  - Content before/during/after sync renders correctly\n  - Mode 2026 set/reset does not crash\n  - Orphaned sync (set without immediate reset) recovers\n  - Buffer lines match expected content after sync\n  - Rapid sync on/off toggling\n- [x] Verified manually with Claude Code running inside `:terminal` — permission prompts and tool output render without garbling\n- [x] Existing terminal tests unaffected\n\n## References\n\n- [Synchronized Output spec](https://gist.github.com/christianparpart/d8a62cc1ab659194337d73e399004036)\n- PR #25871 — TUI-side synchronized output support (`'termsync'`)\n- [claude-code #20436](https://github.com/anthropics/claude-code/issues/20436) — Bug report for garbled rendering in neovim's `:terminal`",
-    "closed_at": null,
+    "closed_at": "2026-03-17T21:40:49Z",
     "comment_data": [
         {
             "_links": {
@@ -257,7 +257,7 @@
                     "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2933723230"
                 }
             },
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "Thanks — added unit tests in `vterm_spec.lua` covering `settermprop` callbacks and DECRQM query/response for mode 2026 (commit bf15adc).\r\n\r\nSince the initial push, I also added a second commit (`fix(terminal): harden sync output redraw gating`) that addresses three additional redraw paths that bypassed the `invalidate_terminal()` gate:\r\n\r\n1. **`term_sb_push` / `term_sb_pop`** — these scrollback handlers directly called `set_put(ptr_t, &invalidated_terminals, term)`, bypassing the synchronized_output check. Now gated.\r\n2. **`refresh_timer_cb`** — could fire mid-sync and flush partial screen state. Now skips terminals in synchronized output mode.\r\n3. **Sync-end flush timing** — instead of relying on the 10ms `REFRESH_DELAY` timer after sync ends (which left a window for stale repaints), sync-end now schedules a zero-delay full-screen refresh via a `sync_flush_pending` flag checked in `terminal_receive()`.\r\n\r\nHappy to pull these out into a separate PR if you prefer — let me know your preference.",
             "commit_id": "f864a67e86864380a89482aba05de794eca1d496",
             "created_at": "2026-03-13T20:55:37Z",
@@ -534,7 +534,7 @@
                     "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2941943211"
                 }
             },
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "Good point — changed to `multiqueue_put(main_loop.events, on_sync_flush, buf_handle)` which schedules a callback that refreshes only the specific terminal. (f864a67)",
             "commit_id": "fc1234e24f185cdb4eec2431f762b556dba917a9",
             "created_at": "2026-03-16T17:43:23Z",
@@ -604,7 +604,7 @@
                     "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2941944016"
                 }
             },
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "Added — the test now establishes a visible baseline, enters sync, sends content, and calls `screen:expect_unchanged()` to verify the screen doesn't update during sync. (f864a67)",
             "commit_id": "fc1234e24f185cdb4eec2431f762b556dba917a9",
             "created_at": "2026-03-16T17:43:33Z",
@@ -674,7 +674,7 @@
                     "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2941944781"
                 }
             },
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "Merged the buffer-lines assertions into the \"renders all lines\" test and removed the standalone test. (f864a67)",
             "commit_id": "fc1234e24f185cdb4eec2431f762b556dba917a9",
             "created_at": "2026-03-16T17:43:43Z",
@@ -735,7 +735,7 @@
     ],
     "comment_regular_data": [
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "Apologies for pushing additional functional changes after the initial review — I should have had these hardened before opening the PR. Here's a summary of what changed and why.\n\n### What changed since the initial review:\n\n**Commit 2** (`fix(terminal): harden sync output redraw gating`):\n\nTesting with real-world TUI applications revealed three additional redraw paths that bypassed the `invalidate_terminal()` gate:\n\n1. **`term_sb_push` / `term_sb_pop`** — directly called `set_put(ptr_t, &invalidated_terminals, term)`, bypassing the sync check\n2. **`refresh_timer_cb`** — could fire mid-sync and flush partial screen state\n3. **Sync-end flush timing** — the 10ms `REFRESH_DELAY` left a window for stale repaints. Now uses a zero-delay full-screen refresh via `sync_flush_pending` in `terminal_receive()`\n\nAlso added the `news.txt` changelog entry.\n\n**Commit 3** (`test(terminal): add vterm unit tests for mode 2026`):\n\nPer @justinmk's suggestion — added unit-level tests in `vterm_spec.lua` covering `settermprop` callbacks and DECRQM query/response for mode 2026.\n\n### CI status\n\nAll checks pass except `macos intel clang functionaltest`, which fails on an existing test (`tui_spec.lua:3316 — FocusGained/FocusLost in hit-enter prompt`). This test passes on master and our changes don't touch any focus-related code, so this looks like a timing flake. Could a maintainer re-run that job to confirm?\n\n### Known remaining issue\n\nThere is a residual display-layer rendering artifact that this PR does **not** fully resolve: in some cases, duplicate/stale rows appear briefly at the bottom of terminal windows after a topline adjustment followed by a small screen update. Through debug logging I confirmed the buffer content is correct after every sync flush — the issue appears to be in neovim's screen repaint pipeline (`set_topline` → `UPD_VALID` allowing row reuse when the visible window shifts). This seems to be a pre-existing terminal rendering issue not introduced by these changes, and I'm continuing to investigate it separately.\n\nHappy to squash commits or make any other adjustments. Would appreciate a re-review when you get a chance — thank you!",
             "created_at": "2026-03-13T22:03:18Z",
             "html_url": "https://github.com/neovim/neovim/pull/38284#issuecomment-4058240941",
@@ -989,11 +989,11 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "238f6278928fb08823703eb9a950ae37ab319679",
-    "merged_at": null,
+    "merge_commit_sha": "b38173e49333a5d1ca5e7754309f6159695b038b",
+    "merged_at": "2026-03-17T21:40:49Z",
     "milestone": {
         "closed_at": null,
-        "closed_issues": 304,
+        "closed_issues": 324,
         "created_at": "2024-05-16T14:11:54Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -1023,10 +1023,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/43/labels",
         "node_id": "MI_kwDOAPphoM4AqNEV",
         "number": 43,
-        "open_issues": 23,
+        "open_issues": 10,
         "state": "open",
         "title": "0.12",
-        "updated_at": "2026-03-16T23:29:50Z",
+        "updated_at": "2026-03-24T00:36:23Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/43"
     },
     "node_id": "PR_kwDOAPphoM7KcfFx",
@@ -1036,10 +1036,10 @@
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/38284/comments",
-    "state": "open",
+    "state": "closed",
     "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/f864a67e86864380a89482aba05de794eca1d496",
     "title": "feat(terminal): support synchronized output (mode 2026)",
-    "updated_at": "2026-03-17T00:13:51Z",
+    "updated_at": "2026-03-18T06:52:27Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/38284",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/11651593?v=4",

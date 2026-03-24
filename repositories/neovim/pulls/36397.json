@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6663,
-            "forks_count": 6663,
+            "forks": 6672,
+            "forks_count": 6672,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -95,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1948,
-            "open_issues_count": 1948,
+            "open_issues": 1905,
+            "open_issues_count": 1905,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -121,11 +121,11 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2026-03-17T00:18:19Z",
+            "pushed_at": "2026-03-24T00:01:43Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 374549,
+            "size": 374123,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 97268,
+            "stargazers_count": 97452,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -143,11 +143,11 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2026-03-17T03:40:03Z",
+            "updated_at": "2026-03-24T03:20:56Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 97268,
-            "watchers_count": 97268,
+            "watchers": 97452,
+            "watchers_count": 97452,
             "web_commit_signoff_required": false
         },
         "sha": "29a46a11aa0820e4efcad80a2dfb9ca600924f58",
@@ -173,7 +173,7 @@
             "user_view_type": "public"
         }
     },
-    "body": "As I mentioned in https://github.com/neovim/neovim/issues/25509#issuecomment-3457822973 , I'm testing the current `vim.Pos` and `vim.Range` implementation to find paint-points. This PR includes my proposed solutions to all the problems I found. I also implemented a couple of the previously planned extensions for `vim.Range` and `vim.Pos` mentioned in https://github.com/neovim/neovim/issues/25509#issuecomment-3471197106.\r\n\r\n---\r\n\r\nProblem : \r\n\r\nThe behaviour of `vim.Pos` on top of newlines isn't documented.\r\n\r\nSolution:\r\n\r\nDocument it.\r\n\r\n---\r\n\r\nProblem:\r\n\r\n<details>\r\n<summary>The <code>vim.Pos</code> conversion interface for <code>extmark</code> indexing does not take into account the difference in how a position on top of a newline is represented in <code>vim.Pos</code> and <code>extmark</code>.</summary>\r\n\r\n- `vim.Pos`: for a newline at the end of row `n`, `row` takes the value `n + 1` and `col` takes the value `0` -\r\n- `extmark`: for a newline at the end of for `n`, `row` takes the value `n` and `col` takes the value `#row_text`.\r\n\r\n</details>\r\n\r\nSolution:\r\n\r\nTake this difference into account inside of the `extmark` interface.\r\n\r\n---\r\n\r\nProblem:\r\n\r\nNot all `to_xxx` interfaces have wrapping objects like `to_lsp`\r\n\r\nSolution:\r\n\r\nReturn unwrapped values in ~~all `to_xxx` interfaces~~ in the `to_xxx` interfaces where it makes sense. Accept unwrapped values in \"from\" interfaces where it makes sense.\r\n\r\n---\r\n\r\nProblem:\r\n\r\n<details>\r\n<summary><code>start</code> and <code>end</code> positions have different semantics, so they can't be compared. <code>vim.Range</code> relies on comparing the <code>end</code> and <code>start</code> of two ranges to decide which one is greater, which doesn't work as expected because this of the different semantics.</summary>\r\n\r\nFor example, for the ranges\r\n\r\n```lua\r\nlocal a = {\r\n  start = {\r\n    row = 0,\r\n    col = 22,\r\n  },\r\n  end_ = {\r\n    row = 0,\r\n    col = 24,\r\n  },\r\n}\r\n\r\nlocal b = {\r\n  start = {\r\n    row = 0,\r\n    col = 17,\r\n  },\r\n  end_ = {\r\n    row = 0,\r\n    col = 22,\r\n  },\r\n}\r\n```\r\n\r\nin the following code\r\n\r\n```lua\r\nlocal foo, bar = \"foo\",  \"bar\"\r\n--               |---||-|\r\n--                 b  a\r\n```\r\n\r\nThe range `b` is smaller than the range `a`, but the current implementation compares `b._end` (`col = 22`) and `a.start` (`col = 22`) and concludes that, since `b.col` is not smaller than `a.col`, `b` should be greater than `a`.\r\n</details>\r\n\r\n\r\nSolution:\r\n\r\n- Use a `to_inclusive_pos` to normalize end positions inside of `vim.Range` whenever a comparison between a start and an end position is necessary.\r\n\r\n---\r\n\r\nProblem:\r\n\r\nUsing nested `vim.Pos` objects to represent each `vim.Range` object requires 3 tables for each `vim.Range`, which may be undesirable in performance critical code (which `vim.Range` is intended to be used in). On the same vein, using key-value tables performs worse than using array-like tables (lists).\r\n\r\nSolution:\r\n\r\nUse array-like indices for the internal fields of both `vim.Pos` and `vim.Range` objects. Use a metatable to allow users to access them like if they were key-value tables.\r\n\r\n---\r\n\r\nFuture work:\r\n\r\n- Add interfaces for `vimscript`/`to_vimscript`, `mark`/`to_mark`, etc.\r\n- Refactor more Neovim core code to use `vim.Range` and `vim.Pos`",
+    "body": "As I mentioned in https://github.com/neovim/neovim/issues/25509#issuecomment-3457822973 , I'm testing the current `vim.Pos` and `vim.Range` implementation to find paint-points. This PR includes my proposed solutions to all the problems I found. I also implemented a couple of the previously planned extensions for `vim.Range` and `vim.Pos` mentioned in https://github.com/neovim/neovim/issues/25509#issuecomment-3471197106.\r\n\r\n---\r\n\r\nProblem:\r\n\r\nUsing nested `vim.Pos` objects to represent each `vim.Range` object requires 3 tables for each `vim.Range`, which may be undesirable in performance critical code (which `vim.Range` is intended to be used in), this was [previously a concern when `vim.range` was first added](https://github.com/neovim/neovim/pull/35109#discussion_r2245185031) . On the same vein, using key-value tables performs worse than using array-like tables (lists).\r\n\r\nSolution:\r\n\r\nUse array-like indices for the internal fields of both `vim.Pos` and `vim.Range` objects. Use a metatable to allow users to access them like if they were key-value tables.\r\n\r\n---\r\n\r\nProblem : \r\n\r\nThe behaviour of `vim.Pos` on top of newlines isn't documented.\r\n\r\nSolution:\r\n\r\nDocument it.\r\n\r\n---\r\n\r\nProblem:\r\n\r\n<details>\r\n<summary>The <code>vim.Pos</code> conversion interface for <code>extmark</code> indexing does not take into account the difference in how a position on top of a newline is represented in <code>vim.Pos</code> and <code>extmark</code>.</summary>\r\n\r\n- `vim.Pos`: for a newline at the end of row `n`, `row` takes the value `n + 1` and `col` takes the value `0` -\r\n- `extmark`: for a newline at the end of for `n`, `row` takes the value `n` and `col` takes the value `#row_text`.\r\n\r\n</details>\r\n\r\nSolution:\r\n\r\nTake this difference into account inside of the `extmark` interface.\r\n\r\n---\r\n\r\nProblem:\r\n\r\nNot all `to_xxx` interfaces have wrapping objects like `to_lsp`\r\n\r\nSolution:\r\n\r\nReturn unwrapped values in ~~all `to_xxx` interfaces~~ in the `to_xxx` interfaces where it makes sense. Accept unwrapped values in \"from\" interfaces where it makes sense.\r\n\r\n---\r\n\r\nProblem:\r\n\r\n<details>\r\n<summary><code>start</code> and <code>end</code> positions have different semantics, so they can't be compared. <code>vim.Range</code> relies on comparing the <code>end</code> and <code>start</code> of two ranges to decide which one is greater, which doesn't work as expected because this of the different semantics.</summary>\r\n\r\nFor example, for the ranges\r\n\r\n```lua\r\nlocal a = {\r\n  start = {\r\n    row = 0,\r\n    col = 22,\r\n  },\r\n  end_ = {\r\n    row = 0,\r\n    col = 24,\r\n  },\r\n}\r\n\r\nlocal b = {\r\n  start = {\r\n    row = 0,\r\n    col = 17,\r\n  },\r\n  end_ = {\r\n    row = 0,\r\n    col = 22,\r\n  },\r\n}\r\n```\r\n\r\nin the following code\r\n\r\n```lua\r\nlocal foo, bar = \"foo\",  \"bar\"\r\n--               |---||-|\r\n--                 b  a\r\n```\r\n\r\nThe range `b` is smaller than the range `a`, but the current implementation compares `b._end` (`col = 22`) and `a.start` (`col = 22`) and concludes that, since `b.col` is not smaller than `a.col`, `b` should be greater than `a`.\r\n</details>\r\n\r\n\r\nSolution:\r\n\r\n- Use a `to_inclusive_pos` to normalize end positions inside of `vim.Range` whenever a comparison between a start and an end position is necessary.\r\n\r\n---\r\n\r\nFuture work:\r\n\r\n- Add interfaces for `vimscript`/`to_vimscript`, `mark`/`to_mark`, etc.\r\n- Refactor more Neovim core code to use `vim.Range` and `vim.Pos`",
     "closed_at": null,
     "comment_data": [
         {
@@ -1249,11 +1249,11 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "eaca35b3c4e89c108acb8ed87a1fad5d4c1b6661",
+    "merge_commit_sha": "4c48b12acd6f2e9be00faea801ab023b6fc54fdc",
     "merged_at": null,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 304,
+        "closed_issues": 324,
         "created_at": "2024-05-16T14:11:54Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -1283,10 +1283,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/43/labels",
         "node_id": "MI_kwDOAPphoM4AqNEV",
         "number": 43,
-        "open_issues": 23,
+        "open_issues": 10,
         "state": "open",
         "title": "0.12",
-        "updated_at": "2026-03-16T23:29:50Z",
+        "updated_at": "2026-03-24T00:36:23Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/43"
     },
     "node_id": "PR_kwDOAPphoM6wqYys",
@@ -1321,7 +1321,7 @@
     "state": "open",
     "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/9c6c56cb2ece5ec5c4bf9e688afa6dd8dca11a94",
     "title": "feat: extend vim.Pos and vim.Range",
-    "updated_at": "2026-03-10T22:52:46Z",
+    "updated_at": "2026-03-17T15:11:46Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/36397",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/53507599?v=4",

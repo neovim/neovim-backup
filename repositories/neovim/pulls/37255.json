@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/37255"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/e3c8853f40fe38c51821b1ba94c586d1cb403b66"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/a58a6f1e5e5c8c602bee4de5a136c99bbe4e15cb"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6545,
-            "forks_count": 6545,
+            "forks": 6672,
+            "forks_count": 6672,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -68,6 +68,7 @@
             "has_issues": true,
             "has_pages": false,
             "has_projects": true,
+            "has_pull_requests": true,
             "has_wiki": true,
             "homepage": "https://neovim.io",
             "hooks_url": "https://api.github.com/repos/neovim/neovim/hooks",
@@ -94,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 2075,
-            "open_issues_count": 2075,
+            "open_issues": 1905,
+            "open_issues_count": 1905,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -118,12 +119,13 @@
                 "user_view_type": "public"
             },
             "private": false,
+            "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2026-01-27T00:14:43Z",
+            "pushed_at": "2026-03-24T00:01:43Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 368347,
+            "size": 374123,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 95981,
+            "stargazers_count": 97452,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -141,14 +143,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2026-01-27T02:37:36Z",
+            "updated_at": "2026-03-24T03:20:56Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 95981,
-            "watchers_count": 95981,
+            "watchers": 97452,
+            "watchers_count": 97452,
             "web_commit_signoff_required": false
         },
-        "sha": "7500f76e613154e72e9238d174c8ee4cfccdc305",
+        "sha": "4d3a67cd620152d11ab9b5f5bdd973f84cc2d44b",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -172,8 +174,78 @@
         }
     },
     "body": "## Summary\n\n- Fix off-by-one errors in mpack encoding for negative integer boundary values\n- -129 was incorrectly encoded as int8 (decoding to 127) instead of int16\n- -32769 was incorrectly encoded as int16 instead of int32\n\n## Root Cause\n\nThe boundary checks in `mpack_pack_number` (conv.c) and `mpack_wnint` (mpack_core.c) used exclusive comparisons (`<`) with the exact boundary values:\n\n```c\n// Before (wrong):\nelse if (tok.data.value.lo < 0xffffff7f) tok.length = 2;  // -129 in two's complement\n\n// After (correct):\nelse if (tok.data.value.lo < 0xffffff80) tok.length = 2;  // -128 in two's complement\n```\n\nSince -129 equals `0xffffff7f` in two's complement, the condition `lo < 0xffffff7f` was FALSE, causing it to fall through to int8 encoding instead of int8.\n\n## Test plan\n\n- [x] Added test for boundary values (-128, -129, -32768, -32769)\n- [x] `make lintc` passes\n- [x] `TEST_FILE=test/functional/lua/mpack_spec.lua make functionaltest` passes\n\nFixes #37202",
-    "closed_at": null,
-    "comment_data": [],
+    "closed_at": "2026-03-21T21:07:34Z",
+    "comment_data": [
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/37255#discussion_r2970220692"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/37255"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/2970220692"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "The functional test didn't cover this conv.c change so I added a unittest.",
+            "commit_id": "a58a6f1e5e5c8c602bee4de5a136c99bbe4e15cb",
+            "created_at": "2026-03-21T20:50:02Z",
+            "diff_hunk": "@@ -122,8 +122,8 @@ MPACK_API mpack_token_t mpack_pack_number(double v)\n     if (!tok.data.value.lo) tok.data.value.hi++;\n     if (tok.data.value.lo == 0 && tok.data.value.hi == 0) tok.length = 1;\n     else if (tok.data.value.lo < 0x80000000) tok.length = 8;\n-    else if (tok.data.value.lo < 0xffff7fff) tok.length = 4;\n-    else if (tok.data.value.lo < 0xffffff7f) tok.length = 2;\n+    else if (tok.data.value.lo < 0xffff8000) tok.length = 4;\n+    else if (tok.data.value.lo < 0xffffff80) tok.length = 2;",
+            "html_url": "https://github.com/neovim/neovim/pull/37255#discussion_r2970220692",
+            "id": 2970220692,
+            "line": 126,
+            "node_id": "PRRC_kwDOAPphoM6xCfiU",
+            "original_commit_id": "a58a6f1e5e5c8c602bee4de5a136c99bbe4e15cb",
+            "original_line": 126,
+            "original_position": 7,
+            "original_start_line": null,
+            "path": "src/mpack/conv.c",
+            "position": 7,
+            "pull_request_review_id": 3986798532,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/37255",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2970220692/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-03-21T20:50:02Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/2970220692",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        }
+    ],
     "comment_regular_data": [
         {
             "author_association": "CONTRIBUTOR",
@@ -275,7 +347,7 @@
             "node_id": "IC_kwDOAPphoM7drlut",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 2,
+                "+1": 4,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -283,7 +355,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 2,
+                "total_count": 4,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3719191469/reactions"
             },
             "updated_at": "2026-01-07T14:52:32Z",
@@ -534,6 +606,7 @@
             "has_issues": false,
             "has_pages": false,
             "has_projects": true,
+            "has_pull_requests": true,
             "has_wiki": true,
             "homepage": "https://neovim.io",
             "hooks_url": "https://api.github.com/repos/benarcher2691/neovim/hooks",
@@ -584,10 +657,11 @@
                 "user_view_type": "public"
             },
             "private": false,
+            "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/benarcher2691/neovim/pulls{/number}",
-            "pushed_at": "2026-01-08T13:18:05Z",
+            "pushed_at": "2026-03-21T20:49:34Z",
             "releases_url": "https://api.github.com/repos/benarcher2691/neovim/releases{/id}",
-            "size": 353958,
+            "size": 360118,
             "ssh_url": "git@github.com:benarcher2691/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/benarcher2691/neovim/stargazers",
@@ -606,7 +680,7 @@
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "e3c8853f40fe38c51821b1ba94c586d1cb403b66",
+        "sha": "a58a6f1e5e5c8c602bee4de5a136c99bbe4e15cb",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/236101845?v=4",
             "events_url": "https://api.github.com/users/benarcher2691/events{/privacy}",
@@ -654,7 +728,7 @@
         {
             "color": "8B601E",
             "default": false,
-            "description": "Change was developed with AI",
+            "description": "May contain trace amounts of GMO",
             "id": 9676241542,
             "name": "AI assisted 🤖",
             "node_id": "LA_kwDOAPphoM8AAAACQL-6hg",
@@ -662,11 +736,11 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "60abb32fd7716a4c4bc73916af3895c896ebc54d",
-    "merged_at": null,
+    "merge_commit_sha": "2069be281c723a8a8607d395dbfabd9cd30f4b15",
+    "merged_at": "2026-03-21T21:07:34Z",
     "milestone": {
         "closed_at": null,
-        "closed_issues": 0,
+        "closed_issues": 22,
         "created_at": "2026-01-26T22:58:58Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
@@ -696,10 +770,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/55/labels",
         "node_id": "MI_kwDOAPphoM4A31vj",
         "number": 55,
-        "open_issues": 16,
+        "open_issues": 14,
         "state": "open",
         "title": "0.11.7",
-        "updated_at": "2026-01-26T23:04:28Z",
+        "updated_at": "2026-03-23T22:50:52Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/55"
     },
     "node_id": "PR_kwDOAPphoM67jUx2",
@@ -709,10 +783,10 @@
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/37255/comments",
-    "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/e3c8853f40fe38c51821b1ba94c586d1cb403b66",
+    "state": "closed",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/a58a6f1e5e5c8c602bee4de5a136c99bbe4e15cb",
     "title": "fix(mpack): correct boundary values for negative integer encoding",
-    "updated_at": "2026-01-26T22:59:36Z",
+    "updated_at": "2026-03-22T01:02:46Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/37255",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/236101845?v=4",

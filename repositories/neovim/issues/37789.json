@@ -4,8 +4,28 @@
     "assignees": [],
     "author_association": "NONE",
     "body": "### Problem\n\n# Image API proposal\n\nA previous attempt (#31399) to implement image support was halted due to disagreements over the API design (#34093). So I have made my own proposal for an image API and any feedback would be much appreciated.\n\n## Motivation\n\nImage support has been a requested feature in Neovim (see #30889) and there has even been a previous attempt (#31399) at implementing this feature. There are existing plugins that provide image support, such as\n[image.nvim](https://github.com/3rd/image.nvim), [snacks.nvim](https://github.com/folke/snacks.nvim), and this proposal would build on these and add this as a core feature -- similar to `vim.lsp` and `lsp_config`. I would develop this as part of a [Google Summer of Code](https://summerofcode.withgoogle.com/) project.\n\n## High level overview\n\nThis would be aimed at plugin developers as an easy and first class way off adding images to their plugins.\n\nInitially the API would support only the kitty graphics protocol [^1] and would serve as a thin abstraction layer implemented in lua. Relative / inline placement only would be supported since I believe this is easier to implement\nand more useful. It would use Unicode placeholders as this would allow for use of the protocol when running tmux and would simplify the inserting of images within a block of text. Placeholders would be inserted in the correct row and column, shifting any following text to the right.\n\nTo use the API one would first load an image, which transfers the image to the terminal. Then create a placement which generates the required text to be inserted. To show an image one specifies an image id and a placement id, which creates a virtual placement and inserts the generated text in the correct position in the buffer.\n\n[^1]: Previous implementations were [criticised](https://github.com/neovim/neovim/issues/34093#issuecomment-2893087110) for being too complex for a first implementation since they attempted to\nintegrate multiple different providers. Kitty is the most complete image protocol and so I have chosen it as the first to be implemented. More providers can always be added later.\n\n### Expected behavior\n\n## API\n\nThe API suggested below is a rather direct conversion of the kitty API.\n\n`image_id: int` \\\n`placement_id: int` \\\nImage and placement ids would be non overlapping allowing the program to distinguish between them even though internally they are just ints.\n\n`load_image(bytes) -> image_id` \\\n`load_image(file_path) -> image_id` \\\nTransfers an image to the terminal; raises an error if the image is not of a supported type (RGB/RGBA/PNG).\n\n`create_placement(line, col, width, height) -> placement_id` \\\nGenerates the required unicode placeholders for an image of the specified width and height.\n\n`draw_image(image_id, placement_id)` \\\nCreates a virtual placement and inserts the generated unicode placeholders into the buffer.\n\n`delete_placement(placement_id)` \\\nDeletes a single placement of an image, leaving all others intact.\n\n`delete_image(image_id)` \\\nDeletes all placements of an image but does not unload it.\n\n`unload_image(image_id)` \\\nDeletes all placements of an image and unloads it.\n\n## Example\n\n_Buffer_\n\n```\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent ac sem\ntellus. In semper diam vel ante condimentum tempus. Nullam lacinia ultrices\nest eget vulputate. Sed in justo malesuada, interdum sapien vel, accumsan\nlibero. Vestibulum malesuada bibendum lorem ac elementum. Aliquam sit amet\neros eu erat semper cursus rutrum et nulla. Donec dapibus nunc vitae velit\nbibendum, non auctor elit aliquam. Aliquam vehicula ante nisi, vitae laoreet\nipsum faucibus eu. Suspendisse et commodo ex, eget viverra lorem. Curabitur\npulvinar erat ipsum, ut pulvinar magna aliquet ut. Morbi ullamcorper massa ut\nnisi porttitor, quis porta sem fringilla. Phasellus bibendum dapibus varius.\n```\n\n_Code_\n\n```lua\nimg = load_image('example.png')\nplace = create_placement(3, 7, 4, 10)\ndraw_image(img, place)\n```\n\n_Result_\n\n```markdown\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent ac sem\ntellus. In semper diam vel ante condimentum tempus. Nullam lacinia ultrices\nest ege----------t vulputate. Sed in justo malesuada, interdum sapien vel, accumsan\nlibero.---------- Vestibulum malesuada bibendum lorem ac elementum. Aliquam sit amet\neros eu---------- erat semper cursus rutrum et nulla. Donec dapibus nunc vitae velit\nbibendu----------m, non auctor elit aliquam. Aliquam vehicula ante nisi, vitae laoreet\nipsum faucibus eu. Suspendisse et commodo ex, eget viverra lorem. Curabitur\npulvinar erat ipsum, ut pulvinar magna aliquet ut. Morbi ullamcorper massa ut\nnisi porttitor, quis porta sem fringilla. Phasellus bibendum dapibus varius.\n```\n\nWhere `-` represents the image.\n\n## Potential issues\n\nI have assumed that plugin developers would like to control the size of the image that they are displaying. I believe that is mostly true, however I think that it is very common that they would like to specify only 1 dimension and have the other scale with the image's aspect ratio. This would not be supported in this API and I cannot see an easy way to add this. Since the dimensions are given as cells, to know how many cells an image would take up would require knowing the pixel dimensions of a cell, which is an issue that to my knowledge remains unsolved (as per #32408). Perhaps for a first version this can be ignored and the responsibility left to the caller.\n\nIf sufficient images are loaded earlier ones are not guaranteed to remain loaded. If the terminal has run out of memory, older images must be retransmitted before they can be used again.\n\nFile loading would almost mandate an async implementation which would increase complexity, so this feature may end up reserved for a later version.\n\nThere would be no support for a z-index; images and text would not be allowed to overlap.\n\nSince ANSI escape codes are used to transfer data (such as image id) to the terminal, any set configuration has to be reset before the unicode placeholder is inserted and then restored.\n\nInserting an image into a paragraph could cause the length of a line to exceed `textwidth`. This leaves an open question over the behaviour of `gqap` in this situation.\n\nImage ids are a global namespace and when using Unicode placeholders this is limited to 8 or 24 bit integers, which can lead to collisions. The likelihood of this can be reduced by using a third diacritic to specify a most significant byte. Thus if we select a 'magic number' for neovim we can specify our own 24 bit namespace for our image ids, which is reserved if other programmers are aware of and respect our choice of 'magic number'.\n\nPotential bugs when using `rightleft` mode.\n\n## Additional features\n\nThis initial version is intentionally small as I believe that more features can be added in later iterations. It need not be that this version is even published and instead a more complete one is. This is intended as a starting off point to be expanded upon.\n\nThanks in advance for any feedback or advice!",
-    "closed_at": null,
-    "closed_by": null,
+    "closed_at": "2026-03-22T01:35:31Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+        "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+        "followers_url": "https://api.github.com/users/justinmk/followers",
+        "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+        "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/justinmk",
+        "id": 1359421,
+        "login": "justinmk",
+        "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+        "organizations_url": "https://api.github.com/users/justinmk/orgs",
+        "received_events_url": "https://api.github.com/users/justinmk/received_events",
+        "repos_url": "https://api.github.com/users/justinmk/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -64,7 +84,7 @@
             "performed_via_github_app": null,
             "pin": null,
             "reactions": {
-                "+1": 2,
+                "+1": 3,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -72,7 +92,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 2,
+                "total_count": 3,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3874983740/reactions"
             },
             "updated_at": "2026-02-22T04:09:24Z",
@@ -236,9 +256,55 @@
                 "url": "https://api.github.com/users/chipsenkbeil",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "> The API suggested below is a rather direct conversion of the kitty API.\n\nThis conflicts with discussions we already had in https://github.com/neovim/neovim/pull/31399 . \n\nhttps://github.com/neovim/neovim/pull/31399 was the result of a lot of discussion already and it's not at all clear why we would reboot that. Meanwhile https://github.com/neovim/neovim/issues/37789#issuecomment-3874983740 addresses specific points here.\n\n> If there's some pre-existing neovim api to load a file as bytes, we can point to that, but I'd argue that we just simplify by supporting the ability to load the file directly.\n\n`vim.fn.readblob()` @chipsenkbeil ",
+            "created_at": "2026-03-22T01:35:31Z",
+            "html_url": "https://github.com/neovim/neovim/issues/37789#issuecomment-4105087460",
+            "id": 4105087460,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/37789",
+            "node_id": "IC_kwDOAPphoM70rqnk",
+            "performed_via_github_app": null,
+            "pin": null,
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4105087460/reactions"
+            },
+            "updated_at": "2026-03-22T01:36:57Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4105087460",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
         }
     ],
-    "comments": 5,
+    "comments": 6,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/37789/comments",
     "created_at": "2026-02-09T13:47:59Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/37789/events",
@@ -259,6 +325,15 @@
             "name": "api",
             "node_id": "MDU6TGFiZWwxMDM4MTk2NzE=",
             "url": "https://api.github.com/repos/neovim/neovim/labels/api"
+        },
+        {
+            "color": "F3A62E",
+            "default": false,
+            "description": "community: Google Summer of Code project",
+            "id": 834483397,
+            "name": "gsoc",
+            "node_id": "MDU6TGFiZWw4MzQ0ODMzOTc=",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/gsoc"
         }
     ],
     "labels_url": "https://api.github.com/repos/neovim/neovim/issues/37789/labels{/name}",
@@ -281,8 +356,8 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/37789/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "not_planned",
     "sub_issues_summary": {
         "completed": 0,
         "percent_completed": 0,
@@ -300,7 +375,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyv",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2026-03-10T15:42:15Z",
+    "updated_at": "2026-03-22T01:36:57Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/37789",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/91841476?v=4",
