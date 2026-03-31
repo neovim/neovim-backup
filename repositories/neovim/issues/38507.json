@@ -1,0 +1,113 @@
+{
+    "active_lock_reason": null,
+    "assignee": null,
+    "assignees": [],
+    "author_association": "CONTRIBUTOR",
+    "body": "### Problem\n\nThe <kbd>vim.cmd</kbd> API currently only accepts numeric values for the optional `range` parameter when used in \"table form\", where the command is then passed to <kbd>vim.api.nvim_cmd</kbd>\nFor example:\n```lua\nvim.cmd.foldopen({ bang = true, range = { 1, 10 }, mods = { silent = true } })\n```\nAll other [`:h :range`](https://neovim.io/doc/user/cmdline/#%3Arange) modes like `:.`, `:$`, `:%` or `:*` are unsupported.\nAs are single range specifiers, both numeric and symbolic.\n\nThis makes something like a `:.,%foldclose!` impractical via the table form of `vim.cmd`, since the equivalent;\n```lua\nvim.cmd.foldclose({ bang = true, range = {'.', '%'} })\n```\nis currently invalid.\n\nMy grasp of C isn't the greatest but I believe the range gets handled here in `nvim_cmd`.\nhttps://github.com/neovim/neovim/blob/925e9e87222cba0c48d2a9184fa3e5fcad65d4ba/src/nvim/api/command.c#L569-L577\n\n### Expected behavior\n\nHandling *all* range addressing modes would require a significant amount of additional parsing code in the cmdline parsing.\nThat code already exists *somewhere* in `nvim_parse_cmd` since that handles non-integer range specifiers just fine.\nI'm guessing that *somewhere* is here via the `parse_cmdline` function.\nhttps://github.com/neovim/neovim/blob/925e9e87222cba0c48d2a9184fa3e5fcad65d4ba/src/nvim/api/command.c#L135-L142\nWhich looks like a fun can of worms in and of itself.\nBut eventually calls down into the `parse_cmd_address` function.\nhttps://github.com/neovim/neovim/blob/925e9e87222cba0c48d2a9184fa3e5fcad65d4ba/src/nvim/ex_docmd.c#L2919\nWhich has handling for the `%` and `*` variants.\nhttps://github.com/neovim/neovim/blob/925e9e87222cba0c48d2a9184fa3e5fcad65d4ba/src/nvim/ex_docmd.c#L2938\nhttps://github.com/neovim/neovim/blob/925e9e87222cba0c48d2a9184fa3e5fcad65d4ba/src/nvim/ex_docmd.c#L3002\nThe handling for the `.`, `'`, `$`, `/`, `?`, `\\/`, `\\?`, `\\&` seems to be handled by the `get_address` function that gets called as part of the `parse_cmd_address` function.\n\nSo this covers all the range addressing modes listed in [`:h :range`](https://neovim.io/doc/user/cmdline/#%3Arange).\n\n<h1><em></em></h1> <!-- thin separator -->\n\nTo finally get to the point after falling down that rabbit hole.\nIf we can plumb this up to `nvim_cmd`'s range parsing logic as a parsing step for non-numeric range modes that would allow for greater flexibility when using `vim.cmd({})`, `vim.cmd.foo({})` or `vim.api.nvim_cmd()`.\nThis would also require some additional plumbling to make `vim.cmd`/`nvim_cmd` accept 1 arg addressing modes as well as strings in addition to integers.\ne.g.\n```lua\nvim.cmd({ cmd = foo, range = {'%'} })      -- % -> 1, vim.fn.line('$')\nvim.cmd({ cmd = foo, range = '.' })        -- . -> vim.fn.line('.')\nvim.cmd({ cmd = foo, range = {'.', '$'} }) -- % -> vim.fn.line('.'), vim.fn.line('$')\n```\nOne remaining unknown is how to best handle [`n;m` range addressing](https://neovim.io/doc/user/cmdline/#%3A%3B) which isn't currently being accounted for in `nvim_cmd`'s range handling.\nThe sanest option may just be adding a new type to `vim.api.keyset.cmd` for `m;n` ranges.\nMaybe something like:\n```lua\n--- @alias range_mode integer|string\n--- @class vim.api.keyset.cmd_range\n--- @field lines? (range_mode|[range_mode?, range_mode?])?\n--- @field semicolon? boolean?\n```\n`m;n` ranges don't really have any good name in the documentation, maybe *\"eager\"* could work as a name?\nSince according to the documentation:\n> **When separated with `;` the cursor position will be set to that line\nbefore interpreting the next line specifier.  This doesn't happen for `,`.**\n\nI have no idea how or if [*range offsets*](https://neovim.io/doc/user/cmdline/#%3Arange-offset) should be handled, but that *should* come \"for free\" with supporting string range modes since that is supported by `vim.api.nvim_parse_cmd`/`parse_cmdline`\n\nThere may also be performance considerations in regards to reusing the `parse_cmdline` codepath in `nvim_cmd`/`vim.cmd`.\n\n<h1><em></em></h1> <!-- thin separator -->\n\nI'm hoping my sleep deprived rambling was still coherent enough to follow.\n- If this has been discussed or reported before I'm sorry that I wasn't able to find that.\nThe closest related issue I was able to find is #18393.\nBut this particular point doesn't seem to have been mentioned there.\n\nWorking around this problem is possible, but much less ergonomic to use.\nSo supporting non-numeric range specifiers in `vim.cmd` table mode would be a nice quality of life improvement.\nIf the juice is worth the squeeze, I'm not sure though.",
+    "closed_at": null,
+    "closed_by": null,
+    "comment_data": [],
+    "comments": 0,
+    "comments_url": "https://api.github.com/repos/neovim/neovim/issues/38507/comments",
+    "created_at": "2026-03-27T06:22:46Z",
+    "events_url": "https://api.github.com/repos/neovim/neovim/issues/38507/events",
+    "html_url": "https://github.com/neovim/neovim/issues/38507",
+    "id": 4149822284,
+    "issue_dependencies_summary": {
+        "blocked_by": 0,
+        "blocking": 0,
+        "total_blocked_by": 0,
+        "total_blocking": 0
+    },
+    "labels": [
+        {
+            "color": "c5def5",
+            "default": false,
+            "description": "libnvim, Nvim RPC API",
+            "id": 103819671,
+            "name": "api",
+            "node_id": "MDU6TGFiZWwxMDM4MTk2NzE=",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/api"
+        },
+        {
+            "color": "c7def8",
+            "default": false,
+            "description": "builtin functions, Ex commands",
+            "id": 109899557,
+            "name": "vimscript",
+            "node_id": "MDU6TGFiZWwxMDk4OTk1NTc=",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/vimscript"
+        },
+        {
+            "color": "C5DEF5",
+            "default": false,
+            "description": "editor features, user workflows",
+            "id": 7421978602,
+            "name": "editor",
+            "node_id": "LA_kwDOAPphoM8AAAABumJn6g",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/editor"
+        }
+    ],
+    "labels_url": "https://api.github.com/repos/neovim/neovim/issues/38507/labels{/name}",
+    "locked": false,
+    "milestone": null,
+    "node_id": "I_kwDOAPphoM73WUNM",
+    "number": 38507,
+    "performed_via_github_app": null,
+    "pinned_comment": null,
+    "reactions": {
+        "+1": 0,
+        "-1": 0,
+        "confused": 0,
+        "eyes": 0,
+        "heart": 0,
+        "hooray": 0,
+        "laugh": 0,
+        "rocket": 0,
+        "total_count": 0,
+        "url": "https://api.github.com/repos/neovim/neovim/issues/38507/reactions"
+    },
+    "repository_url": "https://api.github.com/repos/neovim/neovim",
+    "state": "open",
+    "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
+    "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/38507/timeline",
+    "title": "`vim.cmd` does not accept the full set of Ex command-line range specifiers",
+    "type": {
+        "color": "blue",
+        "created_at": "2024-01-25T10:10:19Z",
+        "description": "A request, idea, or new functionality",
+        "id": 597167,
+        "is_enabled": true,
+        "name": "Enhancement",
+        "node_id": "IT_kwDOAGK_Pc4ACRyv",
+        "updated_at": "2024-07-26T10:12:30Z"
+    },
+    "updated_at": "2026-03-27T10:05:05Z",
+    "url": "https://api.github.com/repos/neovim/neovim/issues/38507",
+    "user": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/43716232?v=4",
+        "events_url": "https://api.github.com/users/TomJo2000/events{/privacy}",
+        "followers_url": "https://api.github.com/users/TomJo2000/followers",
+        "following_url": "https://api.github.com/users/TomJo2000/following{/other_user}",
+        "gists_url": "https://api.github.com/users/TomJo2000/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/TomJo2000",
+        "id": 43716232,
+        "login": "TomJo2000",
+        "node_id": "MDQ6VXNlcjQzNzE2MjMy",
+        "organizations_url": "https://api.github.com/users/TomJo2000/orgs",
+        "received_events_url": "https://api.github.com/users/TomJo2000/received_events",
+        "repos_url": "https://api.github.com/users/TomJo2000/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/TomJo2000/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/TomJo2000/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/TomJo2000",
+        "user_view_type": "public"
+    }
+}

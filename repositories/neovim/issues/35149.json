@@ -3,9 +3,29 @@
     "assignee": null,
     "assignees": [],
     "author_association": "MEMBER",
-    "body": "## Problem\n\n(This is a blocker for Nvim 0.12 release.) The new UI events `restart`, `connect`, etc. should be future-proof. Specifically, it seems important that `restart` includes the address of the new Nvim.\n\nI know that @zeertzjq has mentioned some challenges , such as:\n\n> If the server is running with `--listen` on a socket and the client is attached to that socket, the new server cannot be started until the old server stop listening on the socket. But if the old server stops listening, the client cannot notify it.\n\nbut there is a big benefit to putting the address in the event: the logic can mostly live in the server. This especially matters for emitting \"p2p\" events to other discovered Nvims. Asking each GUI to implement that logic, is cumbersome.\n\n## :connect proposal\n\nTODO\n\n## :restart proposal\n\n### Phase 1 (Nvim 0.12)\n\n- [x] Perform the restart *on the server*, not the client. The `restart` UI event passes the listen address (instead of CLI args). https://github.com/neovim/neovim/pull/35223\n- [x] ~~(TBD) Should old-server include `-c <command>` when it starts new-server?~~\n- [ ] new-server should be started after all `*Leave` events have been triggered on the old server, to make stuff like session restoration work.\n\n### Phase 2\n\nThese improvements can be made later without requiring big changes in the UI client(s):\n\n- [ ] All UI clients can re-attach to the new address.\n    - ⚠️ [Only 1 UI should do the \"command\"](https://github.com/neovim/neovim/pull/35223#discussion_r2818453774). (TBD: this problem is eliminated if old-server includes `-c <command>` when it starts new-server.)\n- [ ] If all clients fail to reattach, this will lead to a dangling server process.\n    - Mitigation: make it easy to see recently started/dangling servers.\n- [ ] ⚠️ (TBD) With `--listen` argument, old-server and new-server cannot listen on the same address at the same time.\n    - If `--listen` arguments are stripped from the new server's command line, this means `:restart` will not work for users that use a non-UI client to control Nvim via a socket passed after `--listen`.\n\n\n### Benefits\n\n1. Simpler logic. ([ref](https://github.com/neovim/neovim/pull/35045#issuecomment-3146985628))\n1. Mitigates race conditions\n    - If the user config has errors / waiting for input, are all UIs able to attach while Nvim is waiting for input?\n\n### Implementation\n\nFrom https://github.com/neovim/neovim/pull/35045#issuecomment-3146985628 : \n1. server (nvim-1) starts new nvim instance (nvim-2)\n2. server emits `restart[addr, ... cmd]` ui event which includes the new listen address.\n3. ui handler:\n    1. opens a channel to nvim-2\n    2. waits for nvim-2 to die (close the channel)\n4. if the nvim-1 fails to quit:\n    - server terminates nvim-2.\n    - ui `restart` handler cancels its wait routine when it sees that nvim-2 died.\n",
-    "closed_at": null,
-    "closed_by": null,
+    "body": "## Problem\n\n(This is a blocker for Nvim 0.12 release.) The new UI events `restart`, `connect`, etc. should be future-proof. Specifically, it seems important that `restart` includes the address of the new Nvim.\n\nI know that @zeertzjq has mentioned some challenges (Edit: but see https://github.com/neovim/neovim/issues/34367#issuecomment-4122611435 ):\n\n> If the server is running with `--listen` on a socket and the client is attached to that socket, the new server cannot be started until the old server stop listening on the socket. But if the old server stops listening, the client cannot notify it.\n\n\n\nbut there is a big benefit to putting the address in the event: the logic can mostly live in the server. This especially matters for emitting \"p2p\" events to other discovered Nvims. Asking each GUI to implement that logic, is cumbersome.\n\n## :connect proposal\n\n- https://github.com/neovim/neovim/pull/38543\n\n## :restart proposal\n\n### Phase 1 (Nvim 0.12)\n\n- [x] Perform the restart *on the server*, not the client. The `restart` UI event passes the listen address (instead of CLI args). https://github.com/neovim/neovim/pull/35223\n- [x] ~~(TBD) Should old-server include `-c <command>` when it starts new-server?~~\n- [ ] new-server should be started after all `*Leave` events have been triggered on the old server, to make stuff like session restoration work.\n\n### Phase 2\n\nThese improvements can be made later without requiring big changes in the UI client(s):\n\n- [ ] All UI clients can re-attach to the new address.\n    - ⚠️ [Only 1 UI should do the \"command\"](https://github.com/neovim/neovim/pull/35223#discussion_r2818453774). (TBD: this problem is eliminated if old-server includes `-c <command>` when it starts new-server.)\n- [ ] If all clients fail to reattach, this will lead to a dangling server process.\n    - Mitigation: make it easy to see recently started/dangling servers.\n- [ ] ⚠️ (TBD) With `--listen` argument, old-server and new-server cannot listen on the same address at the same time.\n    - If `--listen` arguments are stripped from the new server's command line, this means `:restart` will not work for users that use a non-UI client to control Nvim via a socket passed after `--listen`.\n    - But see also [this comment](https://github.com/neovim/neovim/issues/34367#issuecomment-4122611435).\n\n\n### Benefits\n\n1. Simpler logic. ([ref](https://github.com/neovim/neovim/pull/35045#issuecomment-3146985628))\n1. Mitigates race conditions\n    - If the user config has errors / waiting for input, are all UIs able to attach while Nvim is waiting for input?\n\n### Implementation\n\nFrom https://github.com/neovim/neovim/pull/35045#issuecomment-3146985628 : \n1. server (nvim-1) starts new nvim instance (nvim-2)\n2. server emits `restart[addr, ... cmd]` ui event which includes the new listen address.\n3. ui handler:\n    1. opens a channel to nvim-2\n    2. waits for nvim-1 to die (close the channel)\n4. if the nvim-1 fails to quit:\n    - server terminates nvim-2.\n    - ui `restart` handler cancels its wait routine when it sees that nvim-2 died.\n",
+    "closed_at": "2026-03-28T19:25:11Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+        "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+        "followers_url": "https://api.github.com/users/justinmk/followers",
+        "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+        "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/justinmk",
+        "id": 1359421,
+        "login": "justinmk",
+        "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+        "organizations_url": "https://api.github.com/users/justinmk/orgs",
+        "received_events_url": "https://api.github.com/users/justinmk/received_events",
+        "repos_url": "https://api.github.com/users/justinmk/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -125,8 +145,8 @@
     "labels_url": "https://api.github.com/repos/neovim/neovim/issues/35149/labels{/name}",
     "locked": false,
     "milestone": {
-        "closed_at": null,
-        "closed_issues": 271,
+        "closed_at": "2026-03-29T17:04:34Z",
+        "closed_issues": 342,
         "created_at": "2024-05-16T14:11:54Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -150,16 +170,16 @@
             "user_view_type": "public"
         },
         "description": "",
-        "due_on": "2026-03-14T00:00:00Z",
+        "due_on": "2026-03-28T00:00:00Z",
         "html_url": "https://github.com/neovim/neovim/milestone/43",
         "id": 11063573,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/43/labels",
         "node_id": "MI_kwDOAPphoM4AqNEV",
         "number": 43,
-        "open_issues": 51,
-        "state": "open",
+        "open_issues": 0,
+        "state": "closed",
         "title": "0.12",
-        "updated_at": "2026-03-03T01:35:28Z",
+        "updated_at": "2026-03-29T17:05:46Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/43"
     },
     "node_id": "I_kwDOAPphoM7D8fuh",
@@ -179,8 +199,8 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/35149/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "sub_issues_summary": {
         "completed": 0,
         "percent_completed": 0,
@@ -198,7 +218,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyv",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2026-02-28T15:52:07Z",
+    "updated_at": "2026-03-29T00:32:31Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/35149",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
