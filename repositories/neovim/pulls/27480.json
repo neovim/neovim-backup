@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 5317,
-            "forks_count": 5317,
+            "forks": 6765,
+            "forks_count": 6765,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -68,6 +68,7 @@
             "has_issues": true,
             "has_pages": false,
             "has_projects": true,
+            "has_pull_requests": true,
             "has_wiki": true,
             "homepage": "https://neovim.io",
             "hooks_url": "https://api.github.com/repos/neovim/neovim/hooks",
@@ -94,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1721,
-            "open_issues_count": 1721,
+            "open_issues": 1949,
+            "open_issues_count": 1949,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -114,15 +115,17 @@
                 "starred_url": "https://api.github.com/users/neovim/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/neovim/subscriptions",
                 "type": "Organization",
-                "url": "https://api.github.com/users/neovim"
+                "url": "https://api.github.com/users/neovim",
+                "user_view_type": "public"
             },
             "private": false,
+            "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2024-05-14T00:42:07Z",
+            "pushed_at": "2026-04-07T04:03:27Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 269835,
+            "size": 375604,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 77016,
+            "stargazers_count": 98313,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -140,11 +143,11 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2024-05-14T00:39:42Z",
+            "updated_at": "2026-04-07T03:58:49Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 77016,
-            "watchers_count": 77016,
+            "watchers": 98313,
+            "watchers_count": 98313,
             "web_commit_signoff_required": false
         },
         "sha": "7ad2e3c64562bfb0ea2f7be305e4b0e6d2474d64",
@@ -166,7 +169,8 @@
             "starred_url": "https://api.github.com/users/neovim/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/neovim/subscriptions",
             "type": "Organization",
-            "url": "https://api.github.com/users/neovim"
+            "url": "https://api.github.com/users/neovim",
+            "user_view_type": "public"
         }
     },
     "body": "### Problem\r\n\r\nThe documentation flow (`gen_vimdoc.py`) has several issues:\r\n- it's not very versatile\r\n- depends on doxygen\r\n- doesn't work well with Lua code as it requires an awkward filter script to convert it into pseudo-C.\r\n- The intermediate XML files and filters makes it too much like a rube goldberg machine.\r\n\r\n### Solution\r\n\r\nRe-implement the flow using Lua, LPEG and treesitter.\r\n\r\n- `gen_vimdoc.py` is now replaced with `gen_vimdoc.lua` and replicates a portion of the logic.\r\n- `lua2dox.lua` is gone!\r\n- No more XML files.\r\n- Doxygen is no longer used and instead we now use:\r\n  - LPEG for comment parsing (see `scripts/luacats_grammar.lua` and `scripts/cdoc_grammar.lua`).\r\n  - LPEG for C parsing (see `scripts/cdoc_parser.lua`)\r\n  - Lua patterns for Lua parsing (see `scripts/luacats_parser.lua`).\r\n  - Treesitter for Markdown parsing (see `scripts/text_utils.lua`).\r\n- The generated `runtime/doc/*.mpack` files have been removed.\r\n   - `scripts/gen_eval_files.lua` now instead uses `scripts/cdoc_parser.lua` directly.\r\n- Text wrapping is implemented in `scripts/text_utils.lua` and appears to produce more consistent results (the main contributer to the diff of this change).\r\n\r\n### Todo\r\n\r\n<details>\r\n<summary>Details</summary>\r\n\r\n- [x] Good word wrapping\r\n- [x] Parse lists:\r\n  - Do we need a markdown parser?\r\n     - ~https://github.com/jgm/lunamark: Comprehensive but large~\r\n     - ~https://github.com/sebcat/lpeg-markdown: Too simple, doesn't handle nested lists.~\r\n     - UPDATE: using the tree-sitter parser we bundle\r\n- [x] Also make it work for C files.\r\n- [x] Support custom LuaCATs extensions\r\n  - [x] `@note`\r\n  - [x] `@deprecated`\r\n  - [x] `@defgroup` - REMOVED\r\n  - [x] `@brief` \r\n  - [x] `@since`\r\n- [x] Remove `gen_vimdoc.py`\r\n- [x] Remove `lua2dox.lua`\r\n- [x] Generate docs for Luadoc classes\r\n   - Done but commented out in this PR.\r\n\r\n</details>\r\n\r\n### Future Work\r\n\r\n- Lua objects documented with `@class` will now be easy to generate documentation for. The code for that is already included (but commented out) in this change.\r\n  - This will additionally allow us to document the full types of function arguments by using `@field` instead of hand formatted text.\r\n- Editorial changes to increase consistency with things like: help tags and function names. E.g. whether to include the `vim.` prefix or not.\r\n- Switch the Lua parsing from Lua patterns to either a LPEG or Treesitter based parser.\r\n- Support for more custom `@` annotations.\r\n- Graduate the markdown renderer in `text_utils.lua` and use in LSP hover.\r\n\r\n---\r\n\r\n### Notes:\r\n- The logic for generation function name/tags is still a bit of a mess. However now we have a bit more semantic information on the Lua files, this should now be easier to cleanup and create a more standard convention for documenting the various categories of functions.\r\n\r\n- Before:\r\n  ```\r\n  $ wc -l scripts/gen_vimdoc.py scripts/lua2dox.lua\r\n   1766 scripts/gen_vimdoc.py\r\n    532 scripts/lua2dox.lua\r\n   2298 total\r\n  ```\r\n  This PR:\r\n  ```\r\n  $ wc -l scripts/gen_vimdoc.lua scripts/luacats_parser.lua scripts/cdoc_grammar.lua scripts/cdoc_parser.lua scripts/text_utils.lua\r\n    792 scripts/gen_vimdoc.lua\r\n    521 scripts/luacats_parser.lua\r\n     87 scripts/cdoc_grammar.lua\r\n    223 scripts/cdoc_parser.lua\r\n    242 scripts/text_utils.lua\r\n   1865 total\r\n  ```",
@@ -198,7 +202,7 @@
             "original_position": 6,
             "original_start_line": 948,
             "path": "runtime/doc/treesitter.txt",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1883609244,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -237,7 +241,8 @@
                 "starred_url": "https://api.github.com/users/gpanders/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/gpanders/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/gpanders"
+                "url": "https://api.github.com/users/gpanders",
+                "user_view_type": "public"
             }
         },
         {
@@ -266,7 +271,7 @@
             "original_position": 71,
             "original_start_line": null,
             "path": "runtime/doc/diagnostic.txt",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1883609244,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -305,7 +310,8 @@
                 "starred_url": "https://api.github.com/users/gpanders/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/gpanders/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/gpanders"
+                "url": "https://api.github.com/users/gpanders",
+                "user_view_type": "public"
             }
         },
         {
@@ -334,7 +340,7 @@
             "original_position": 5,
             "original_start_line": null,
             "path": "runtime/lua/vim/shared.lua",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1883609244,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -373,7 +379,8 @@
                 "starred_url": "https://api.github.com/users/gpanders/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/gpanders/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/gpanders"
+                "url": "https://api.github.com/users/gpanders",
+                "user_view_type": "public"
             }
         },
         {
@@ -403,7 +410,7 @@
             "original_position": 6,
             "original_start_line": 948,
             "path": "runtime/doc/treesitter.txt",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1883647217,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -442,7 +449,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -510,7 +518,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -578,7 +587,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -647,7 +657,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -716,7 +727,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -745,7 +757,7 @@
             "original_position": 44,
             "original_start_line": null,
             "path": "runtime/doc/treesitter.txt",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1893115836,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -784,7 +796,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -814,7 +827,7 @@
             "original_position": 44,
             "original_start_line": null,
             "path": "runtime/doc/treesitter.txt",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1893410924,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -853,7 +866,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -883,7 +897,7 @@
             "original_position": 44,
             "original_start_line": null,
             "path": "runtime/doc/treesitter.txt",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1893414747,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -922,7 +936,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -990,7 +1005,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -1059,7 +1075,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -1088,7 +1105,7 @@
             "original_position": 104,
             "original_start_line": null,
             "path": "runtime/doc/treesitter.txt",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1898207175,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -1127,7 +1144,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -1157,7 +1175,7 @@
             "original_position": 104,
             "original_start_line": null,
             "path": "runtime/doc/treesitter.txt",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1898213336,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -1196,7 +1214,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -1226,7 +1245,7 @@
             "original_position": 104,
             "original_start_line": null,
             "path": "runtime/doc/treesitter.txt",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1898215116,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -1265,7 +1284,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -1295,7 +1315,7 @@
             "original_position": 104,
             "original_start_line": null,
             "path": "runtime/doc/treesitter.txt",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1898261606,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -1334,7 +1354,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -1364,7 +1385,7 @@
             "original_position": 104,
             "original_start_line": null,
             "path": "runtime/doc/treesitter.txt",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1898264553,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -1403,7 +1424,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -1432,7 +1454,7 @@
             "original_position": 13,
             "original_start_line": null,
             "path": "runtime/lua/vim/_options.lua",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1899143355,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -1471,7 +1493,8 @@
                 "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/zeertzjq"
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
             }
         },
         {
@@ -1500,7 +1523,7 @@
             "original_position": 160,
             "original_start_line": null,
             "path": "runtime/doc/lua.txt",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1899143355,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -1539,7 +1562,8 @@
                 "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/zeertzjq"
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
             }
         },
         {
@@ -1607,7 +1631,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -1636,7 +1661,7 @@
             "original_position": 29,
             "original_start_line": null,
             "path": "runtime/lua/vim/_meta/lpeg.lua",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1899404401,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -1675,7 +1700,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -1743,7 +1769,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -1773,7 +1800,7 @@
             "original_position": 29,
             "original_start_line": null,
             "path": "runtime/lua/vim/_meta/lpeg.lua",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1899505390,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -1812,7 +1839,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -1842,7 +1870,7 @@
             "original_position": 29,
             "original_start_line": null,
             "path": "runtime/lua/vim/_meta/lpeg.lua",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1899505561,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -1881,7 +1909,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -1911,7 +1940,7 @@
             "original_position": 29,
             "original_start_line": null,
             "path": "runtime/lua/vim/_meta/lpeg.lua",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1899505687,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -1950,7 +1979,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -2019,7 +2049,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -2088,7 +2119,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -2118,7 +2150,7 @@
             "original_position": 29,
             "original_start_line": null,
             "path": "runtime/lua/vim/_meta/lpeg.lua",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1899514089,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -2157,7 +2189,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -2186,7 +2219,7 @@
             "original_position": 18,
             "original_start_line": null,
             "path": "runtime/lua/vim/_meta/lpeg.lua",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1899514104,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -2225,7 +2258,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -2254,7 +2288,7 @@
             "original_position": 5,
             "original_start_line": null,
             "path": "runtime/lua/vim/treesitter/query.lua",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1899557863,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -2293,7 +2327,8 @@
                 "starred_url": "https://api.github.com/users/wookayin/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/wookayin/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/wookayin"
+                "url": "https://api.github.com/users/wookayin",
+                "user_view_type": "public"
             }
         },
         {
@@ -2322,7 +2357,7 @@
             "original_position": 135,
             "original_start_line": null,
             "path": "runtime/doc/lua.txt",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1899557863,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -2361,7 +2396,8 @@
                 "starred_url": "https://api.github.com/users/wookayin/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/wookayin/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/wookayin"
+                "url": "https://api.github.com/users/wookayin",
+                "user_view_type": "public"
             }
         },
         {
@@ -2429,7 +2465,8 @@
                 "starred_url": "https://api.github.com/users/wookayin/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/wookayin/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/wookayin"
+                "url": "https://api.github.com/users/wookayin",
+                "user_view_type": "public"
             }
         },
         {
@@ -2497,7 +2534,8 @@
                 "starred_url": "https://api.github.com/users/wookayin/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/wookayin/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/wookayin"
+                "url": "https://api.github.com/users/wookayin",
+                "user_view_type": "public"
             }
         },
         {
@@ -2526,7 +2564,7 @@
             "original_position": 1,
             "original_start_line": null,
             "path": "scripts/gen_vimdoc.lua",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1899667366,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -2565,7 +2603,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -2594,7 +2633,7 @@
             "original_position": 4,
             "original_start_line": null,
             "path": "runtime/doc/treesitter.txt",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1899725648,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -2633,7 +2672,8 @@
                 "starred_url": "https://api.github.com/users/MariaSolOs/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/MariaSolOs/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/MariaSolOs"
+                "url": "https://api.github.com/users/MariaSolOs",
+                "user_view_type": "public"
             }
         },
         {
@@ -2701,7 +2741,8 @@
                 "starred_url": "https://api.github.com/users/MariaSolOs/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/MariaSolOs/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/MariaSolOs"
+                "url": "https://api.github.com/users/MariaSolOs",
+                "user_view_type": "public"
             }
         },
         {
@@ -2770,7 +2811,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -2839,7 +2881,8 @@
                 "starred_url": "https://api.github.com/users/MariaSolOs/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/MariaSolOs/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/MariaSolOs"
+                "url": "https://api.github.com/users/MariaSolOs",
+                "user_view_type": "public"
             }
         },
         {
@@ -2869,7 +2912,7 @@
             "original_position": 4,
             "original_start_line": null,
             "path": "runtime/doc/treesitter.txt",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1899747843,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -2908,7 +2951,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -2938,7 +2982,7 @@
             "original_position": 4,
             "original_start_line": null,
             "path": "runtime/doc/treesitter.txt",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1899748334,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -2977,7 +3021,8 @@
                 "starred_url": "https://api.github.com/users/MariaSolOs/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/MariaSolOs/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/MariaSolOs"
+                "url": "https://api.github.com/users/MariaSolOs",
+                "user_view_type": "public"
             }
         },
         {
@@ -3046,7 +3091,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -3114,7 +3160,8 @@
                 "starred_url": "https://api.github.com/users/wookayin/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/wookayin/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/wookayin"
+                "url": "https://api.github.com/users/wookayin",
+                "user_view_type": "public"
             }
         },
         {
@@ -3143,7 +3190,7 @@
             "original_position": 66,
             "original_start_line": null,
             "path": "scripts/text_utils.lua",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1900002951,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -3182,7 +3229,8 @@
                 "starred_url": "https://api.github.com/users/MariaSolOs/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/MariaSolOs/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/MariaSolOs"
+                "url": "https://api.github.com/users/MariaSolOs",
+                "user_view_type": "public"
             }
         },
         {
@@ -3250,7 +3298,8 @@
                 "starred_url": "https://api.github.com/users/MariaSolOs/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/MariaSolOs/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/MariaSolOs"
+                "url": "https://api.github.com/users/MariaSolOs",
+                "user_view_type": "public"
             }
         },
         {
@@ -3279,7 +3328,7 @@
             "original_position": 140,
             "original_start_line": null,
             "path": "scripts/text_utils.lua",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1900002951,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -3318,7 +3367,8 @@
                 "starred_url": "https://api.github.com/users/MariaSolOs/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/MariaSolOs/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/MariaSolOs"
+                "url": "https://api.github.com/users/MariaSolOs",
+                "user_view_type": "public"
             }
         },
         {
@@ -3348,7 +3398,7 @@
             "original_position": 66,
             "original_start_line": null,
             "path": "scripts/text_utils.lua",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1900127244,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -3387,7 +3437,8 @@
                 "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/zeertzjq"
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
             }
         },
         {
@@ -3417,7 +3468,7 @@
             "original_position": 66,
             "original_start_line": null,
             "path": "scripts/text_utils.lua",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1900138085,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -3456,7 +3507,8 @@
                 "starred_url": "https://api.github.com/users/MariaSolOs/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/MariaSolOs/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/MariaSolOs"
+                "url": "https://api.github.com/users/MariaSolOs",
+                "user_view_type": "public"
             }
         },
         {
@@ -3525,7 +3577,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -3554,7 +3607,7 @@
             "original_position": 576,
             "original_start_line": 3186,
             "path": "runtime/doc/api.txt",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1900792686,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -3593,7 +3646,8 @@
                 "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/zeertzjq"
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
             }
         },
         {
@@ -3622,7 +3676,7 @@
             "original_position": 486,
             "original_start_line": null,
             "path": "runtime/doc/lua.txt",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1900801157,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -3661,7 +3715,8 @@
                 "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/zeertzjq"
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
             }
         },
         {
@@ -3690,7 +3745,7 @@
             "original_position": 744,
             "original_start_line": null,
             "path": "runtime/doc/api.txt",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1901569374,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -3729,7 +3784,8 @@
                 "starred_url": "https://api.github.com/users/gpanders/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/gpanders/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/gpanders"
+                "url": "https://api.github.com/users/gpanders",
+                "user_view_type": "public"
             }
         },
         {
@@ -3758,7 +3814,7 @@
             "original_position": 135,
             "original_start_line": 888,
             "path": "runtime/doc/lua.txt",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1901569374,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -3797,7 +3853,8 @@
                 "starred_url": "https://api.github.com/users/gpanders/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/gpanders/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/gpanders"
+                "url": "https://api.github.com/users/gpanders",
+                "user_view_type": "public"
             }
         },
         {
@@ -3826,7 +3883,7 @@
             "original_position": 202,
             "original_start_line": 1334,
             "path": "runtime/doc/lua.txt",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1901569374,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -3865,7 +3922,8 @@
                 "starred_url": "https://api.github.com/users/gpanders/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/gpanders/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/gpanders"
+                "url": "https://api.github.com/users/gpanders",
+                "user_view_type": "public"
             }
         },
         {
@@ -3895,7 +3953,7 @@
             "original_position": 744,
             "original_start_line": null,
             "path": "runtime/doc/api.txt",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1901582936,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -3934,7 +3992,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -3964,7 +4023,7 @@
             "original_position": 135,
             "original_start_line": 888,
             "path": "runtime/doc/lua.txt",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1901596207,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -4003,7 +4062,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -4032,7 +4092,7 @@
             "original_position": 428,
             "original_start_line": null,
             "path": "runtime/doc/lua.txt",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1899557863,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -4071,7 +4131,8 @@
                 "starred_url": "https://api.github.com/users/wookayin/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/wookayin/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/wookayin"
+                "url": "https://api.github.com/users/wookayin",
+                "user_view_type": "public"
             }
         },
         {
@@ -4101,7 +4162,7 @@
             "original_position": 5,
             "original_start_line": null,
             "path": "runtime/lua/vim/treesitter/query.lua",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1899557863,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -4140,7 +4201,8 @@
                 "starred_url": "https://api.github.com/users/wookayin/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/wookayin/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/wookayin"
+                "url": "https://api.github.com/users/wookayin",
+                "user_view_type": "public"
             }
         },
         {
@@ -4170,7 +4232,7 @@
             "original_position": 135,
             "original_start_line": null,
             "path": "runtime/doc/lua.txt",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1902294697,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -4209,7 +4271,8 @@
                 "starred_url": "https://api.github.com/users/wookayin/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/wookayin/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/wookayin"
+                "url": "https://api.github.com/users/wookayin",
+                "user_view_type": "public"
             }
         },
         {
@@ -4278,7 +4341,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -4308,7 +4372,7 @@
             "original_position": 428,
             "original_start_line": null,
             "path": "runtime/doc/lua.txt",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1903056072,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -4347,7 +4411,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -4416,7 +4481,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -4485,7 +4551,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -4515,7 +4582,7 @@
             "original_position": 5,
             "original_start_line": null,
             "path": "runtime/lua/vim/treesitter/query.lua",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1903064519,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -4554,7 +4621,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -4623,7 +4691,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -4653,7 +4722,7 @@
             "original_position": 428,
             "original_start_line": null,
             "path": "runtime/doc/lua.txt",
-            "position": null,
+            "position": 1,
             "pull_request_review_id": 1903087949,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
             "reactions": {
@@ -4692,7 +4761,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         }
     ],
@@ -4738,7 +4808,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -4782,7 +4853,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -4826,7 +4898,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -4870,7 +4943,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -4914,7 +4988,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -4958,7 +5033,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         },
         {
@@ -5002,7 +5078,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -5046,7 +5123,8 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             }
         },
         {
@@ -5090,7 +5168,8 @@
                 "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/clason"
+                "url": "https://api.github.com/users/clason",
+                "user_view_type": "public"
             }
         }
     ],
@@ -5124,8 +5203,8 @@
             "downloads_url": "https://api.github.com/repos/lewis6991/neovim/downloads",
             "events_url": "https://api.github.com/repos/lewis6991/neovim/events",
             "fork": true,
-            "forks": 0,
-            "forks_count": 0,
+            "forks": 1,
+            "forks_count": 1,
             "forks_url": "https://api.github.com/repos/lewis6991/neovim/forks",
             "full_name": "lewis6991/neovim",
             "git_commits_url": "https://api.github.com/repos/lewis6991/neovim/git/commits{/sha}",
@@ -5137,6 +5216,7 @@
             "has_issues": false,
             "has_pages": false,
             "has_projects": true,
+            "has_pull_requests": true,
             "has_wiki": true,
             "homepage": "https://neovim.io",
             "hooks_url": "https://api.github.com/repos/lewis6991/neovim/hooks",
@@ -5183,13 +5263,15 @@
                 "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/lewis6991"
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
             },
             "private": false,
+            "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/lewis6991/neovim/pulls{/number}",
-            "pushed_at": "2024-05-13T15:21:34Z",
+            "pushed_at": "2026-04-02T20:56:56Z",
             "releases_url": "https://api.github.com/repos/lewis6991/neovim/releases{/id}",
-            "size": 264435,
+            "size": 363093,
             "ssh_url": "git@github.com:lewis6991/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/lewis6991/neovim/stargazers",
@@ -5201,7 +5283,7 @@
             "teams_url": "https://api.github.com/repos/lewis6991/neovim/teams",
             "topics": [],
             "trees_url": "https://api.github.com/repos/lewis6991/neovim/git/trees{/sha}",
-            "updated_at": "2024-02-06T12:43:15Z",
+            "updated_at": "2025-01-29T11:45:46Z",
             "url": "https://api.github.com/repos/lewis6991/neovim",
             "visibility": "public",
             "watchers": 0,
@@ -5227,7 +5309,8 @@
             "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/lewis6991"
+            "url": "https://api.github.com/users/lewis6991",
+            "user_view_type": "public"
         }
     },
     "html_url": "https://github.com/neovim/neovim/pull/27480",
@@ -5248,8 +5331,8 @@
     "merge_commit_sha": "9beb40a4db5613601fc1a4b828a44e5977eca046",
     "merged_at": "2024-02-27T14:41:17Z",
     "milestone": {
-        "closed_at": null,
-        "closed_issues": 420,
+        "closed_at": "2024-05-16T14:11:42Z",
+        "closed_issues": 441,
         "created_at": "2023-02-02T14:11:43Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1363104?v=4",
@@ -5269,19 +5352,20 @@
             "starred_url": "https://api.github.com/users/bfredl/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/bfredl/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/bfredl"
+            "url": "https://api.github.com/users/bfredl",
+            "user_view_type": "public"
         },
         "description": "",
-        "due_on": "2024-05-12T07:00:00Z",
+        "due_on": "2024-05-12T00:00:00Z",
         "html_url": "https://github.com/neovim/neovim/milestone/36",
         "id": 8997654,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/36/labels",
         "node_id": "MI_kwDOAPphoM4AiUsW",
         "number": 36,
-        "open_issues": 7,
-        "state": "open",
+        "open_issues": 0,
+        "state": "closed",
         "title": "0.10",
-        "updated_at": "2024-05-13T19:47:36Z",
+        "updated_at": "2026-01-28T20:48:56Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/36"
     },
     "node_id": "PR_kwDOAPphoM5nAUXN",
@@ -5294,7 +5378,7 @@
     "state": "closed",
     "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/35c755f23351371b4ba1a33a4b04f9844492673e",
     "title": "feat(docs): replace gen_vimdoc.py with gen_vimdoc.lua",
-    "updated_at": "2024-05-08T22:14:57Z",
+    "updated_at": "2026-04-02T12:41:25Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/27480",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",
@@ -5314,6 +5398,7 @@
         "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/lewis6991"
+        "url": "https://api.github.com/users/lewis6991",
+        "user_view_type": "public"
     }
 }
