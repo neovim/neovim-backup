@@ -348,9 +348,55 @@
                 "url": "https://api.github.com/users/tris203",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "The pyright issue has nothing to do with dynamic registration, it is just a casualty of dynamic registration support, since it causes the server to switch to pull mode.\n https://github.com/DetachHead/basedpyright/blob/f0ab53bb61c42a29ef2d4a1fc418cdba52157604/packages/pyright-internal/src/languageServerBase.ts#L709-L711\n\nThere appears to be a bug there, where `workspace/diagnostics` doesn't work correctly unless the client supports streaming of the diagnostics via LSP partial results mechanism. If i hack a token into the neovim request, then I see the diagnostics flow, otherwise no response:\n\n```diff\n--- a/runtime/lua/vim/lsp/diagnostic.lua\n+++ b/runtime/lua/vim/lsp/diagnostic.lua\n@@ -563,6 +563,7 @@ function M._workspace_diagnostics(opts)\n       local params = {\n         identifier = cap.identifier,\n         previousResultIds = previous_result_ids(client.id, cap.identifier),\n+        partialResultToken = 42\n       }\n \n       client:request('workspace/diagnostic', params, handler)\n```\n\n```text\n[DEBUG][2026-04-14 22:02:24] /usr/local/share/nvim/runtime/lua/vim/lsp/log.lua:151\t\"rpc.receive\"\t{ jsonrpc = \"2.0\", method = \"$/progress\", params = { token = 42, value = { items = { { diagnostics = { { code = \"reportArgumentType\", codeDescription = { href = \"https://docs.basedpyright.com/v1.39.0/configuration/config-files/#reportArgumentType\" }, message = 'Argument of type \"Literal[42]\" cannot be assigned to parameter \"sep\" of type \"str | None\" .........\n```\n\nSo that's how the feature is working for vscode but not for neovim. I believe the bug is here, I will do some more archaeology and try to file problem on the pyright side:\nhttps://github.com/DetachHead/basedpyright/blob/f0ab53bb61c42a29ef2d4a1fc418cdba52157604/packages/pyright-internal/src/languageServerBase.ts#L357-L363\n\nImplementing streaming on the neovim side seems non-trivial, for now I recommend this workaround in your LSP configuration:\n```lua\n  -- workspace pulls don't work correctly without partial result token\n  init_options = {\n    disablePullDiagnostics = true\n  },\n```",
+            "created_at": "2026-04-15T02:59:42Z",
+            "html_url": "https://github.com/neovim/neovim/issues/37150#issuecomment-4248816355",
+            "id": 4248816355,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/37150",
+            "node_id": "IC_kwDOAPphoM79P8rj",
+            "performed_via_github_app": null,
+            "pin": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 2,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 2,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4248816355/reactions"
+            },
+            "updated_at": "2026-04-15T02:59:42Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4248816355",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/504194?v=4",
+                "events_url": "https://api.github.com/users/rmuir/events{/privacy}",
+                "followers_url": "https://api.github.com/users/rmuir/followers",
+                "following_url": "https://api.github.com/users/rmuir/following{/other_user}",
+                "gists_url": "https://api.github.com/users/rmuir/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/rmuir",
+                "id": 504194,
+                "login": "rmuir",
+                "node_id": "MDQ6VXNlcjUwNDE5NA==",
+                "organizations_url": "https://api.github.com/users/rmuir/orgs",
+                "received_events_url": "https://api.github.com/users/rmuir/received_events",
+                "repos_url": "https://api.github.com/users/rmuir/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/rmuir/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/rmuir/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/rmuir",
+                "user_view_type": "public"
+            }
         }
     ],
-    "comments": 7,
+    "comments": 8,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/37150/comments",
     "created_at": "2025-12-28T18:51:31Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/37150/events",
@@ -377,7 +423,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 802,
+        "closed_issues": 815,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -407,10 +453,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 656,
+        "open_issues": 653,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2026-04-14T02:18:51Z",
+        "updated_at": "2026-04-20T19:41:06Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM7gd0JU",
@@ -449,7 +495,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyr",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2026-04-13T14:26:59Z",
+    "updated_at": "2026-04-15T02:59:42Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/37150",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/504194?v=4",
