@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/39259"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/668c9f0554f64fda5d78a661381a01be5fdf7d79"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/f6b83b6430fc2e56aa3b110d078eb785137b348a"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6820,
-            "forks_count": 6820,
+            "forks": 6849,
+            "forks_count": 6849,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -95,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1945,
-            "open_issues_count": 1945,
+            "open_issues": 1932,
+            "open_issues_count": 1932,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -121,11 +121,11 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2026-04-21T04:08:53Z",
+            "pushed_at": "2026-04-28T04:22:56Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 378047,
+            "size": 379951,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 98914,
+            "stargazers_count": 99156,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -143,14 +143,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2026-04-21T03:52:29Z",
+            "updated_at": "2026-04-28T03:32:33Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 98914,
-            "watchers_count": 98914,
+            "watchers": 99156,
+            "watchers_count": 99156,
             "web_commit_signoff_required": false
         },
-        "sha": "2287c374863988c99b4f20ee9aa0b3771527d8ed",
+        "sha": "ff68fd6b8a84ce83c14358db1d70a562f1524ebe",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -175,13 +175,359 @@
     },
     "body": "## Problem\r\n\r\n`nvim_get_option_value()` supports window-local (`win`) and buffer-local (`buf`) context via `Dict(option)`, but there is **no way to query tabpage-local options**. In particular, **`cmdheight` can be set per-tabpage**, yet the API either errors (unknown key) or always returns the global/current value, making it impossible for plugins/UIs to reliably read tab-local `cmdheight`.\r\n\r\nFixes #31140\r\n\r\n## Solution\r\n\r\n- Extend `Dict(option)` to accept a **`tab`** key (Tabpage handle).\r\n- Teach `nvim_get_option_value()` to **resolve `cmdheight` in the specified tabpage**, returning the tab-local value when present.\r\n- Refactored arguments in `validate_option_value_args` so `tab` is **mutually exclusive** with `win`/`buf`/etc., and **only supported for `cmdheight`** for now (other options continue to behave as before).\r\n- Add a functional test covering reading tab-local `cmdheight` via `nvim_get_option_value()` with `{ tab = ... }`.\r\n\r\nAI-assisted: Cursor",
     "closed_at": null,
-    "comment_data": [],
+    "comment_data": [
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/39259#discussion_r3143936894"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/39259"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3143936894"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Even if it's uncommon, I think we do need this \"shape\" in place,  👍 . Similar for `event-args` https://github.com/neovim/neovim/pull/38537 .",
+            "commit_id": "f6b83b6430fc2e56aa3b110d078eb785137b348a",
+            "created_at": "2026-04-26T18:29:31Z",
+            "diff_hunk": "@@ -3539,6 +3538,9 @@ nvim_get_option_value({name}, {opts})                *nvim_get_option_value()*\n                 • win: |window-ID|. Used for getting window local options.\n                 • buf: Buffer number. Used for getting buffer local options.\n                   Implies {scope} is \"local\".\n+                • tab: |tab-ID| for tab-local options. Currently only supports\n+                  \"cmdheight\". Cannot be used with \"scope\", \"win\", \"buf\", or\n+                  \"filetype\". Tabpage `0` means the current tabpage.",
+            "html_url": "https://github.com/neovim/neovim/pull/39259#discussion_r3143936894",
+            "id": 3143936894,
+            "line": 3543,
+            "node_id": "PRRC_kwDOAPphoM67ZKt-",
+            "original_commit_id": "f6b83b6430fc2e56aa3b110d078eb785137b348a",
+            "original_line": 3543,
+            "original_position": 29,
+            "original_start_line": 3538,
+            "path": "runtime/doc/api.txt",
+            "position": 29,
+            "pull_request_review_id": 4177272550,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39259",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3143936894/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 3538,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-04-26T18:30:08Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3143936894",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/39259#discussion_r3143939582"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/39259"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3143939582"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "This should have been using `VALIDATE_CON`, but I guess I missed this when I introduced `VALIDATE_CON`.\n\nPlease ensure that the code you touched in this PR uses VALIDATE_CON where appropriate.",
+            "commit_id": "f6b83b6430fc2e56aa3b110d078eb785137b348a",
+            "created_at": "2026-04-26T18:31:40Z",
+            "diff_hunk": "@@ -67,23 +103,27 @@ static int validate_option_value_args(Dict(option) *opts, char *name, OptIndex *\n     }\n   }\n \n-  VALIDATE((!HAS_KEY_X(opts, filetype)\n-            || !(HAS_KEY_X(opts, buf) || HAS_KEY_X(opts, scope) || HAS_KEY_X(opts, win))),\n-           \"%s\", \"cannot use 'filetype' with 'scope', 'buf' or 'win'\", {\n-    return FAIL;\n-  });\n-\n-  VALIDATE((!HAS_KEY_X(opts, win) || !HAS_KEY_X(opts, buf)),\n-           \"%s\", \"cannot use both 'buf' and 'win'\", {\n-    return FAIL;",
+            "html_url": "https://github.com/neovim/neovim/pull/39259#discussion_r3143939582",
+            "id": 3143939582,
+            "line": 78,
+            "node_id": "PRRC_kwDOAPphoM67ZLX-",
+            "original_commit_id": "f6b83b6430fc2e56aa3b110d078eb785137b348a",
+            "original_line": 78,
+            "original_position": 66,
+            "original_start_line": 76,
+            "path": "src/nvim/api/options.c",
+            "position": 66,
+            "pull_request_review_id": 4177274542,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39259",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3143939582/reactions"
+            },
+            "side": "LEFT",
+            "start_line": 76,
+            "start_side": "LEFT",
+            "subject_type": "line",
+            "updated_at": "2026-04-26T18:31:40Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3143939582",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/39259#discussion_r3143940538"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/39259"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3143940538"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "VALIDATE_CON\n\netc ....",
+            "commit_id": "f6b83b6430fc2e56aa3b110d078eb785137b348a",
+            "created_at": "2026-04-26T18:32:21Z",
+            "diff_hunk": "@@ -273,12 +323,18 @@ void nvim_set_option_value(uint64_t channel_id, String name, Object value, Dict(\n                            Error *err)\n   FUNC_API_SINCE(9)\n {\n+  if (opts && HAS_KEY(opts, option, tab)) {\n+    api_set_error(err, kErrorTypeValidation, \"'tab' is not supported for nvim_set_option_value\");",
+            "html_url": "https://github.com/neovim/neovim/pull/39259#discussion_r3143940538",
+            "id": 3143940538,
+            "line": 327,
+            "node_id": "PRRC_kwDOAPphoM67ZLm6",
+            "original_commit_id": "f6b83b6430fc2e56aa3b110d078eb785137b348a",
+            "original_line": 327,
+            "original_position": 137,
+            "original_start_line": null,
+            "path": "src/nvim/api/options.c",
+            "position": 137,
+            "pull_request_review_id": 4177275193,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39259",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3143940538/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-04-26T18:32:44Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3143940538",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/39259#discussion_r3143944147"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/39259"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3143944147"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "don't need to mention this. in the rare case that users might make that mistake, it's caught by a clear validation error.\n```suggestion\n                  \"cmdheight\".\n```",
+            "commit_id": "f6b83b6430fc2e56aa3b110d078eb785137b348a",
+            "created_at": "2026-04-26T18:35:01Z",
+            "diff_hunk": "@@ -3539,6 +3538,9 @@ nvim_get_option_value({name}, {opts})                *nvim_get_option_value()*\n                 • win: |window-ID|. Used for getting window local options.\n                 • buf: Buffer number. Used for getting buffer local options.\n                   Implies {scope} is \"local\".\n+                • tab: |tab-ID| for tab-local options. Currently only supports\n+                  \"cmdheight\". Cannot be used with \"scope\", \"win\", \"buf\", or",
+            "html_url": "https://github.com/neovim/neovim/pull/39259#discussion_r3143944147",
+            "id": 3143944147,
+            "line": 3542,
+            "node_id": "PRRC_kwDOAPphoM67ZMfT",
+            "original_commit_id": "f6b83b6430fc2e56aa3b110d078eb785137b348a",
+            "original_line": 3542,
+            "original_position": 28,
+            "original_start_line": null,
+            "path": "runtime/doc/api.txt",
+            "position": 28,
+            "pull_request_review_id": 4177277722,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39259",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3143944147/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-04-26T18:35:01Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3143944147",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/39259#discussion_r3143945280"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/39259"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3143945280"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\n    it(\"tabpage-local 'cmdheight' #31140\", function()\n```",
+            "commit_id": "f6b83b6430fc2e56aa3b110d078eb785137b348a",
+            "created_at": "2026-04-26T18:35:54Z",
+            "diff_hunk": "@@ -1920,6 +1921,47 @@ describe('API', function()\n       )\n     end)\n \n+    it('nvim_get_option_value tabpage cmdheight #31140', function()",
+            "html_url": "https://github.com/neovim/neovim/pull/39259#discussion_r3143945280",
+            "id": 3143945280,
+            "line": 1924,
+            "node_id": "PRRC_kwDOAPphoM67ZMxA",
+            "original_commit_id": "f6b83b6430fc2e56aa3b110d078eb785137b348a",
+            "original_line": 1924,
+            "original_position": 12,
+            "original_start_line": null,
+            "path": "test/functional/api/vim_spec.lua",
+            "position": 12,
+            "pull_request_review_id": 4177278525,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39259",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3143945280/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-04-26T18:35:55Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3143945280",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        }
+    ],
     "comment_regular_data": [],
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/39259/comments",
     "commits_url": "https://api.github.com/repos/neovim/neovim/pulls/39259/commits",
     "created_at": "2026-04-20T20:54:57Z",
     "diff_url": "https://github.com/neovim/neovim/pull/39259.diff",
-    "draft": true,
+    "draft": false,
     "head": {
         "label": "EliWiegman:local-cmdheight-31140",
         "ref": "local-cmdheight-31140",
@@ -273,9 +619,9 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/EliWiegman/neovim-cmdheight/pulls{/number}",
-            "pushed_at": "2026-04-21T02:44:35Z",
+            "pushed_at": "2026-04-21T21:33:56Z",
             "releases_url": "https://api.github.com/repos/EliWiegman/neovim-cmdheight/releases{/id}",
-            "size": 364007,
+            "size": 364272,
             "ssh_url": "git@github.com:EliWiegman/neovim-cmdheight.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/EliWiegman/neovim-cmdheight/stargazers",
@@ -287,14 +633,14 @@
             "teams_url": "https://api.github.com/repos/EliWiegman/neovim-cmdheight/teams",
             "topics": [],
             "trees_url": "https://api.github.com/repos/EliWiegman/neovim-cmdheight/git/trees{/sha}",
-            "updated_at": "2026-04-21T02:44:40Z",
+            "updated_at": "2026-04-21T20:15:25Z",
             "url": "https://api.github.com/repos/EliWiegman/neovim-cmdheight",
             "visibility": "public",
             "watchers": 0,
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "668c9f0554f64fda5d78a661381a01be5fdf7d79",
+        "sha": "f6b83b6430fc2e56aa3b110d078eb785137b348a",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/18419421?v=4",
             "events_url": "https://api.github.com/users/EliWiegman/events{/privacy}",
@@ -341,7 +687,7 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "22fdca138216ccf3d38096fba7eeb3e281509742",
+    "merge_commit_sha": "47e05a4fa834b7a715366e4f3381045c6dbd20ec",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM7UGSwz",
@@ -352,9 +698,9 @@
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/39259/comments",
     "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/668c9f0554f64fda5d78a661381a01be5fdf7d79",
-    "title": "fix(api): nvim_get_option_value tab cmdheight via Dict(option).tab ",
-    "updated_at": "2026-04-20T21:38:20Z",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/f6b83b6430fc2e56aa3b110d078eb785137b348a",
+    "title": "fix(api): nvim_get_option_value tab-local 'cmdheight' ",
+    "updated_at": "2026-04-26T18:37:47Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/39259",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/18419421?v=4",

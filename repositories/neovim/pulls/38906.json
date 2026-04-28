@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/38906"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/8fcc291e6e197218a53682a26326c908de5e61d7"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/0c76f5bd582d4bef1723b18a49cc2667d7ef888f"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6820,
-            "forks_count": 6820,
+            "forks": 6849,
+            "forks_count": 6849,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -95,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1945,
-            "open_issues_count": 1945,
+            "open_issues": 1932,
+            "open_issues_count": 1932,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -121,11 +121,11 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2026-04-21T04:08:53Z",
+            "pushed_at": "2026-04-28T04:22:56Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 378047,
+            "size": 379951,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 98914,
+            "stargazers_count": 99156,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -143,14 +143,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2026-04-21T03:52:29Z",
+            "updated_at": "2026-04-28T03:32:33Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 98914,
-            "watchers_count": 98914,
+            "watchers": 99156,
+            "watchers_count": 99156,
             "web_commit_signoff_required": false
         },
-        "sha": "5b0ad4a0607498616b984c63ae1a6903cb835c66",
+        "sha": "e4458b7f244b28a0f685552a4c20f0696f7e3f6c",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -334,14 +334,14 @@
             "diff_hunk": "@@ -137,75 +61,50 @@ for level, levelnr in pairs(log_levels) do\n   log.levels[levelnr] = level\n end\n \n---- @param level string\n---- @return fun(...:any): boolean?\n-local function create_logger(level)\n-  return function(...)\n-    local argc = select('#', ...)\n-    if argc == 0 then\n-      return true\n-    end\n-    if not open_logfile() then\n-      return false\n-    end\n-    local message = format_func(level, ...)\n-    if message then\n-      assert(logfile)\n-      logfile:write(message)\n-      logfile:flush()\n-    end\n-  end\n-end\n-\n -- If called without arguments, it will check whether the log level is\n -- greater than or equal to this one. When called with arguments, it will\n -- log at that level (if applicable, it is checked either way).\n \n --- @nodoc\n-log.debug = create_logger('DEBUG')\n+log.debug = logger.debug\n \n --- @nodoc\n-log.error = create_logger('ERROR')\n+log.error = logger.error\n \n --- @nodoc\n-log.info = create_logger('INFO')\n+log.info = logger.info\n \n --- @nodoc\n-log.trace = create_logger('TRACE')\n+log.trace = logger.trace\n \n --- @nodoc\n-log.warn = create_logger('WARN')\n+log.warn = logger.warn\n \n --- Sets the current log level.\n ---@param level (string|integer) One of |vim.log.levels|\n function log.set_level(level)\n   vim.validate('level', level, { 'string', 'number' })\n \n   if type(level) == 'string' then\n-    current_log_level =\n-      assert(log.levels[level:upper()], string.format('Invalid log level: %q', level))\n-  else\n-    assert(log.levels[level], string.format('Invalid log level: %d', level))\n-    current_log_level = level\n-  end\n+    level = assert(log.levels[level:upper()], string.format('Invalid log level: %q', level))\n+  end ---@cast level vim.log.levels\n+  logger:set_level(level)\n end\n \n --- Gets the current log level.\n ---@return integer current log level\n function log.get_level()\n-  return current_log_level\n+  return logger:get_level()\n end\n \n --- Sets the formatting function used to format logs. If the formatting function returns nil, the entry won't\n --- be written to the log file.\n ---@param handle fun(level:string, ...): string? Function to apply to log entries. The default will log the level,\n ---date, source and line number of the caller, followed by the arguments.\n function log.set_format_func(handle)\n-  vim.validate('handle', handle, function(h)\n-    return type(h) == 'function' or h == vim.inspect\n-  end, false, 'handle must be a function')\n-\n-  format_func = handle\n+  logger:set_format_func(function(_, level, ...)\n+    return handle(log_levels[level], ...)\n+  end)",
             "html_url": "https://github.com/neovim/neovim/pull/38906#discussion_r3063765067",
             "id": 3063765067,
-            "line": 100,
+            "line": null,
             "node_id": "PRRC_kwDOAPphoM62nVhL",
             "original_commit_id": "ab4b229dcb1f23c4d9e1a584a2933765b444bc26",
             "original_line": 107,
             "original_position": 187,
             "original_start_line": 105,
             "path": "runtime/lua/vim/lsp/log.lua",
-            "position": 186,
+            "position": 1,
             "pull_request_review_id": 4089095620,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/38906",
             "reactions": {
@@ -357,7 +357,7 @@
                 "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3063765067/reactions"
             },
             "side": "RIGHT",
-            "start_line": 98,
+            "start_line": null,
             "start_side": "RIGHT",
             "subject_type": "line",
             "updated_at": "2026-04-10T10:53:13Z",
@@ -1079,6 +1079,1600 @@
                 "url": "https://api.github.com/users/ofseed",
                 "user_view_type": "public"
             }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/38906#discussion_r3150314646"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/38906"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150314646"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "if this is a global thing why not just make it `vim.log.fmt` and let people override it? the old `set_format_func` is a java-style thing that sneaked into our codebase when i wasn't looking :)\n\nour general provider pattern is that people override stuff. it may become more sohpisticated with [on_fun](https://github.com/neovim/neovim/pull/38488), later.",
+            "commit_id": "8fcc291e6e197218a53682a26326c908de5e61d7",
+            "created_at": "2026-04-27T21:34:39Z",
+            "diff_hunk": "@@ -3760,6 +3760,102 @@ vim.loader.reset({path})                                  *vim.loader.reset()*\n       • {path}  (`string?`) path to reset\n \n \n+==============================================================================\n+Lua module: vim.log                                                  *vim.log*\n+\n+The |vim.log| module provides file-backed logger instances.\n+\n+Use `vim.log.new()` to create a logger, it exposes five writer functions:\n+`trace()`, `debug()`, `info()`, `warn()`, and `error()`. They are correspond\n+to log levels defined by |vim.log.levels|.\n+\n+Example: >lua\n+    local logger = vim.log.new({ name = 'my-plugin', })\n+    -- By default, logs will be written to {name}.log under `stdpath('log')`.\n+\n+    logger.error('request failed', 'timeout')\n+    -- This will write a line like the following to the log file:\n+    --   [ERROR][2024-01-01 12:00:00] source.lua:123    request failed    timeout\n+\n+    -- Set the log level to `INFO`, otherwise the `info()` call below would be ignored,\n+    -- since the default level is `WARN`.\n+    vim.log.set_level(logger, vim.log.levels.INFO)\n+    logger.info('starting', { buf = vim.api.nvim_get_current_buf() })\n+    -- This will write a line like the following to the log file:\n+    --   [INFO][2024-01-01 12:01:00] source.lua:124    starting    { buf = 1 }\n+<\n+\n+You can also provide a custom formatter function to customize the log output\n+format.\n+\n+\n+*vim.Logger*\n+\n+    Fields: ~\n+      • {trace}  (`fun(...:any): boolean?`) Writes a message at\n+                 `vim.log.levels.TRACE`.\n+      • {debug}  (`fun(...:any): boolean?`) Writes a message at\n+                 `vim.log.levels.DEBUG`.\n+      • {info}   (`fun(...:any): boolean?`) Writes a message at\n+                 `vim.log.levels.INFO`.\n+      • {warn}   (`fun(...:any): boolean?`) Writes a message at\n+                 `vim.log.levels.WARN`.\n+      • {error}  (`fun(...:any): boolean?`) Writes a message at\n+                 `vim.log.levels.ERROR`.\n+\n+\n+get_level({logger})                                      *vim.log.get_level()*\n+    Gets the current log level.\n+\n+    Parameters: ~\n+      • {logger}  (`vim.Logger`) See |vim.Logger|.\n+\n+    Return: ~\n+        (`vim.log.levels`)\n+\n+new({opts})                                                    *vim.log.new()*\n+    Creates a logger instance.\n+\n+    The logger writes formatted messages to a file, using a per-instance log\n+    level and formatting function.\n+\n+    Parameters: ~\n+      • {opts}  (`table`) A table with the following fields:\n+                • {name} (`string`) Display name used in notifications emitted\n+                  by the logger.\n+                • {current_level}? (`vim.log.levels`, default:\n+                  `vim.log.levels.WARN`) Minimum level that will be written.\n+                • {format_func}?\n+                  (`fun(current_level: vim.log.levels, level: vim.log.levels, ...): string?`)\n+                  Formatter used for each log entry. Receives the logger's\n+                  current level, the message level, and the values passed to\n+                  the writer. Return a string to write an entry, or `nil` to\n+                  skip it.\n+\n+    Return: ~\n+        (`vim.Logger`) See |vim.Logger|.\n+\n+set_format_func({logger}, {func})                  *vim.log.set_format_func()*",
+            "html_url": "https://github.com/neovim/neovim/pull/38906#discussion_r3150314646",
+            "id": 3150314646,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM67xfyW",
+            "original_commit_id": "8fcc291e6e197218a53682a26326c908de5e61d7",
+            "original_line": 3838,
+            "original_position": 79,
+            "original_start_line": null,
+            "path": "runtime/doc/lua.txt",
+            "position": 1,
+            "pull_request_review_id": 4184336323,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/38906",
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150314646/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-04-27T21:35:31Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150314646",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/38906#discussion_r3150319951"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/38906"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150319951"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\n                • {fmt}?\n```",
+            "commit_id": "0c76f5bd582d4bef1723b18a49cc2667d7ef888f",
+            "created_at": "2026-04-27T21:36:00Z",
+            "diff_hunk": "@@ -3760,6 +3760,102 @@ vim.loader.reset({path})                                  *vim.loader.reset()*\n       • {path}  (`string?`) path to reset\n \n \n+==============================================================================\n+Lua module: vim.log                                                  *vim.log*\n+\n+The |vim.log| module provides file-backed logger instances.\n+\n+Use `vim.log.new()` to create a logger, it exposes five writer functions:\n+`trace()`, `debug()`, `info()`, `warn()`, and `error()`. They are correspond\n+to log levels defined by |vim.log.levels|.\n+\n+Example: >lua\n+    local logger = vim.log.new({ name = 'my-plugin', })\n+    -- By default, logs will be written to {name}.log under `stdpath('log')`.\n+\n+    logger.error('request failed', 'timeout')\n+    -- This will write a line like the following to the log file:\n+    --   [ERROR][2024-01-01 12:00:00] source.lua:123    request failed    timeout\n+\n+    -- Set the log level to `INFO`, otherwise the `info()` call below would be ignored,\n+    -- since the default level is `WARN`.\n+    vim.log.set_level(logger, vim.log.levels.INFO)\n+    logger.info('starting', { buf = vim.api.nvim_get_current_buf() })\n+    -- This will write a line like the following to the log file:\n+    --   [INFO][2024-01-01 12:01:00] source.lua:124    starting    { buf = 1 }\n+<\n+\n+You can also provide a custom formatter function to customize the log output\n+format.\n+\n+\n+*vim.Logger*\n+\n+    Fields: ~\n+      • {trace}  (`fun(...:any): boolean?`) Writes a message at\n+                 `vim.log.levels.TRACE`.\n+      • {debug}  (`fun(...:any): boolean?`) Writes a message at\n+                 `vim.log.levels.DEBUG`.\n+      • {info}   (`fun(...:any): boolean?`) Writes a message at\n+                 `vim.log.levels.INFO`.\n+      • {warn}   (`fun(...:any): boolean?`) Writes a message at\n+                 `vim.log.levels.WARN`.\n+      • {error}  (`fun(...:any): boolean?`) Writes a message at\n+                 `vim.log.levels.ERROR`.\n+\n+\n+get_level({logger})                                      *vim.log.get_level()*\n+    Gets the current log level.\n+\n+    Parameters: ~\n+      • {logger}  (`vim.Logger`) See |vim.Logger|.\n+\n+    Return: ~\n+        (`vim.log.levels`)\n+\n+new({opts})                                                    *vim.log.new()*\n+    Creates a logger instance.\n+\n+    The logger writes formatted messages to a file, using a per-instance log\n+    level and formatting function.\n+\n+    Parameters: ~\n+      • {opts}  (`table`) A table with the following fields:\n+                • {name} (`string`) Display name used in notifications emitted\n+                  by the logger.\n+                • {current_level}? (`vim.log.levels`, default:\n+                  `vim.log.levels.WARN`) Minimum level that will be written.\n+                • {format_func}?",
+            "html_url": "https://github.com/neovim/neovim/pull/38906#discussion_r3150319951",
+            "id": 3150319951,
+            "line": 3836,
+            "node_id": "PRRC_kwDOAPphoM67xhFP",
+            "original_commit_id": "8fcc291e6e197218a53682a26326c908de5e61d7",
+            "original_line": 3828,
+            "original_position": 69,
+            "original_start_line": null,
+            "path": "runtime/doc/lua.txt",
+            "position": 67,
+            "pull_request_review_id": 4184341510,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/38906",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150319951/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-04-27T21:36:01Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150319951",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/38906#discussion_r3150328920"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/38906"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150328920"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "we have zero `.new()` functions documented AFAICT. what is our usual convention instead?",
+            "commit_id": "0c76f5bd582d4bef1723b18a49cc2667d7ef888f",
+            "created_at": "2026-04-27T21:38:09Z",
+            "diff_hunk": "@@ -3760,6 +3760,102 @@ vim.loader.reset({path})                                  *vim.loader.reset()*\n       • {path}  (`string?`) path to reset\n \n \n+==============================================================================\n+Lua module: vim.log                                                  *vim.log*\n+\n+The |vim.log| module provides file-backed logger instances.\n+\n+Use `vim.log.new()` to create a logger, it exposes five writer functions:\n+`trace()`, `debug()`, `info()`, `warn()`, and `error()`. They are correspond\n+to log levels defined by |vim.log.levels|.\n+\n+Example: >lua\n+    local logger = vim.log.new({ name = 'my-plugin', })\n+    -- By default, logs will be written to {name}.log under `stdpath('log')`.\n+\n+    logger.error('request failed', 'timeout')\n+    -- This will write a line like the following to the log file:\n+    --   [ERROR][2024-01-01 12:00:00] source.lua:123    request failed    timeout\n+\n+    -- Set the log level to `INFO`, otherwise the `info()` call below would be ignored,\n+    -- since the default level is `WARN`.\n+    vim.log.set_level(logger, vim.log.levels.INFO)\n+    logger.info('starting', { buf = vim.api.nvim_get_current_buf() })\n+    -- This will write a line like the following to the log file:\n+    --   [INFO][2024-01-01 12:01:00] source.lua:124    starting    { buf = 1 }\n+<\n+\n+You can also provide a custom formatter function to customize the log output\n+format.\n+\n+\n+*vim.Logger*\n+\n+    Fields: ~\n+      • {trace}  (`fun(...:any): boolean?`) Writes a message at\n+                 `vim.log.levels.TRACE`.\n+      • {debug}  (`fun(...:any): boolean?`) Writes a message at\n+                 `vim.log.levels.DEBUG`.\n+      • {info}   (`fun(...:any): boolean?`) Writes a message at\n+                 `vim.log.levels.INFO`.\n+      • {warn}   (`fun(...:any): boolean?`) Writes a message at\n+                 `vim.log.levels.WARN`.\n+      • {error}  (`fun(...:any): boolean?`) Writes a message at\n+                 `vim.log.levels.ERROR`.\n+\n+\n+get_level({logger})                                      *vim.log.get_level()*\n+    Gets the current log level.\n+\n+    Parameters: ~\n+      • {logger}  (`vim.Logger`) See |vim.Logger|.\n+\n+    Return: ~\n+        (`vim.log.levels`)\n+\n+new({opts})                                                    *vim.log.new()*",
+            "html_url": "https://github.com/neovim/neovim/pull/38906#discussion_r3150328920",
+            "id": 3150328920,
+            "line": 3826,
+            "node_id": "PRRC_kwDOAPphoM67xjRY",
+            "original_commit_id": "8fcc291e6e197218a53682a26326c908de5e61d7",
+            "original_line": 3816,
+            "original_position": 57,
+            "original_start_line": null,
+            "path": "runtime/doc/lua.txt",
+            "position": 57,
+            "pull_request_review_id": 4184350834,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/38906",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150328920/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-04-27T21:38:09Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150328920",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/38906#discussion_r3150346691"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/38906"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150346691"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "cool, no format specifiers (`\"%s %d ...\"`) 👍 . that's a good starting point.\n\n(I have noticed that the `vim.lsp.log()` interface is very easy to use, because it doesn't require format specifiers. Though we will also probably want to support format-specifiers somehow, later, maybe `log.logfmt()`.)",
+            "commit_id": "8fcc291e6e197218a53682a26326c908de5e61d7",
+            "created_at": "2026-04-27T21:42:33Z",
+            "diff_hunk": "@@ -3760,6 +3760,102 @@ vim.loader.reset({path})                                  *vim.loader.reset()*\n       • {path}  (`string?`) path to reset\n \n \n+==============================================================================\n+Lua module: vim.log                                                  *vim.log*\n+\n+The |vim.log| module provides file-backed logger instances.\n+\n+Use `vim.log.new()` to create a logger, it exposes five writer functions:\n+`trace()`, `debug()`, `info()`, `warn()`, and `error()`. They are correspond\n+to log levels defined by |vim.log.levels|.\n+\n+Example: >lua\n+    local logger = vim.log.new({ name = 'my-plugin', })\n+    -- By default, logs will be written to {name}.log under `stdpath('log')`.\n+\n+    logger.error('request failed', 'timeout')\n+    -- This will write a line like the following to the log file:\n+    --   [ERROR][2024-01-01 12:00:00] source.lua:123    request failed    timeout",
+            "html_url": "https://github.com/neovim/neovim/pull/38906#discussion_r3150346691",
+            "id": 3150346691,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM67xnnD",
+            "original_commit_id": "8fcc291e6e197218a53682a26326c908de5e61d7",
+            "original_line": 3778,
+            "original_position": 19,
+            "original_start_line": 3776,
+            "path": "runtime/doc/lua.txt",
+            "position": 1,
+            "pull_request_review_id": 4184369281,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/38906",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150346691/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-04-27T21:44:08Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150346691",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/38906#discussion_r3150363222"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/38906"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150363222"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "does https://github.com/neovim/neovim/pull/39078 affect this? i.e. is the reader supposed to understand that this is also a `log:set_level({level})` method?",
+            "commit_id": "8fcc291e6e197218a53682a26326c908de5e61d7",
+            "created_at": "2026-04-27T21:46:43Z",
+            "diff_hunk": "@@ -3760,6 +3760,102 @@ vim.loader.reset({path})                                  *vim.loader.reset()*\n       • {path}  (`string?`) path to reset\n \n \n+==============================================================================\n+Lua module: vim.log                                                  *vim.log*\n+\n+The |vim.log| module provides file-backed logger instances.\n+\n+Use `vim.log.new()` to create a logger, it exposes five writer functions:\n+`trace()`, `debug()`, `info()`, `warn()`, and `error()`. They are correspond\n+to log levels defined by |vim.log.levels|.\n+\n+Example: >lua\n+    local logger = vim.log.new({ name = 'my-plugin', })\n+    -- By default, logs will be written to {name}.log under `stdpath('log')`.\n+\n+    logger.error('request failed', 'timeout')\n+    -- This will write a line like the following to the log file:\n+    --   [ERROR][2024-01-01 12:00:00] source.lua:123    request failed    timeout\n+\n+    -- Set the log level to `INFO`, otherwise the `info()` call below would be ignored,\n+    -- since the default level is `WARN`.\n+    vim.log.set_level(logger, vim.log.levels.INFO)\n+    logger.info('starting', { buf = vim.api.nvim_get_current_buf() })\n+    -- This will write a line like the following to the log file:\n+    --   [INFO][2024-01-01 12:01:00] source.lua:124    starting    { buf = 1 }\n+<\n+\n+You can also provide a custom formatter function to customize the log output\n+format.\n+\n+\n+*vim.Logger*\n+\n+    Fields: ~\n+      • {trace}  (`fun(...:any): boolean?`) Writes a message at\n+                 `vim.log.levels.TRACE`.\n+      • {debug}  (`fun(...:any): boolean?`) Writes a message at\n+                 `vim.log.levels.DEBUG`.\n+      • {info}   (`fun(...:any): boolean?`) Writes a message at\n+                 `vim.log.levels.INFO`.\n+      • {warn}   (`fun(...:any): boolean?`) Writes a message at\n+                 `vim.log.levels.WARN`.\n+      • {error}  (`fun(...:any): boolean?`) Writes a message at\n+                 `vim.log.levels.ERROR`.\n+\n+\n+get_level({logger})                                      *vim.log.get_level()*\n+    Gets the current log level.\n+\n+    Parameters: ~\n+      • {logger}  (`vim.Logger`) See |vim.Logger|.\n+\n+    Return: ~\n+        (`vim.log.levels`)\n+\n+new({opts})                                                    *vim.log.new()*\n+    Creates a logger instance.\n+\n+    The logger writes formatted messages to a file, using a per-instance log\n+    level and formatting function.\n+\n+    Parameters: ~\n+      • {opts}  (`table`) A table with the following fields:\n+                • {name} (`string`) Display name used in notifications emitted\n+                  by the logger.\n+                • {current_level}? (`vim.log.levels`, default:\n+                  `vim.log.levels.WARN`) Minimum level that will be written.\n+                • {format_func}?\n+                  (`fun(current_level: vim.log.levels, level: vim.log.levels, ...): string?`)\n+                  Formatter used for each log entry. Receives the logger's\n+                  current level, the message level, and the values passed to\n+                  the writer. Return a string to write an entry, or `nil` to\n+                  skip it.\n+\n+    Return: ~\n+        (`vim.Logger`) See |vim.Logger|.\n+\n+set_format_func({logger}, {func})                  *vim.log.set_format_func()*\n+    Sets the formatter used to produce log entries.\n+\n+    The formatter receives the logger's current level, the message level, and\n+    the values passed to the writer method. Return a string to write an entry,\n+    or `nil` to skip it.\n+\n+    Parameters: ~\n+      • {logger}  (`vim.Logger`) See |vim.Logger|.\n+      • {func}    (`fun(current_level: vim.log.levels, level: vim.log.levels, ...): string?`)\n+\n+set_level({logger}, {level})                             *vim.log.set_level()*\n+    Sets the current log level.\n+\n+    Entries below this level are skipped.\n+\n+    Parameters: ~\n+      • {logger}  (`vim.Logger`) See |vim.Logger|.",
+            "html_url": "https://github.com/neovim/neovim/pull/38906#discussion_r3150363222",
+            "id": 3150363222,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM67xrpW",
+            "original_commit_id": "8fcc291e6e197218a53682a26326c908de5e61d7",
+            "original_line": 3855,
+            "original_position": 96,
+            "original_start_line": 3849,
+            "path": "runtime/doc/lua.txt",
+            "position": 1,
+            "pull_request_review_id": 4184386527,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/38906",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150363222/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-04-27T21:46:43Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150363222",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/38906#discussion_r3150383744"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/38906"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150383744"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\n---@class vim.Log\n```",
+            "commit_id": "8fcc291e6e197218a53682a26326c908de5e61d7",
+            "created_at": "2026-04-27T21:51:41Z",
+            "diff_hunk": "@@ -0,0 +1,279 @@\n+--- @brief\n+---\n+--- The |vim.log| module provides file-backed logger instances.\n+---\n+--- Use `vim.log.new()` to create a logger, it exposes five writer functions:\n+--- `trace()`, `debug()`, `info()`, `warn()`, and `error()`.\n+--- They are correspond to log levels defined by |vim.log.levels|.\n+---\n+--- Example:\n+---\n+--- ```lua\n+--- local logger = vim.log.new({ name = 'my-plugin', })\n+--- -- By default, logs will be written to {name}.log under `stdpath('log')`.\n+---\n+--- logger.error('request failed', 'timeout')\n+--- -- This will write a line like the following to the log file:\n+--- --   [ERROR][2024-01-01 12:00:00] source.lua:123    request failed    timeout\n+---\n+--- -- Set the log level to `INFO`, otherwise the `info()` call below would be ignored,\n+--- -- since the default level is `WARN`.\n+--- vim.log.set_level(logger, vim.log.levels.INFO)\n+--- logger.info('starting', { buf = vim.api.nvim_get_current_buf() })\n+--- -- This will write a line like the following to the log file:\n+--- --   [INFO][2024-01-01 12:01:00] source.lua:124    starting    { buf = 1 }\n+--- ```\n+---\n+--- You can also provide a custom formatter function to customize the log output format.\n+\n+---@class vim.Logger",
+            "html_url": "https://github.com/neovim/neovim/pull/38906#discussion_r3150383744",
+            "id": 3150383744,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM67xwqA",
+            "original_commit_id": "8fcc291e6e197218a53682a26326c908de5e61d7",
+            "original_line": 29,
+            "original_position": 29,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/log.lua",
+            "position": 1,
+            "pull_request_review_id": 4184410477,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/38906",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150383744/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-04-27T21:51:41Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150383744",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/38906#discussion_r3150395312"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/38906"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150395312"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "\n```suggestion\nlocal function fmt(current_level, level, ...)\n```",
+            "commit_id": "0c76f5bd582d4bef1723b18a49cc2667d7ef888f",
+            "created_at": "2026-04-27T21:54:48Z",
+            "diff_hunk": "@@ -0,0 +1,279 @@\n+--- @brief\n+---\n+--- The |vim.log| module provides file-backed logger instances.\n+---\n+--- Use `vim.log.new()` to create a logger, it exposes five writer functions:\n+--- `trace()`, `debug()`, `info()`, `warn()`, and `error()`.\n+--- They are correspond to log levels defined by |vim.log.levels|.\n+---\n+--- Example:\n+---\n+--- ```lua\n+--- local logger = vim.log.new({ name = 'my-plugin', })\n+--- -- By default, logs will be written to {name}.log under `stdpath('log')`.\n+---\n+--- logger.error('request failed', 'timeout')\n+--- -- This will write a line like the following to the log file:\n+--- --   [ERROR][2024-01-01 12:00:00] source.lua:123    request failed    timeout\n+---\n+--- -- Set the log level to `INFO`, otherwise the `info()` call below would be ignored,\n+--- -- since the default level is `WARN`.\n+--- vim.log.set_level(logger, vim.log.levels.INFO)\n+--- logger.info('starting', { buf = vim.api.nvim_get_current_buf() })\n+--- -- This will write a line like the following to the log file:\n+--- --   [INFO][2024-01-01 12:01:00] source.lua:124    starting    { buf = 1 }\n+--- ```\n+---\n+--- You can also provide a custom formatter function to customize the log output format.\n+\n+---@class vim.Logger\n+---\n+--- Display name used in notifications emitted by the logger.\n+---@field private name string\n+---\n+--- Minimum level that will be written.\n+---@field private current_level integer\n+---\n+--- Function used to format a log entry.\n+---@field private format_func fun(current_level: vim.log.levels, level:vim.log.levels, ...): string?\n+---\n+--- Path of the log file.\n+---@field private filename string\n+---\n+--- Internal state for the log file handle. `nil` until the file is opened.\n+---@field private logfile file*?\n+---\n+--- Internal state for the log file open error.\n+---@field private openerr string?\n+---\n+--- Writes a message at `vim.log.levels.TRACE`.\n+---@field trace fun(...:any): boolean?\n+---\n+--- Writes a message at `vim.log.levels.DEBUG`.\n+---@field debug fun(...:any): boolean?\n+---\n+--- Writes a message at `vim.log.levels.INFO`.\n+---@field info fun(...:any): boolean?\n+---\n+--- Writes a message at `vim.log.levels.WARN`.\n+---@field warn fun(...:any): boolean?\n+---\n+--- Writes a message at `vim.log.levels.ERROR`.\n+---@field error fun(...:any): boolean?\n+local M = {}\n+\n+---@enum vim.log.levels\n+---@nodoc\n+M.levels = {\n+  TRACE = 0,\n+  DEBUG = 1,\n+  INFO = 2,\n+  WARN = 3,\n+  ERROR = 4,\n+  OFF = 5,\n+}\n+\n+local level_names = {\n+  [0] = 'TRACE',\n+  [1] = 'DEBUG',\n+  [2] = 'INFO',\n+  [3] = 'WARN',\n+  [4] = 'ERROR',\n+  [5] = 'OFF',\n+}\n+\n+local log_date_format = '%F %H:%M:%S'\n+\n+--- Default formatter used by |vim.log.new()|.\n+---\n+--- Formats a message as:\n+--- `[LEVEL][YYYY-MM-DD HH:MM:SS] source.lua:line<TAB>arg1<TAB>arg2`\n+---\n+---@param current_level vim.log.levels\n+---@param level vim.log.levels\n+---@return string?\n+local function default_format_func(current_level, level, ...)",
+            "html_url": "https://github.com/neovim/neovim/pull/38906#discussion_r3150395312",
+            "id": 3150395312,
+            "line": 95,
+            "node_id": "PRRC_kwDOAPphoM67xzew",
+            "original_commit_id": "8fcc291e6e197218a53682a26326c908de5e61d7",
+            "original_line": 95,
+            "original_position": 95,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/log.lua",
+            "position": 95,
+            "pull_request_review_id": 4184422551,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/38906",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150395312/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-04-27T21:54:48Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150395312",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/38906#discussion_r3150398216"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/38906"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150398216"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\n  vim.validate('opts.level', opts.level, 'number', true)\n  vim.validate('opts.fmt', opts.fmt, 'function', true)\n```",
+            "commit_id": "0c76f5bd582d4bef1723b18a49cc2667d7ef888f",
+            "created_at": "2026-04-27T21:55:34Z",
+            "diff_hunk": "@@ -0,0 +1,279 @@\n+--- @brief\n+---\n+--- The |vim.log| module provides file-backed logger instances.\n+---\n+--- Use `vim.log.new()` to create a logger, it exposes five writer functions:\n+--- `trace()`, `debug()`, `info()`, `warn()`, and `error()`.\n+--- They are correspond to log levels defined by |vim.log.levels|.\n+---\n+--- Example:\n+---\n+--- ```lua\n+--- local logger = vim.log.new({ name = 'my-plugin', })\n+--- -- By default, logs will be written to {name}.log under `stdpath('log')`.\n+---\n+--- logger.error('request failed', 'timeout')\n+--- -- This will write a line like the following to the log file:\n+--- --   [ERROR][2024-01-01 12:00:00] source.lua:123    request failed    timeout\n+---\n+--- -- Set the log level to `INFO`, otherwise the `info()` call below would be ignored,\n+--- -- since the default level is `WARN`.\n+--- vim.log.set_level(logger, vim.log.levels.INFO)\n+--- logger.info('starting', { buf = vim.api.nvim_get_current_buf() })\n+--- -- This will write a line like the following to the log file:\n+--- --   [INFO][2024-01-01 12:01:00] source.lua:124    starting    { buf = 1 }\n+--- ```\n+---\n+--- You can also provide a custom formatter function to customize the log output format.\n+\n+---@class vim.Logger\n+---\n+--- Display name used in notifications emitted by the logger.\n+---@field private name string\n+---\n+--- Minimum level that will be written.\n+---@field private current_level integer\n+---\n+--- Function used to format a log entry.\n+---@field private format_func fun(current_level: vim.log.levels, level:vim.log.levels, ...): string?\n+---\n+--- Path of the log file.\n+---@field private filename string\n+---\n+--- Internal state for the log file handle. `nil` until the file is opened.\n+---@field private logfile file*?\n+---\n+--- Internal state for the log file open error.\n+---@field private openerr string?\n+---\n+--- Writes a message at `vim.log.levels.TRACE`.\n+---@field trace fun(...:any): boolean?\n+---\n+--- Writes a message at `vim.log.levels.DEBUG`.\n+---@field debug fun(...:any): boolean?\n+---\n+--- Writes a message at `vim.log.levels.INFO`.\n+---@field info fun(...:any): boolean?\n+---\n+--- Writes a message at `vim.log.levels.WARN`.\n+---@field warn fun(...:any): boolean?\n+---\n+--- Writes a message at `vim.log.levels.ERROR`.\n+---@field error fun(...:any): boolean?\n+local M = {}\n+\n+---@enum vim.log.levels\n+---@nodoc\n+M.levels = {\n+  TRACE = 0,\n+  DEBUG = 1,\n+  INFO = 2,\n+  WARN = 3,\n+  ERROR = 4,\n+  OFF = 5,\n+}\n+\n+local level_names = {\n+  [0] = 'TRACE',\n+  [1] = 'DEBUG',\n+  [2] = 'INFO',\n+  [3] = 'WARN',\n+  [4] = 'ERROR',\n+  [5] = 'OFF',\n+}\n+\n+local log_date_format = '%F %H:%M:%S'\n+\n+--- Default formatter used by |vim.log.new()|.\n+---\n+--- Formats a message as:\n+--- `[LEVEL][YYYY-MM-DD HH:MM:SS] source.lua:line<TAB>arg1<TAB>arg2`\n+---\n+---@param current_level vim.log.levels\n+---@param level vim.log.levels\n+---@return string?\n+local function default_format_func(current_level, level, ...)\n+  if level < current_level then\n+    return nil\n+  end\n+\n+  -- Stack shape:\n+  --   default_format_func <- create_writer closure <- user callsite\n+  local info = debug.getinfo(3, 'Sl')\n+  local header = string.format(\n+    '[%s][%s] %s:%s',\n+    level_names[level],\n+    os.date(log_date_format),\n+    info.short_src,\n+    info.currentline\n+  )\n+  local parts = { header }\n+  local argc = select('#', ...)\n+  for i = 1, argc do\n+    local arg = select(i, ...)\n+    table.insert(parts, arg == nil and 'nil' or vim.inspect(arg, { newline = ' ', indent = '' }))\n+  end\n+  return table.concat(parts, '\\t') .. '\\n'\n+end\n+\n+---@class vim.log.new.Opts\n+---@inlinedoc\n+---\n+--- Display name used in notifications emitted by the logger.\n+---@field name string\n+---\n+--- Minimum level that will be written.\n+--- (default: `vim.log.levels.WARN`)\n+---@field current_level? vim.log.levels\n+---\n+--- Formatter used for each log entry.\n+--- Receives the logger's current level, the message level, and the values passed to the writer.\n+--- Return a string to write an entry, or `nil` to skip it.\n+---@field format_func? fun(current_level: vim.log.levels, level: vim.log.levels, ...): string?\n+\n+--- Creates a logger instance.\n+---\n+--- The logger writes formatted messages to a file,\n+--- using a per-instance log level and formatting function.\n+---\n+---@param opts vim.log.new.Opts\n+---@return vim.Logger\n+function M.new(opts)\n+  vim.validate('opts', opts, 'table')\n+  vim.validate('opts.name', opts.name, 'string')\n+  vim.validate('opts.current_level', opts.current_level, 'number', true)\n+  vim.validate('opts.format_func', opts.format_func, 'function', true)",
+            "html_url": "https://github.com/neovim/neovim/pull/38906#discussion_r3150398216",
+            "id": 3150398216,
+            "line": 145,
+            "node_id": "PRRC_kwDOAPphoM67x0MI",
+            "original_commit_id": "8fcc291e6e197218a53682a26326c908de5e61d7",
+            "original_line": 145,
+            "original_position": 145,
+            "original_start_line": 144,
+            "path": "runtime/lua/vim/log.lua",
+            "position": 145,
+            "pull_request_review_id": 4184425799,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/38906",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150398216/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 144,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-04-27T21:55:34Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150398216",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/38906#discussion_r3150404700"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/38906"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150404700"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\n    -- TODO: Ideally, directory creation should be delayed until open_file(), right before\n```",
+            "commit_id": "8fcc291e6e197218a53682a26326c908de5e61d7",
+            "created_at": "2026-04-27T21:57:19Z",
+            "diff_hunk": "@@ -0,0 +1,279 @@\n+--- @brief\n+---\n+--- The |vim.log| module provides file-backed logger instances.\n+---\n+--- Use `vim.log.new()` to create a logger, it exposes five writer functions:\n+--- `trace()`, `debug()`, `info()`, `warn()`, and `error()`.\n+--- They are correspond to log levels defined by |vim.log.levels|.\n+---\n+--- Example:\n+---\n+--- ```lua\n+--- local logger = vim.log.new({ name = 'my-plugin', })\n+--- -- By default, logs will be written to {name}.log under `stdpath('log')`.\n+---\n+--- logger.error('request failed', 'timeout')\n+--- -- This will write a line like the following to the log file:\n+--- --   [ERROR][2024-01-01 12:00:00] source.lua:123    request failed    timeout\n+---\n+--- -- Set the log level to `INFO`, otherwise the `info()` call below would be ignored,\n+--- -- since the default level is `WARN`.\n+--- vim.log.set_level(logger, vim.log.levels.INFO)\n+--- logger.info('starting', { buf = vim.api.nvim_get_current_buf() })\n+--- -- This will write a line like the following to the log file:\n+--- --   [INFO][2024-01-01 12:01:00] source.lua:124    starting    { buf = 1 }\n+--- ```\n+---\n+--- You can also provide a custom formatter function to customize the log output format.\n+\n+---@class vim.Logger\n+---\n+--- Display name used in notifications emitted by the logger.\n+---@field private name string\n+---\n+--- Minimum level that will be written.\n+---@field private current_level integer\n+---\n+--- Function used to format a log entry.\n+---@field private format_func fun(current_level: vim.log.levels, level:vim.log.levels, ...): string?\n+---\n+--- Path of the log file.\n+---@field private filename string\n+---\n+--- Internal state for the log file handle. `nil` until the file is opened.\n+---@field private logfile file*?\n+---\n+--- Internal state for the log file open error.\n+---@field private openerr string?\n+---\n+--- Writes a message at `vim.log.levels.TRACE`.\n+---@field trace fun(...:any): boolean?\n+---\n+--- Writes a message at `vim.log.levels.DEBUG`.\n+---@field debug fun(...:any): boolean?\n+---\n+--- Writes a message at `vim.log.levels.INFO`.\n+---@field info fun(...:any): boolean?\n+---\n+--- Writes a message at `vim.log.levels.WARN`.\n+---@field warn fun(...:any): boolean?\n+---\n+--- Writes a message at `vim.log.levels.ERROR`.\n+---@field error fun(...:any): boolean?\n+local M = {}\n+\n+---@enum vim.log.levels\n+---@nodoc\n+M.levels = {\n+  TRACE = 0,\n+  DEBUG = 1,\n+  INFO = 2,\n+  WARN = 3,\n+  ERROR = 4,\n+  OFF = 5,\n+}\n+\n+local level_names = {\n+  [0] = 'TRACE',\n+  [1] = 'DEBUG',\n+  [2] = 'INFO',\n+  [3] = 'WARN',\n+  [4] = 'ERROR',\n+  [5] = 'OFF',\n+}\n+\n+local log_date_format = '%F %H:%M:%S'\n+\n+--- Default formatter used by |vim.log.new()|.\n+---\n+--- Formats a message as:\n+--- `[LEVEL][YYYY-MM-DD HH:MM:SS] source.lua:line<TAB>arg1<TAB>arg2`\n+---\n+---@param current_level vim.log.levels\n+---@param level vim.log.levels\n+---@return string?\n+local function default_format_func(current_level, level, ...)\n+  if level < current_level then\n+    return nil\n+  end\n+\n+  -- Stack shape:\n+  --   default_format_func <- create_writer closure <- user callsite\n+  local info = debug.getinfo(3, 'Sl')\n+  local header = string.format(\n+    '[%s][%s] %s:%s',\n+    level_names[level],\n+    os.date(log_date_format),\n+    info.short_src,\n+    info.currentline\n+  )\n+  local parts = { header }\n+  local argc = select('#', ...)\n+  for i = 1, argc do\n+    local arg = select(i, ...)\n+    table.insert(parts, arg == nil and 'nil' or vim.inspect(arg, { newline = ' ', indent = '' }))\n+  end\n+  return table.concat(parts, '\\t') .. '\\n'\n+end\n+\n+---@class vim.log.new.Opts\n+---@inlinedoc\n+---\n+--- Display name used in notifications emitted by the logger.\n+---@field name string\n+---\n+--- Minimum level that will be written.\n+--- (default: `vim.log.levels.WARN`)\n+---@field current_level? vim.log.levels\n+---\n+--- Formatter used for each log entry.\n+--- Receives the logger's current level, the message level, and the values passed to the writer.\n+--- Return a string to write an entry, or `nil` to skip it.\n+---@field format_func? fun(current_level: vim.log.levels, level: vim.log.levels, ...): string?\n+\n+--- Creates a logger instance.\n+---\n+--- The logger writes formatted messages to a file,\n+--- using a per-instance log level and formatting function.\n+---\n+---@param opts vim.log.new.Opts\n+---@return vim.Logger\n+function M.new(opts)\n+  vim.validate('opts', opts, 'table')\n+  vim.validate('opts.name', opts.name, 'string')\n+  vim.validate('opts.current_level', opts.current_level, 'number', true)\n+  vim.validate('opts.format_func', opts.format_func, 'function', true)\n+\n+  local filename = vim.fs.joinpath(vim.fn.stdpath('log'), opts.name:lower() .. '.log')\n+  local log_dir = vim.fs.dirname(filename)\n+  if log_dir then\n+    -- TODO: Ideally the directory should be created in open_file(), right before",
+            "html_url": "https://github.com/neovim/neovim/pull/38906#discussion_r3150404700",
+            "id": 3150404700,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM67x1xc",
+            "original_commit_id": "8fcc291e6e197218a53682a26326c908de5e61d7",
+            "original_line": 150,
+            "original_position": 150,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/log.lua",
+            "position": 1,
+            "pull_request_review_id": 4184432476,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/38906",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150404700/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-04-27T21:57:29Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150404700",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/38906#discussion_r3150434909"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/38906"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150434909"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "i never really got why we need closures for each of these... but anyway, can revisit later.",
+            "commit_id": "0c76f5bd582d4bef1723b18a49cc2667d7ef888f",
+            "created_at": "2026-04-27T22:04:45Z",
+            "diff_hunk": "@@ -0,0 +1,279 @@\n+--- @brief\n+---\n+--- The |vim.log| module provides file-backed logger instances.\n+---\n+--- Use `vim.log.new()` to create a logger, it exposes five writer functions:\n+--- `trace()`, `debug()`, `info()`, `warn()`, and `error()`.\n+--- They are correspond to log levels defined by |vim.log.levels|.\n+---\n+--- Example:\n+---\n+--- ```lua\n+--- local logger = vim.log.new({ name = 'my-plugin', })\n+--- -- By default, logs will be written to {name}.log under `stdpath('log')`.\n+---\n+--- logger.error('request failed', 'timeout')\n+--- -- This will write a line like the following to the log file:\n+--- --   [ERROR][2024-01-01 12:00:00] source.lua:123    request failed    timeout\n+---\n+--- -- Set the log level to `INFO`, otherwise the `info()` call below would be ignored,\n+--- -- since the default level is `WARN`.\n+--- vim.log.set_level(logger, vim.log.levels.INFO)\n+--- logger.info('starting', { buf = vim.api.nvim_get_current_buf() })\n+--- -- This will write a line like the following to the log file:\n+--- --   [INFO][2024-01-01 12:01:00] source.lua:124    starting    { buf = 1 }\n+--- ```\n+---\n+--- You can also provide a custom formatter function to customize the log output format.\n+\n+---@class vim.Logger\n+---\n+--- Display name used in notifications emitted by the logger.\n+---@field private name string\n+---\n+--- Minimum level that will be written.\n+---@field private current_level integer\n+---\n+--- Function used to format a log entry.\n+---@field private format_func fun(current_level: vim.log.levels, level:vim.log.levels, ...): string?\n+---\n+--- Path of the log file.\n+---@field private filename string\n+---\n+--- Internal state for the log file handle. `nil` until the file is opened.\n+---@field private logfile file*?\n+---\n+--- Internal state for the log file open error.\n+---@field private openerr string?\n+---\n+--- Writes a message at `vim.log.levels.TRACE`.\n+---@field trace fun(...:any): boolean?\n+---\n+--- Writes a message at `vim.log.levels.DEBUG`.\n+---@field debug fun(...:any): boolean?\n+---\n+--- Writes a message at `vim.log.levels.INFO`.\n+---@field info fun(...:any): boolean?\n+---\n+--- Writes a message at `vim.log.levels.WARN`.\n+---@field warn fun(...:any): boolean?\n+---\n+--- Writes a message at `vim.log.levels.ERROR`.\n+---@field error fun(...:any): boolean?\n+local M = {}\n+\n+---@enum vim.log.levels\n+---@nodoc\n+M.levels = {\n+  TRACE = 0,\n+  DEBUG = 1,\n+  INFO = 2,\n+  WARN = 3,\n+  ERROR = 4,\n+  OFF = 5,\n+}\n+\n+local level_names = {\n+  [0] = 'TRACE',\n+  [1] = 'DEBUG',\n+  [2] = 'INFO',\n+  [3] = 'WARN',\n+  [4] = 'ERROR',\n+  [5] = 'OFF',\n+}\n+\n+local log_date_format = '%F %H:%M:%S'\n+\n+--- Default formatter used by |vim.log.new()|.\n+---\n+--- Formats a message as:\n+--- `[LEVEL][YYYY-MM-DD HH:MM:SS] source.lua:line<TAB>arg1<TAB>arg2`\n+---\n+---@param current_level vim.log.levels\n+---@param level vim.log.levels\n+---@return string?\n+local function default_format_func(current_level, level, ...)\n+  if level < current_level then\n+    return nil\n+  end\n+\n+  -- Stack shape:\n+  --   default_format_func <- create_writer closure <- user callsite\n+  local info = debug.getinfo(3, 'Sl')\n+  local header = string.format(\n+    '[%s][%s] %s:%s',\n+    level_names[level],\n+    os.date(log_date_format),\n+    info.short_src,\n+    info.currentline\n+  )\n+  local parts = { header }\n+  local argc = select('#', ...)\n+  for i = 1, argc do\n+    local arg = select(i, ...)\n+    table.insert(parts, arg == nil and 'nil' or vim.inspect(arg, { newline = ' ', indent = '' }))\n+  end\n+  return table.concat(parts, '\\t') .. '\\n'\n+end\n+\n+---@class vim.log.new.Opts\n+---@inlinedoc\n+---\n+--- Display name used in notifications emitted by the logger.\n+---@field name string\n+---\n+--- Minimum level that will be written.\n+--- (default: `vim.log.levels.WARN`)\n+---@field current_level? vim.log.levels\n+---\n+--- Formatter used for each log entry.\n+--- Receives the logger's current level, the message level, and the values passed to the writer.\n+--- Return a string to write an entry, or `nil` to skip it.\n+---@field format_func? fun(current_level: vim.log.levels, level: vim.log.levels, ...): string?\n+\n+--- Creates a logger instance.\n+---\n+--- The logger writes formatted messages to a file,\n+--- using a per-instance log level and formatting function.\n+---\n+---@param opts vim.log.new.Opts\n+---@return vim.Logger\n+function M.new(opts)\n+  vim.validate('opts', opts, 'table')\n+  vim.validate('opts.name', opts.name, 'string')\n+  vim.validate('opts.current_level', opts.current_level, 'number', true)\n+  vim.validate('opts.format_func', opts.format_func, 'function', true)\n+\n+  local filename = vim.fs.joinpath(vim.fn.stdpath('log'), opts.name:lower() .. '.log')\n+  local log_dir = vim.fs.dirname(filename)\n+  if log_dir then\n+    -- TODO: Ideally the directory should be created in open_file(), right before\n+    -- opening the log file, but open() can be called from libuv callbacks,\n+    -- where using fn.mkdir() is not allowed.\n+    vim.fn.mkdir(log_dir, 'p')\n+  end\n+\n+  local logger = setmetatable({\n+    name = opts.name,\n+    filename = filename,\n+    current_level = opts.current_level or M.levels.WARN,\n+    format_func = opts.format_func or default_format_func,\n+  }, { __index = M })\n+  logger.trace = logger:create_writer(M.levels.TRACE)\n+  logger.debug = logger:create_writer(M.levels.DEBUG)\n+  logger.info = logger:create_writer(M.levels.INFO)\n+  logger.warn = logger:create_writer(M.levels.WARN)\n+  logger.error = logger:create_writer(M.levels.ERROR)\n+\n+  return logger\n+end\n+\n+---@param msg string\n+---@param level? vim.log.levels\n+local function notify(msg, level)\n+  if vim.in_fast_event() then\n+    vim.schedule(function()\n+      vim.notify(msg, level)\n+    end)\n+  else\n+    vim.notify(msg, level)\n+  end\n+end\n+\n+--- Opens the log file on first use.\n+---\n+--- Writes a `[START]` marker when the file is opened successfully.\n+---\n+---@package\n+---@return boolean # `true` if the file is open, `false` on error.\n+function M:open_file()\n+  if self.logfile then\n+    return true\n+  end\n+  if self.openerr then\n+    return false\n+  end\n+\n+  self.logfile, self.openerr = io.open(self.filename, 'a+')\n+  if not self.logfile then\n+    local err_msg = string.format('Failed to open %s log file: %s', self.name, self.openerr)\n+    notify(err_msg, M.levels.ERROR)\n+    return false\n+  end\n+\n+  local log_info = vim.uv.fs_stat(self.filename)\n+  if log_info and log_info.size > 1e9 then\n+    local warn_msg = string.format(\n+      '%s log is large (%d MB): %s',\n+      self.name,\n+      log_info.size / (1000 * 1000),\n+      self.filename\n+    )\n+    notify(warn_msg)\n+  end\n+\n+  -- Start message for logging\n+  self.logfile:write(\n+    string.format('[START][%s] %s logging initiated\\n', os.date(log_date_format), self.name)\n+  )\n+  return true\n+end\n+\n+--- Creates a writer function for a specific log level.\n+---\n+---@package\n+---@param level vim.log.levels\n+---@return fun(...:any): boolean? # Returns `false` if the log file could not be opened.\n+function M:create_writer(level)",
+            "html_url": "https://github.com/neovim/neovim/pull/38906#discussion_r3150434909",
+            "id": 3150434909,
+            "line": 227,
+            "node_id": "PRRC_kwDOAPphoM67x9Jd",
+            "original_commit_id": "8fcc291e6e197218a53682a26326c908de5e61d7",
+            "original_line": 227,
+            "original_position": 227,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/log.lua",
+            "position": 227,
+            "pull_request_review_id": 4184464437,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/38906",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150434909/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-04-27T22:04:45Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150434909",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/38906#discussion_r3150439508"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/38906"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150439508"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "should not need this in after()",
+            "commit_id": "8fcc291e6e197218a53682a26326c908de5e61d7",
+            "created_at": "2026-04-27T22:06:00Z",
+            "diff_hunk": "@@ -0,0 +1,201 @@\n+local t = require('test.testutil')\n+local n = require('test.functional.testnvim')()\n+\n+local assert_log = t.assert_log\n+local assert_nolog = t.assert_nolog\n+local clear = n.clear\n+local eq = t.eq\n+local exec_lua = n.exec_lua\n+local rmdir = n.rmdir\n+local write_file = t.write_file\n+\n+describe('vim.log', function()\n+  local xstate = 'Xstate-log'\n+  local caller_script ---@type string?\n+\n+  ---@param name string\n+  ---@return string\n+  local function get_logfile(name)\n+    return exec_lua(function(logger_name)\n+      return vim.fs.normalize(vim.fs.joinpath(vim.fn.stdpath('log'), logger_name:lower() .. '.log'))\n+    end, name)\n+  end\n+\n+  before_each(function()\n+    clear({ env = { XDG_STATE_HOME = xstate } })\n+    caller_script = nil\n+  end)\n+\n+  after_each(function()\n+    clear()",
+            "html_url": "https://github.com/neovim/neovim/pull/38906#discussion_r3150439508",
+            "id": 3150439508,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM67x-RU",
+            "original_commit_id": "8fcc291e6e197218a53682a26326c908de5e61d7",
+            "original_line": 30,
+            "original_position": 30,
+            "original_start_line": null,
+            "path": "test/functional/lua/log_spec.lua",
+            "position": 1,
+            "pull_request_review_id": 4184469006,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/38906",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150439508/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-04-27T22:06:00Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150439508",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/38906#discussion_r3150441483"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/38906"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150441483"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "delete",
+            "commit_id": "8fcc291e6e197218a53682a26326c908de5e61d7",
+            "created_at": "2026-04-27T22:06:37Z",
+            "diff_hunk": "@@ -0,0 +1,201 @@\n+local t = require('test.testutil')\n+local n = require('test.functional.testnvim')()\n+\n+local assert_log = t.assert_log\n+local assert_nolog = t.assert_nolog\n+local clear = n.clear\n+local eq = t.eq\n+local exec_lua = n.exec_lua\n+local rmdir = n.rmdir\n+local write_file = t.write_file\n+\n+describe('vim.log', function()\n+  local xstate = 'Xstate-log'\n+  local caller_script ---@type string?\n+\n+  ---@param name string\n+  ---@return string\n+  local function get_logfile(name)\n+    return exec_lua(function(logger_name)\n+      return vim.fs.normalize(vim.fs.joinpath(vim.fn.stdpath('log'), logger_name:lower() .. '.log'))\n+    end, name)\n+  end\n+\n+  before_each(function()\n+    clear({ env = { XDG_STATE_HOME = xstate } })\n+    caller_script = nil\n+  end)\n+\n+  after_each(function()\n+    clear()\n+    if caller_script then\n+      os.remove(caller_script)\n+    end\n+    rmdir(xstate)\n+  end)\n+\n+  it('exposes the documented log levels', function()",
+            "html_url": "https://github.com/neovim/neovim/pull/38906#discussion_r3150441483",
+            "id": 3150441483,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM67x-wL",
+            "original_commit_id": "8fcc291e6e197218a53682a26326c908de5e61d7",
+            "original_line": 37,
+            "original_position": 37,
+            "original_start_line": null,
+            "path": "test/functional/lua/log_spec.lua",
+            "position": 1,
+            "pull_request_review_id": 4184471033,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/38906",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150441483/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-04-27T22:06:38Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150441483",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/38906#discussion_r3150447835"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/38906"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150447835"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "why is this called like this isntead of `logger:set_level`\n\nthough I do think we need a global `vim.log.set_level` too.",
+            "commit_id": "0c76f5bd582d4bef1723b18a49cc2667d7ef888f",
+            "created_at": "2026-04-27T22:08:33Z",
+            "diff_hunk": "@@ -0,0 +1,201 @@\n+local t = require('test.testutil')\n+local n = require('test.functional.testnvim')()\n+\n+local assert_log = t.assert_log\n+local assert_nolog = t.assert_nolog\n+local clear = n.clear\n+local eq = t.eq\n+local exec_lua = n.exec_lua\n+local rmdir = n.rmdir\n+local write_file = t.write_file\n+\n+describe('vim.log', function()\n+  local xstate = 'Xstate-log'\n+  local caller_script ---@type string?\n+\n+  ---@param name string\n+  ---@return string\n+  local function get_logfile(name)\n+    return exec_lua(function(logger_name)\n+      return vim.fs.normalize(vim.fs.joinpath(vim.fn.stdpath('log'), logger_name:lower() .. '.log'))\n+    end, name)\n+  end\n+\n+  before_each(function()\n+    clear({ env = { XDG_STATE_HOME = xstate } })\n+    caller_script = nil\n+  end)\n+\n+  after_each(function()\n+    clear()\n+    if caller_script then\n+      os.remove(caller_script)\n+    end\n+    rmdir(xstate)\n+  end)\n+\n+  it('exposes the documented log levels', function()\n+    eq(\n+      {\n+        TRACE = 0,\n+        DEBUG = 1,\n+        INFO = 2,\n+        WARN = 3,\n+        ERROR = 4,\n+        OFF = 5,\n+      },\n+      exec_lua(function()\n+        return vim.log.levels\n+      end)\n+    )\n+  end)\n+\n+  it('new() creates a logger with the documented defaults', function()\n+    local info = exec_lua(function()\n+      local logger = vim.log.new({ name = 'MyPlugin' })\n+      local logfile = vim.fs.joinpath(vim.fn.stdpath('log'), 'myplugin.log')\n+      logger.info('skip')\n+      logger.warn('keep')\n+      return {\n+        level = vim.log.get_level(logger),\n+        writers = {\n+          type(logger.trace),\n+          type(logger.debug),\n+          type(logger.info),\n+          type(logger.warn),\n+          type(logger.error),\n+        },\n+        logfile = vim.fs.normalize(logfile),\n+        exists = vim.uv.fs_stat(logfile) ~= nil,\n+      }\n+    end)\n+\n+    eq(3, info.level)\n+    eq({ 'function', 'function', 'function', 'function', 'function' }, info.writers)\n+    eq(get_logfile('MyPlugin'), info.logfile)\n+    eq(true, info.exists)\n+\n+    local logfile = get_logfile('MyPlugin')\n+    assert_log('%[START%]%[.+%] MyPlugin logging initiated', logfile, 10)\n+    assert_log('%[WARN%].-\\t\"keep\"', logfile, 10)\n+    assert_nolog('skip', logfile, 10)\n+  end)\n+\n+  it('writer methods do nothing when called nil arguments', function()\n+    eq(\n+      { true, true, true, true, true, false },\n+      exec_lua(function()\n+        local logger = vim.log.new({ name = 'NoArgs', current_level = vim.log.levels.TRACE })\n+        local logfile = vim.fs.joinpath(vim.fn.stdpath('log'), 'noargs.log')\n+        return {\n+          logger.trace(),\n+          logger.debug(),\n+          logger.info(),\n+          logger.warn(),\n+          logger.error(),\n+          vim.uv.fs_stat(logfile) ~= nil,\n+        }\n+      end)\n+    )\n+  end)\n+\n+  it('new() respects current_level and format_func opts', function()\n+    exec_lua(function()\n+      local logger = vim.log.new({\n+        name = 'CustomFormat',\n+        current_level = vim.log.levels.INFO,\n+        format_func = function(current_level, level, ...)\n+          if level < current_level then\n+            return nil\n+          end\n+          return tostring(select(1, ...)) .. '\\n'\n+        end,\n+      })\n+\n+      logger.trace('trace')\n+      logger.debug('debug')\n+      logger.info('info')\n+      logger.warn('warn')\n+      logger.error('error')\n+    end)\n+\n+    local logfile = get_logfile('CustomFormat')\n+    assert_log('%[START%]%[.+%] CustomFormat logging initiated', logfile, 10)\n+    assert_nolog('trace', logfile, 10)\n+    assert_nolog('debug', logfile, 10)\n+    assert_log('info', logfile, 10)\n+    assert_log('warn', logfile, 10)\n+    assert_log('error', logfile, 10)\n+  end)\n+\n+  it('set_level() changes filtering and get_level() reports the new level', function()\n+    local level = exec_lua(function()\n+      local logger = vim.log.new({ name = 'SetLevel' })\n+\n+      vim.log.set_level(logger, vim.log.levels.INFO)",
+            "html_url": "https://github.com/neovim/neovim/pull/38906#discussion_r3150447835",
+            "id": 3150447835,
+            "line": 110,
+            "node_id": "PRRC_kwDOAPphoM67yATb",
+            "original_commit_id": "8fcc291e6e197218a53682a26326c908de5e61d7",
+            "original_line": 135,
+            "original_position": 135,
+            "original_start_line": null,
+            "path": "test/functional/lua/log_spec.lua",
+            "position": 110,
+            "pull_request_review_id": 4184477433,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/38906",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150447835/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-04-27T22:09:03Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150447835",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/38906#discussion_r3150453705"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/38906"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150453705"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\nlocal M = {}\n```",
+            "commit_id": "8fcc291e6e197218a53682a26326c908de5e61d7",
+            "created_at": "2026-04-27T22:10:06Z",
+            "diff_hunk": "",
+            "html_url": "https://github.com/neovim/neovim/pull/38906#discussion_r3150453705",
+            "id": 3150453705,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM67yBvJ",
+            "original_commit_id": "8fcc291e6e197218a53682a26326c908de5e61d7",
+            "original_line": 22,
+            "original_position": 1,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/lsp/log.lua",
+            "position": 1,
+            "pull_request_review_id": 4184483299,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/38906",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150453705/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-04-27T22:10:06Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150453705",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/38906#discussion_r3150454426"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/38906"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150454426"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\nlocal log = vim.log.new({\n```",
+            "commit_id": "8fcc291e6e197218a53682a26326c908de5e61d7",
+            "created_at": "2026-04-27T22:10:17Z",
+            "diff_hunk": "@@ -34,96 +34,15 @@ local protocol = require('vim.lsp.protocol')\n --- @nodoc\n log.levels = vim.deepcopy(log_levels)\n \n--- Default log level is warn.\n-local current_log_level = log_levels.WARN\n-\n-local log_date_format = '%F %H:%M:%S'\n-\n---- Default formatting function.\n---- @param level? string\n-local function format_func(level, ...)\n-  if log_levels[level] < current_log_level then\n-    return nil\n-  end\n-\n-  local info = debug.getinfo(2, 'Sl')\n-  local header = string.format(\n-    '[%s][%s] %s:%s',\n-    level,\n-    os.date(log_date_format),\n-    info.short_src,\n-    info.currentline\n-  )\n-  local parts = { header }\n-  local argc = select('#', ...)\n-  for i = 1, argc do\n-    local arg = select(i, ...)\n-    table.insert(parts, arg == nil and 'nil' or vim.inspect(arg, { newline = ' ', indent = '' }))\n-  end\n-  return table.concat(parts, '\\t') .. '\\n'\n-end\n-\n-local function notify(msg, level)\n-  if vim.in_fast_event() then\n-    vim.schedule(function()\n-      vim.notify(msg, level)\n-    end)\n-  else\n-    vim.notify(msg, level)\n-  end\n-end\n-\n-local logfilename = vim.fs.joinpath(vim.fn.stdpath('log') --[[@as string]], 'lsp.log')\n-\n--- TODO: Ideally the directory should be created in open_logfile(), right\n--- before opening the log file, but open_logfile() can be called from libuv\n--- callbacks, where using fn.mkdir() is not allowed.\n-vim.fn.mkdir(vim.fn.stdpath('log') --[[@as string]], 'p')\n+local logger = vim.log.new({",
+            "html_url": "https://github.com/neovim/neovim/pull/38906#discussion_r3150454426",
+            "id": 3150454426,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM67yB6a",
+            "original_commit_id": "8fcc291e6e197218a53682a26326c908de5e61d7",
+            "original_line": 37,
+            "original_position": 49,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/lsp/log.lua",
+            "position": 1,
+            "pull_request_review_id": 4184484234,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/38906",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150454426/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-04-27T22:10:17Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150454426",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/38906#discussion_r3150469969"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/38906"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150469969"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "why don't we check the level first? seems silly to open a file if we aren't going to log to it",
+            "commit_id": "0c76f5bd582d4bef1723b18a49cc2667d7ef888f",
+            "created_at": "2026-04-27T22:14:30Z",
+            "diff_hunk": "@@ -0,0 +1,279 @@\n+--- @brief\n+---\n+--- The |vim.log| module provides file-backed logger instances.\n+---\n+--- Use `vim.log.new()` to create a logger, it exposes five writer functions:\n+--- `trace()`, `debug()`, `info()`, `warn()`, and `error()`.\n+--- They are correspond to log levels defined by |vim.log.levels|.\n+---\n+--- Example:\n+---\n+--- ```lua\n+--- local logger = vim.log.new({ name = 'my-plugin', })\n+--- -- By default, logs will be written to {name}.log under `stdpath('log')`.\n+---\n+--- logger.error('request failed', 'timeout')\n+--- -- This will write a line like the following to the log file:\n+--- --   [ERROR][2024-01-01 12:00:00] source.lua:123    request failed    timeout\n+---\n+--- -- Set the log level to `INFO`, otherwise the `info()` call below would be ignored,\n+--- -- since the default level is `WARN`.\n+--- vim.log.set_level(logger, vim.log.levels.INFO)\n+--- logger.info('starting', { buf = vim.api.nvim_get_current_buf() })\n+--- -- This will write a line like the following to the log file:\n+--- --   [INFO][2024-01-01 12:01:00] source.lua:124    starting    { buf = 1 }\n+--- ```\n+---\n+--- You can also provide a custom formatter function to customize the log output format.\n+\n+---@class vim.Logger\n+---\n+--- Display name used in notifications emitted by the logger.\n+---@field private name string\n+---\n+--- Minimum level that will be written.\n+---@field private current_level integer\n+---\n+--- Function used to format a log entry.\n+---@field private format_func fun(current_level: vim.log.levels, level:vim.log.levels, ...): string?\n+---\n+--- Path of the log file.\n+---@field private filename string\n+---\n+--- Internal state for the log file handle. `nil` until the file is opened.\n+---@field private logfile file*?\n+---\n+--- Internal state for the log file open error.\n+---@field private openerr string?\n+---\n+--- Writes a message at `vim.log.levels.TRACE`.\n+---@field trace fun(...:any): boolean?\n+---\n+--- Writes a message at `vim.log.levels.DEBUG`.\n+---@field debug fun(...:any): boolean?\n+---\n+--- Writes a message at `vim.log.levels.INFO`.\n+---@field info fun(...:any): boolean?\n+---\n+--- Writes a message at `vim.log.levels.WARN`.\n+---@field warn fun(...:any): boolean?\n+---\n+--- Writes a message at `vim.log.levels.ERROR`.\n+---@field error fun(...:any): boolean?\n+local M = {}\n+\n+---@enum vim.log.levels\n+---@nodoc\n+M.levels = {\n+  TRACE = 0,\n+  DEBUG = 1,\n+  INFO = 2,\n+  WARN = 3,\n+  ERROR = 4,\n+  OFF = 5,\n+}\n+\n+local level_names = {\n+  [0] = 'TRACE',\n+  [1] = 'DEBUG',\n+  [2] = 'INFO',\n+  [3] = 'WARN',\n+  [4] = 'ERROR',\n+  [5] = 'OFF',\n+}\n+\n+local log_date_format = '%F %H:%M:%S'\n+\n+--- Default formatter used by |vim.log.new()|.\n+---\n+--- Formats a message as:\n+--- `[LEVEL][YYYY-MM-DD HH:MM:SS] source.lua:line<TAB>arg1<TAB>arg2`\n+---\n+---@param current_level vim.log.levels\n+---@param level vim.log.levels\n+---@return string?\n+local function default_format_func(current_level, level, ...)\n+  if level < current_level then\n+    return nil\n+  end\n+\n+  -- Stack shape:\n+  --   default_format_func <- create_writer closure <- user callsite\n+  local info = debug.getinfo(3, 'Sl')\n+  local header = string.format(\n+    '[%s][%s] %s:%s',\n+    level_names[level],\n+    os.date(log_date_format),\n+    info.short_src,\n+    info.currentline\n+  )\n+  local parts = { header }\n+  local argc = select('#', ...)\n+  for i = 1, argc do\n+    local arg = select(i, ...)\n+    table.insert(parts, arg == nil and 'nil' or vim.inspect(arg, { newline = ' ', indent = '' }))\n+  end\n+  return table.concat(parts, '\\t') .. '\\n'\n+end\n+\n+---@class vim.log.new.Opts\n+---@inlinedoc\n+---\n+--- Display name used in notifications emitted by the logger.\n+---@field name string\n+---\n+--- Minimum level that will be written.\n+--- (default: `vim.log.levels.WARN`)\n+---@field current_level? vim.log.levels\n+---\n+--- Formatter used for each log entry.\n+--- Receives the logger's current level, the message level, and the values passed to the writer.\n+--- Return a string to write an entry, or `nil` to skip it.\n+---@field format_func? fun(current_level: vim.log.levels, level: vim.log.levels, ...): string?\n+\n+--- Creates a logger instance.\n+---\n+--- The logger writes formatted messages to a file,\n+--- using a per-instance log level and formatting function.\n+---\n+---@param opts vim.log.new.Opts\n+---@return vim.Logger\n+function M.new(opts)\n+  vim.validate('opts', opts, 'table')\n+  vim.validate('opts.name', opts.name, 'string')\n+  vim.validate('opts.current_level', opts.current_level, 'number', true)\n+  vim.validate('opts.format_func', opts.format_func, 'function', true)\n+\n+  local filename = vim.fs.joinpath(vim.fn.stdpath('log'), opts.name:lower() .. '.log')\n+  local log_dir = vim.fs.dirname(filename)\n+  if log_dir then\n+    -- TODO: Ideally the directory should be created in open_file(), right before\n+    -- opening the log file, but open() can be called from libuv callbacks,\n+    -- where using fn.mkdir() is not allowed.\n+    vim.fn.mkdir(log_dir, 'p')\n+  end\n+\n+  local logger = setmetatable({\n+    name = opts.name,\n+    filename = filename,\n+    current_level = opts.current_level or M.levels.WARN,\n+    format_func = opts.format_func or default_format_func,\n+  }, { __index = M })\n+  logger.trace = logger:create_writer(M.levels.TRACE)\n+  logger.debug = logger:create_writer(M.levels.DEBUG)\n+  logger.info = logger:create_writer(M.levels.INFO)\n+  logger.warn = logger:create_writer(M.levels.WARN)\n+  logger.error = logger:create_writer(M.levels.ERROR)\n+\n+  return logger\n+end\n+\n+---@param msg string\n+---@param level? vim.log.levels\n+local function notify(msg, level)\n+  if vim.in_fast_event() then\n+    vim.schedule(function()\n+      vim.notify(msg, level)\n+    end)\n+  else\n+    vim.notify(msg, level)\n+  end\n+end\n+\n+--- Opens the log file on first use.\n+---\n+--- Writes a `[START]` marker when the file is opened successfully.\n+---\n+---@package\n+---@return boolean # `true` if the file is open, `false` on error.\n+function M:open_file()\n+  if self.logfile then\n+    return true\n+  end\n+  if self.openerr then\n+    return false\n+  end\n+\n+  self.logfile, self.openerr = io.open(self.filename, 'a+')\n+  if not self.logfile then\n+    local err_msg = string.format('Failed to open %s log file: %s', self.name, self.openerr)\n+    notify(err_msg, M.levels.ERROR)\n+    return false\n+  end\n+\n+  local log_info = vim.uv.fs_stat(self.filename)\n+  if log_info and log_info.size > 1e9 then\n+    local warn_msg = string.format(\n+      '%s log is large (%d MB): %s',\n+      self.name,\n+      log_info.size / (1000 * 1000),\n+      self.filename\n+    )\n+    notify(warn_msg)\n+  end\n+\n+  -- Start message for logging\n+  self.logfile:write(\n+    string.format('[START][%s] %s logging initiated\\n', os.date(log_date_format), self.name)\n+  )\n+  return true\n+end\n+\n+--- Creates a writer function for a specific log level.\n+---\n+---@package\n+---@param level vim.log.levels\n+---@return fun(...:any): boolean? # Returns `false` if the log file could not be opened.\n+function M:create_writer(level)\n+  return function(...)\n+    local argc = select('#', ...)\n+    if argc == 0 then\n+      return true\n+    end\n+    if not self:open_file() then",
+            "html_url": "https://github.com/neovim/neovim/pull/38906#discussion_r3150469969",
+            "id": 3150469969,
+            "line": 233,
+            "node_id": "PRRC_kwDOAPphoM67yFtR",
+            "original_commit_id": "8fcc291e6e197218a53682a26326c908de5e61d7",
+            "original_line": 233,
+            "original_position": 233,
+            "original_start_line": 228,
+            "path": "runtime/lua/vim/log.lua",
+            "position": 233,
+            "pull_request_review_id": 4184500576,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/38906",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150469969/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 228,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-04-27T22:14:30Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150469969",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/38906#discussion_r3150760502"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/38906"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150760502"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "If we wish to maintain this convention, we could change the exposed function from `.new(opts)` to `.register(name, opts)`, which would serve as a wrapper for the former. Some current APIs follow a similar pattern, such as `vim.lsp.rpc.start()`, but compared to that, add a wrapper here is so simple that it doesn't seem to make a fundamental difference.",
+            "commit_id": "0c76f5bd582d4bef1723b18a49cc2667d7ef888f",
+            "created_at": "2026-04-27T23:43:23Z",
+            "diff_hunk": "@@ -3760,6 +3760,102 @@ vim.loader.reset({path})                                  *vim.loader.reset()*\n       • {path}  (`string?`) path to reset\n \n \n+==============================================================================\n+Lua module: vim.log                                                  *vim.log*\n+\n+The |vim.log| module provides file-backed logger instances.\n+\n+Use `vim.log.new()` to create a logger, it exposes five writer functions:\n+`trace()`, `debug()`, `info()`, `warn()`, and `error()`. They are correspond\n+to log levels defined by |vim.log.levels|.\n+\n+Example: >lua\n+    local logger = vim.log.new({ name = 'my-plugin', })\n+    -- By default, logs will be written to {name}.log under `stdpath('log')`.\n+\n+    logger.error('request failed', 'timeout')\n+    -- This will write a line like the following to the log file:\n+    --   [ERROR][2024-01-01 12:00:00] source.lua:123    request failed    timeout\n+\n+    -- Set the log level to `INFO`, otherwise the `info()` call below would be ignored,\n+    -- since the default level is `WARN`.\n+    vim.log.set_level(logger, vim.log.levels.INFO)\n+    logger.info('starting', { buf = vim.api.nvim_get_current_buf() })\n+    -- This will write a line like the following to the log file:\n+    --   [INFO][2024-01-01 12:01:00] source.lua:124    starting    { buf = 1 }\n+<\n+\n+You can also provide a custom formatter function to customize the log output\n+format.\n+\n+\n+*vim.Logger*\n+\n+    Fields: ~\n+      • {trace}  (`fun(...:any): boolean?`) Writes a message at\n+                 `vim.log.levels.TRACE`.\n+      • {debug}  (`fun(...:any): boolean?`) Writes a message at\n+                 `vim.log.levels.DEBUG`.\n+      • {info}   (`fun(...:any): boolean?`) Writes a message at\n+                 `vim.log.levels.INFO`.\n+      • {warn}   (`fun(...:any): boolean?`) Writes a message at\n+                 `vim.log.levels.WARN`.\n+      • {error}  (`fun(...:any): boolean?`) Writes a message at\n+                 `vim.log.levels.ERROR`.\n+\n+\n+get_level({logger})                                      *vim.log.get_level()*\n+    Gets the current log level.\n+\n+    Parameters: ~\n+      • {logger}  (`vim.Logger`) See |vim.Logger|.\n+\n+    Return: ~\n+        (`vim.log.levels`)\n+\n+new({opts})                                                    *vim.log.new()*",
+            "html_url": "https://github.com/neovim/neovim/pull/38906#discussion_r3150760502",
+            "id": 3150760502,
+            "in_reply_to_id": 3150328920,
+            "line": 3826,
+            "node_id": "PRRC_kwDOAPphoM67zMo2",
+            "original_commit_id": "8fcc291e6e197218a53682a26326c908de5e61d7",
+            "original_line": 3816,
+            "original_position": 57,
+            "original_start_line": null,
+            "path": "runtime/doc/lua.txt",
+            "position": 57,
+            "pull_request_review_id": 4184832321,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/38906",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150760502/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-04-27T23:43:23Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150760502",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/61115159?v=4",
+                "events_url": "https://api.github.com/users/ofseed/events{/privacy}",
+                "followers_url": "https://api.github.com/users/ofseed/followers",
+                "following_url": "https://api.github.com/users/ofseed/following{/other_user}",
+                "gists_url": "https://api.github.com/users/ofseed/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/ofseed",
+                "id": 61115159,
+                "login": "ofseed",
+                "node_id": "MDQ6VXNlcjYxMTE1MTU5",
+                "organizations_url": "https://api.github.com/users/ofseed/orgs",
+                "received_events_url": "https://api.github.com/users/ofseed/received_events",
+                "repos_url": "https://api.github.com/users/ofseed/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/ofseed/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/ofseed/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/ofseed",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/38906#discussion_r3150765609"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/38906"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150765609"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "Yes, I intentionally completed #39078 before this. These APIs serve as both module functions and class methods.",
+            "commit_id": "8fcc291e6e197218a53682a26326c908de5e61d7",
+            "created_at": "2026-04-27T23:45:04Z",
+            "diff_hunk": "@@ -3760,6 +3760,102 @@ vim.loader.reset({path})                                  *vim.loader.reset()*\n       • {path}  (`string?`) path to reset\n \n \n+==============================================================================\n+Lua module: vim.log                                                  *vim.log*\n+\n+The |vim.log| module provides file-backed logger instances.\n+\n+Use `vim.log.new()` to create a logger, it exposes five writer functions:\n+`trace()`, `debug()`, `info()`, `warn()`, and `error()`. They are correspond\n+to log levels defined by |vim.log.levels|.\n+\n+Example: >lua\n+    local logger = vim.log.new({ name = 'my-plugin', })\n+    -- By default, logs will be written to {name}.log under `stdpath('log')`.\n+\n+    logger.error('request failed', 'timeout')\n+    -- This will write a line like the following to the log file:\n+    --   [ERROR][2024-01-01 12:00:00] source.lua:123    request failed    timeout\n+\n+    -- Set the log level to `INFO`, otherwise the `info()` call below would be ignored,\n+    -- since the default level is `WARN`.\n+    vim.log.set_level(logger, vim.log.levels.INFO)\n+    logger.info('starting', { buf = vim.api.nvim_get_current_buf() })\n+    -- This will write a line like the following to the log file:\n+    --   [INFO][2024-01-01 12:01:00] source.lua:124    starting    { buf = 1 }\n+<\n+\n+You can also provide a custom formatter function to customize the log output\n+format.\n+\n+\n+*vim.Logger*\n+\n+    Fields: ~\n+      • {trace}  (`fun(...:any): boolean?`) Writes a message at\n+                 `vim.log.levels.TRACE`.\n+      • {debug}  (`fun(...:any): boolean?`) Writes a message at\n+                 `vim.log.levels.DEBUG`.\n+      • {info}   (`fun(...:any): boolean?`) Writes a message at\n+                 `vim.log.levels.INFO`.\n+      • {warn}   (`fun(...:any): boolean?`) Writes a message at\n+                 `vim.log.levels.WARN`.\n+      • {error}  (`fun(...:any): boolean?`) Writes a message at\n+                 `vim.log.levels.ERROR`.\n+\n+\n+get_level({logger})                                      *vim.log.get_level()*\n+    Gets the current log level.\n+\n+    Parameters: ~\n+      • {logger}  (`vim.Logger`) See |vim.Logger|.\n+\n+    Return: ~\n+        (`vim.log.levels`)\n+\n+new({opts})                                                    *vim.log.new()*\n+    Creates a logger instance.\n+\n+    The logger writes formatted messages to a file, using a per-instance log\n+    level and formatting function.\n+\n+    Parameters: ~\n+      • {opts}  (`table`) A table with the following fields:\n+                • {name} (`string`) Display name used in notifications emitted\n+                  by the logger.\n+                • {current_level}? (`vim.log.levels`, default:\n+                  `vim.log.levels.WARN`) Minimum level that will be written.\n+                • {format_func}?\n+                  (`fun(current_level: vim.log.levels, level: vim.log.levels, ...): string?`)\n+                  Formatter used for each log entry. Receives the logger's\n+                  current level, the message level, and the values passed to\n+                  the writer. Return a string to write an entry, or `nil` to\n+                  skip it.\n+\n+    Return: ~\n+        (`vim.Logger`) See |vim.Logger|.\n+\n+set_format_func({logger}, {func})                  *vim.log.set_format_func()*\n+    Sets the formatter used to produce log entries.\n+\n+    The formatter receives the logger's current level, the message level, and\n+    the values passed to the writer method. Return a string to write an entry,\n+    or `nil` to skip it.\n+\n+    Parameters: ~\n+      • {logger}  (`vim.Logger`) See |vim.Logger|.\n+      • {func}    (`fun(current_level: vim.log.levels, level: vim.log.levels, ...): string?`)\n+\n+set_level({logger}, {level})                             *vim.log.set_level()*\n+    Sets the current log level.\n+\n+    Entries below this level are skipped.\n+\n+    Parameters: ~\n+      • {logger}  (`vim.Logger`) See |vim.Logger|.",
+            "html_url": "https://github.com/neovim/neovim/pull/38906#discussion_r3150765609",
+            "id": 3150765609,
+            "in_reply_to_id": 3150363222,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM67zN4p",
+            "original_commit_id": "8fcc291e6e197218a53682a26326c908de5e61d7",
+            "original_line": 3855,
+            "original_position": 96,
+            "original_start_line": 3849,
+            "path": "runtime/doc/lua.txt",
+            "position": 1,
+            "pull_request_review_id": 4184838210,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/38906",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150765609/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-04-27T23:45:05Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150765609",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/61115159?v=4",
+                "events_url": "https://api.github.com/users/ofseed/events{/privacy}",
+                "followers_url": "https://api.github.com/users/ofseed/followers",
+                "following_url": "https://api.github.com/users/ofseed/following{/other_user}",
+                "gists_url": "https://api.github.com/users/ofseed/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/ofseed",
+                "id": 61115159,
+                "login": "ofseed",
+                "node_id": "MDQ6VXNlcjYxMTE1MTU5",
+                "organizations_url": "https://api.github.com/users/ofseed/orgs",
+                "received_events_url": "https://api.github.com/users/ofseed/received_events",
+                "repos_url": "https://api.github.com/users/ofseed/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/ofseed/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/ofseed/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/ofseed",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/38906#discussion_r3150771819"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/38906"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150771819"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "Since the calling method here is so simple, I guess users can use it like `log.error(('ID with %d does not exist'):format(id))` themselves.",
+            "commit_id": "8fcc291e6e197218a53682a26326c908de5e61d7",
+            "created_at": "2026-04-27T23:47:00Z",
+            "diff_hunk": "@@ -3760,6 +3760,102 @@ vim.loader.reset({path})                                  *vim.loader.reset()*\n       • {path}  (`string?`) path to reset\n \n \n+==============================================================================\n+Lua module: vim.log                                                  *vim.log*\n+\n+The |vim.log| module provides file-backed logger instances.\n+\n+Use `vim.log.new()` to create a logger, it exposes five writer functions:\n+`trace()`, `debug()`, `info()`, `warn()`, and `error()`. They are correspond\n+to log levels defined by |vim.log.levels|.\n+\n+Example: >lua\n+    local logger = vim.log.new({ name = 'my-plugin', })\n+    -- By default, logs will be written to {name}.log under `stdpath('log')`.\n+\n+    logger.error('request failed', 'timeout')\n+    -- This will write a line like the following to the log file:\n+    --   [ERROR][2024-01-01 12:00:00] source.lua:123    request failed    timeout",
+            "html_url": "https://github.com/neovim/neovim/pull/38906#discussion_r3150771819",
+            "id": 3150771819,
+            "in_reply_to_id": 3150346691,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM67zPZr",
+            "original_commit_id": "8fcc291e6e197218a53682a26326c908de5e61d7",
+            "original_line": 3778,
+            "original_position": 19,
+            "original_start_line": 3776,
+            "path": "runtime/doc/lua.txt",
+            "position": 1,
+            "pull_request_review_id": 4184846494,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/38906",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150771819/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-04-27T23:47:00Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150771819",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/61115159?v=4",
+                "events_url": "https://api.github.com/users/ofseed/events{/privacy}",
+                "followers_url": "https://api.github.com/users/ofseed/followers",
+                "following_url": "https://api.github.com/users/ofseed/following{/other_user}",
+                "gists_url": "https://api.github.com/users/ofseed/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/ofseed",
+                "id": 61115159,
+                "login": "ofseed",
+                "node_id": "MDQ6VXNlcjYxMTE1MTU5",
+                "organizations_url": "https://api.github.com/users/ofseed/orgs",
+                "received_events_url": "https://api.github.com/users/ofseed/received_events",
+                "repos_url": "https://api.github.com/users/ofseed/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/ofseed/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/ofseed/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/ofseed",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/38906#discussion_r3150787381"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/38906"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150787381"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "I suspect this is related to the guidance in `:h dev-lua`, which suggests avoiding OOP. The closure here is essentially equivalent to an object with a `level` field and a `write` method. \r\n\r\nMy previous refactoring in #38560 was roughly equivalent to replacing some objects represented by closures with direct OOP-style objects, since it seemed more straightforward.",
+            "commit_id": "0c76f5bd582d4bef1723b18a49cc2667d7ef888f",
+            "created_at": "2026-04-27T23:52:38Z",
+            "diff_hunk": "@@ -0,0 +1,279 @@\n+--- @brief\n+---\n+--- The |vim.log| module provides file-backed logger instances.\n+---\n+--- Use `vim.log.new()` to create a logger, it exposes five writer functions:\n+--- `trace()`, `debug()`, `info()`, `warn()`, and `error()`.\n+--- They are correspond to log levels defined by |vim.log.levels|.\n+---\n+--- Example:\n+---\n+--- ```lua\n+--- local logger = vim.log.new({ name = 'my-plugin', })\n+--- -- By default, logs will be written to {name}.log under `stdpath('log')`.\n+---\n+--- logger.error('request failed', 'timeout')\n+--- -- This will write a line like the following to the log file:\n+--- --   [ERROR][2024-01-01 12:00:00] source.lua:123    request failed    timeout\n+---\n+--- -- Set the log level to `INFO`, otherwise the `info()` call below would be ignored,\n+--- -- since the default level is `WARN`.\n+--- vim.log.set_level(logger, vim.log.levels.INFO)\n+--- logger.info('starting', { buf = vim.api.nvim_get_current_buf() })\n+--- -- This will write a line like the following to the log file:\n+--- --   [INFO][2024-01-01 12:01:00] source.lua:124    starting    { buf = 1 }\n+--- ```\n+---\n+--- You can also provide a custom formatter function to customize the log output format.\n+\n+---@class vim.Logger\n+---\n+--- Display name used in notifications emitted by the logger.\n+---@field private name string\n+---\n+--- Minimum level that will be written.\n+---@field private current_level integer\n+---\n+--- Function used to format a log entry.\n+---@field private format_func fun(current_level: vim.log.levels, level:vim.log.levels, ...): string?\n+---\n+--- Path of the log file.\n+---@field private filename string\n+---\n+--- Internal state for the log file handle. `nil` until the file is opened.\n+---@field private logfile file*?\n+---\n+--- Internal state for the log file open error.\n+---@field private openerr string?\n+---\n+--- Writes a message at `vim.log.levels.TRACE`.\n+---@field trace fun(...:any): boolean?\n+---\n+--- Writes a message at `vim.log.levels.DEBUG`.\n+---@field debug fun(...:any): boolean?\n+---\n+--- Writes a message at `vim.log.levels.INFO`.\n+---@field info fun(...:any): boolean?\n+---\n+--- Writes a message at `vim.log.levels.WARN`.\n+---@field warn fun(...:any): boolean?\n+---\n+--- Writes a message at `vim.log.levels.ERROR`.\n+---@field error fun(...:any): boolean?\n+local M = {}\n+\n+---@enum vim.log.levels\n+---@nodoc\n+M.levels = {\n+  TRACE = 0,\n+  DEBUG = 1,\n+  INFO = 2,\n+  WARN = 3,\n+  ERROR = 4,\n+  OFF = 5,\n+}\n+\n+local level_names = {\n+  [0] = 'TRACE',\n+  [1] = 'DEBUG',\n+  [2] = 'INFO',\n+  [3] = 'WARN',\n+  [4] = 'ERROR',\n+  [5] = 'OFF',\n+}\n+\n+local log_date_format = '%F %H:%M:%S'\n+\n+--- Default formatter used by |vim.log.new()|.\n+---\n+--- Formats a message as:\n+--- `[LEVEL][YYYY-MM-DD HH:MM:SS] source.lua:line<TAB>arg1<TAB>arg2`\n+---\n+---@param current_level vim.log.levels\n+---@param level vim.log.levels\n+---@return string?\n+local function default_format_func(current_level, level, ...)\n+  if level < current_level then\n+    return nil\n+  end\n+\n+  -- Stack shape:\n+  --   default_format_func <- create_writer closure <- user callsite\n+  local info = debug.getinfo(3, 'Sl')\n+  local header = string.format(\n+    '[%s][%s] %s:%s',\n+    level_names[level],\n+    os.date(log_date_format),\n+    info.short_src,\n+    info.currentline\n+  )\n+  local parts = { header }\n+  local argc = select('#', ...)\n+  for i = 1, argc do\n+    local arg = select(i, ...)\n+    table.insert(parts, arg == nil and 'nil' or vim.inspect(arg, { newline = ' ', indent = '' }))\n+  end\n+  return table.concat(parts, '\\t') .. '\\n'\n+end\n+\n+---@class vim.log.new.Opts\n+---@inlinedoc\n+---\n+--- Display name used in notifications emitted by the logger.\n+---@field name string\n+---\n+--- Minimum level that will be written.\n+--- (default: `vim.log.levels.WARN`)\n+---@field current_level? vim.log.levels\n+---\n+--- Formatter used for each log entry.\n+--- Receives the logger's current level, the message level, and the values passed to the writer.\n+--- Return a string to write an entry, or `nil` to skip it.\n+---@field format_func? fun(current_level: vim.log.levels, level: vim.log.levels, ...): string?\n+\n+--- Creates a logger instance.\n+---\n+--- The logger writes formatted messages to a file,\n+--- using a per-instance log level and formatting function.\n+---\n+---@param opts vim.log.new.Opts\n+---@return vim.Logger\n+function M.new(opts)\n+  vim.validate('opts', opts, 'table')\n+  vim.validate('opts.name', opts.name, 'string')\n+  vim.validate('opts.current_level', opts.current_level, 'number', true)\n+  vim.validate('opts.format_func', opts.format_func, 'function', true)\n+\n+  local filename = vim.fs.joinpath(vim.fn.stdpath('log'), opts.name:lower() .. '.log')\n+  local log_dir = vim.fs.dirname(filename)\n+  if log_dir then\n+    -- TODO: Ideally the directory should be created in open_file(), right before\n+    -- opening the log file, but open() can be called from libuv callbacks,\n+    -- where using fn.mkdir() is not allowed.\n+    vim.fn.mkdir(log_dir, 'p')\n+  end\n+\n+  local logger = setmetatable({\n+    name = opts.name,\n+    filename = filename,\n+    current_level = opts.current_level or M.levels.WARN,\n+    format_func = opts.format_func or default_format_func,\n+  }, { __index = M })\n+  logger.trace = logger:create_writer(M.levels.TRACE)\n+  logger.debug = logger:create_writer(M.levels.DEBUG)\n+  logger.info = logger:create_writer(M.levels.INFO)\n+  logger.warn = logger:create_writer(M.levels.WARN)\n+  logger.error = logger:create_writer(M.levels.ERROR)\n+\n+  return logger\n+end\n+\n+---@param msg string\n+---@param level? vim.log.levels\n+local function notify(msg, level)\n+  if vim.in_fast_event() then\n+    vim.schedule(function()\n+      vim.notify(msg, level)\n+    end)\n+  else\n+    vim.notify(msg, level)\n+  end\n+end\n+\n+--- Opens the log file on first use.\n+---\n+--- Writes a `[START]` marker when the file is opened successfully.\n+---\n+---@package\n+---@return boolean # `true` if the file is open, `false` on error.\n+function M:open_file()\n+  if self.logfile then\n+    return true\n+  end\n+  if self.openerr then\n+    return false\n+  end\n+\n+  self.logfile, self.openerr = io.open(self.filename, 'a+')\n+  if not self.logfile then\n+    local err_msg = string.format('Failed to open %s log file: %s', self.name, self.openerr)\n+    notify(err_msg, M.levels.ERROR)\n+    return false\n+  end\n+\n+  local log_info = vim.uv.fs_stat(self.filename)\n+  if log_info and log_info.size > 1e9 then\n+    local warn_msg = string.format(\n+      '%s log is large (%d MB): %s',\n+      self.name,\n+      log_info.size / (1000 * 1000),\n+      self.filename\n+    )\n+    notify(warn_msg)\n+  end\n+\n+  -- Start message for logging\n+  self.logfile:write(\n+    string.format('[START][%s] %s logging initiated\\n', os.date(log_date_format), self.name)\n+  )\n+  return true\n+end\n+\n+--- Creates a writer function for a specific log level.\n+---\n+---@package\n+---@param level vim.log.levels\n+---@return fun(...:any): boolean? # Returns `false` if the log file could not be opened.\n+function M:create_writer(level)",
+            "html_url": "https://github.com/neovim/neovim/pull/38906#discussion_r3150787381",
+            "id": 3150787381,
+            "in_reply_to_id": 3150434909,
+            "line": 227,
+            "node_id": "PRRC_kwDOAPphoM67zTM1",
+            "original_commit_id": "8fcc291e6e197218a53682a26326c908de5e61d7",
+            "original_line": 227,
+            "original_position": 227,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/log.lua",
+            "position": 227,
+            "pull_request_review_id": 4184863672,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/38906",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150787381/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-04-27T23:52:38Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150787381",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/61115159?v=4",
+                "events_url": "https://api.github.com/users/ofseed/events{/privacy}",
+                "followers_url": "https://api.github.com/users/ofseed/followers",
+                "following_url": "https://api.github.com/users/ofseed/following{/other_user}",
+                "gists_url": "https://api.github.com/users/ofseed/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/ofseed",
+                "id": 61115159,
+                "login": "ofseed",
+                "node_id": "MDQ6VXNlcjYxMTE1MTU5",
+                "organizations_url": "https://api.github.com/users/ofseed/orgs",
+                "received_events_url": "https://api.github.com/users/ofseed/received_events",
+                "repos_url": "https://api.github.com/users/ofseed/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/ofseed/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/ofseed/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/ofseed",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/38906#discussion_r3150797119"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/38906"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150797119"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "We currently have no documentation guiding users on using OOP-style calls, which is also the case in `vim.pos` and `vim.range`, even though both styles are valid.\r\n\r\n> though I do think we need a global `vim.log.set_level` too.\r\n\r\nIt's not particularly necessary; if the number of places using logs increases, I suspect a `set_level(vim.log.DEBUG)`  for debugging a specific area will cause all logs to bloat rapidly.",
+            "commit_id": "0c76f5bd582d4bef1723b18a49cc2667d7ef888f",
+            "created_at": "2026-04-27T23:56:29Z",
+            "diff_hunk": "@@ -0,0 +1,201 @@\n+local t = require('test.testutil')\n+local n = require('test.functional.testnvim')()\n+\n+local assert_log = t.assert_log\n+local assert_nolog = t.assert_nolog\n+local clear = n.clear\n+local eq = t.eq\n+local exec_lua = n.exec_lua\n+local rmdir = n.rmdir\n+local write_file = t.write_file\n+\n+describe('vim.log', function()\n+  local xstate = 'Xstate-log'\n+  local caller_script ---@type string?\n+\n+  ---@param name string\n+  ---@return string\n+  local function get_logfile(name)\n+    return exec_lua(function(logger_name)\n+      return vim.fs.normalize(vim.fs.joinpath(vim.fn.stdpath('log'), logger_name:lower() .. '.log'))\n+    end, name)\n+  end\n+\n+  before_each(function()\n+    clear({ env = { XDG_STATE_HOME = xstate } })\n+    caller_script = nil\n+  end)\n+\n+  after_each(function()\n+    clear()\n+    if caller_script then\n+      os.remove(caller_script)\n+    end\n+    rmdir(xstate)\n+  end)\n+\n+  it('exposes the documented log levels', function()\n+    eq(\n+      {\n+        TRACE = 0,\n+        DEBUG = 1,\n+        INFO = 2,\n+        WARN = 3,\n+        ERROR = 4,\n+        OFF = 5,\n+      },\n+      exec_lua(function()\n+        return vim.log.levels\n+      end)\n+    )\n+  end)\n+\n+  it('new() creates a logger with the documented defaults', function()\n+    local info = exec_lua(function()\n+      local logger = vim.log.new({ name = 'MyPlugin' })\n+      local logfile = vim.fs.joinpath(vim.fn.stdpath('log'), 'myplugin.log')\n+      logger.info('skip')\n+      logger.warn('keep')\n+      return {\n+        level = vim.log.get_level(logger),\n+        writers = {\n+          type(logger.trace),\n+          type(logger.debug),\n+          type(logger.info),\n+          type(logger.warn),\n+          type(logger.error),\n+        },\n+        logfile = vim.fs.normalize(logfile),\n+        exists = vim.uv.fs_stat(logfile) ~= nil,\n+      }\n+    end)\n+\n+    eq(3, info.level)\n+    eq({ 'function', 'function', 'function', 'function', 'function' }, info.writers)\n+    eq(get_logfile('MyPlugin'), info.logfile)\n+    eq(true, info.exists)\n+\n+    local logfile = get_logfile('MyPlugin')\n+    assert_log('%[START%]%[.+%] MyPlugin logging initiated', logfile, 10)\n+    assert_log('%[WARN%].-\\t\"keep\"', logfile, 10)\n+    assert_nolog('skip', logfile, 10)\n+  end)\n+\n+  it('writer methods do nothing when called nil arguments', function()\n+    eq(\n+      { true, true, true, true, true, false },\n+      exec_lua(function()\n+        local logger = vim.log.new({ name = 'NoArgs', current_level = vim.log.levels.TRACE })\n+        local logfile = vim.fs.joinpath(vim.fn.stdpath('log'), 'noargs.log')\n+        return {\n+          logger.trace(),\n+          logger.debug(),\n+          logger.info(),\n+          logger.warn(),\n+          logger.error(),\n+          vim.uv.fs_stat(logfile) ~= nil,\n+        }\n+      end)\n+    )\n+  end)\n+\n+  it('new() respects current_level and format_func opts', function()\n+    exec_lua(function()\n+      local logger = vim.log.new({\n+        name = 'CustomFormat',\n+        current_level = vim.log.levels.INFO,\n+        format_func = function(current_level, level, ...)\n+          if level < current_level then\n+            return nil\n+          end\n+          return tostring(select(1, ...)) .. '\\n'\n+        end,\n+      })\n+\n+      logger.trace('trace')\n+      logger.debug('debug')\n+      logger.info('info')\n+      logger.warn('warn')\n+      logger.error('error')\n+    end)\n+\n+    local logfile = get_logfile('CustomFormat')\n+    assert_log('%[START%]%[.+%] CustomFormat logging initiated', logfile, 10)\n+    assert_nolog('trace', logfile, 10)\n+    assert_nolog('debug', logfile, 10)\n+    assert_log('info', logfile, 10)\n+    assert_log('warn', logfile, 10)\n+    assert_log('error', logfile, 10)\n+  end)\n+\n+  it('set_level() changes filtering and get_level() reports the new level', function()\n+    local level = exec_lua(function()\n+      local logger = vim.log.new({ name = 'SetLevel' })\n+\n+      vim.log.set_level(logger, vim.log.levels.INFO)",
+            "html_url": "https://github.com/neovim/neovim/pull/38906#discussion_r3150797119",
+            "id": 3150797119,
+            "in_reply_to_id": 3150447835,
+            "line": 110,
+            "node_id": "PRRC_kwDOAPphoM67zVk_",
+            "original_commit_id": "8fcc291e6e197218a53682a26326c908de5e61d7",
+            "original_line": 135,
+            "original_position": 135,
+            "original_start_line": null,
+            "path": "test/functional/lua/log_spec.lua",
+            "position": 110,
+            "pull_request_review_id": 4184874170,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/38906",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150797119/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-04-27T23:56:29Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150797119",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/61115159?v=4",
+                "events_url": "https://api.github.com/users/ofseed/events{/privacy}",
+                "followers_url": "https://api.github.com/users/ofseed/followers",
+                "following_url": "https://api.github.com/users/ofseed/following{/other_user}",
+                "gists_url": "https://api.github.com/users/ofseed/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/ofseed",
+                "id": 61115159,
+                "login": "ofseed",
+                "node_id": "MDQ6VXNlcjYxMTE1MTU5",
+                "organizations_url": "https://api.github.com/users/ofseed/orgs",
+                "received_events_url": "https://api.github.com/users/ofseed/received_events",
+                "repos_url": "https://api.github.com/users/ofseed/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/ofseed/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/ofseed/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/ofseed",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/38906#discussion_r3150804331"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/38906"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150804331"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "Since different `level`s use the same file, the benefit of this change is minimal because the file will still be opened even when `level == error`.",
+            "commit_id": "0c76f5bd582d4bef1723b18a49cc2667d7ef888f",
+            "created_at": "2026-04-27T23:58:58Z",
+            "diff_hunk": "@@ -0,0 +1,279 @@\n+--- @brief\n+---\n+--- The |vim.log| module provides file-backed logger instances.\n+---\n+--- Use `vim.log.new()` to create a logger, it exposes five writer functions:\n+--- `trace()`, `debug()`, `info()`, `warn()`, and `error()`.\n+--- They are correspond to log levels defined by |vim.log.levels|.\n+---\n+--- Example:\n+---\n+--- ```lua\n+--- local logger = vim.log.new({ name = 'my-plugin', })\n+--- -- By default, logs will be written to {name}.log under `stdpath('log')`.\n+---\n+--- logger.error('request failed', 'timeout')\n+--- -- This will write a line like the following to the log file:\n+--- --   [ERROR][2024-01-01 12:00:00] source.lua:123    request failed    timeout\n+---\n+--- -- Set the log level to `INFO`, otherwise the `info()` call below would be ignored,\n+--- -- since the default level is `WARN`.\n+--- vim.log.set_level(logger, vim.log.levels.INFO)\n+--- logger.info('starting', { buf = vim.api.nvim_get_current_buf() })\n+--- -- This will write a line like the following to the log file:\n+--- --   [INFO][2024-01-01 12:01:00] source.lua:124    starting    { buf = 1 }\n+--- ```\n+---\n+--- You can also provide a custom formatter function to customize the log output format.\n+\n+---@class vim.Logger\n+---\n+--- Display name used in notifications emitted by the logger.\n+---@field private name string\n+---\n+--- Minimum level that will be written.\n+---@field private current_level integer\n+---\n+--- Function used to format a log entry.\n+---@field private format_func fun(current_level: vim.log.levels, level:vim.log.levels, ...): string?\n+---\n+--- Path of the log file.\n+---@field private filename string\n+---\n+--- Internal state for the log file handle. `nil` until the file is opened.\n+---@field private logfile file*?\n+---\n+--- Internal state for the log file open error.\n+---@field private openerr string?\n+---\n+--- Writes a message at `vim.log.levels.TRACE`.\n+---@field trace fun(...:any): boolean?\n+---\n+--- Writes a message at `vim.log.levels.DEBUG`.\n+---@field debug fun(...:any): boolean?\n+---\n+--- Writes a message at `vim.log.levels.INFO`.\n+---@field info fun(...:any): boolean?\n+---\n+--- Writes a message at `vim.log.levels.WARN`.\n+---@field warn fun(...:any): boolean?\n+---\n+--- Writes a message at `vim.log.levels.ERROR`.\n+---@field error fun(...:any): boolean?\n+local M = {}\n+\n+---@enum vim.log.levels\n+---@nodoc\n+M.levels = {\n+  TRACE = 0,\n+  DEBUG = 1,\n+  INFO = 2,\n+  WARN = 3,\n+  ERROR = 4,\n+  OFF = 5,\n+}\n+\n+local level_names = {\n+  [0] = 'TRACE',\n+  [1] = 'DEBUG',\n+  [2] = 'INFO',\n+  [3] = 'WARN',\n+  [4] = 'ERROR',\n+  [5] = 'OFF',\n+}\n+\n+local log_date_format = '%F %H:%M:%S'\n+\n+--- Default formatter used by |vim.log.new()|.\n+---\n+--- Formats a message as:\n+--- `[LEVEL][YYYY-MM-DD HH:MM:SS] source.lua:line<TAB>arg1<TAB>arg2`\n+---\n+---@param current_level vim.log.levels\n+---@param level vim.log.levels\n+---@return string?\n+local function default_format_func(current_level, level, ...)\n+  if level < current_level then\n+    return nil\n+  end\n+\n+  -- Stack shape:\n+  --   default_format_func <- create_writer closure <- user callsite\n+  local info = debug.getinfo(3, 'Sl')\n+  local header = string.format(\n+    '[%s][%s] %s:%s',\n+    level_names[level],\n+    os.date(log_date_format),\n+    info.short_src,\n+    info.currentline\n+  )\n+  local parts = { header }\n+  local argc = select('#', ...)\n+  for i = 1, argc do\n+    local arg = select(i, ...)\n+    table.insert(parts, arg == nil and 'nil' or vim.inspect(arg, { newline = ' ', indent = '' }))\n+  end\n+  return table.concat(parts, '\\t') .. '\\n'\n+end\n+\n+---@class vim.log.new.Opts\n+---@inlinedoc\n+---\n+--- Display name used in notifications emitted by the logger.\n+---@field name string\n+---\n+--- Minimum level that will be written.\n+--- (default: `vim.log.levels.WARN`)\n+---@field current_level? vim.log.levels\n+---\n+--- Formatter used for each log entry.\n+--- Receives the logger's current level, the message level, and the values passed to the writer.\n+--- Return a string to write an entry, or `nil` to skip it.\n+---@field format_func? fun(current_level: vim.log.levels, level: vim.log.levels, ...): string?\n+\n+--- Creates a logger instance.\n+---\n+--- The logger writes formatted messages to a file,\n+--- using a per-instance log level and formatting function.\n+---\n+---@param opts vim.log.new.Opts\n+---@return vim.Logger\n+function M.new(opts)\n+  vim.validate('opts', opts, 'table')\n+  vim.validate('opts.name', opts.name, 'string')\n+  vim.validate('opts.current_level', opts.current_level, 'number', true)\n+  vim.validate('opts.format_func', opts.format_func, 'function', true)\n+\n+  local filename = vim.fs.joinpath(vim.fn.stdpath('log'), opts.name:lower() .. '.log')\n+  local log_dir = vim.fs.dirname(filename)\n+  if log_dir then\n+    -- TODO: Ideally the directory should be created in open_file(), right before\n+    -- opening the log file, but open() can be called from libuv callbacks,\n+    -- where using fn.mkdir() is not allowed.\n+    vim.fn.mkdir(log_dir, 'p')\n+  end\n+\n+  local logger = setmetatable({\n+    name = opts.name,\n+    filename = filename,\n+    current_level = opts.current_level or M.levels.WARN,\n+    format_func = opts.format_func or default_format_func,\n+  }, { __index = M })\n+  logger.trace = logger:create_writer(M.levels.TRACE)\n+  logger.debug = logger:create_writer(M.levels.DEBUG)\n+  logger.info = logger:create_writer(M.levels.INFO)\n+  logger.warn = logger:create_writer(M.levels.WARN)\n+  logger.error = logger:create_writer(M.levels.ERROR)\n+\n+  return logger\n+end\n+\n+---@param msg string\n+---@param level? vim.log.levels\n+local function notify(msg, level)\n+  if vim.in_fast_event() then\n+    vim.schedule(function()\n+      vim.notify(msg, level)\n+    end)\n+  else\n+    vim.notify(msg, level)\n+  end\n+end\n+\n+--- Opens the log file on first use.\n+---\n+--- Writes a `[START]` marker when the file is opened successfully.\n+---\n+---@package\n+---@return boolean # `true` if the file is open, `false` on error.\n+function M:open_file()\n+  if self.logfile then\n+    return true\n+  end\n+  if self.openerr then\n+    return false\n+  end\n+\n+  self.logfile, self.openerr = io.open(self.filename, 'a+')\n+  if not self.logfile then\n+    local err_msg = string.format('Failed to open %s log file: %s', self.name, self.openerr)\n+    notify(err_msg, M.levels.ERROR)\n+    return false\n+  end\n+\n+  local log_info = vim.uv.fs_stat(self.filename)\n+  if log_info and log_info.size > 1e9 then\n+    local warn_msg = string.format(\n+      '%s log is large (%d MB): %s',\n+      self.name,\n+      log_info.size / (1000 * 1000),\n+      self.filename\n+    )\n+    notify(warn_msg)\n+  end\n+\n+  -- Start message for logging\n+  self.logfile:write(\n+    string.format('[START][%s] %s logging initiated\\n', os.date(log_date_format), self.name)\n+  )\n+  return true\n+end\n+\n+--- Creates a writer function for a specific log level.\n+---\n+---@package\n+---@param level vim.log.levels\n+---@return fun(...:any): boolean? # Returns `false` if the log file could not be opened.\n+function M:create_writer(level)\n+  return function(...)\n+    local argc = select('#', ...)\n+    if argc == 0 then\n+      return true\n+    end\n+    if not self:open_file() then",
+            "html_url": "https://github.com/neovim/neovim/pull/38906#discussion_r3150804331",
+            "id": 3150804331,
+            "in_reply_to_id": 3150469969,
+            "line": 233,
+            "node_id": "PRRC_kwDOAPphoM67zXVr",
+            "original_commit_id": "8fcc291e6e197218a53682a26326c908de5e61d7",
+            "original_line": 233,
+            "original_position": 233,
+            "original_start_line": 228,
+            "path": "runtime/lua/vim/log.lua",
+            "position": 233,
+            "pull_request_review_id": 4184882417,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/38906",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150804331/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 228,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-04-27T23:58:58Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150804331",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/61115159?v=4",
+                "events_url": "https://api.github.com/users/ofseed/events{/privacy}",
+                "followers_url": "https://api.github.com/users/ofseed/followers",
+                "following_url": "https://api.github.com/users/ofseed/following{/other_user}",
+                "gists_url": "https://api.github.com/users/ofseed/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/ofseed",
+                "id": 61115159,
+                "login": "ofseed",
+                "node_id": "MDQ6VXNlcjYxMTE1MTU5",
+                "organizations_url": "https://api.github.com/users/ofseed/orgs",
+                "received_events_url": "https://api.github.com/users/ofseed/received_events",
+                "repos_url": "https://api.github.com/users/ofseed/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/ofseed/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/ofseed/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/ofseed",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/38906#discussion_r3150821915"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/38906"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150821915"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "The benefit of keeping this is that it allows `format_func` to be unique to each different `log` instance. A plugin using `vim.log` might want to provide its own `format_func`. Besides that, we also have `set_level`, which already deviates from the general pattern.",
+            "commit_id": "8fcc291e6e197218a53682a26326c908de5e61d7",
+            "created_at": "2026-04-28T00:04:52Z",
+            "diff_hunk": "@@ -3760,6 +3760,102 @@ vim.loader.reset({path})                                  *vim.loader.reset()*\n       • {path}  (`string?`) path to reset\n \n \n+==============================================================================\n+Lua module: vim.log                                                  *vim.log*\n+\n+The |vim.log| module provides file-backed logger instances.\n+\n+Use `vim.log.new()` to create a logger, it exposes five writer functions:\n+`trace()`, `debug()`, `info()`, `warn()`, and `error()`. They are correspond\n+to log levels defined by |vim.log.levels|.\n+\n+Example: >lua\n+    local logger = vim.log.new({ name = 'my-plugin', })\n+    -- By default, logs will be written to {name}.log under `stdpath('log')`.\n+\n+    logger.error('request failed', 'timeout')\n+    -- This will write a line like the following to the log file:\n+    --   [ERROR][2024-01-01 12:00:00] source.lua:123    request failed    timeout\n+\n+    -- Set the log level to `INFO`, otherwise the `info()` call below would be ignored,\n+    -- since the default level is `WARN`.\n+    vim.log.set_level(logger, vim.log.levels.INFO)\n+    logger.info('starting', { buf = vim.api.nvim_get_current_buf() })\n+    -- This will write a line like the following to the log file:\n+    --   [INFO][2024-01-01 12:01:00] source.lua:124    starting    { buf = 1 }\n+<\n+\n+You can also provide a custom formatter function to customize the log output\n+format.\n+\n+\n+*vim.Logger*\n+\n+    Fields: ~\n+      • {trace}  (`fun(...:any): boolean?`) Writes a message at\n+                 `vim.log.levels.TRACE`.\n+      • {debug}  (`fun(...:any): boolean?`) Writes a message at\n+                 `vim.log.levels.DEBUG`.\n+      • {info}   (`fun(...:any): boolean?`) Writes a message at\n+                 `vim.log.levels.INFO`.\n+      • {warn}   (`fun(...:any): boolean?`) Writes a message at\n+                 `vim.log.levels.WARN`.\n+      • {error}  (`fun(...:any): boolean?`) Writes a message at\n+                 `vim.log.levels.ERROR`.\n+\n+\n+get_level({logger})                                      *vim.log.get_level()*\n+    Gets the current log level.\n+\n+    Parameters: ~\n+      • {logger}  (`vim.Logger`) See |vim.Logger|.\n+\n+    Return: ~\n+        (`vim.log.levels`)\n+\n+new({opts})                                                    *vim.log.new()*\n+    Creates a logger instance.\n+\n+    The logger writes formatted messages to a file, using a per-instance log\n+    level and formatting function.\n+\n+    Parameters: ~\n+      • {opts}  (`table`) A table with the following fields:\n+                • {name} (`string`) Display name used in notifications emitted\n+                  by the logger.\n+                • {current_level}? (`vim.log.levels`, default:\n+                  `vim.log.levels.WARN`) Minimum level that will be written.\n+                • {format_func}?\n+                  (`fun(current_level: vim.log.levels, level: vim.log.levels, ...): string?`)\n+                  Formatter used for each log entry. Receives the logger's\n+                  current level, the message level, and the values passed to\n+                  the writer. Return a string to write an entry, or `nil` to\n+                  skip it.\n+\n+    Return: ~\n+        (`vim.Logger`) See |vim.Logger|.\n+\n+set_format_func({logger}, {func})                  *vim.log.set_format_func()*",
+            "html_url": "https://github.com/neovim/neovim/pull/38906#discussion_r3150821915",
+            "id": 3150821915,
+            "in_reply_to_id": 3150314646,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM67zbob",
+            "original_commit_id": "8fcc291e6e197218a53682a26326c908de5e61d7",
+            "original_line": 3838,
+            "original_position": 79,
+            "original_start_line": null,
+            "path": "runtime/doc/lua.txt",
+            "position": 1,
+            "pull_request_review_id": 4184902256,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/38906",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150821915/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-04-28T00:04:52Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3150821915",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/61115159?v=4",
+                "events_url": "https://api.github.com/users/ofseed/events{/privacy}",
+                "followers_url": "https://api.github.com/users/ofseed/followers",
+                "following_url": "https://api.github.com/users/ofseed/following{/other_user}",
+                "gists_url": "https://api.github.com/users/ofseed/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/ofseed",
+                "id": 61115159,
+                "login": "ofseed",
+                "node_id": "MDQ6VXNlcjYxMTE1MTU5",
+                "organizations_url": "https://api.github.com/users/ofseed/orgs",
+                "received_events_url": "https://api.github.com/users/ofseed/received_events",
+                "repos_url": "https://api.github.com/users/ofseed/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/ofseed/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/ofseed/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/ofseed",
+                "user_view_type": "public"
+            }
         }
     ],
     "comment_regular_data": [
@@ -1092,7 +2686,7 @@
             "node_id": "IC_kwDOAPphoM77rt7e",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 1,
+                "+1": 2,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -1100,7 +2694,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 1,
+                "total_count": 2,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4222541534/reactions"
             },
             "updated_at": "2026-04-10T09:32:11Z",
@@ -1137,7 +2731,7 @@
             "node_id": "IC_kwDOAPphoM77sMnq",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 2,
+                "+1": 3,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -1145,7 +2739,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 2,
+                "total_count": 3,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4222667242/reactions"
             },
             "updated_at": "2026-04-10T09:52:40Z",
@@ -1587,7 +3181,7 @@
             "node_id": "IC_kwDOAPphoM78FN8c",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 2,
+                "+1": 3,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -1595,7 +3189,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 2,
+                "total_count": 3,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4229226268/reactions"
             },
             "updated_at": "2026-04-11T09:56:34Z",
@@ -1992,7 +3586,7 @@
             "node_id": "IC_kwDOAPphoM7-vs7M",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 2,
+                "+1": 3,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -2000,7 +3594,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 2,
+                "total_count": 3,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4273917644/reactions"
             },
             "updated_at": "2026-04-18T14:39:03Z",
@@ -2082,7 +3676,7 @@
             "node_id": "IC_kwDOAPphoM7-x0Lz",
             "performed_via_github_app": null,
             "reactions": {
-                "+1": 0,
+                "+1": 1,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -2090,7 +3684,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 0,
+                "total_count": 1,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4274471667/reactions"
             },
             "updated_at": "2026-04-18T20:04:58Z",
@@ -2214,9 +3808,9 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/ofseed/neovim/pulls{/number}",
-            "pushed_at": "2026-04-19T16:23:09Z",
+            "pushed_at": "2026-04-28T01:02:52Z",
             "releases_url": "https://api.github.com/repos/ofseed/neovim/releases{/id}",
-            "size": 364723,
+            "size": 366373,
             "ssh_url": "git@github.com:ofseed/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/ofseed/neovim/stargazers",
@@ -2228,14 +3822,14 @@
             "teams_url": "https://api.github.com/repos/ofseed/neovim/teams",
             "topics": [],
             "trees_url": "https://api.github.com/repos/ofseed/neovim/git/trees{/sha}",
-            "updated_at": "2026-04-19T10:39:39Z",
+            "updated_at": "2026-04-28T00:05:41Z",
             "url": "https://api.github.com/repos/ofseed/neovim",
             "visibility": "public",
             "watchers": 0,
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "8fcc291e6e197218a53682a26326c908de5e61d7",
+        "sha": "0c76f5bd582d4bef1723b18a49cc2667d7ef888f",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/61115159?v=4",
             "events_url": "https://api.github.com/users/ofseed/events{/privacy}",
@@ -2282,7 +3876,7 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "a3a48adcf4c349b4b2f1e0ba02aae667b357b34f",
+    "merge_commit_sha": "d91ca3ce29521bbe52d4d52db7399a7fb45a96e0",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM7RC4Mx",
@@ -2336,9 +3930,9 @@
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/38906/comments",
     "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/8fcc291e6e197218a53682a26326c908de5e61d7",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/0c76f5bd582d4bef1723b18a49cc2667d7ef888f",
     "title": "feat(log): `vim.log` for easily creating loggers",
-    "updated_at": "2026-04-18T20:04:58Z",
+    "updated_at": "2026-04-28T00:04:52Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/38906",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/61115159?v=4",

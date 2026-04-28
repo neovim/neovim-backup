@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/39029"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/0ba88987db584ca82819a34cf152f9f289643e91"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/af2c09a168fd87bb5d6372a37d436386e973068a"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6820,
-            "forks_count": 6820,
+            "forks": 6849,
+            "forks_count": 6849,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -95,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1945,
-            "open_issues_count": 1945,
+            "open_issues": 1932,
+            "open_issues_count": 1932,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -121,11 +121,11 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2026-04-21T04:08:53Z",
+            "pushed_at": "2026-04-28T04:22:56Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 378047,
+            "size": 379951,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 98914,
+            "stargazers_count": 99156,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -143,14 +143,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2026-04-21T03:52:29Z",
+            "updated_at": "2026-04-28T03:32:33Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 98914,
-            "watchers_count": 98914,
+            "watchers": 99156,
+            "watchers_count": 99156,
             "web_commit_signoff_required": false
         },
-        "sha": "b351afb1b1c564c5a4e6856764d4db21a873242c",
+        "sha": "c0e358f7e8ac92dbaba771a74d17d1754e3c6320",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -173,9 +173,565 @@
             "user_view_type": "public"
         }
     },
-    "body": "## Problem\n\nNo way for the default autocmd for Progress to show indeterminate progress.\n\n## Solution\n\nDistinguish 0 an omitted progress percent, and treat omitted percent as indeterminate progress bar.\nAdditionally, statusline percent now shows 0% when previously it was omitted.\n\n## Screenshots\n\nhttps://github.com/user-attachments/assets/d27ff6fa-1351-43d8-b95f-79326523ca1c",
-    "closed_at": null,
-    "comment_data": [],
+    "body": "## Problem\n\n0 and `nil` progress percent from nvim_echo in Progress autocommands have the same behavior\n\n## Solution\n\nDistinguish 0 and `nil` progress percent so that they can be differentiated in Progress autocommands\nAs a result, in the default tui Progress autocommand, `nil` emits a indeterminate progress OSC 9 sequence,\nwhile allowing 0 to emit zero progress.\nAdditionally, statusline percent now shows 0% when previously it was omitted.\n\n## Screenshots\n\nhttps://github.com/user-attachments/assets/d27ff6fa-1351-43d8-b95f-79326523ca1c",
+    "closed_at": "2026-04-24T15:57:36Z",
+    "comment_data": [
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/39029#discussion_r3126861574"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/39029"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3126861574"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\n            -- \"Indeterminate\" progress (unknown percent).\n            vim.api.nvim_ui_send(string.format('\\027]9;4;3\\027\\\\'))\n```",
+            "commit_id": "af2c09a168fd87bb5d6372a37d436386e973068a",
+            "created_at": "2026-04-22T20:54:28Z",
+            "diff_hunk": "@@ -1107,7 +1107,11 @@ do\n       desc = 'Display native progress bars',\n       callback = function(ev)\n         if ev.data.status == 'running' then\n-          vim.api.nvim_ui_send(string.format('\\027]9;4;1;%d\\027\\\\', ev.data.percent))\n+          if ev.data.percent then\n+            vim.api.nvim_ui_send(string.format('\\027]9;4;1;%d\\027\\\\', ev.data.percent))\n+          else\n+            vim.api.nvim_ui_send(string.format('\\027]9;4;3\\027\\\\'))",
+            "html_url": "https://github.com/neovim/neovim/pull/39029#discussion_r3126861574",
+            "id": 3126861574,
+            "line": 1114,
+            "node_id": "PRRC_kwDOAPphoM66YB8G",
+            "original_commit_id": "0ba88987db584ca82819a34cf152f9f289643e91",
+            "original_line": 1113,
+            "original_position": 8,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/_core/defaults.lua",
+            "position": 51,
+            "pull_request_review_id": 4157889042,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39029",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3126861574/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-04-22T20:54:28Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3126861574",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/39029#discussion_r3126870178"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/39029"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3126870178"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "seems redundant with above test",
+            "commit_id": "af2c09a168fd87bb5d6372a37d436386e973068a",
+            "created_at": "2026-04-22T20:56:19Z",
+            "diff_hunk": "@@ -3600,6 +3675,11 @@ describe('progress-message', function()\n       t.pcall_err(api.nvim_echo, { { 'test-message' } }, false, { percent = 10 })\n     )\n \n+    eq(\n+      \"Conflict: title/source/status/percent/data not allowed with kind='echo'\",\n+      t.pcall_err(api.nvim_echo, { { 'test-message' } }, false, { percent = 0 })",
+            "html_url": "https://github.com/neovim/neovim/pull/39029#discussion_r3126870178",
+            "id": 3126870178,
+            "line": 3600,
+            "node_id": "PRRC_kwDOAPphoM66YECi",
+            "original_commit_id": "0ba88987db584ca82819a34cf152f9f289643e91",
+            "original_line": 3680,
+            "original_position": 88,
+            "original_start_line": 3679,
+            "path": "test/functional/ui/messages_spec.lua",
+            "position": 80,
+            "pull_request_review_id": 4157897698,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39029",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3126870178/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 3599,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-04-22T20:56:19Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3126870178",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/39029#discussion_r3126888273"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/39029"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3126888273"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "this is a lot of code that, AFAICT, is just testing that the `percent` field is passed through. if i'm wrong please point out where. if not let's drop this. we already have test coverage for nvim_echo.",
+            "commit_id": "0ba88987db584ca82819a34cf152f9f289643e91",
+            "created_at": "2026-04-22T21:00:11Z",
+            "diff_hunk": "@@ -3543,6 +3543,81 @@ describe('progress-message', function()\n     }, 'Progress autocmd receives progress update')\n   end)\n \n+  it('distinguishes zero percent from omitted percent', function()",
+            "html_url": "https://github.com/neovim/neovim/pull/39029#discussion_r3126888273",
+            "id": 3126888273,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM66YIdR",
+            "original_commit_id": "0ba88987db584ca82819a34cf152f9f289643e91",
+            "original_line": 3546,
+            "original_position": 4,
+            "original_start_line": null,
+            "path": "test/functional/ui/messages_spec.lua",
+            "position": 1,
+            "pull_request_review_id": 4157916875,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39029",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3126888273/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-04-22T21:00:11Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3126888273",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/39029#discussion_r3126894183"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/39029"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3126894183"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\n      // If percent=nil we omit it, it means \"indeterminate progress\". #39029\n      PUT_C(data, \"percent\", INTEGER_OBJ(msg_data->percent));\n```",
+            "commit_id": "af2c09a168fd87bb5d6372a37d436386e973068a",
+            "created_at": "2026-04-22T21:01:29Z",
+            "diff_hunk": "@@ -1148,7 +1148,9 @@ void do_autocmd_progress(MsgID msg_id, HlMessage msg, MessageData *msg_data)\n   PUT_C(data, \"id\", OBJECT_OBJ(msg_id));\n   PUT_C(data, \"text\", ARRAY_OBJ(messages));\n   if (msg_data != NULL) {\n-    PUT_C(data, \"percent\", INTEGER_OBJ(msg_data->percent));\n+    if (msg_data->percent >= 0) {\n+      PUT_C(data, \"percent\", INTEGER_OBJ(msg_data->percent));",
+            "html_url": "https://github.com/neovim/neovim/pull/39029#discussion_r3126894183",
+            "id": 3126894183,
+            "line": 1153,
+            "node_id": "PRRC_kwDOAPphoM66YJ5n",
+            "original_commit_id": "0ba88987db584ca82819a34cf152f9f289643e91",
+            "original_line": 1152,
+            "original_position": 15,
+            "original_start_line": null,
+            "path": "src/nvim/message.c",
+            "position": 64,
+            "pull_request_review_id": 4157923302,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39029",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3126894183/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-04-22T21:01:29Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3126894183",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/39029#discussion_r3126899826"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/39029"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3126899826"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\n///          - percent (`integer?`) |progress-message| percentage, or nil to signal \"unknown progress\".\n```",
+            "commit_id": "0ba88987db584ca82819a34cf152f9f289643e91",
+            "created_at": "2026-04-22T21:02:44Z",
+            "diff_hunk": "",
+            "html_url": "https://github.com/neovim/neovim/pull/39029#discussion_r3126899826",
+            "id": 3126899826,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM66YLRy",
+            "original_commit_id": "0ba88987db584ca82819a34cf152f9f289643e91",
+            "original_line": 826,
+            "original_position": 1,
+            "original_start_line": null,
+            "path": "src/nvim/api/vim.c",
+            "position": 1,
+            "pull_request_review_id": 4157929485,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39029",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3126899826/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-04-22T21:02:55Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3126899826",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/39029#discussion_r3135696804"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/39029"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3135696804"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "well, _slight_ distinction, i wanted to test that a `nil` percent field was _not_ passed through (which would fail without this pr). but this distinction seems pretty small related to what you're concerned about so i'll remove",
+            "commit_id": "0ba88987db584ca82819a34cf152f9f289643e91",
+            "created_at": "2026-04-24T05:44:53Z",
+            "diff_hunk": "@@ -3543,6 +3543,81 @@ describe('progress-message', function()\n     }, 'Progress autocmd receives progress update')\n   end)\n \n+  it('distinguishes zero percent from omitted percent', function()",
+            "html_url": "https://github.com/neovim/neovim/pull/39029#discussion_r3135696804",
+            "id": 3135696804,
+            "in_reply_to_id": 3126888273,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM665u-k",
+            "original_commit_id": "0ba88987db584ca82819a34cf152f9f289643e91",
+            "original_line": 3546,
+            "original_position": 4,
+            "original_start_line": null,
+            "path": "test/functional/ui/messages_spec.lua",
+            "position": 1,
+            "pull_request_review_id": 4168156323,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39029",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3135696804/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-04-24T05:44:53Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3135696804",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/16930781?v=4",
+                "events_url": "https://api.github.com/users/PeterCardenas/events{/privacy}",
+                "followers_url": "https://api.github.com/users/PeterCardenas/followers",
+                "following_url": "https://api.github.com/users/PeterCardenas/following{/other_user}",
+                "gists_url": "https://api.github.com/users/PeterCardenas/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/PeterCardenas",
+                "id": 16930781,
+                "login": "PeterCardenas",
+                "node_id": "MDQ6VXNlcjE2OTMwNzgx",
+                "organizations_url": "https://api.github.com/users/PeterCardenas/orgs",
+                "received_events_url": "https://api.github.com/users/PeterCardenas/received_events",
+                "repos_url": "https://api.github.com/users/PeterCardenas/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/PeterCardenas/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/PeterCardenas/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/PeterCardenas",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/39029#discussion_r3135698524"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/39029"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3135698524"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "i changed the above test to be 0 to sorta kill two birds with one stone",
+            "commit_id": "af2c09a168fd87bb5d6372a37d436386e973068a",
+            "created_at": "2026-04-24T05:45:22Z",
+            "diff_hunk": "@@ -3600,6 +3675,11 @@ describe('progress-message', function()\n       t.pcall_err(api.nvim_echo, { { 'test-message' } }, false, { percent = 10 })\n     )\n \n+    eq(\n+      \"Conflict: title/source/status/percent/data not allowed with kind='echo'\",\n+      t.pcall_err(api.nvim_echo, { { 'test-message' } }, false, { percent = 0 })",
+            "html_url": "https://github.com/neovim/neovim/pull/39029#discussion_r3135698524",
+            "id": 3135698524,
+            "in_reply_to_id": 3126870178,
+            "line": 3600,
+            "node_id": "PRRC_kwDOAPphoM665vZc",
+            "original_commit_id": "0ba88987db584ca82819a34cf152f9f289643e91",
+            "original_line": 3680,
+            "original_position": 88,
+            "original_start_line": 3679,
+            "path": "test/functional/ui/messages_spec.lua",
+            "position": 80,
+            "pull_request_review_id": 4168159108,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39029",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3135698524/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 3599,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-04-24T05:45:22Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3135698524",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/16930781?v=4",
+                "events_url": "https://api.github.com/users/PeterCardenas/events{/privacy}",
+                "followers_url": "https://api.github.com/users/PeterCardenas/followers",
+                "following_url": "https://api.github.com/users/PeterCardenas/following{/other_user}",
+                "gists_url": "https://api.github.com/users/PeterCardenas/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/PeterCardenas",
+                "id": 16930781,
+                "login": "PeterCardenas",
+                "node_id": "MDQ6VXNlcjE2OTMwNzgx",
+                "organizations_url": "https://api.github.com/users/PeterCardenas/orgs",
+                "received_events_url": "https://api.github.com/users/PeterCardenas/received_events",
+                "repos_url": "https://api.github.com/users/PeterCardenas/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/PeterCardenas/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/PeterCardenas/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/PeterCardenas",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/39029#discussion_r3138819989"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/39029"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3138819989"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "maybe that could be added to an existing test",
+            "commit_id": "0ba88987db584ca82819a34cf152f9f289643e91",
+            "created_at": "2026-04-24T15:51:02Z",
+            "diff_hunk": "@@ -3543,6 +3543,81 @@ describe('progress-message', function()\n     }, 'Progress autocmd receives progress update')\n   end)\n \n+  it('distinguishes zero percent from omitted percent', function()",
+            "html_url": "https://github.com/neovim/neovim/pull/39029#discussion_r3138819989",
+            "id": 3138819989,
+            "in_reply_to_id": 3126888273,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM67FpeV",
+            "original_commit_id": "0ba88987db584ca82819a34cf152f9f289643e91",
+            "original_line": 3546,
+            "original_position": 4,
+            "original_start_line": null,
+            "path": "test/functional/ui/messages_spec.lua",
+            "position": 1,
+            "pull_request_review_id": 4171758357,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39029",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3138819989/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-04-24T15:51:02Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3138819989",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        }
+    ],
     "comment_regular_data": [
         {
             "author_association": "MEMBER",
@@ -401,6 +957,96 @@
                 "url": "https://api.github.com/users/PeterCardenas",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "please update the pr description / commit message to be more accurate since the revisions",
+            "created_at": "2026-04-22T21:03:36Z",
+            "html_url": "https://github.com/neovim/neovim/pull/39029#issuecomment-4299955490",
+            "id": 4299955490,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/39029",
+            "node_id": "IC_kwDOAPphoM8AAAABAEwdIg",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4299955490/reactions"
+            },
+            "updated_at": "2026-04-22T21:03:36Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4299955490",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "@justinmk updated pr, would appreciate another look!",
+            "created_at": "2026-04-24T05:59:45Z",
+            "html_url": "https://github.com/neovim/neovim/pull/39029#issuecomment-4311031108",
+            "id": 4311031108,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/39029",
+            "node_id": "IC_kwDOAPphoM8AAAABAPUdRA",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4311031108/reactions"
+            },
+            "updated_at": "2026-04-24T05:59:45Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4311031108",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/16930781?v=4",
+                "events_url": "https://api.github.com/users/PeterCardenas/events{/privacy}",
+                "followers_url": "https://api.github.com/users/PeterCardenas/followers",
+                "following_url": "https://api.github.com/users/PeterCardenas/following{/other_user}",
+                "gists_url": "https://api.github.com/users/PeterCardenas/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/PeterCardenas",
+                "id": 16930781,
+                "login": "PeterCardenas",
+                "node_id": "MDQ6VXNlcjE2OTMwNzgx",
+                "organizations_url": "https://api.github.com/users/PeterCardenas/orgs",
+                "received_events_url": "https://api.github.com/users/PeterCardenas/received_events",
+                "repos_url": "https://api.github.com/users/PeterCardenas/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/PeterCardenas/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/PeterCardenas/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/PeterCardenas",
+                "user_view_type": "public"
+            }
         }
     ],
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/39029/comments",
@@ -499,9 +1145,9 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/PeterCardenas/neovim/pulls{/number}",
-            "pushed_at": "2026-04-20T05:35:57Z",
+            "pushed_at": "2026-04-26T22:09:34Z",
             "releases_url": "https://api.github.com/repos/PeterCardenas/neovim/releases{/id}",
-            "size": 376080,
+            "size": 377176,
             "ssh_url": "git@github.com:PeterCardenas/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/PeterCardenas/neovim/stargazers",
@@ -520,7 +1166,7 @@
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "0ba88987db584ca82819a34cf152f9f289643e91",
+        "sha": "af2c09a168fd87bb5d6372a37d436386e973068a",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/16930781?v=4",
             "events_url": "https://api.github.com/users/PeterCardenas/events{/privacy}",
@@ -566,6 +1212,15 @@
             "url": "https://api.github.com/repos/neovim/neovim/labels/tui"
         },
         {
+            "color": "C5DEF5",
+            "default": false,
+            "description": "UI messages, log messages, dialogs, progress, errors, warnings, feedback",
+            "id": 5637083595,
+            "name": "messages",
+            "node_id": "LA_kwDOAPphoM8AAAABT_8Ryw",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/messages"
+        },
+        {
             "color": "8B601E",
             "default": false,
             "description": "May contain trace amounts of GMO",
@@ -576,42 +1231,20 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "0403dd918bac419682bf52f29c9e62e03509d49b",
-    "merged_at": null,
+    "merge_commit_sha": "27191e0f4f4f9086180a8fbe3e52c1c280a70b09",
+    "merged_at": "2026-04-24T15:57:36Z",
     "milestone": null,
     "node_id": "PR_kwDOAPphoM7SKNHS",
     "number": 39029,
     "patch_url": "https://github.com/neovim/neovim/pull/39029.patch",
-    "requested_reviewers": [
-        {
-            "avatar_url": "https://avatars.githubusercontent.com/u/8965202?v=4",
-            "events_url": "https://api.github.com/users/gpanders/events{/privacy}",
-            "followers_url": "https://api.github.com/users/gpanders/followers",
-            "following_url": "https://api.github.com/users/gpanders/following{/other_user}",
-            "gists_url": "https://api.github.com/users/gpanders/gists{/gist_id}",
-            "gravatar_id": "",
-            "html_url": "https://github.com/gpanders",
-            "id": 8965202,
-            "login": "gpanders",
-            "node_id": "MDQ6VXNlcjg5NjUyMDI=",
-            "organizations_url": "https://api.github.com/users/gpanders/orgs",
-            "received_events_url": "https://api.github.com/users/gpanders/received_events",
-            "repos_url": "https://api.github.com/users/gpanders/repos",
-            "site_admin": false,
-            "starred_url": "https://api.github.com/users/gpanders/starred{/owner}{/repo}",
-            "subscriptions_url": "https://api.github.com/users/gpanders/subscriptions",
-            "type": "User",
-            "url": "https://api.github.com/users/gpanders",
-            "user_view_type": "public"
-        }
-    ],
+    "requested_reviewers": [],
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/39029/comments",
-    "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/0ba88987db584ca82819a34cf152f9f289643e91",
-    "title": "feat(api): distinguish 0 from omitted progress percent in nvim_echo",
-    "updated_at": "2026-04-20T01:38:48Z",
+    "state": "closed",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/af2c09a168fd87bb5d6372a37d436386e973068a",
+    "title": "feat(api): distinguish 0 from `nil` progress percent in nvim_echo",
+    "updated_at": "2026-04-24T15:57:57Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/39029",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/16930781?v=4",

@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/39116"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/aa9bb23bde533d6edea6697a202f531f1b4e3c72"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/d967c2dd4cb20735c7511c0d7126b631dcc01b32"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6820,
-            "forks_count": 6820,
+            "forks": 6849,
+            "forks_count": 6849,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -95,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1945,
-            "open_issues_count": 1945,
+            "open_issues": 1932,
+            "open_issues_count": 1932,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -121,11 +121,11 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2026-04-21T04:08:53Z",
+            "pushed_at": "2026-04-28T04:22:56Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 378047,
+            "size": 379951,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 98914,
+            "stargazers_count": 99156,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -143,14 +143,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2026-04-21T03:52:29Z",
+            "updated_at": "2026-04-28T03:32:33Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 98914,
-            "watchers_count": 98914,
+            "watchers": 99156,
+            "watchers_count": 99156,
             "web_commit_signoff_required": false
         },
-        "sha": "5b0ad4a0607498616b984c63ae1a6903cb835c66",
+        "sha": "c822a2657c78e4b9d3798dfdf93e365460b5b885",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -175,7 +175,216 @@
     },
     "body": "Problem:\r\n\r\nStandalone `nvim -ll` scripts do not provide `vim.wait()`, so tests and\r\nhelper scripts that rely on luv timers need to open-code their own\r\npolling loops.\r\n\r\nSolution:\r\n\r\nLoad a luv-backed `vim.wait()` implementation in standalone mode,\r\ndocument the `-ll` semantics, and add functional coverage for\r\ntimer-driven success and timeout behavior.\r\n\r\nAI-assisted: Codex\r\n\r\n---\r\n\r\nRelated #38116 ",
     "closed_at": null,
-    "comment_data": [],
+    "comment_data": [
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/39116#discussion_r3147508903"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/39116"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3147508903"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "This is the new code. Helpful to call this out since the diff isn't obvious.",
+            "commit_id": "d967c2dd4cb20735c7511c0d7126b631dcc01b32",
+            "created_at": "2026-04-27T13:09:37Z",
+            "diff_hunk": "@@ -0,0 +1,155 @@\n+local pack_len = require('vim.F').pack_len\n+local uv = vim.uv\n+\n+local has_editor_loop = vim._core.loop_poll ~= nil\n+\n+--- Waits up to `time` milliseconds, until `callback` returns `true` (success). Executes\n+--- `callback` immediately, then on user events, internal events, and approximately every\n+--- `interval` milliseconds (default 200). Returns `true` plus any remaining callback\n+--- results on success.\n+---\n+--- Nvim processes other events while waiting.\n+--- Cannot be called during an |api-fast| event.\n+--- In standalone `nvim -ll` mode this polls the standalone luv loop, so `fast_only`\n+--- has no effect and interrupts are not reported.\n+---\n+--- Examples:\n+---\n+--- ```lua\n+--- -- Wait for 100 ms, allowing other events to process.\n+--- vim.wait(100)\n+---\n+--- -- Wait up to 1000 ms or until `vim.g.foo` is true, at intervals of ~500 ms.\n+--- vim.wait(1000, function() return vim.g.foo end, 500)\n+---\n+--- -- Wait indefinitely until `vim.g.foo` is true, and get the callback results.\n+--- local ok, rv1, rv2, rv3 = vim.wait(math.huge, function()\n+---   return vim.g.foo, 'a', 42, { ok = { 'yes' } }\n+--- end)\n+---\n+--- -- Schedule a function to set a value in 100ms. This would wait 10s if blocked, but actually\n+--- -- only waits 100ms because `vim.wait` processes other events while waiting.\n+--- vim.defer_fn(function() vim.g.timer_result = true end, 100)\n+--- if vim.wait(10000, function() return vim.g.timer_result end) then\n+---   print('Only waiting a little bit of time!')\n+--- end\n+--- ```\n+---\n+--- @param time number Number of milliseconds to wait. Must be non-negative number, any fractional\n+--- part is truncated.\n+--- @param callback? fun(): boolean, ... Optional callback. Waits until {callback} returns true\n+--- @param interval? integer (Approximate) number of milliseconds to wait between polls\n+--- @param fast_only? boolean If true, only |api-fast| events will be processed.\n+--- @return boolean, nil|-1|-2, ...\n+---     - If callback returns `true` before timeout: `true, ...` (remaining callback results).\n+---     - On timeout: `false, -1`\n+---     - On interrupt: `false, -2`\n+---     - On error: the error is raised.\n+function vim.wait(time, callback, interval, fast_only)\n+  if vim.in_fast_event and vim.in_fast_event() then\n+    error('E5560: vim.wait must not be called in a fast event context', 0)\n+  end\n+\n+  vim.validate('time', time, 'number')\n+  if time < 0 then\n+    error('timeout must be >= 0')\n+  end\n+  local has_deadline = time == time and time ~= math.huge\n+  if has_deadline then\n+    time = math.floor(time)\n+  end\n+\n+  vim.validate('callback', callback, 'callable', true)\n+\n+  vim.validate('interval', interval, 'number', true)\n+  if interval then\n+    interval = math.floor(interval)\n+    if interval < 0 then\n+      error('interval must be >= 0')\n+    end\n+  else\n+    interval = 200\n+  end\n+\n+  vim.validate('fast_only', fast_only, 'boolean', true)\n+  if fast_only == nil then\n+    fast_only = false\n+  end\n+\n+  local start = uv.hrtime()\n+  local timer --- @type uv.uv_timer_t?\n+\n+  local function cleanup()\n+    if timer and not timer:is_closing() then\n+      timer:stop()\n+      timer:close()\n+    end\n+  end\n+\n+  if interval > 0 then\n+    timer = assert(uv.new_timer())\n+\n+    if has_editor_loop then\n+      timer:start(interval, interval, function()\n+        -- If Nvim exits while loop_poll() is blocked, vim.wait() does not\n+        -- resume.\n+        if vim.v.exiting ~= vim.NIL then\n+          cleanup()\n+        end\n+      end)\n+    end\n+  end\n+\n+  if has_editor_loop then\n+    -- Flush screen updates before blocking.\n+    vim._core.ui_flush()\n+  end\n+\n+  while true do\n+    if has_editor_loop and vim._core.check_interrupt() then\n+      cleanup()\n+      return false, -2\n+    end\n+\n+    if callback then\n+      local results = pack_len(pcall(callback))\n+      if not results[1] then\n+        cleanup()\n+        error(results[2], 0)\n+      elseif results[2] then\n+        cleanup()\n+        return true, unpack(results, 3, results.n)\n+      end\n+    end\n+\n+    local remaining_timeout = -1\n+    if has_deadline then\n+      local remaining_ms = time - (uv.hrtime() - start) / 1e6\n+      if remaining_ms <= 0 then\n+        cleanup()\n+        return false, -1\n+      end\n+\n+      -- loop_poll() takes an integer timeout, so cap each individual poll\n+      -- while still honoring larger overall waits.\n+      remaining_timeout = math.min(math.ceil(remaining_ms), vim._maxint)\n+    end\n+\n+    if has_editor_loop then\n+      -- The dummy timer wakes `vim._core.loop_poll()` on interval boundaries.\n+      -- Without it, polling would only resume for unrelated events or the final timeout.\n+      vim._core.loop_poll(remaining_timeout, fast_only)\n+    else\n+      -- `uv.run('once')` does not provide a bounded sleep by itself. This timer is\n+      -- our explicit wakeup so polling still advances when no other uv handle does.\n+      if timer then\n+        local delay = has_deadline and math.min(interval, remaining_timeout) or interval\n+        timer:start(delay, 0, function() end)\n+      end\n+      uv.run('once')\n+      if timer then\n+        timer:stop()\n+      end",
+            "html_url": "https://github.com/neovim/neovim/pull/39116#discussion_r3147508903",
+            "id": 3147508903,
+            "line": 152,
+            "node_id": "PRRC_kwDOAPphoM67myyn",
+            "original_commit_id": "d967c2dd4cb20735c7511c0d7126b631dcc01b32",
+            "original_line": 152,
+            "original_position": 152,
+            "original_start_line": 142,
+            "path": "runtime/lua/vim/_core/wait.lua",
+            "position": 152,
+            "pull_request_review_id": 4181145069,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39116",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3147508903/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 142,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-04-27T13:09:37Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3147508903",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/39116#discussion_r3147512255"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/39116"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3147512255"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "?",
+            "commit_id": "d967c2dd4cb20735c7511c0d7126b631dcc01b32",
+            "created_at": "2026-04-27T13:10:07Z",
+            "diff_hunk": "@@ -1472,14 +1472,18 @@ vim.str_utfindex({s}, {encoding}, {index}, {strict_indexing})\n     Return: ~\n         (`integer`)\n \n+\n+\n+",
+            "html_url": "https://github.com/neovim/neovim/pull/39116#discussion_r3147512255",
+            "id": 3147512255,
+            "line": 1477,
+            "node_id": "PRRC_kwDOAPphoM67mzm_",
+            "original_commit_id": "d967c2dd4cb20735c7511c0d7126b631dcc01b32",
+            "original_line": 1477,
+            "original_position": 6,
+            "original_start_line": 1475,
+            "path": "runtime/doc/lua.txt",
+            "position": 6,
+            "pull_request_review_id": 4181148782,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39116",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3147512255/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 1475,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-04-27T13:10:07Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3147512255",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/39116#discussion_r3147653916"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/39116"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3147653916"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Just docgen artifacts, don't think it's due to anything I've added.",
+            "commit_id": "d967c2dd4cb20735c7511c0d7126b631dcc01b32",
+            "created_at": "2026-04-27T13:32:35Z",
+            "diff_hunk": "@@ -1472,14 +1472,18 @@ vim.str_utfindex({s}, {encoding}, {index}, {strict_indexing})\n     Return: ~\n         (`integer`)\n \n+\n+\n+",
+            "html_url": "https://github.com/neovim/neovim/pull/39116#discussion_r3147653916",
+            "id": 3147653916,
+            "in_reply_to_id": 3147512255,
+            "line": 1477,
+            "node_id": "PRRC_kwDOAPphoM67nWMc",
+            "original_commit_id": "d967c2dd4cb20735c7511c0d7126b631dcc01b32",
+            "original_line": 1477,
+            "original_position": 6,
+            "original_start_line": 1475,
+            "path": "runtime/doc/lua.txt",
+            "position": 6,
+            "pull_request_review_id": 4181308840,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39116",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3147653916/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 1475,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-04-27T13:32:36Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3147653916",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",
+                "events_url": "https://api.github.com/users/lewis6991/events{/privacy}",
+                "followers_url": "https://api.github.com/users/lewis6991/followers",
+                "following_url": "https://api.github.com/users/lewis6991/following{/other_user}",
+                "gists_url": "https://api.github.com/users/lewis6991/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/lewis6991",
+                "id": 7904185,
+                "login": "lewis6991",
+                "node_id": "MDQ6VXNlcjc5MDQxODU=",
+                "organizations_url": "https://api.github.com/users/lewis6991/orgs",
+                "received_events_url": "https://api.github.com/users/lewis6991/received_events",
+                "repos_url": "https://api.github.com/users/lewis6991/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
+            }
+        }
+    ],
     "comment_regular_data": [
         {
             "author_association": "MEMBER",
@@ -311,6 +520,96 @@
                 "url": "https://api.github.com/users/justinmk",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "Just to reiterate, if this is unblocking something then I suppose it's fine, but long-term I would like to know why we can't have `nvim -l` serve the purpose of `nvim -ll`. \r\n\r\nThe goal of `nvim -l` is to work like the `lua` cli, and Nvim features should not get in the way unless the script uses Nvim features. `nvim -l` already tries to get out of the way by default:\r\n\r\n      Skips user |config| unless |-u| was given.\r\n      Disables plugins unless 'loadplugins' was set.\r\n      Disables |shada| unless |-i| was given.\r\n      Disables swapfile (like |-n|).\r\n\r\nthough there are some quicks still, which we should fix.\r\n\r\nI would like to know what specifically is blocking `nvim -l` from replacing `-ll`, so that we can track that in the backlog. I guess one answer is \"worker threads\", but more detail would be helpful. Maybe `nvim -l` could detect that somehow and support it automatically.",
+            "created_at": "2026-04-27T13:04:14Z",
+            "html_url": "https://github.com/neovim/neovim/pull/39116#issuecomment-4327184553",
+            "id": 4327184553,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/39116",
+            "node_id": "IC_kwDOAPphoM8AAAABAeuYqQ",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4327184553/reactions"
+            },
+            "updated_at": "2026-04-27T13:12:14Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4327184553",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "> Just to reiterate, if this is unblocking something then I suppose it's fine, but long-term I would like to know why we can't have `nvim -l` serve the purpose of `nvim -ll`.\r\n> \r\n> The goal of `nvim -l` is to work like the `lua` cli, and Nvim features should not get in the way unless the script uses Nvim features. `nvim -l` already tries to get out of the way by default:\r\n> \r\n> ```\r\n>   Skips user |config| unless |-u| was given.\r\n>   Disables plugins unless 'loadplugins' was set.\r\n>   Disables |shada| unless |-i| was given.\r\n>   Disables swapfile (like |-n|).\r\n> ```\r\n> \r\n> though there are some quicks still, which we should fix.\r\n> \r\n> I would like to know what specifically is blocking `nvim -l` from replacing `-ll`, so that we can track that in the backlog. I guess one answer is \"worker threads\", but more detail would be helpful. Maybe `nvim -l` could detect that somehow and support it automatically.\r\n\r\nSure. I haven't got a strong answer to any of these questions. The thing that started this was me wanting to eventually have `vim.async` available to the test harness. The test harness is currently invoked with `nvim -ll` but I haven't investigated if `nvim -l` can be used.\r\n\r\nWith this PR I now understand how our internal `loop_poll` relates to `uv.run` which Is something I was interested in.\r\n\r\nWill leave this open for a bit, but tbh, I will probably just close this. We should stop supporting `-ll` publicly and only use something equivalent for our build purposes (as it is needed for the generators).",
+            "created_at": "2026-04-27T13:38:39Z",
+            "html_url": "https://github.com/neovim/neovim/pull/39116#issuecomment-4327424578",
+            "id": 4327424578,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/39116",
+            "node_id": "IC_kwDOAPphoM8AAAABAe9CQg",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 1,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4327424578/reactions"
+            },
+            "updated_at": "2026-04-27T13:38:39Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4327424578",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",
+                "events_url": "https://api.github.com/users/lewis6991/events{/privacy}",
+                "followers_url": "https://api.github.com/users/lewis6991/followers",
+                "following_url": "https://api.github.com/users/lewis6991/following{/other_user}",
+                "gists_url": "https://api.github.com/users/lewis6991/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/lewis6991",
+                "id": 7904185,
+                "login": "lewis6991",
+                "node_id": "MDQ6VXNlcjc5MDQxODU=",
+                "organizations_url": "https://api.github.com/users/lewis6991/orgs",
+                "received_events_url": "https://api.github.com/users/lewis6991/received_events",
+                "repos_url": "https://api.github.com/users/lewis6991/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/lewis6991",
+                "user_view_type": "public"
+            }
         }
     ],
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/39116/comments",
@@ -409,9 +708,9 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/lewis6991/neovim/pulls{/number}",
-            "pushed_at": "2026-04-20T15:42:50Z",
+            "pushed_at": "2026-04-27T16:59:12Z",
             "releases_url": "https://api.github.com/repos/lewis6991/neovim/releases{/id}",
-            "size": 365247,
+            "size": 366773,
             "ssh_url": "git@github.com:lewis6991/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/lewis6991/neovim/stargazers",
@@ -430,7 +729,7 @@
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "aa9bb23bde533d6edea6697a202f531f1b4e3c72",
+        "sha": "d967c2dd4cb20735c7511c0d7126b631dcc01b32",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",
             "events_url": "https://api.github.com/users/lewis6991/events{/privacy}",
@@ -467,6 +766,15 @@
             "url": "https://api.github.com/repos/neovim/neovim/labels/lua"
         },
         {
+            "color": "0052CC",
+            "default": false,
+            "description": "",
+            "id": 6664957181,
+            "name": "ci:skip-news",
+            "node_id": "LA_kwDOAPphoM8AAAABjUMs_Q",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/ci:skip-news"
+        },
+        {
             "color": "8B601E",
             "default": false,
             "description": "May contain trace amounts of GMO",
@@ -477,7 +785,7 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": null,
+    "merge_commit_sha": "25c2bce304a708b6b4b603c154d78b620bdf5112",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM7S8IBA",
@@ -488,9 +796,9 @@
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/39116/comments",
     "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/aa9bb23bde533d6edea6697a202f531f1b4e3c72",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/d967c2dd4cb20735c7511c0d7126b631dcc01b32",
     "title": "feat(lua): add standalone vim.wait",
-    "updated_at": "2026-04-16T11:39:12Z",
+    "updated_at": "2026-04-27T13:38:39Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/39116",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",
