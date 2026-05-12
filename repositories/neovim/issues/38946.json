@@ -3,7 +3,7 @@
     "assignee": null,
     "assignees": [],
     "author_association": "CONTRIBUTOR",
-    "body": "### Problem\n\nvim.net.request is limited to GET requests\n\n### Expected behavior\n\n_Moved from [discussion](https://github.com/neovim/neovim/discussions/38944)_\n\n\nThe idea for this plan is to add a new API to the `vim.net` module that mirrors the Python `requests` library, providing direct HTTP method functions (`vim.net.get`, `vim.net.post`, etc.) that all call a modified version of `vim.net.request` function.\n\n## Current State\n\n- `vim.net.request(url, opts, on_response)` only supports GET requests\n- No body/post data support\n- No HTTP method parameter\n- Response only contains `body` field\n\n## New API\n\n### Signature Change (overload)\n\n```\nvim.net.request(method, url, opts, on_response)\n```\n\n| Parameter | Type | Required | Description |\n|-----------|------|----------|-------------|\n| method | string | Yes | HTTP method: GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS |\n| url | string | Yes | Target URL |\n| opts | vim.net.request.Opts | No | Request options |\n| on_response | fun(err?: string, response?: vim.net.request.Response) | No | Callback on completion |\n\nFor backwards compatibility we can have a local `request` function with the new signature and keep the current one marked as deprecated. All the new `vim.[verb]` methods will use the local function\n\n### `vim.net.request.Opts` Fields\n\n| Field | Type | Description |\n|-------|------|-------------|\n| body | string? | Request body to send (raw string) |\n| json | table? | Request body as JSON (auto-serializes, sets Content-Type) |\n| headers | table? | Custom headers to send |\n| outpath | string? | File path to save response body |\n| outbuf | integer? | Buffer to save response body |\n| retry | integer? | Number of retries on transient failures |\n\n\n### Response Fields\n\n| Field | Type | Description |\n|-------|------|-------------|\n| body | string | Response body content |\n| status | integer | HTTP status code |\n| headers | table | Response headers |\n\n### HTTP Status Constants\n\n```lua\nvim.net.STATUS_OK = 200\nvim.net.STATUS_CREATED = 201\nvim.net.STATUS_NO_CONTENT = 204\nvim.net.STATUS_MOVED_PERMANENTLY = 301\nvim.net.STATUS_FOUND = 302\nvim.net.STATUS_NOT_MODIFIED = 304\nvim.net.STATUS_BAD_REQUEST = 400\nvim.net.STATUS_UNAUTHORIZED = 401\nvim.net.STATUS_FORBIDDEN = 403\nvim.net.STATUS_NOT_FOUND = 404\nvim.net.STATUS_METHOD_NOT_ALLOWED = 405\nvim.net.STATUS_INTERNAL_SERVER_ERROR = 500\nvim.net.STATUS_BAD_GATEWAY = 502\nvim.net.STATUS_SERVICE_UNAVAILABLE = 503\n```\n\n### Convenience Methods\n\nAll methods call `vim.net.request` under the hood:\n\n```lua\nvim.net.get(url, opts, on_response)       -- vim.net.request('GET', url, opts, on_response)\nvim.net.post(url, opts, on_response)      -- vim.net.request('POST', url, opts, on_response)\nvim.net.put(url, opts, on_response)      -- vim.net.request('PUT', url, opts, on_response)\nvim.net.patch(url, opts, on_response)    -- vim.net.request('PATCH', url, opts, on_response)\nvim.net.delete(url, opts, on_response)   -- vim.net.request('DELETE', url, opts, on_response)\nvim.net.head(url, opts, on_response)     -- vim.net.request('HEAD', url, opts, on_response)\n```\n\n## Implementation Notes\n\n1. Auto-set `Content-Type: application/json` when `opts.json` is used\n2. For `HEAD` requests, use curl's `-I` flag\n\n\nWould love to hear some thoughts on this plan. I am able to start small draft implementations for each part if you guys think it's worth it",
+    "body": "### Problem\n\nvim.net.request is limited to GET requests\n\n### Expected behavior\n\n_Moved from [discussion](https://github.com/neovim/neovim/discussions/38944)_\n\n\nThe idea for this plan is to add a new API to the `vim.net` module that mirrors the Python `requests` library, providing direct HTTP method functions (`vim.net.get`, `vim.net.post`, etc.) that all call a modified version of `vim.net.request` function.\n\n## Current State\n\n- `vim.net.request(url, opts, on_response)` only supports GET requests\n- No body/post data support\n- No HTTP method parameter\n- Response only contains `body` field\n\n## New API\n\n### Signature Change (overload)\n\n```\nvim.net.request(method, url, opts, on_response)\n```\n\n| Parameter | Type | Required | Description |\n|-----------|------|----------|-------------|\n| method | string | Yes | HTTP method: GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS |\n| url | string | Yes | Target URL |\n| opts | vim.net.request.Opts | No | Request options |\n| on_response | fun(err?: string, response?: vim.net.request.Response) | No | Callback on completion |\n\nFor backwards compatibility we can have a local `request` function with the new signature and keep the current one marked as deprecated. All the new `vim.[verb]` methods will use the local function\n\n### `vim.net.request.Opts` Fields\n\n| Field | Type | Description |\n|-------|------|-------------|\n| body | string? | Request body to send (raw string) |\n| json | table? | Request body as JSON (auto-serializes, sets Content-Type) |\n| headers | table? | Custom headers to send |\n| outpath | string? | File path to save response body |\n| outbuf | integer? | Buffer to save response body |\n| retry | integer? | Number of retries on transient failures |\n\n\n### Response Fields\n\n| Field | Type | Description |\n|-------|------|-------------|\n| body | string | Response body content |\n| status | integer | HTTP status code |\n| headers | table | Response headers |\n\n### HTTP Status Constants\n\n```lua\n---@enum vim.net.HttpStatusCode\nlocal M.status = {\n   OK = 200,\n   -- ...\n}\n\nvim.net.status.OK = 200\n-- ...\n```\n\n### Convenience Methods\n\nAll methods call `vim.net.request` under the hood:\n\n```lua\nvim.net.get(url, opts, on_response)       -- vim.net.request('GET', url, opts, on_response)\nvim.net.post(url, opts, on_response)      -- vim.net.request('POST', url, opts, on_response)\nvim.net.put(url, opts, on_response)      -- vim.net.request('PUT', url, opts, on_response)\nvim.net.patch(url, opts, on_response)    -- vim.net.request('PATCH', url, opts, on_response)\nvim.net.delete(url, opts, on_response)   -- vim.net.request('DELETE', url, opts, on_response)\nvim.net.head(url, opts, on_response)     -- vim.net.request('HEAD', url, opts, on_response)\n```\n\n## Implementation Notes\n\n1. Auto-set `Content-Type: application/json` when `opts.json` is used\n2. For `HEAD` requests, use curl's `-I` flag\n\n\nWould love to hear some thoughts on this plan. I am able to start small draft implementations for each part if you guys think it's worth it",
     "closed_at": null,
     "closed_by": null,
     "comment_data": [
@@ -826,7 +826,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 29,
+        "closed_issues": 32,
         "created_at": "2025-02-01T14:58:39Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -856,10 +856,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/48/labels",
         "node_id": "MI_kwDOAPphoM4AuvCx",
         "number": 48,
-        "open_issues": 66,
+        "open_issues": 68,
         "state": "open",
         "title": "0.13",
-        "updated_at": "2026-05-02T02:51:46Z",
+        "updated_at": "2026-05-11T22:17:17Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/48"
     },
     "node_id": "I_kwDOAPphoM7815Te",
@@ -898,7 +898,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyv",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2026-05-02T16:28:01Z",
+    "updated_at": "2026-05-08T14:35:17Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/38946",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/178641?v=4",

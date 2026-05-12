@@ -202,7 +202,7 @@
             "performed_via_github_app": null,
             "pin": null,
             "reactions": {
-                "+1": 0,
+                "+1": 3,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -210,7 +210,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 0,
+                "total_count": 3,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4198960427/reactions"
             },
             "updated_at": "2026-04-07T12:31:55Z",
@@ -236,9 +236,55 @@
                 "url": "https://api.github.com/users/juuzo",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "NONE",
+            "body": "Workaround for Shift+Number Keys in xterm.js Terminals\n\n```lua\n  -------------------------------------------------------------------------------\n  -- Terminal Compatibility Fix (neovim/neovim#38651)\n  -- Kitty protocol causes Shift+number keys to fail in xterm.js terminals (VSCode, Docker)\n  -- Cause: Kitty protocol sends key codes with modifiers instead of direct symbol characters\n  -- Neovim internal format: 0x80 0xfc 0x02 <ascii> (Shift modifier + raw key)\n  -------------------------------------------------------------------------------\n  local function needs_shift_number_fix()\n    if vim.env.TERM_PROGRAM == \"vscode\" then return true end\n    if vim.uv.fs_stat(\"/.dockerenv\") then return true end\n    if vim.env.NVIM_SHIFT_NUMBER_FIX == \"1\" then return true end\n    return false\n  end\n\n  if needs_shift_number_fix() then\n    -- US keyboard layout: Shift+number keys → symbols\n    local shift_symbol = {\n      [\"0\"] = \")\", [\"1\"] = \"!\", [\"2\"] = \"@\", [\"3\"] = \"#\", [\"4\"] = \"$\",\n      [\"5\"] = \"%\", [\"6\"] = \"^\", [\"7\"] = \"&\", [\"8\"] = \"*\", [\"9\"] = \"(\",\n    }\n\n    -- Convert Neovim internal key codes to actual characters\n    local function translate_shift_key(char)\n      if not char or char == \"\" then return nil end\n      if #char == 4 and char:byte(1) == 0x80 and char:byte(2) == 0xfc and char:byte(3) == 0x02 then\n        local key = string.char(char:byte(4))\n        return shift_symbol[key] or char\n      end\n      return char\n    end\n\n    -- Wrapper for getcharstr: get character and translate Shift+number keys\n    local function getchar_translated()\n      local ok, char = pcall(vim.fn.getcharstr)\n      if not ok or not char or char == \"\" or char == \"\\x1b\" then return nil end\n      return translate_shift_key(char)\n    end\n\n    -- Basic mode mappings (covers most scenarios)\n    for num, sym in pairs(shift_symbol) do\n      vim.keymap.set({ \"n\", \"x\", \"s\", \"o\", \"i\", \"c\", \"t\", \"l\" }, \"<S-\" .. num .. \">\", sym, { noremap = true })\n    end\n\n    -- Custom r command (getcharstr bypasses mapping mechanism)\n    vim.keymap.set(\"n\", \"r\", function()\n      local char = getchar_translated()\n      if char then vim.cmd(\"normal! r\" .. char) end\n    end, { noremap = true })\n\n    -- Custom f/F/t/T commands\n    for _, cmd in ipairs({ \"f\", \"F\", \"t\", \"T\" }) do\n      vim.keymap.set({ \"n\", \"x\", \"o\" }, cmd, function()\n        local char = getchar_translated()\n        if char then vim.cmd(\"normal! \" .. cmd .. char) end\n      end, { noremap = true })\n    end\n  end\n```\n  This workaround:\n  1. Detects xterm.js-based terminals (VSCode, Docker containers) or manual opt-in via NVIM_SHIFT_NUMBER_FIX=1\n  2. Maps <S-0> through <S-9> to their corresponding symbols for all modes\n  3. Patches r, f, F, t, T commands which use getcharstr() internally (bypassing normal key mappings)",
+            "created_at": "2026-05-11T11:37:34Z",
+            "html_url": "https://github.com/neovim/neovim/issues/38651#issuecomment-4420318511",
+            "id": 4420318511,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/38651",
+            "node_id": "IC_kwDOAPphoM8AAAABB3i1Lw",
+            "performed_via_github_app": null,
+            "pin": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4420318511/reactions"
+            },
+            "updated_at": "2026-05-11T11:44:18Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4420318511",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/11674967?v=4",
+                "events_url": "https://api.github.com/users/sqjian/events{/privacy}",
+                "followers_url": "https://api.github.com/users/sqjian/followers",
+                "following_url": "https://api.github.com/users/sqjian/following{/other_user}",
+                "gists_url": "https://api.github.com/users/sqjian/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/sqjian",
+                "id": 11674967,
+                "login": "sqjian",
+                "node_id": "MDQ6VXNlcjExNjc0OTY3",
+                "organizations_url": "https://api.github.com/users/sqjian/orgs",
+                "received_events_url": "https://api.github.com/users/sqjian/received_events",
+                "repos_url": "https://api.github.com/users/sqjian/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/sqjian/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/sqjian/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/sqjian",
+                "user_view_type": "public"
+            }
         }
     ],
-    "comments": 5,
+    "comments": 6,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/38651/comments",
     "created_at": "2026-03-31T20:38:09Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/38651/events",
@@ -296,7 +342,7 @@
     "performed_via_github_app": null,
     "pinned_comment": null,
     "reactions": {
-        "+1": 4,
+        "+1": 7,
         "-1": 0,
         "confused": 0,
         "eyes": 0,
@@ -304,7 +350,7 @@
         "hooray": 0,
         "laugh": 0,
         "rocket": 0,
-        "total_count": 4,
+        "total_count": 7,
         "url": "https://api.github.com/repos/neovim/neovim/issues/38651/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
@@ -327,7 +373,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyr",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2026-04-07T12:31:55Z",
+    "updated_at": "2026-05-11T11:44:18Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/38651",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/42769475?v=4",

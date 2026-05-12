@@ -6,8 +6,55 @@
     "body": "## Problem\n\n1. unclear guidance about performance strategy of vim.pos/vim.range\n2. `vim.treesitter` uses its own special Range4/Range6 shapes internally (and externally in some cases, e.g. `node:range() => Range4`) https://github.com/neovim/neovim/blob/d40875a2f844d0005441aa0db47599e2f6b63be1/runtime/lua/vim/treesitter/_range.lua#L10-L17\n\n\n<details><summary>Working assumptions</summary>\n<p>\n1. `vim.pos` needs \"offsets\", since that's part of `getpos()`.\n2. users should never have to deal with the special special TS `RangeX` types, or at least `vim.pos` should be able to convert them losslessly into something more usable\n3. `vim.treesitter` should accept `vim.pos` shapes at the \"edges\", even if it uses special `RangeX` types internally\n</p>\n</details> \n\n\n\n\n## Analysis\n\n\n- friendly fields (`__index` lookups) are about 2-3x slower in puc-lua or luajit-off\n- `vim.treesitter` uses raw `Range6` arrays for injected regions, including byte offsets*. Fast even on PUC-Lua.\n    - That shape matters because tree-sitter included ranges need row/col/byte tuples; vim.pos only carries row/col/buf.\n\n<details><summary>Stress Benchmark</summary>\n<p>\n\n    Tiny injections stress allocation volume\n    \n    Stress Benchmark\n    \n    Created/stored 100k tiny ranges:\n        Range6 raw arrays: 1.93ms, 17.4MiB\n        vim.range objects: 1.29ms, 12.0MiB with JIT on, but no byte offsets, so not equivalent\n        two vim.pos + wrapper: 3.24ms, 29.9MiB\n    With JIT off:\n        Range6 raw arrays: 2.65ms\n        vim.range objects: 6.88ms\n        two vim.pos + wrapper: 31.5ms\n\n</p>\n</details> \n\n## Proposal\n\nbased on @ofseed ([ref](https://github.com/neovim/neovim/issues/38561#issuecomment-4326214346)) and @lewis6991 perf analysis, `vim.pos` and `vim.range` should be fine for treesitter (even internally, i.e. replace `Range4` / `Range6`), *if*:\n\n- `vim.range` learns bytes offsets and changes its layout. \n    - I.e. it needs to change its layout to match `Range6`. Then we can safely replace `Range6` with `vim.range`. (The metatable is low-cost; `vim.treesitter` only cares about the numeric indices.)",
     "closed_at": null,
     "closed_by": null,
-    "comment_data": [],
-    "comments": 0,
+    "comment_data": [
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "Note: relevant for `vim.treesitter.select()` to return information about selection. https://github.com/neovim/neovim/pull/39069#discussion_r3188336273",
+            "created_at": "2026-05-06T02:41:12Z",
+            "html_url": "https://github.com/neovim/neovim/issues/39454#issuecomment-4384688750",
+            "id": 4384688750,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/39454",
+            "node_id": "IC_kwDOAPphoM8AAAABBVkKbg",
+            "performed_via_github_app": null,
+            "pin": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4384688750/reactions"
+            },
+            "updated_at": "2026-05-06T11:57:00Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4384688750",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/121571396?v=4",
+                "events_url": "https://api.github.com/users/nathanzeng/events{/privacy}",
+                "followers_url": "https://api.github.com/users/nathanzeng/followers",
+                "following_url": "https://api.github.com/users/nathanzeng/following{/other_user}",
+                "gists_url": "https://api.github.com/users/nathanzeng/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/nathanzeng",
+                "id": 121571396,
+                "login": "nathanzeng",
+                "node_id": "U_kgDOBz8IRA",
+                "organizations_url": "https://api.github.com/users/nathanzeng/orgs",
+                "received_events_url": "https://api.github.com/users/nathanzeng/received_events",
+                "repos_url": "https://api.github.com/users/nathanzeng/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/nathanzeng/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/nathanzeng/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/nathanzeng",
+                "user_view_type": "public"
+            }
+        }
+    ],
+    "comments": 1,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/39454/comments",
     "created_at": "2026-04-27T19:56:31Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/39454/events",
@@ -52,7 +99,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 19,
+        "closed_issues": 32,
         "created_at": "2025-02-01T14:58:39Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -82,10 +129,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/48/labels",
         "node_id": "MI_kwDOAPphoM4AuvCx",
         "number": 48,
-        "open_issues": 67,
+        "open_issues": 68,
         "state": "open",
         "title": "0.13",
-        "updated_at": "2026-04-27T20:30:14Z",
+        "updated_at": "2026-05-11T22:17:17Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/48"
     },
     "node_id": "I_kwDOAPphoM8AAAABAphY7Q",
@@ -97,12 +144,12 @@
         "+1": 0,
         "-1": 0,
         "confused": 0,
-        "eyes": 1,
+        "eyes": 2,
         "heart": 0,
         "hooray": 0,
         "laugh": 0,
         "rocket": 0,
-        "total_count": 1,
+        "total_count": 2,
         "url": "https://api.github.com/repos/neovim/neovim/issues/39454/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
@@ -114,7 +161,7 @@
         "total": 0
     },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/39454/timeline",
-    "title": "perf: use vim.range in vim.treesitter",
+    "title": "perf: use vim.range in vim.treesitter, deemphasize Range4/Range6",
     "type": {
         "color": "blue",
         "created_at": "2024-01-25T10:10:19Z",
@@ -125,7 +172,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyv",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2026-04-27T20:33:44Z",
+    "updated_at": "2026-05-06T11:57:00Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/39454",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",

@@ -1,0 +1,113 @@
+{
+    "active_lock_reason": null,
+    "assignee": null,
+    "assignees": [],
+    "author_association": "NONE",
+    "body": "### Problem\n\nI was asked by https://github.com/folke/lazy.nvim/discussions/2139 to create a new issue because creating plugin managers is a recurring topic. So trying to sum up the many universes which exist and what you eventually can learn from them and what my conclusion kinda is -> data more important than the implementation. Maybe a neov-plugin-manager used by neovim would turn into another killer project cause one team one case never fits them all. Just red and enjoy the diversity of todays world ..\n\nWho am I ?\nI was hooked by Nixpkgs (maybe blindly). It solves the distribution issue.\nI love cmake (it solves the developer problem) - but how to turn cmake into nix ?\nI love buck2/bazel -> cause they kinda do what El Dolstra (author of nixpkgs/nixos)\nenvisioned: Merging make rules and package management ! Like big dependency graph.\nMaybe PCs that time weren't strong enough when nix* started.\nThat's why I created vim-addon-manager because I wanted to share my own code\nwhich had >common library functions< like others (tpope, tlib) I mots of you\nmight have heard of it.\nVAM solved\n- lazy activation\n- integration into nix\n- dependency language (foucsing on latest to keep it simple => flaw)\nintroduced vim-pi (package database) so that all old viml scripts had an name\nyou could install because human brains worked best with names .\n\nCommunity decided to support 3+ managers pollutting all README.md files on github\nIf you use vam then else then else then else then else then .. you get.\nAI does help .. but is not perfect.\n\nI enjoyed rading about https://github.com/neovim/packspec\nwhich is basically same intention as addon-info.json had (wild west ..)\n\nFrom Java its known that mysql-2.0 and mysql-3.0 can't be loaded at the same\ntime without massive hacks. Incompatible version maybe should be within the name ?\nThen you can import mysql2 or mysql3. Eg Python Zarr libarry caused a huge mess\nmoving from 2 to 3 with 3 having some compatibility layer more readonly.\nand import zarr never told you what you actually worke with (import zarr2 or\nimport zarr3 would)..\n\nBut the real issue is that you can't get it right.\nNixos/Nixpkgs honestly while its nice I used it its hard to maintain 5+ mysql\nversions cause you have to do it manually. Docker just works everywhere.\nSo for many projects I ditched nixos using docker compose.\n\nIn the past Vim challenges\n- PHP fork\n- Python\n- Perl\n- Ruby ? I forgot\n=> many might know YMC (cpp dependencies)\n\nNvim:\n- introduced protocol\n- viml\n- lua\n\nAnd tools like krita, Inkscape, Gimp, Blender, Qgis, .. all have at least Python\ndependencies.\n\nTools like digikam can run on multiple OS. But how to ensure you use same\nversion on OSX/Linux/Mariadb to use your photos from external disk?\n\nJS/Rust/ .. like all kinda suck on nixpkgs if they require C dependencies to\nbuild native code (partially solved by Webassembly)\n\nSo potential extermes / learnings:\n\n  - big system like nixos means you have to mantain the many realtionships you\n    don't care about.\n\n  - cmake like do it yourself can't be packaged easily by nix.\n    Because it requires understanding cmake fetching dependencies and packaging\n    them, too\n\n  - buck2 fixes some ABI so only runs on most linux (but honestly Windows ?).\n\n  - xmake like systems have their own >what they needed< dependency systems\n    which kinda interface with other managers (eg C dependency managers) as\n    needed to get a goal running. Cool project But when I tried even compiling X\n    like failed - ok its understaffed I guess yet another interesting way.\n\n    but its imperative, not deterministic\n\n  - Haskell/cabal (like darcs) learned that too many options (like linux :)\n    is a problem, too. So they created platforms (6+ native packages bundled\n    with GHC) something like >one windows< you know what to target ..\n\n  - many Haskell packages maintainers didn't pump the versions but code was\n    working fine with newer GHCs ..\n\n  - even with PIP you can't reproduce because newer PIP resolves other versions\n    -> see pip-python-packages.from(2020-10-06) proposal below\n\n\nSo the perfect tool kinda allows you to do what you want:\n\n  - platforms (to keep overall overhead low)\n\n  - define pools (ubuntu native packages) augmented with my own selection\n    I want to make work -> for hacking or get this thing done\n\n  - knows many languages because there are dependencies like mysql C extensions\n    for the many languages or openxr or vulkan or gl or ..\n\nWhat has happened SAT solving libsolve (suse) kinda took over many eco systems.\nyet SAT takes much time and the darcss probem (you can change order of patches\nbut you don't want to cause you're hitting the millions of possibilities you can't cope with ..)\n\nSo today I think a solution should look like this:\n\n pools = [ native-ubuntu, .. my-stuff, pip-python-packages.from(2020-10-06)]\n\n solved = solver(pools, patches) < allows patching !\n\n  -> YEAH .. wishful thinking *LOL*.\n build_env = [\n  solved.nvim\n  solved.python.pyright\n  solved.python.xx\n  solved.krita.xx\n  solved.blender.xx\n  solved.blender.xx\n ]\n\nNow about plugin management. Like GPU (julia vs AOT) there are many ways to\nthink about it and all make sense.\n\n- lazy downloading (cause not all users want) preservi disk space (want lean system)\n- ahead of time downloading (type checking, want to work offline)\n- be fast (lapce) vs lazy (vscode) both work .. but honestly JS happened to turn out\n  to be a nice dev experience cause only the parts which are used get jitted.\n- ..\n\nSo I think a NeoVim specific packaging system must be seen like this:\nexternalize a solver (which knowns where to put stuff) which allows \nubuntu and nixpkgs deployments. Which asbtracts given that pool resolve\ndependency = \"XXX\" by name.\n\nTHUS:\nuser defines pool\nuser defines solver\nuser defines installation-engine\n\ngiven that information neovim nvim.lazy vam .. all get unemployed.\nall which is required (either lazy loading, AOT , ..)\nask the configuration to install and tell when its ready.\n\nBecause then you can add constraints like krita / neovim sharing same python\nversion.\n\nAbout lazy.nvim I like that it moved the mapping .. configurations nearby the plugin.\n(which is why I backported it to vim-addon-manager). Yet having defaults might\nmake sense.\n\nVIM had one issue: There was a forum. But no good leadership about user plugins.\nSo I wrote VAM to solve an issue. It did :) but it wasn't picked up.\nTalking to alterantive solutions (Japan I forgot) I later noticed other people\njust didn't know about it.\n\nAnd one of the big problems of the internet is -> reinvention of the wheel.\nBut communitise strive if they don't (unless there is a good reason).\n\nWhether programming languages divide the communities way too much is yet\nanother hot topic I care about deeply but don't have funding to fix.\nCause neovim vs lapce why do both solutoins exist ? One is C+Lua the other is Rust.\nBut Rust has 2+ scripting languagse and it looks like they settle on GC more and more\nand there are Rust forks with GC (which don't run on OSX maybe they do now ..)\nWhy can't you write shell scripts with Java - cause you don't have shell\ncompletion cause every args is its own langage depending on the app.\nonce that was fixed you could use java as shell.\n-> but that's a different story ping me if you feel the same ..\n\nSo I want to remind that Neovim *IS* the editor I use every day.\nYet its part of bigger changing and varying eco systems and package managers.\n\nEg JS on debian is many times slower than pnpm. They tried packaging them all\nbut  you can't get it right.\n\nEmacs and dependencies (Xemacs,emacs, .. VAM like .. ), builtins , .. home\nmanager for nix you can't get it right.\n\nSo what's left is building a system which comes closer which understands its\npart of a bigger world.\n\nSo to be honets I think Neovim maintainers should think hard about whether they\nwant to build package manager *INSIDE* of neovim or join something bigger which\ncan be used by Neovim - or if no tinstalled could be implemnetd by Neovim.\n\nBut getting the data (package databases right) could be the more important piece.\n\nAnd the rest will fall into place for all solutions:\n- Emacs 5x managers\n- Vim-like 5x managers\n- Nix and the scheme fork\n- gentoo\n- debian\n- chocolately like\n- brew\n- pip and the many language specific ones (important due to language-servers)\n- buck2/bazel\n- docker\n\nAnd even PIP (pip env, micromamba, conda, ..) has 4+ ways to install packages today.\n\nNeovim itself could be the manager or part of the universe and should work both\nways.\n\nAnd the future might be /bin/(await neovim) and it starts. Like Fuchsia (Google).\nThey load data from the internet and data can be code and libraries.\nSo that's going to be a totally different story so package management might actually\nmove to OS level in the future cause that manages the filesystem and maybe package managing\nand hot patching (kernel) again .. similar goals .. the more AI the more bugs\nthe more critical bugs .. thus looking forward to be part of this future.\n\n1) define package dependenices\n2) allow different solutions to make sense out of the mess\n3) I think neo-package-manager used by neo-vim lapce emacs etc *lol*\n\nwould be a cool future and maybe a classic fix point which would be that good that it might not get reinvented or replaced again. At least I can't think of something better. But one person has no chance achieving this without burning out :-)\n\nAnd yes of course some sane folks of course embed Vim within Eclipse etc.\nDon't forget those :-P\nI wasn't even talking about bubblewrap like user envs nix-ld hacks etc . timelines show that eg pnpm/yarn/npm/deno/.. all kinda .. well some stuff gets backported. Thus if we manage to get the wild west dependency definition language / solver right we'd help a lot of eco systems I think. And maybe it looks liek this her is a meta package code which applied to a target system (mobile / watch / VR / ..) turns into a lean package description to be used by solver so that that is fast cause we all love fast software and scripting languages like lua, right ? :)\n\n\n### Expected behavior\n\n- it should harmonize with the many OS\n- plugins with C dependencies should harmonize with users choices :)\n- it should lead and not reinvent which means honoring brew, apt, nix, cmake, and the many more ?",
+    "closed_at": "2026-05-09T21:34:24Z",
+    "closed_by": null,
+    "comment_data": [],
+    "comments": 0,
+    "comments_url": "https://api.github.com/repos/neovim/neovim/issues/39700/comments",
+    "created_at": "2026-05-09T15:31:45Z",
+    "events_url": "https://api.github.com/repos/neovim/neovim/issues/39700/events",
+    "html_url": "https://github.com/neovim/neovim/issues/39700",
+    "id": 4412953200,
+    "issue_dependencies_summary": {
+        "blocked_by": 0,
+        "blocking": 0,
+        "total_blocked_by": 0,
+        "total_blocking": 0
+    },
+    "labels": [
+        {
+            "color": "e6e6e6",
+            "default": false,
+            "description": "packaging and distributing Nvim to users",
+            "id": 124686703,
+            "name": "distribution",
+            "node_id": "MDU6TGFiZWwxMjQ2ODY3MDM=",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/distribution"
+        },
+        {
+            "color": "e6e6e6",
+            "default": false,
+            "description": "Neovim project matters (release process, logo, etc.)",
+            "id": 146825875,
+            "name": "project-management",
+            "node_id": "MDU6TGFiZWwxNDY4MjU4NzU=",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/project-management"
+        },
+        {
+            "color": "bfd4f2",
+            "default": false,
+            "description": "vim.pack, start/opt packages, 'packpath'",
+            "id": 8889050758,
+            "name": "packages",
+            "node_id": "LA_kwDOAPphoM8AAAACEdQmhg",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/packages"
+        }
+    ],
+    "labels_url": "https://api.github.com/repos/neovim/neovim/issues/39700/labels{/name}",
+    "locked": true,
+    "milestone": null,
+    "node_id": "I_kwDOAPphoM8AAAABBwhScA",
+    "number": 39700,
+    "performed_via_github_app": null,
+    "pinned_comment": null,
+    "reactions": {
+        "+1": 0,
+        "-1": 1,
+        "confused": 0,
+        "eyes": 0,
+        "heart": 0,
+        "hooray": 0,
+        "laugh": 0,
+        "rocket": 0,
+        "total_count": 1,
+        "url": "https://api.github.com/repos/neovim/neovim/issues/39700/reactions"
+    },
+    "repository_url": "https://api.github.com/repos/neovim/neovim",
+    "state": "closed",
+    "state_reason": "completed",
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
+    "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/39700/timeline",
+    "title": "How Neovim could integrate into eco systems along with its plugins",
+    "type": {
+        "color": "blue",
+        "created_at": "2024-01-25T10:10:19Z",
+        "description": "A request, idea, or new functionality",
+        "id": 597167,
+        "is_enabled": true,
+        "name": "Enhancement",
+        "node_id": "IT_kwDOAGK_Pc4ACRyv",
+        "updated_at": "2024-07-26T10:12:30Z"
+    },
+    "updated_at": "2026-05-10T11:25:32Z",
+    "url": "https://api.github.com/repos/neovim/neovim/issues/39700",
+    "user": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/34086?v=4",
+        "events_url": "https://api.github.com/users/MarcWeber/events{/privacy}",
+        "followers_url": "https://api.github.com/users/MarcWeber/followers",
+        "following_url": "https://api.github.com/users/MarcWeber/following{/other_user}",
+        "gists_url": "https://api.github.com/users/MarcWeber/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/MarcWeber",
+        "id": 34086,
+        "login": "MarcWeber",
+        "node_id": "MDQ6VXNlcjM0MDg2",
+        "organizations_url": "https://api.github.com/users/MarcWeber/orgs",
+        "received_events_url": "https://api.github.com/users/MarcWeber/received_events",
+        "repos_url": "https://api.github.com/users/MarcWeber/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/MarcWeber/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/MarcWeber/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/MarcWeber",
+        "user_view_type": "public"
+    }
+}

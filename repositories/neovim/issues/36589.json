@@ -58,6 +58,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/36589",
             "node_id": "IC_kwDOAPphoM7UBecs",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -103,6 +104,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/36589",
             "node_id": "IC_kwDOAPphoM7UBiOc",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 1,
                 "-1": 0,
@@ -148,6 +150,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/36589",
             "node_id": "IC_kwDOAPphoM7X4QnD",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -193,6 +196,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/36589",
             "node_id": "IC_kwDOAPphoM7X5YIx",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -238,6 +242,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/36589",
             "node_id": "IC_kwDOAPphoM7YDHgV",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -283,6 +288,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/36589",
             "node_id": "IC_kwDOAPphoM7YEHoi",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -328,6 +334,7 @@
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/36589",
             "node_id": "IC_kwDOAPphoM7YERYN",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 1,
                 "-1": 0,
@@ -363,9 +370,55 @@
                 "url": "https://api.github.com/users/glepnir",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "gave this issue a shot. The script can resolve the problem by using its internal logic to trim the prefix itself. The only catch is that `pum_col` ends up at the very beginning; however, I think this is an acceptable compromise.\n\n```lua\nvim.api.nvim_create_user_command('Rg', function(opts) end, {\n  nargs = '*',\n  complete = function(arglead, cmdline, cursorpos)\n    local types = { 'c', 'go', 'h', 'lua', 'py', 'sh', 'systemd', 'vim', 'zig' }\n    local prefix = arglead:match('^(%-%-type=)')\n    if prefix then\n      local rest = arglead:sub(#prefix + 1)\n      return vim.tbl_map(\n        function(t)\n          return {\n            word = prefix .. t,\n            abbr = t,\n          }\n        end,\n        vim.tbl_filter(function(t)\n          return vim.startswith(t, rest)\n        end, types)\n      )\n    end\n    return arglead == '' and types or {}\n  end,\n})\n```\n\nit works like this \n\n<img width=\"237\" height=\"254\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/7a928269-1f47-4a9c-9d65-10134b345b35\" />\n\n\nAdding an offset and some C code allows us to handle the pum start col. \n\n\n```diff\ndiff --git a/src/nvim/cmdexpand.c b/src/nvim/cmdexpand.c\nindex cf15e4dcef..72e8777eea 100644\n--- a/src/nvim/cmdexpand.c\n+++ b/src/nvim/cmdexpand.c\n@@ -406,6 +406,10 @@ static void cmdline_pum_create(CmdlineInfo *ccline, expand_T *xp, char **matches\n \n   // Compute the popup menu starting column\n   char *endpos = showtail ? showmatches_gettail(xp->xp_pattern, cmdline_unchanged) : xp->xp_pattern;\n+  if (xp->xp_pum_offset > 0 && !showtail\n+      && (size_t)xp->xp_pum_offset <= xp->xp_pattern_len) {\n+    endpos += xp->xp_pum_offset;\n+  }\n   if (ui_has(kUICmdline) && cmdline_win == NULL) {\n     compl_startcol = (int)(endpos - ccline->cmdbuff);\n   } else {\n@@ -3660,15 +3664,62 @@ static int ExpandUserLua(expand_T *xp, int *numMatches, char ***matches)\n {\n   typval_T rettv = TV_INITIAL_VALUE;\n   nlua_call_user_expand_func(xp, &rettv);\n-  if (rettv.v_type != VAR_LIST) {\n+\n+  // Reset on each call; set below if the user returned { offset, matches }.\n+  xp->xp_pum_offset = 0;\n+  list_T *retlist = NULL;\n+\n+  if (rettv.v_type == VAR_LIST) {\n+    retlist = rettv.vval.v_list;\n+  } else if (rettv.v_type == VAR_DICT && rettv.vval.v_dict != NULL) {\n+    dict_T *const d = rettv.vval.v_dict;\n+    dictitem_T *const matches_di = tv_dict_find(d, S_LEN(\"matches\"));\n+    if (matches_di == NULL || matches_di->di_tv.v_type != VAR_LIST) {\n+      tv_clear(&rettv);\n+      return FAIL;\n+    }\n+    retlist = matches_di->di_tv.vval.v_list;\n+    dictitem_T *const offset_di = tv_dict_find(d, S_LEN(\"offset\"));\n+    if (offset_di != NULL && offset_di->di_tv.v_type == VAR_NUMBER) {\n+      varnumber_T off = offset_di->di_tv.vval.v_number;\n+      if (off > 0 && (size_t)off <= xp->xp_pattern_len) {\n+        int off_i = (int)off;\n+        if ((size_t)off_i < xp->xp_pattern_len) {\n+          off_i -= utf_head_off(xp->xp_pattern, xp->xp_pattern + off_i);\n+        }\n+        if (off_i > 0) {\n+          xp->xp_pum_offset = off_i;\n+        }\n+      }\n+    }\n+  } else {\n     tv_clear(&rettv);\n     return FAIL;\n   }\n \n-  list_T *const retlist = rettv.vval.v_list;\n-\n   expand_process_user_list(retlist, matches, numMatches, xp);\n-  tv_list_unref(retlist);\n+\n+  if (xp->xp_pum_offset > 0 && *numMatches > 0 && xp->xp_files_abbr == NULL) {\n+    xp->xp_files_abbr = xmalloc(sizeof(char *) * (size_t)(*numMatches));\n+    for (int i = 0; i < *numMatches; i++) {\n+      char *const m = (*matches)[i];\n+      xp->xp_files_abbr[i] = NULL;\n+      if (m == NULL) {\n+        continue;\n+      }\n+      const int mlen = (int)strlen(m);\n+      if (mlen <= xp->xp_pum_offset) {\n+        continue;\n+      }\n+      int moff = xp->xp_pum_offset;\n+      moff -= utf_head_off(m, m + moff);\n+      if (moff > 0 && moff < mlen) {\n+        xp->xp_files_abbr[i] = xstrdup(m + moff);\n+      }\n+    }\n+  }\n+\n+  tv_clear(&rettv);\n   return OK;\n }\n \ndiff --git a/src/nvim/cmdexpand_defs.h b/src/nvim/cmdexpand_defs.h\nindex c78edf50e0..b26ab78cc6 100644\n--- a/src/nvim/cmdexpand_defs.h\n+++ b/src/nvim/cmdexpand_defs.h\n@@ -50,6 +50,7 @@ typedef struct {\n   char xp_buf[EXPAND_BUF_LEN];  ///< buffer for returned match\n   Direction xp_search_dir;      ///< Direction of search\n   pos_T xp_pre_incsearch_pos;   ///< Cursor position before incsearch\n+  int xp_pum_offset;\n } expand_T;\n \n /// values for xp_backslash\n```\n\n<img width=\"312\" height=\"258\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/404fa678-f873-48b9-8c1b-51bf1cd46717\" />\n\n\nGiven the popularity of this issue, I don't think we need to add any extra C code.. the extent to which it can be handled by scripts is perfectly acceptable.",
+            "created_at": "2026-05-11T09:50:45Z",
+            "html_url": "https://github.com/neovim/neovim/issues/36589#issuecomment-4419431252",
+            "id": 4419431252,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/36589",
+            "node_id": "IC_kwDOAPphoM8AAAABB2srVA",
+            "performed_via_github_app": null,
+            "pin": null,
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4419431252/reactions"
+            },
+            "updated_at": "2026-05-11T09:50:45Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4419431252",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",
+                "events_url": "https://api.github.com/users/glepnir/events{/privacy}",
+                "followers_url": "https://api.github.com/users/glepnir/followers",
+                "following_url": "https://api.github.com/users/glepnir/following{/other_user}",
+                "gists_url": "https://api.github.com/users/glepnir/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/glepnir",
+                "id": 41671631,
+                "login": "glepnir",
+                "node_id": "MDQ6VXNlcjQxNjcxNjMx",
+                "organizations_url": "https://api.github.com/users/glepnir/orgs",
+                "received_events_url": "https://api.github.com/users/glepnir/received_events",
+                "repos_url": "https://api.github.com/users/glepnir/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/glepnir/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/glepnir/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/glepnir",
+                "user_view_type": "public"
+            }
         }
     ],
-    "comments": 7,
+    "comments": 8,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/36589/comments",
     "created_at": "2025-11-17T10:10:25Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/36589/events",
@@ -381,7 +434,16 @@
         {
             "color": "FBCA04",
             "default": false,
-            "description": "upstream issue that must be fixed in Vim first",
+            "description": "Waiting for reply, will auto-close after 30 days.",
+            "id": 248229439,
+            "name": "needs:response",
+            "node_id": "MDU6TGFiZWwyNDgyMjk0Mzk=",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/needs:response"
+        },
+        {
+            "color": "FBCA04",
+            "default": false,
+            "description": "Upstream issue that must be fixed in Vim first.",
             "id": 2639399975,
             "name": "needs:vim-patch",
             "node_id": "MDU6TGFiZWwyNjM5Mzk5OTc1",
@@ -401,7 +463,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 300,
+        "closed_issues": 325,
         "created_at": "2014-11-26T22:13:11Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -431,17 +493,18 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/9/labels",
         "node_id": "MDk6TWlsZXN0b25lODgxOTc4",
         "number": 9,
-        "open_issues": 355,
+        "open_issues": 368,
         "state": "open",
         "title": "needs-owner",
-        "updated_at": "2025-12-01T03:14:12Z",
+        "updated_at": "2026-05-11T20:28:58Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/9"
     },
     "node_id": "I_kwDOAPphoM7YhYNV",
     "number": 36589,
     "performed_via_github_app": null,
+    "pinned_comment": null,
     "reactions": {
-        "+1": 0,
+        "+1": 1,
         "-1": 0,
         "confused": 0,
         "eyes": 0,
@@ -449,7 +512,7 @@
         "hooray": 0,
         "laugh": 0,
         "rocket": 0,
-        "total_count": 0,
+        "total_count": 1,
         "url": "https://api.github.com/repos/neovim/neovim/issues/36589/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
@@ -472,7 +535,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyv",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2025-12-08T05:27:12Z",
+    "updated_at": "2026-05-12T02:09:09Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/36589",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/6236829?v=4",

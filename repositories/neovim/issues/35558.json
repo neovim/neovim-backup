@@ -3,7 +3,7 @@
     "assignee": null,
     "assignees": [],
     "author_association": "MEMBER",
-    "body": "## Problem\n\nNo unified interface for logging.\n\nRequirements:\n\n- Near-zero-cost for disabled log levels. For example, `log.debug(...)` should be skipped if log-level is \"info\".\n- Formatting: plugins can override formatting\n- Filtering: ??\n- Sinks: plugins can send logs to other \"sinks\" (besides `$NVIM_LOG_FILE`)\n- RPC clients can use it\n- Logging can be enabled per-channel (see [Vim ch_logfile](https://github.com/neovim/neovim/issues/9010)).\n\n## Expected behavior\n\nIntroduce `vim.log`. Start simple, keep the door open for advanced features in the future.\n\n### Performance:\n- Avoid table arguments (similar to `vim.validate()`) to avoid unnecessary overhead.\n- Provide printf-like formatting so that callers do NOT perform the formatting themselves. `log.debug(..., a, b, c)` is \"near-zero-cost\", whereas `log.debug(..., my_format(a, b, c))` expensive.\n- RPC calls to `nvim_log` are ignored if logging is disabled for that channel.\n\n### Interface:\n\n- `vim.log`\n- `nvim_log` calls `vim.log`\n- Global log-level is controlled by the 'verbose' option. (May need to adjust some internal `if p_verbose` checks)\n- `Log` event ([\"deferred autocmd\" #35366](https://github.com/neovim/neovim/issues/35366), can be [received on channels](https://github.com/neovim/neovim/issues/34399)).\n    - This is the mechanism for adding \"sinks\". Passive event, not for \"control\".\n    - `pattern` = log-level\n\nDetails:\n\n```\nvim.log.log(level: string, ns: string, topic: string, fmt: fun(),\n  msg: string, <varargs...>)\nvim.log.error()\nvim.log.warn()\nvim.log.info()\nvim.log.debug()\n```\n\n### Extensibility:\n\nOpen question: Need to choose between one of these approaches:\n\n```lua\nlocal log = function()\n  return vim.log.log(...)\nend\n```\n\nor this:\n\n```lua\nlocal log = vim.log.Log(...)\n```\n\nRelated:\n- #7062\n- #9010\n- #12503\n- Nodejs diagnostics channels: https://nodejs.org/api/diagnostics_channel.html",
+    "body": "\n## Problem\n\nNo unified interface for logging.\n\n## Expected behavior\n\nIntroduce `vim.log`. Start simple, keep the door open for advanced features in the future.\n\nRequirements:\n\n- [x] Near-zero-cost for disabled log levels. For example, `log.debug(...)` should be skipped if log-level is \"info\". [#38906](https://github.com/neovim/neovim/pull/38906)\n- [x] Formatting: plugins can override formatting [#38906](https://github.com/neovim/neovim/pull/38906)\n- [ ] Filtering: ??\n- [ ] Sinks: plugins can send logs to other \"sinks\" (besides `$NVIM_LOG_FILE`)\n- [ ] RPC clients can use it (ergonomically).\n- [ ] Logging can be enabled per-channel (see [Vim ch_logfile](https://github.com/neovim/neovim/issues/9010)).\n- [ ] Performance:\n    - [x] Avoid table arguments (similar to `vim.validate()`) to minimize overhead. [#38906](https://github.com/neovim/neovim/pull/38906)\n    - [ ] Provide printf-like formatting so callers do NOT perform the formatting themselves. `log.debug(…, a, b, c)` is low-cost, whereas `log.debug(…, my_format(a, b, c))` is high-cost.\n    - [ ] RPC calls to `nvim_log` are ignored if logging is disabled for that channel.\n\n### Interface:\n\n- `vim.log`\n- `nvim_log` calls `vim.log`? or vice-versa?\n- Global log-level is controlled by the 'verbose' option. (todo: adjust internal `if p_verbose` checks.)\n- 🤔 `Log` event ([\"deferred autocmd\" #35366](https://github.com/neovim/neovim/issues/35366), can be [received on channels](https://github.com/neovim/neovim/issues/34399)).\n    - This is the mechanism for adding \"sinks\". Passive event, not for \"control\".\n    - `pattern` = `topic:level` ?\n\nDetails:\n\n```\nvim.log.log(level: string, ns: string, topic: string, fmt: fun(), msg: string, <varargs...>)\nvim.log.error()\nvim.log.warn()\nvim.log.info()\nvim.log.debug()\n```\n\n### Extensibility:\n\n- ~~Open question~~: Need to choose between one of these approaches:\n  ```lua\n  local log = function()\n    return vim.log.log(...)\n  end\n  ```\n  - or this:\n    ```lua\n    local log = vim.log.Log(...)\n    ```\n  - ✅ Resolution: decided on `vim.log.new()` in [#38906](https://github.com/neovim/neovim/pull/38906)\n\n\nRelated:\n- #7062\n- #9010\n- #12503\n- Nodejs diagnostics channels: https://nodejs.org/api/diagnostics_channel.html\n",
     "closed_at": null,
     "closed_by": null,
     "comment_data": [
@@ -146,7 +146,7 @@
             }
         },
         {
-            "author_association": "CONTRIBUTOR",
+            "author_association": "MEMBER",
             "body": "related: #38501",
             "created_at": "2026-04-02T16:39:40Z",
             "html_url": "https://github.com/neovim/neovim/issues/35558#issuecomment-4179091926",
@@ -255,7 +255,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 3,
+        "closed_issues": 32,
         "created_at": "2025-02-01T14:58:39Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -285,10 +285,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/48/labels",
         "node_id": "MI_kwDOAPphoM4AuvCx",
         "number": 48,
-        "open_issues": 61,
+        "open_issues": 68,
         "state": "open",
         "title": "0.13",
-        "updated_at": "2026-04-06T13:58:55Z",
+        "updated_at": "2026-05-11T22:17:17Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/48"
     },
     "node_id": "I_kwDOAPphoM7I04rs",
@@ -311,9 +311,9 @@
     "state": "open",
     "state_reason": null,
     "sub_issues_summary": {
-        "completed": 0,
-        "percent_completed": 0,
-        "total": 1
+        "completed": 1,
+        "percent_completed": 50,
+        "total": 2
     },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/35558/timeline",
     "title": "vim.log logging interface",
@@ -327,7 +327,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyv",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2026-04-02T16:39:40Z",
+    "updated_at": "2026-05-10T20:50:29Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/35558",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
