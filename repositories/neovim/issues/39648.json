@@ -6,8 +6,55 @@
     "body": "### Problem\n\nCurrent SSH config parser in `runtime/lua/vim/net/_ssh.lua` (#39378) relies on manual string manipulation and pattern matching. While this covers most common use cases, it is fragile when dealing with complex or non-standard ssh_config files.\n\n### Expected behavior\n\nReplace manual patterns with a formal grammar (LPeg or Tree-sitter) to handle SSH config parsing, as discussed in #39378.",
     "closed_at": null,
     "closed_by": null,
-    "comment_data": [],
-    "comments": 0,
+    "comment_data": [
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "I feel like this is actually pretty easy with tree-sitter.\n\n```lua\nlocal host_pattern_query = vim.treesitter.query.parse(\"ssh_config\", [[\n  (host_declaration\n    argument: (pattern) @host_pattern)\n]])\n\n---Use tree-sitter to extract hostnames from an SSH config file\n---@param buf integer # Buffer number of the sshconfig file\nlocal function get_ssh_hosts(buf)\n  if vim.bo[buf].filetype ~= \"sshconfig\" then\n    error(\"unable to get ssh hosts from non-sshconfig file\")\n  end\n\n  local tree = assert(vim.treesitter.get_parser(buf)):parse()[1]\n\n  return vim.iter(vim.iter(host_pattern_query:iter_captures(tree:root(), buf)):totable())\n    :map(function(t)\n      local node = t[2]\n      local text = vim.treesitter.get_node_text(node, buf)\n      return vim.split(text, \",\")\n    end)\n    :flatten()\n    :filter(function(v)\n      -- Remove values containing *\n      return v:find(\"*\", nil, true) == nil\n    end)\n    :map(function(v)\n      -- Remove leading !\n      v = v:gsub(\"^!\", \"\")\n      return v\n    end)\n    :totable()\nend\n```\n\nConfiguration file:\n```sshconfig\nHost hello\n    HostName hello.example.com\n\nHost goodbye,bye\n    HostName goodbye.example.com\n\nHost nope,not.*,!yes,never\n    HostName idk.com\n    Port 1234\n```\nResult:\n```lua\n{ \"hello\", \"goodbye\", \"bye\", \"nope\", \"yes\", \"never\" }\n```\n\n(My one issue with it is the `vim.iter(vim.iter(...):totable())` thing, since `:flatten()` only works on list-iterators. Would love it if there was a better solution to that that I'm not aware of)",
+            "created_at": "2026-05-18T22:45:47Z",
+            "html_url": "https://github.com/neovim/neovim/issues/39648#issuecomment-4482907894",
+            "id": 4482907894,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/39648",
+            "node_id": "IC_kwDOAPphoM8AAAABCzO-9g",
+            "performed_via_github_app": null,
+            "pin": null,
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4482907894/reactions"
+            },
+            "updated_at": "2026-05-18T22:45:47Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4482907894",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/116777388?v=4",
+                "events_url": "https://api.github.com/users/eamonburns/events{/privacy}",
+                "followers_url": "https://api.github.com/users/eamonburns/followers",
+                "following_url": "https://api.github.com/users/eamonburns/following{/other_user}",
+                "gists_url": "https://api.github.com/users/eamonburns/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/eamonburns",
+                "id": 116777388,
+                "login": "eamonburns",
+                "node_id": "U_kgDOBvXhrA",
+                "organizations_url": "https://api.github.com/users/eamonburns/orgs",
+                "received_events_url": "https://api.github.com/users/eamonburns/received_events",
+                "repos_url": "https://api.github.com/users/eamonburns/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/eamonburns/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/eamonburns/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/eamonburns",
+                "user_view_type": "public"
+            }
+        }
+    ],
+    "comments": 1,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/39648/comments",
     "created_at": "2026-05-07T11:08:16Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/39648/events",
@@ -19,6 +66,7 @@
         "total_blocked_by": 0,
         "total_blocking": 0
     },
+    "issue_field_values": [],
     "labels": [
         {
             "color": "BFDADC",
@@ -61,7 +109,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 830,
+        "closed_issues": 836,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -91,10 +139,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 662,
+        "open_issues": 666,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2026-05-11T20:27:45Z",
+        "updated_at": "2026-05-18T23:03:40Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM8AAAABBigg_w",
@@ -133,7 +181,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyv",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2026-05-07T11:26:30Z",
+    "updated_at": "2026-05-18T22:45:47Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/39648",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/55363403?v=4",

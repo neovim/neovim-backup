@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6876,
-            "forks_count": 6876,
+            "forks": 6907,
+            "forks_count": 6907,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -95,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1941,
-            "open_issues_count": 1941,
+            "open_issues": 1927,
+            "open_issues_count": 1927,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -121,11 +121,11 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2026-05-05T04:10:46Z",
+            "pushed_at": "2026-05-19T04:32:35Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 380313,
+            "size": 383139,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 99350,
+            "stargazers_count": 99745,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -143,11 +143,11 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2026-05-05T03:52:48Z",
+            "updated_at": "2026-05-19T05:10:39Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 99350,
-            "watchers_count": 99350,
+            "watchers": 99745,
+            "watchers_count": 99745,
             "web_commit_signoff_required": false
         },
         "sha": "1e06e9566262eab316a9d9b6a4a6f14f9f15fa01",
@@ -173,9 +173,424 @@
             "user_view_type": "public"
         }
     },
-    "body": "## Problem\n\nNeovim's `'autoread'` only detects external file changes reactively — on\n`FocusGained`, `:checktime`, and similar events. This means changes made\nby other editors, git operations, or build tools go unnoticed until the\nuser interacts with Neovim.\n\nThis has been a long-standing request (#1380) with two previous attempts:\n- #12593 — introduced a new `fcnotify` option (closed: `'autoread'` should \"just work\")\n- #20801 — simpler approach (closed: wanted to first establish `vim._watch` as shared infrastructure, which has since happened via the LSP watchfiles implementation)\n\n## Solution\n\nAdd a runtime plugin (`runtime/plugin/autoread.lua`) that watches each\nbuffer's file using `vim._watch.watch()` (libuv `fs_event`). On change\ndetection, it calls `:checktime {bufnr}` which invokes the existing\n`buf_check_timestamp()` logic — handling reload, conflict prompts,\n`FileChangedShell` autocmd, etc.\n\nKey details:\n- Watches individual files (not directories) for targeted, low-overhead monitoring\n- Debounces rapid events (e.g. truncate + write) with a 100ms timer\n- Re-establishes the watcher after rename events (atomic saves by other editors)\n- Respects buffer-local `:setlocal noautoread` and reacts to `OptionSet`\n- Cleans up watchers on `BufUnload`/`BufDelete`/`BufWipeout`\n- Auto-reloads are undoable\n\nAlso fixes a bug in `vim._watch.watch()` where watching a single file\n(not a directory) caused `ENOTDIR` errors because the callback\nincorrectly joined the filename onto the file path.\n\nCloses #1380",
+    "body": "## Problem\r\n\r\nNeovim's `'autoread'` only detects external file changes reactively — on\r\n`FocusGained`, `:checktime`, and similar events. This means changes made\r\nby other editors, git operations, or build tools go unnoticed until the\r\nuser interacts with Neovim.\r\n\r\nThis has been a long-standing request (#1380) with two previous attempts:\r\n- #12593 — introduced a new `fcnotify` option (closed: `'autoread'` should \"just work\")\r\n- #20801 — simpler approach (closed: wanted to first establish `vim._watch` as shared infrastructure, which has since happened via the LSP watchfiles implementation)\r\n\r\n## Solution\r\n\r\nAdd a runtime plugin (`runtime/plugin/autoread.lua`) that watches each\r\nbuffer's file using `vim._watch.watch()` (libuv `fs_event`). On change\r\ndetection, it calls `:checktime {bufnr}` which invokes the existing\r\n`buf_check_timestamp()` logic — handling reload, conflict prompts,\r\n`FileChangedShell` autocmd, etc.\r\n\r\nKey details:\r\n- Watches individual files (not directories) for targeted, low-overhead monitoring\r\n- Debounces rapid events (e.g. truncate + write) with a 100ms timer\r\n- Re-establishes the watcher after rename events (atomic saves by other editors)\r\n- Respects buffer-local `:setlocal noautoread` and reacts to `OptionSet`\r\n- Cleans up watchers on `BufUnload`/`BufDelete`/`BufWipeout`\r\n- Auto-reloads are undoable\r\n\r\n\r\nCloses #1380\r\nCloses https://github.com/neovim/neovim/issues/7959",
     "closed_at": null,
-    "comment_data": [],
+    "comment_data": [
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/37971#discussion_r3260353576"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/37971"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3260353576"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "seems like something that should live in `vim._watch` , assuming it doesn't already...",
+            "commit_id": "51d076ee6bacaadda036cdeb7e401e1b336c6d54",
+            "created_at": "2026-05-18T16:06:55Z",
+            "diff_hunk": "@@ -0,0 +1,142 @@\n+--- Watches buffer files for external changes using vim._watch.\n+--- When 'autoread' is set, external changes are detected in real-time\n+--- instead of only on FocusGained/:checktime.\n+\n+local uv = vim.uv\n+\n+local group = vim.api.nvim_create_augroup('nvim.autoread', { clear = true })\n+\n+--- @type table<integer, fun()> bufnr -> cancel function\n+local watchers = {}\n+\n+--- @type table<integer, uv.uv_timer_t> bufnr -> debounce timer\n+local timers = {}\n+\n+local DEBOUNCE_MS = 100\n+\n+--- Returns the effective 'autoread' value for a buffer.\n+--- 'autoread' is global-local: vim.bo[bufnr].autoread is nil when not set locally,\n+--- so we must fall back to the global value.\n+--- @param bufnr integer\n+--- @return boolean\n+local function buf_autoread(bufnr)\n+  local local_val = vim.bo[bufnr].autoread\n+  if local_val ~= nil then\n+    return local_val\n+  end\n+  return vim.go.autoread\n+end\n+\n+--- Returns true if the buffer should be watched.\n+--- @param bufnr integer\n+--- @return boolean\n+local function should_watch(bufnr)\n+  if not vim.api.nvim_buf_is_loaded(bufnr) then\n+    return false\n+  end\n+  -- Skip special buffers (terminal, help, quickfix, etc.)\n+  if vim.bo[bufnr].buftype ~= '' then\n+    return false\n+  end\n+  -- Must have a file name that exists on disk\n+  local name = vim.api.nvim_buf_get_name(bufnr)\n+  if name == '' or not uv.fs_stat(name) then\n+    return false\n+  end\n+  if not buf_autoread(bufnr) then\n+    return false\n+  end\n+  return true\n+end\n+\n+--- Stops and cleans up the watcher for a buffer.\n+--- @param bufnr integer\n+local function stop_watcher(bufnr)\n+  local cancel = watchers[bufnr]\n+  if cancel then\n+    cancel()\n+    watchers[bufnr] = nil\n+  end\n+  local timer = timers[bufnr]\n+  if timer then\n+    timer:stop()\n+    timer:close()\n+    timers[bufnr] = nil\n+  end\n+end\n+\n+--- Ensures the buffer has an active file watcher if appropriate, or stops\n+--- an existing one if the buffer should no longer be watched.\n+--- @param bufnr integer\n+local function ensure_watcher(bufnr)",
+            "html_url": "https://github.com/neovim/neovim/pull/37971#discussion_r3260353576",
+            "id": 3260353576,
+            "line": 71,
+            "node_id": "PRRC_kwDOAPphoM7CVQwo",
+            "original_commit_id": "51d076ee6bacaadda036cdeb7e401e1b336c6d54",
+            "original_line": 71,
+            "original_position": 71,
+            "original_start_line": null,
+            "path": "runtime/plugin/autoread.lua",
+            "position": 71,
+            "pull_request_review_id": 4311814509,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/37971",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3260353576/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-05-18T16:06:55Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3260353576",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/37971#discussion_r3260437260"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/37971"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3260437260"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\n• 'autoread' uses file system watchers to detect external changes in\n```",
+            "commit_id": "51d076ee6bacaadda036cdeb7e401e1b336c6d54",
+            "created_at": "2026-05-18T16:21:33Z",
+            "diff_hunk": "@@ -137,6 +137,8 @@ EDITOR\n • |:log| opens log files.\n • |ZR| restarts Nvim (|:restart|).\n • |:uptime| displays uptime.\n+• |'autoread'| uses file system watchers to detect external changes in",
+            "html_url": "https://github.com/neovim/neovim/pull/37971#discussion_r3260437260",
+            "id": 3260437260,
+            "line": 140,
+            "node_id": "PRRC_kwDOAPphoM7CVlMM",
+            "original_commit_id": "51d076ee6bacaadda036cdeb7e401e1b336c6d54",
+            "original_line": 140,
+            "original_position": 4,
+            "original_start_line": null,
+            "path": "runtime/doc/news.txt",
+            "position": 4,
+            "pull_request_review_id": 4311903734,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/37971",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3260437260/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-05-18T16:21:33Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3260437260",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/37971#discussion_r3260469203"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/37971"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3260469203"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "why wouldn't this live in `vim._watch` ? and the debounce impl...",
+            "commit_id": "51d076ee6bacaadda036cdeb7e401e1b336c6d54",
+            "created_at": "2026-05-18T16:27:28Z",
+            "diff_hunk": "@@ -0,0 +1,142 @@\n+--- Watches buffer files for external changes using vim._watch.\n+--- When 'autoread' is set, external changes are detected in real-time\n+--- instead of only on FocusGained/:checktime.\n+\n+local uv = vim.uv\n+\n+local group = vim.api.nvim_create_augroup('nvim.autoread', { clear = true })\n+\n+--- @type table<integer, fun()> bufnr -> cancel function\n+local watchers = {}\n+\n+--- @type table<integer, uv.uv_timer_t> bufnr -> debounce timer\n+local timers = {}\n+\n+local DEBOUNCE_MS = 100\n+\n+--- Returns the effective 'autoread' value for a buffer.\n+--- 'autoread' is global-local: vim.bo[bufnr].autoread is nil when not set locally,\n+--- so we must fall back to the global value.\n+--- @param bufnr integer\n+--- @return boolean\n+local function buf_autoread(bufnr)\n+  local local_val = vim.bo[bufnr].autoread\n+  if local_val ~= nil then\n+    return local_val\n+  end\n+  return vim.go.autoread\n+end\n+\n+--- Returns true if the buffer should be watched.\n+--- @param bufnr integer\n+--- @return boolean\n+local function should_watch(bufnr)\n+  if not vim.api.nvim_buf_is_loaded(bufnr) then\n+    return false\n+  end\n+  -- Skip special buffers (terminal, help, quickfix, etc.)\n+  if vim.bo[bufnr].buftype ~= '' then\n+    return false\n+  end\n+  -- Must have a file name that exists on disk\n+  local name = vim.api.nvim_buf_get_name(bufnr)\n+  if name == '' or not uv.fs_stat(name) then\n+    return false\n+  end\n+  if not buf_autoread(bufnr) then\n+    return false\n+  end\n+  return true\n+end\n+\n+--- Stops and cleans up the watcher for a buffer.\n+--- @param bufnr integer\n+local function stop_watcher(bufnr)\n+  local cancel = watchers[bufnr]",
+            "html_url": "https://github.com/neovim/neovim/pull/37971#discussion_r3260469203",
+            "id": 3260469203,
+            "line": 55,
+            "node_id": "PRRC_kwDOAPphoM7CVs_T",
+            "original_commit_id": "51d076ee6bacaadda036cdeb7e401e1b336c6d54",
+            "original_line": 55,
+            "original_position": 55,
+            "original_start_line": 54,
+            "path": "runtime/plugin/autoread.lua",
+            "position": 55,
+            "pull_request_review_id": 4311937413,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/37971",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3260469203/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 54,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-05-18T16:27:28Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3260469203",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/37971#discussion_r3260583710"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/37971"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3260583710"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "what happens on startup? are buffers opened via `nvim foo.txt` watched?\n\nif not, I suggest moving this module to `runtime/lua/nvim/autoread.lua` . And then call it from `runtime/lua/vim/_core/defaults.lua` .",
+            "commit_id": "51d076ee6bacaadda036cdeb7e401e1b336c6d54",
+            "created_at": "2026-05-18T16:48:16Z",
+            "diff_hunk": "@@ -0,0 +1,142 @@\n+--- Watches buffer files for external changes using vim._watch.\n+--- When 'autoread' is set, external changes are detected in real-time\n+--- instead of only on FocusGained/:checktime.\n+\n+local uv = vim.uv\n+\n+local group = vim.api.nvim_create_augroup('nvim.autoread', { clear = true })\n+\n+--- @type table<integer, fun()> bufnr -> cancel function\n+local watchers = {}\n+\n+--- @type table<integer, uv.uv_timer_t> bufnr -> debounce timer\n+local timers = {}\n+\n+local DEBOUNCE_MS = 100\n+\n+--- Returns the effective 'autoread' value for a buffer.\n+--- 'autoread' is global-local: vim.bo[bufnr].autoread is nil when not set locally,\n+--- so we must fall back to the global value.\n+--- @param bufnr integer\n+--- @return boolean\n+local function buf_autoread(bufnr)\n+  local local_val = vim.bo[bufnr].autoread\n+  if local_val ~= nil then\n+    return local_val\n+  end\n+  return vim.go.autoread\n+end\n+\n+--- Returns true if the buffer should be watched.\n+--- @param bufnr integer\n+--- @return boolean\n+local function should_watch(bufnr)\n+  if not vim.api.nvim_buf_is_loaded(bufnr) then\n+    return false\n+  end\n+  -- Skip special buffers (terminal, help, quickfix, etc.)\n+  if vim.bo[bufnr].buftype ~= '' then\n+    return false\n+  end\n+  -- Must have a file name that exists on disk\n+  local name = vim.api.nvim_buf_get_name(bufnr)\n+  if name == '' or not uv.fs_stat(name) then\n+    return false\n+  end\n+  if not buf_autoread(bufnr) then\n+    return false\n+  end\n+  return true\n+end\n+\n+--- Stops and cleans up the watcher for a buffer.\n+--- @param bufnr integer\n+local function stop_watcher(bufnr)\n+  local cancel = watchers[bufnr]\n+  if cancel then\n+    cancel()\n+    watchers[bufnr] = nil\n+  end\n+  local timer = timers[bufnr]\n+  if timer then\n+    timer:stop()\n+    timer:close()\n+    timers[bufnr] = nil\n+  end\n+end\n+\n+--- Ensures the buffer has an active file watcher if appropriate, or stops\n+--- an existing one if the buffer should no longer be watched.\n+--- @param bufnr integer\n+local function ensure_watcher(bufnr)\n+  stop_watcher(bufnr)\n+\n+  if not should_watch(bufnr) then\n+    return\n+  end\n+\n+  local name = vim.api.nvim_buf_get_name(bufnr)\n+  local timer = assert(uv.new_timer())\n+  timers[bufnr] = timer\n+\n+  local cancel = vim._watch.watch(name, {}, function(_, change_type)\n+    -- Debounce: restart the same timer on each event, so only the last\n+    -- event in a rapid series (e.g. truncate + write) triggers checktime.\n+    timer:start(DEBOUNCE_MS, 0, function()\n+      vim.schedule(function()\n+        if not vim.api.nvim_buf_is_loaded(bufnr) or not buf_autoread(bufnr) then\n+          return\n+        end\n+        vim.cmd.checktime(bufnr)\n+        -- On rename events (e.g. atomic save by another editor), the watcher\n+        -- is now stale (watching the old inode). Re-establish it.\n+        if change_type ~= vim._watch.FileChangeType.Changed then\n+          ensure_watcher(bufnr)\n+        end\n+      end)\n+    end)\n+  end)\n+\n+  watchers[bufnr] = cancel\n+end\n+\n+-- (Re)start watcher when a file is loaded or written.\n+vim.api.nvim_create_autocmd({ 'BufReadPost', 'BufWritePost' }, {",
+            "html_url": "https://github.com/neovim/neovim/pull/37971#discussion_r3260583710",
+            "id": 3260583710,
+            "line": 104,
+            "node_id": "PRRC_kwDOAPphoM7CWI8e",
+            "original_commit_id": "51d076ee6bacaadda036cdeb7e401e1b336c6d54",
+            "original_line": 104,
+            "original_position": 104,
+            "original_start_line": null,
+            "path": "runtime/plugin/autoread.lua",
+            "position": 104,
+            "pull_request_review_id": 4312061062,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/37971",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3260583710/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-05-18T16:48:16Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3260583710",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/37971#discussion_r3260595143"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/37971"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3260595143"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "i think the tests should probably live in `test/functional/options/autoread_spec.lua`\n\nwe are testing 'autoread'. the fact that some parts of 'autoread' are implemented as a \"plugin\" is irrelevant. it's not a plugin.",
+            "commit_id": "51d076ee6bacaadda036cdeb7e401e1b336c6d54",
+            "created_at": "2026-05-18T16:50:06Z",
+            "diff_hunk": "@@ -0,0 +1,223 @@\n+local t = require('test.testutil')\n+local n = require('test.functional.testnvim')()\n+\n+local clear = n.clear\n+local command = n.command\n+local eq = t.eq\n+local api = n.api\n+local retry = t.retry\n+local write_file = t.write_file\n+local sleep = vim.uv.sleep\n+\n+local testdir = 'Xtest-autoread'\n+\n+describe('autoread file watcher', function()",
+            "html_url": "https://github.com/neovim/neovim/pull/37971#discussion_r3260595143",
+            "id": 3260595143,
+            "line": 14,
+            "node_id": "PRRC_kwDOAPphoM7CWLvH",
+            "original_commit_id": "51d076ee6bacaadda036cdeb7e401e1b336c6d54",
+            "original_line": 14,
+            "original_position": 14,
+            "original_start_line": null,
+            "path": "test/functional/plugin/autoread_spec.lua",
+            "position": 14,
+            "pull_request_review_id": 4312073766,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/37971",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3260595143/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-05-18T16:50:06Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3260595143",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/37971#discussion_r3260611682"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/37971"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3260611682"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "https://github.com/neovim/neovim/issues/1380#issuecomment-64139405 calls out : \n\n> the vim mechanism to save a file is overly complicated. If I edit the file with nano I just get one edit notification as expected, with vim I get, besides the edit notification, three(!) rename notification\n\ndoes this PR avoid the redundant notifications? and does the test assert this?",
+            "commit_id": "51d076ee6bacaadda036cdeb7e401e1b336c6d54",
+            "created_at": "2026-05-18T16:53:00Z",
+            "diff_hunk": "@@ -0,0 +1,223 @@\n+local t = require('test.testutil')\n+local n = require('test.functional.testnvim')()\n+\n+local clear = n.clear\n+local command = n.command\n+local eq = t.eq\n+local api = n.api\n+local retry = t.retry\n+local write_file = t.write_file\n+local sleep = vim.uv.sleep\n+\n+local testdir = 'Xtest-autoread'\n+\n+describe('autoread file watcher', function()\n+  before_each(function()\n+    n.mkdir_p(testdir)\n+    clear({ args = { '--clean' } })\n+  end)\n+\n+  after_each(function()\n+    n.rmdir(testdir)\n+  end)\n+\n+  it('reloads buffer when file changes externally', function()\n+    local path = testdir .. '/test_reload.txt'\n+    write_file(path, 'original content\\n')\n+\n+    command('edit ' .. path)\n+    eq({ 'original content' }, api.nvim_buf_get_lines(0, 0, -1, true))\n+\n+    -- Modify file externally\n+    write_file(path, 'new content\\n')\n+\n+    -- The watcher + debounce should trigger checktime\n+    retry(nil, 3000, function()\n+      eq({ 'new content' }, api.nvim_buf_get_lines(0, 0, -1, true))\n+    end)\n+  end)\n+\n+  it('does not reload when buffer has unsaved changes (conflict)', function()\n+    local path = testdir .. '/test_conflict.txt'\n+    write_file(path, 'original\\n')\n+\n+    command('edit ' .. path)\n+\n+    -- Make a local change so the buffer is modified\n+    api.nvim_buf_set_lines(0, 0, -1, true, { 'local change' })\n+    eq(true, api.nvim_get_option_value('modified', { buf = 0 }))\n+\n+    -- Modify file externally\n+    write_file(path, 'external change\\n')\n+\n+    -- Give watcher time to fire; buffer should NOT be reloaded\n+    -- because it has unsaved changes (autoread only reloads unmodified buffers)\n+    sleep(200)\n+    -- Also do a manual checktime to be sure\n+    command('silent! checktime')\n+    -- Buffer should still have local changes (autoread doesn't override modified buffers)\n+    eq({ 'local change' }, api.nvim_buf_get_lines(0, 0, -1, true))\n+  end)\n+\n+  it('stops watching when setlocal noautoread', function()\n+    local path = testdir .. '/test_noautoread.txt'\n+    write_file(path, 'original\\n')\n+\n+    command('edit ' .. path)\n+    eq({ 'original' }, api.nvim_buf_get_lines(0, 0, -1, true))\n+\n+    -- Disable autoread for this buffer\n+    command('setlocal noautoread')\n+\n+    -- Modify file externally\n+    write_file(path, 'changed\\n')\n+\n+    -- Give watcher time; should NOT reload\n+    sleep(200)\n+    eq({ 'original' }, api.nvim_buf_get_lines(0, 0, -1, true))\n+  end)\n+\n+  it('restarts watching when autoread is re-enabled', function()\n+    local path = testdir .. '/test_reenable.txt'\n+    write_file(path, 'original\\n')\n+\n+    command('edit ' .. path)\n+    command('setlocal noautoread')\n+\n+    -- Modify externally while noautoread\n+    write_file(path, 'while disabled\\n')\n+    sleep(200)\n+    eq({ 'original' }, api.nvim_buf_get_lines(0, 0, -1, true))\n+\n+    -- Re-enable autoread\n+    command('setlocal autoread')\n+\n+    -- Modify again\n+    write_file(path, 'after reenable\\n')\n+\n+    retry(nil, 3000, function()\n+      eq({ 'after reenable' }, api.nvim_buf_get_lines(0, 0, -1, true))\n+    end)\n+  end)\n+\n+  it('cleans up watcher on bdelete', function()\n+    local path = testdir .. '/test_bdelete.txt'\n+    write_file(path, 'content\\n')\n+\n+    command('edit ' .. path)\n+    local bufnr = api.nvim_get_current_buf()\n+\n+    -- Delete the buffer\n+    command('enew')\n+    command('bdelete ' .. bufnr)\n+\n+    -- Modify file externally - should not cause errors\n+    write_file(path, 'after delete\\n')\n+    sleep(200)\n+    -- No error means the watcher was cleaned up properly\n+  end)\n+\n+  it('reloads hidden buffer when file changes', function()\n+    local path = testdir .. '/test_hidden.txt'\n+    write_file(path, 'original\\n')\n+\n+    command('set hidden')\n+    command('edit ' .. path)\n+    local bufnr = api.nvim_get_current_buf()\n+\n+    -- Switch to a different buffer (hides the first one)\n+    command('enew')\n+\n+    -- Modify file externally\n+    write_file(path, 'updated hidden\\n')\n+\n+    retry(nil, 3000, function()\n+      eq({ 'updated hidden' }, api.nvim_buf_get_lines(bufnr, 0, -1, true))\n+    end)\n+  end)\n+\n+  it('handles file deletion gracefully', function()\n+    local path = testdir .. '/test_delete.txt'\n+    write_file(path, 'will be deleted\\n')\n+\n+    command('edit ' .. path)\n+    eq({ 'will be deleted' }, api.nvim_buf_get_lines(0, 0, -1, true))\n+\n+    -- Delete the file\n+    os.remove(path)\n+\n+    -- Wait a bit; should not crash\n+    sleep(200)\n+    -- Buffer content should remain unchanged\n+    eq({ 'will be deleted' }, api.nvim_buf_get_lines(0, 0, -1, true))\n+  end)\n+\n+  it('does not watch special buffers', function()\n+    command('enew')\n+    command('setlocal buftype=nofile')\n+    -- No error from trying to set up watcher on a no-name nofile buffer\n+    sleep(200)\n+  end)\n+\n+  it('handles rapid changes with debouncing', function()\n+    local path = testdir .. '/test_debounce.txt'\n+    write_file(path, 'v1\\n')\n+\n+    command('edit ' .. path)\n+    eq({ 'v1' }, api.nvim_buf_get_lines(0, 0, -1, true))\n+\n+    -- Make several rapid changes\n+    write_file(path, 'v2\\n')\n+    write_file(path, 'v3\\n')\n+    write_file(path, 'v4\\n')\n+    write_file(path, 'final\\n')\n+\n+    -- Should eventually settle on final content\n+    retry(nil, 3000, function()\n+      eq({ 'final' }, api.nvim_buf_get_lines(0, 0, -1, true))\n+    end)\n+  end)\n+\n+  it('detects changes after atomic rename (external editor save)', function()",
+            "html_url": "https://github.com/neovim/neovim/pull/37971#discussion_r3260611682",
+            "id": 3260611682,
+            "line": 181,
+            "node_id": "PRRC_kwDOAPphoM7CWPxi",
+            "original_commit_id": "51d076ee6bacaadda036cdeb7e401e1b336c6d54",
+            "original_line": 181,
+            "original_position": 181,
+            "original_start_line": null,
+            "path": "test/functional/plugin/autoread_spec.lua",
+            "position": 181,
+            "pull_request_review_id": 4312091999,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/37971",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3260611682/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-05-18T16:53:00Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3260611682",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        }
+    ],
     "comment_regular_data": [
         {
             "author_association": "MEMBER",
@@ -356,6 +771,51 @@
                 "url": "https://api.github.com/users/OleksandrChekhovskyi",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "> This has been sitting here for quite a while, with no feedback from maintainers\r\n\r\nBecause it's high risk. And there's a lot going on (we are merging 500+ PRs per month).\r\n\r\nIt's good that you noticed `vim._watch` and are attempting to leverage that. And the \"Key details\" sound very good.\r\n\r\n It would increase confidence a lot more if (1) you keep this rebased regularly, (2) you do your own review and call out key decisions, and how they fit into the codebase conventions.\r\n\r\nThere are at least 2 very painful LSP-related \"file watcher\" bugs that no one seems to want to spend time looking into: \r\n\r\n- https://github.com/neovim/neovim/issues/29865\r\n- https://github.com/neovim/neovim/issues/23291\r\n\r\nSo I need confidence that we aren't going to have more of that with 'autoread'. And yes, this is a high-value and desired change, but we need an owner for it who will followup.",
+            "created_at": "2026-05-18T16:15:38Z",
+            "html_url": "https://github.com/neovim/neovim/pull/37971#issuecomment-4479600061",
+            "id": 4479600061,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/37971",
+            "node_id": "IC_kwDOAPphoM8AAAABCwFFvQ",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4479600061/reactions"
+            },
+            "updated_at": "2026-05-18T16:20:52Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4479600061",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
         }
     ],
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/37971/comments",
@@ -503,7 +963,7 @@
     "issue_url": "https://api.github.com/repos/neovim/neovim/issues/37971",
     "labels": [],
     "locked": false,
-    "merge_commit_sha": "31251f28693db9686c46192ad2d166d1eb33905a",
+    "merge_commit_sha": null,
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM7E5jcb",
@@ -516,7 +976,7 @@
     "state": "open",
     "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/51d076ee6bacaadda036cdeb7e401e1b336c6d54",
     "title": "feat(autoread): use file watchers for real-time change detection",
-    "updated_at": "2026-04-30T06:31:47Z",
+    "updated_at": "2026-05-18T22:27:36Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/37971",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/11211653?v=4",

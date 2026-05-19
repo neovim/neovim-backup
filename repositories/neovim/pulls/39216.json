@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/39216"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/d045627cd763a3b775f0b8e3d2026075cf7448d3"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/0eb2715f87dfea6c62e97fa4f77ba7f4fff0fc7b"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6895,
-            "forks_count": 6895,
+            "forks": 6907,
+            "forks_count": 6907,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -95,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1931,
-            "open_issues_count": 1931,
+            "open_issues": 1927,
+            "open_issues_count": 1927,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -121,11 +121,11 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2026-05-12T04:23:29Z",
+            "pushed_at": "2026-05-19T04:32:35Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 382761,
+            "size": 383139,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 99580,
+            "stargazers_count": 99745,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -143,11 +143,11 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2026-05-12T04:44:08Z",
+            "updated_at": "2026-05-19T05:10:39Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 99580,
-            "watchers_count": 99580,
+            "watchers": 99745,
+            "watchers_count": 99745,
             "web_commit_signoff_required": false
         },
         "sha": "b44c2bdd16226f6caa5324d91f1ae9781ffdc12b",
@@ -813,7 +813,7 @@
             },
             "author_association": "MEMBER",
             "body": "do not delete useful comments",
-            "commit_id": "d045627cd763a3b775f0b8e3d2026075cf7448d3",
+            "commit_id": "0eb2715f87dfea6c62e97fa4f77ba7f4fff0fc7b",
             "created_at": "2026-05-07T10:25:12Z",
             "diff_hunk": "@@ -5908,37 +5909,43 @@ static void ex_tabs(exarg_T *eap)\n   }\n }\n \n-/// \":detach\"\n-///\n-/// Detaches the current UI.\n-///\n-/// \":detach!\" with bang (!) detaches all UIs _except_ the current UI.\n+/// \":detach\" detaches the current UI.\n+/// \":detach!\" detaches all UIs _except_ the current UI.\n static void ex_detach(exarg_T *eap)\n {\n-  // come on pooky let's burn this mf down\n-  if (eap && eap->forceit) {\n-    emsg(\"bang (!) not supported yet\");\n-  } else {\n-    // 1. Send \"error_exit\" UI-event (notification only).\n-    // 2. Perform server-side UI detach.\n-    // 3. Close server-side channel without self-exit.\n+  if (!current_ui) {\n+    emsg(_(e_noui));\n+    return;\n+  }\n \n-    if (!current_ui) {\n-      emsg(\"UI not attached\");\n-      return;\n+  if (eap && eap->forceit) {\n+    typval_T lua_args[] = {\n+      { .v_type = VAR_NUMBER, .vval.v_number = (varnumber_T)current_ui },\n+      { .v_type = VAR_UNKNOWN },\n+    };\n+    typval_T rv = TV_INITIAL_VALUE;\n+    nlua_call_vimfn(\"vim._core.server\", \"detach_others\", lua_args, &rv);\n+    size_t n = (rv.v_type == VAR_NUMBER && rv.vval.v_number > 0)\n+               ? (size_t)rv.vval.v_number : 0;\n+    tv_clear(&rv);\n+\n+    if (n == 0) {\n+      msg(_(\"No other UIs are attached\"), 0);\n+    } else {\n+      smsg(0, NGETTEXT(\"Detached %zu non-current UI\", \"Detached %zu non-current UIs\", n), n);\n     }\n-\n+    ILOG(\"detach! current_ui=%\" PRIu64 \" detached=%zu\", current_ui, n);\n+  } else {\n     Channel *chan = find_channel(current_ui);\n     if (!chan) {\n       emsg(e_invchan);\n       return;\n     }\n-    // Prevent self-exit on channel-close.\n+    // Set detach so the server doesn't self-exit when the channel closes.\n     Error detach_err = ERROR_INIT;\n-    nvim__chan_set_detach(chan->id, true, &detach_err);\n+    nvim__chan_set_detach(chan->id, (Integer)chan->id, true, &detach_err);\n     api_clear_error(&detach_err);\n \n-    // Server-side UI detach. Doesn't close the channel.",
             "html_url": "https://github.com/neovim/neovim/pull/39216#discussion_r3200707543",
@@ -882,7 +882,7 @@
             },
             "author_association": "MEMBER",
             "body": "do not delete delightful comments",
-            "commit_id": "d045627cd763a3b775f0b8e3d2026075cf7448d3",
+            "commit_id": "0eb2715f87dfea6c62e97fa4f77ba7f4fff0fc7b",
             "created_at": "2026-05-07T10:25:25Z",
             "diff_hunk": "@@ -5908,37 +5909,43 @@ static void ex_tabs(exarg_T *eap)\n   }\n }\n \n-/// \":detach\"\n-///\n-/// Detaches the current UI.\n-///\n-/// \":detach!\" with bang (!) detaches all UIs _except_ the current UI.\n+/// \":detach\" detaches the current UI.\n+/// \":detach!\" detaches all UIs _except_ the current UI.\n static void ex_detach(exarg_T *eap)\n {\n-  // come on pooky let's burn this mf down",
             "html_url": "https://github.com/neovim/neovim/pull/39216#discussion_r3200708747",
@@ -1504,7 +1504,7 @@
             },
             "author_association": "MEMBER",
             "body": "this one probably should stay like this.",
-            "commit_id": "d045627cd763a3b775f0b8e3d2026075cf7448d3",
+            "commit_id": "0eb2715f87dfea6c62e97fa4f77ba7f4fff0fc7b",
             "created_at": "2026-05-08T09:28:43Z",
             "diff_hunk": "@@ -201,114 +203,88 @@ describe('TUI :detach', function()\n       {5:-- TERMINAL --}                                    |\n     ]])\n   end)\n-end)\n \n-describe('TUI :restart', function()\n-  before_each(n.clear)\n-  after_each(n.check_close)\n-\n-  --- Asserts that the server at `addr` has (or has not) restarted since `starttime`.\n-  ---@param starttime integer v:starttime of the server before restart\n-  ---@param sess table Session\n-  ---@param addr string\n-  ---@return integer starttime\n-  ---@return table session\n-  local function assert_restarted(starttime, sess, addr)\n-    sess:close()\n-    local new_starttime\n-    -- Retry: old server may still be alive (connect succeeds but yields stale starttime),\n-    -- or on Windows the --listen address is restored async.\n-    retry(nil, 5000, function()\n-      sess = n.connect(addr)\n-      local _, t = sess:request('nvim_eval', 'v:starttime')\n-      ok(t > starttime, ('v:starttime (%d) > old starttime (%d)'):format(t, starttime), t)\n-      new_starttime = t\n+  it('! detaches other UIs', function()\n+    setup_detach_child()\n+    finally(function()\n+      pcall(function()\n+        local s = n.connect(child_server)\n+        s:request('nvim_command', 'qall!')\n+      end)\n     end)\n-    return new_starttime, sess\n-  end\n \n-  it('validation', function()\n-    eq('Vim(restart):E481: No range allowed: :1restart', t.pcall_err(n.command, ':1restart'))\n-  end)\n+    tt.feed_data('iHello from detach!')\n+    screen:expect([[\n+      Hello from detach!^                                |\n+      {100:~                                                 }|*3\n+      {3:[No Name] [+]                                     }|\n+      {5:-- INSERT --}                                      |\n+      {5:-- TERMINAL --}                                    |\n+    ]])\n+    tt.feed_data('\\027')\n \n-  it('ZR', function()\n-    -- Just exercise ZR, don't need to test all :restart functionality here.\n-    local server_pipe = new_pipename()\n-    local server_session\n-    finally(function()\n-      if server_session then\n-        server_session:close()\n-      end\n-    end)\n-    local screen = tt.setup_child_nvim({\n-      '--clean',\n-      '--listen',\n-      server_pipe,\n-      '--cmd',\n-      'set notermguicolors',\n-    }, {\n-      env = vim.tbl_extend('force', env_notermguicolors, {\n-        -- Ignore logs, because assert_restarted may log \"connection refused\" while it retries.\n-        NVIM_LOG_FILE = testlog,\n-      }),\n-    })\n-    finally(function()\n-      os.remove(testlog)\n-    end)\n-    screen:expect({ any = '%[No Name%]' })\n+    local child_session = n.connect(child_server)\n+    local _, uis_before = child_session:request('nvim_list_uis')\n+    eq(1, #uis_before)\n+    local tui_chan_id = uis_before[1].chan\n \n-    server_session = n.connect(server_pipe)\n-    local _, starttime = server_session:request('nvim_eval', 'v:starttime')\n+    -- :detach! with only 1 UI is a no-op.\n+    tt.feed_data(':detach!\\013')\n+    screen:expect([[\n+      Hello from detach^!                                |\n+      {100:~                                                 }|*3\n+      {3:[No Name] [+]                                     }|\n+      No other UIs are attached                         |\n+      {5:-- TERMINAL --}                                    |\n+    ]])\n+    local _, uis_noop = child_session:request('nvim_list_uis')\n+    eq(1, #uis_noop)\n \n-    -- ZR on modified buffer fails with E37.\n-    tt.feed_data('ifoo\\027')\n-    tt.feed_data('ZR')\n-    screen:expect({ any = 'E37:' })\n+    child_session:request('nvim_ui_attach', 50, 7, {})\n+    local _, uis_attached = child_session:request('nvim_list_uis')\n+    eq(2, #uis_attached)\n \n-    -- [count]ZR discards unsaved changes.\n-    tt.feed_data('1ZR')\n-    screen:expect({ any = vim.pesc('[No Name]') })\n-    starttime, server_session = assert_restarted(starttime, server_session, server_pipe)\n+    tt.feed_data(':detach!\\013')\n+    screen:expect([[\n+      Hello from detach^!                                |\n+      {100:~                                                 }|*3\n+      {3:[No Name] [+]                                     }|\n+                                                        |\n+      {5:-- TERMINAL --}                                    |\n+    ]])",
             "html_url": "https://github.com/neovim/neovim/pull/39216#discussion_r3207736712",
@@ -1765,6 +1765,51 @@
                 "url": "https://api.github.com/users/jasonwoodland",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "can we get this over the line, what's remaining? spent a lot of time reviewing this, let's please finish it",
+            "created_at": "2026-05-18T13:43:53Z",
+            "html_url": "https://github.com/neovim/neovim/pull/39216#issuecomment-4478297961",
+            "id": 4478297961,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/39216",
+            "node_id": "IC_kwDOAPphoM8AAAABCu1naQ",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4478297961/reactions"
+            },
+            "updated_at": "2026-05-18T13:43:53Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4478297961",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
         }
     ],
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/39216/comments",
@@ -1863,9 +1908,9 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/jasonwoodland/neovim/pulls{/number}",
-            "pushed_at": "2026-05-09T15:31:40Z",
+            "pushed_at": "2026-05-12T09:20:22Z",
             "releases_url": "https://api.github.com/repos/jasonwoodland/neovim/releases{/id}",
-            "size": 380602,
+            "size": 380462,
             "ssh_url": "git@github.com:jasonwoodland/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/jasonwoodland/neovim/stargazers",
@@ -1884,7 +1929,7 @@
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "d045627cd763a3b775f0b8e3d2026075cf7448d3",
+        "sha": "0eb2715f87dfea6c62e97fa4f77ba7f4fff0fc7b",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/5356544?v=4",
             "events_url": "https://api.github.com/users/jasonwoodland/events{/privacy}",
@@ -1921,6 +1966,15 @@
             "url": "https://api.github.com/repos/neovim/neovim/labels/ui"
         },
         {
+            "color": "FBCA04",
+            "default": false,
+            "description": "Waiting for reply, will auto-close after 30 days.",
+            "id": 248229439,
+            "name": "needs:response",
+            "node_id": "MDU6TGFiZWwyNDgyMjk0Mzk=",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/needs:response"
+        },
+        {
             "color": "8B601E",
             "default": false,
             "description": "May contain trace amounts of GMO",
@@ -1931,7 +1985,7 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "6910c254ad7ec2e6fc56124b2af29abfe171bfff",
+    "merge_commit_sha": "e6d2f01b5d21ee57c903ed49c54c33e773a92d9d",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM7TtGf7",
@@ -1942,9 +1996,9 @@
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/39216/comments",
     "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/d045627cd763a3b775f0b8e3d2026075cf7448d3",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/0eb2715f87dfea6c62e97fa4f77ba7f4fff0fc7b",
     "title": "feat(ui): implement :detach! to disconnect other UIs",
-    "updated_at": "2026-05-09T15:31:42Z",
+    "updated_at": "2026-05-18T15:14:53Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/39216",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/5356544?v=4",
