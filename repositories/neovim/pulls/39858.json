@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/39858"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/33dbf642bbd531fe80f4ad52930b879059b75c23"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/3675f9a0a7b6460b7ef2b5063cbc0fa4d6301da5"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6907,
-            "forks_count": 6907,
+            "forks": 6904,
+            "forks_count": 6904,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -95,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1927,
-            "open_issues_count": 1927,
+            "open_issues": 1934,
+            "open_issues_count": 1934,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -121,11 +121,11 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2026-05-19T04:32:35Z",
+            "pushed_at": "2026-05-26T04:32:56Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 383139,
+            "size": 383270,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 99745,
+            "stargazers_count": 99869,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -143,14 +143,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2026-05-19T05:10:39Z",
+            "updated_at": "2026-05-26T03:28:21Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 99745,
-            "watchers_count": 99745,
+            "watchers": 99869,
+            "watchers_count": 99869,
             "web_commit_signoff_required": false
         },
-        "sha": "f3bb21e71da09a357c0b05e53b4e11afdceb6621",
+        "sha": "a952575c3bb8e23cccaaeb91bc5cc0cb908cb02c",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -174,7 +174,7 @@
         }
     },
     "body": "Problem:\r\nDeleting another buffer from a float could move focus into the holder window and fire BufEnter for the buffer being deleted.\r\n\r\nSolution:\r\nUse switch_win_noblock() instead of buf_jump_open_win() before recursing into do_buffer_ext().\r\n\r\nFix #39827 \r\n",
-    "closed_at": null,
+    "closed_at": "2026-05-21T09:06:51Z",
     "comment_data": [
         {
             "_links": {
@@ -313,14 +313,519 @@
                 "url": "https://api.github.com/users/seandewar",
                 "user_view_type": "public"
             }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/39858#discussion_r3274487715"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/39858"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3274487715"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "     // retry with ...",
+            "commit_id": "33dbf642bbd531fe80f4ad52930b879059b75c23",
+            "created_at": "2026-05-20T13:53:35Z",
+            "diff_hunk": "@@ -1462,12 +1463,33 @@ static int do_buffer_ext(int action, int start, int dir, int count, int flags)\n       }\n \n       close_windows(buf, false);\n-      // close_windows keeps the last non-float window. If it still\n-      // shows buf, jump there and retry so curbuf gets replaced.\n-      if (bufref_valid(&bufref) && buf->b_nwindows > 0) {\n-        win_T *holder = buf_jump_open_win(buf);\n-        if (holder != NULL && !holder->w_floating) {\n-          return do_buffer_ext(action, start, dir, count, flags);\n+      // buf still shown in a normal window. retry the delete from there.\n+      if (buf != curbuf && bufref_valid(&bufref) && buf->b_nwindows > 0) {\n+        if (curwin->w_floating) {\n+          // swap into the holder window without entering it, so caller keeps focus.\n+          win_T *holder = NULL;\n+          tabpage_T *holder_tp = NULL;\n+          FOR_ALL_TAB_WINDOWS(tp, wp) {\n+            if (wp->w_buffer == buf && !wp->w_floating) {\n+              holder = wp;\n+              holder_tp = tp;\n+              goto found_holder;\n+            }\n+          }\n+found_holder:\n+          if (holder != NULL) {\n+            switchwin_T switchwin;\n+            const int rv = switch_win_noblock(&switchwin, holder, holder_tp, true);\n+            assert(rv == OK);\n+            (void)rv;\n+            do_buffer_ext(action, start, dir, count, flags);",
+            "html_url": "https://github.com/neovim/neovim/pull/39858#discussion_r3274487715",
+            "id": 3274487715,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7DLLej",
+            "original_commit_id": "33dbf642bbd531fe80f4ad52930b879059b75c23",
+            "original_line": 1485,
+            "original_position": 37,
+            "original_start_line": null,
+            "path": "src/nvim/buffer.c",
+            "position": 1,
+            "pull_request_review_id": 4329126725,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39858",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3274487715/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-05-20T13:53:41Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3274487715",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/39858#discussion_r3274507465"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/39858"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3274507465"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "the comment seems confusing given that `curwin->w_floating` (not a \"normal window\"?) is checked just below it?\n\nis the old `close_windows keeps the last non-float window.` comment worth keeping in some form?",
+            "commit_id": "33dbf642bbd531fe80f4ad52930b879059b75c23",
+            "created_at": "2026-05-20T13:56:13Z",
+            "diff_hunk": "@@ -1462,12 +1463,33 @@ static int do_buffer_ext(int action, int start, int dir, int count, int flags)\n       }\n \n       close_windows(buf, false);\n-      // close_windows keeps the last non-float window. If it still\n-      // shows buf, jump there and retry so curbuf gets replaced.\n-      if (bufref_valid(&bufref) && buf->b_nwindows > 0) {\n-        win_T *holder = buf_jump_open_win(buf);\n-        if (holder != NULL && !holder->w_floating) {\n-          return do_buffer_ext(action, start, dir, count, flags);\n+      // buf still shown in a normal window. retry the delete from there.\n+      if (buf != curbuf && bufref_valid(&bufref) && buf->b_nwindows > 0) {\n+        if (curwin->w_floating) {",
+            "html_url": "https://github.com/neovim/neovim/pull/39858#discussion_r3274507465",
+            "id": 3274507465,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7DLQTJ",
+            "original_commit_id": "33dbf642bbd531fe80f4ad52930b879059b75c23",
+            "original_line": 1468,
+            "original_position": 20,
+            "original_start_line": 1466,
+            "path": "src/nvim/buffer.c",
+            "position": 1,
+            "pull_request_review_id": 4329149978,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39858",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3274507465/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-05-20T13:56:13Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3274507465",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/39858#discussion_r3274520648"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/39858"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3274520648"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "should this (or elsewhere in this area) also mention that it's avoided BufEnter events, and any other hints about the goal of this code? this is a lot of code and the purpose will just be forgotten in time...",
+            "commit_id": "33dbf642bbd531fe80f4ad52930b879059b75c23",
+            "created_at": "2026-05-20T13:57:57Z",
+            "diff_hunk": "@@ -1462,12 +1463,33 @@ static int do_buffer_ext(int action, int start, int dir, int count, int flags)\n       }\n \n       close_windows(buf, false);\n-      // close_windows keeps the last non-float window. If it still\n-      // shows buf, jump there and retry so curbuf gets replaced.\n-      if (bufref_valid(&bufref) && buf->b_nwindows > 0) {\n-        win_T *holder = buf_jump_open_win(buf);\n-        if (holder != NULL && !holder->w_floating) {\n-          return do_buffer_ext(action, start, dir, count, flags);\n+      // buf still shown in a normal window. retry the delete from there.\n+      if (buf != curbuf && bufref_valid(&bufref) && buf->b_nwindows > 0) {\n+        if (curwin->w_floating) {\n+          // swap into the holder window without entering it, so caller keeps focus.",
+            "html_url": "https://github.com/neovim/neovim/pull/39858#discussion_r3274520648",
+            "id": 3274520648,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7DLThI",
+            "original_commit_id": "33dbf642bbd531fe80f4ad52930b879059b75c23",
+            "original_line": 1469,
+            "original_position": 21,
+            "original_start_line": null,
+            "path": "src/nvim/buffer.c",
+            "position": 1,
+            "pull_request_review_id": 4329164860,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39858",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3274520648/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-05-20T13:57:58Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3274520648",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/39858#discussion_r3274552025"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/39858"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3274552025"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "`abort()` instead? if `switch_win_noblock` fails then the code below will be nonsense\n\n```suggestion\n            if (OK != switch_win_noblock(&switchwin, holder, holder_tp, true)) {\n              abort();\n            }\n```",
+            "commit_id": "33dbf642bbd531fe80f4ad52930b879059b75c23",
+            "created_at": "2026-05-20T14:02:02Z",
+            "diff_hunk": "@@ -1462,12 +1463,33 @@ static int do_buffer_ext(int action, int start, int dir, int count, int flags)\n       }\n \n       close_windows(buf, false);\n-      // close_windows keeps the last non-float window. If it still\n-      // shows buf, jump there and retry so curbuf gets replaced.\n-      if (bufref_valid(&bufref) && buf->b_nwindows > 0) {\n-        win_T *holder = buf_jump_open_win(buf);\n-        if (holder != NULL && !holder->w_floating) {\n-          return do_buffer_ext(action, start, dir, count, flags);\n+      // buf still shown in a normal window. retry the delete from there.\n+      if (buf != curbuf && bufref_valid(&bufref) && buf->b_nwindows > 0) {\n+        if (curwin->w_floating) {\n+          // swap into the holder window without entering it, so caller keeps focus.\n+          win_T *holder = NULL;\n+          tabpage_T *holder_tp = NULL;\n+          FOR_ALL_TAB_WINDOWS(tp, wp) {\n+            if (wp->w_buffer == buf && !wp->w_floating) {\n+              holder = wp;\n+              holder_tp = tp;\n+              goto found_holder;\n+            }\n+          }\n+found_holder:\n+          if (holder != NULL) {\n+            switchwin_T switchwin;\n+            const int rv = switch_win_noblock(&switchwin, holder, holder_tp, true);\n+            assert(rv == OK);\n+            (void)rv;",
+            "html_url": "https://github.com/neovim/neovim/pull/39858#discussion_r3274552025",
+            "id": 3274552025,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7DLbLZ",
+            "original_commit_id": "33dbf642bbd531fe80f4ad52930b879059b75c23",
+            "original_line": 1484,
+            "original_position": 36,
+            "original_start_line": 1482,
+            "path": "src/nvim/buffer.c",
+            "position": 1,
+            "pull_request_review_id": 4329203001,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39858",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3274552025/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-05-20T14:02:02Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3274552025",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/39858#discussion_r3280658492"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/39858"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3280658492"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "the old `close_windows` call is still here, above the new one. is that intentional?",
+            "commit_id": "3675f9a0a7b6460b7ef2b5063cbc0fa4d6301da5",
+            "created_at": "2026-05-21T11:04:25Z",
+            "diff_hunk": "@@ -1462,11 +1463,21 @@ static int do_buffer_ext(int action, int start, int dir, int count, int flags)\n       }\n \n       close_windows(buf, false);\n-      // close_windows keeps the last non-float window. If it still\n-      // shows buf, jump there and retry so curbuf gets replaced.\n-      if (bufref_valid(&bufref) && buf->b_nwindows > 0) {\n-        win_T *holder = buf_jump_open_win(buf);\n-        if (holder != NULL && !holder->w_floating) {\n+      // close_windows() refuses to close curtab's last non-float window.\n+      // If it still shows buf, retry the delete from there.\n+      win_T *holder = close_windows(buf, false);",
+            "html_url": "https://github.com/neovim/neovim/pull/39858#discussion_r3280658492",
+            "id": 3280658492,
+            "line": 1468,
+            "node_id": "PRRC_kwDOAPphoM7DiuA8",
+            "original_commit_id": "3675f9a0a7b6460b7ef2b5063cbc0fa4d6301da5",
+            "original_line": 1468,
+            "original_position": 37,
+            "original_start_line": 1465,
+            "path": "src/nvim/buffer.c",
+            "position": 37,
+            "pull_request_review_id": 4336330054,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39858",
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 1,
+                "rocket": 0,
+                "total_count": 2,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3280658492/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 1465,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-05-21T11:17:37Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3280658492",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/6256228?v=4",
+                "events_url": "https://api.github.com/users/seandewar/events{/privacy}",
+                "followers_url": "https://api.github.com/users/seandewar/followers",
+                "following_url": "https://api.github.com/users/seandewar/following{/other_user}",
+                "gists_url": "https://api.github.com/users/seandewar/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/seandewar",
+                "id": 6256228,
+                "login": "seandewar",
+                "node_id": "MDQ6VXNlcjYyNTYyMjg=",
+                "organizations_url": "https://api.github.com/users/seandewar/orgs",
+                "received_events_url": "https://api.github.com/users/seandewar/received_events",
+                "repos_url": "https://api.github.com/users/seandewar/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/seandewar/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/seandewar/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/seandewar",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/39858#discussion_r3280730877"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/39858"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3280730877"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\r\n  // If buf is still shown in the last non-float window, let the caller retry there.\r\n  if (firstwin->w_buffer == buf && one_window(firstwin, NULL)) {\r\n```\r\n\r\ni don't understand this condition (`firstwin` can't be floating, and it doesn't seem to match what the comment describes). should it be this instead?\r\nalso, might be better to just check this at the call site?",
+            "commit_id": "3675f9a0a7b6460b7ef2b5063cbc0fa4d6301da5",
+            "created_at": "2026-05-21T11:17:31Z",
+            "diff_hunk": "@@ -2646,6 +2647,12 @@ void close_windows(buf_T *buf, bool keep_curwin)\n \n theend:\n   RedrawingDisabled--;\n+\n+  // If buf is still shown in the last non-float window, let the caller retry there.\n+  if (firstwin->w_buffer == buf && !firstwin->w_floating) {",
+            "html_url": "https://github.com/neovim/neovim/pull/39858#discussion_r3280730877",
+            "id": 3280730877,
+            "line": 2652,
+            "node_id": "PRRC_kwDOAPphoM7Di_r9",
+            "original_commit_id": "3675f9a0a7b6460b7ef2b5063cbc0fa4d6301da5",
+            "original_line": 2652,
+            "original_position": 16,
+            "original_start_line": 2651,
+            "path": "src/nvim/window.c",
+            "position": 16,
+            "pull_request_review_id": 4336330054,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39858",
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3280730877/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 2651,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-05-21T11:20:26Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3280730877",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/6256228?v=4",
+                "events_url": "https://api.github.com/users/seandewar/events{/privacy}",
+                "followers_url": "https://api.github.com/users/seandewar/followers",
+                "following_url": "https://api.github.com/users/seandewar/following{/other_user}",
+                "gists_url": "https://api.github.com/users/seandewar/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/seandewar",
+                "id": 6256228,
+                "login": "seandewar",
+                "node_id": "MDQ6VXNlcjYyNTYyMjg=",
+                "organizations_url": "https://api.github.com/users/seandewar/orgs",
+                "received_events_url": "https://api.github.com/users/seandewar/received_events",
+                "repos_url": "https://api.github.com/users/seandewar/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/seandewar/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/seandewar/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/seandewar",
+                "user_view_type": "public"
+            }
         }
     ],
-    "comment_regular_data": [],
+    "comment_regular_data": [
+        {
+            "author_association": "MEMBER",
+            "body": "this patch (ai-generated) looks a bit better, WDYT. I.e. returning info from `close_windows` makes things more readable and avoids extra work.\r\n\r\n```diff\r\ndiff --git a/src/nvim/window.c b/src/nvim/window.c\r\n--- a/src/nvim/window.c\r\n+++ b/src/nvim/window.c\r\n@@ -2590,11 +2590,13 @@ void empty_curbuf(...)\r\n   win_init_empty(curwin);\r\n }\r\n\r\n-/// Closes all windows for buffer `buf` unless there is only one non-floating window.\r\n+/// Closes all windows for buffer `buf` unless there is only one non-floating\r\n+/// window. Returns the curtab non-float that still shows `buf` (the \"holder\"\r\n+/// the loop refused to close), or NULL.\r\n ///\r\n /// @param keep_curwin  don't close `curwin`\r\n-void close_windows(buf_T *buf, bool keep_curwin)\r\n+win_T *close_windows(buf_T *buf, bool keep_curwin)\r\n {\r\n   RedrawingDisabled++;\r\n\r\n   // Start from lastwin to close floating windows with the same buffer first.\r\n@@ -2643,8 +2645,17 @@ void close_windows(buf_T *buf, bool keep_curwin)\r\n     }\r\n   }\r\n\r\n theend:\r\n   RedrawingDisabled--;\r\n+\r\n+  // If the main loop bailed because the last non-float showed `buf`, surface\r\n+  // it so the caller can decide whether to retry the operation from there.\r\n+  FOR_ALL_WINDOWS_IN_TAB(wp, curtab) {\r\n+    if (wp->w_buffer == buf && !wp->w_floating) {\r\n+      return wp;\r\n+    }\r\n+  }\r\n+  return NULL;\r\n }\r\n\r\n /// Check if \"win\" is the last non-floating window that exists.\r\ndiff --git a/src/nvim/window.h b/src/nvim/window.h\r\n--- a/src/nvim/window.h\r\n+++ b/src/nvim/window.h\r\n@@ -X,X +X,X @@\r\n-void close_windows(buf_T *buf, bool keep_curwin);\r\n+win_T *close_windows(buf_T *buf, bool keep_curwin);\r\n\r\ndiff --git a/src/nvim/buffer.c b/src/nvim/buffer.c\r\n--- a/src/nvim/buffer.c\r\n+++ b/src/nvim/buffer.c\r\n@@ -46,7 +46,7 @@\r\n #include \"nvim/errors.h\"\r\n #include \"nvim/eval/typval.h\"\r\n #include \"nvim/eval/vars.h\"\r\n-#include \"nvim/eval/window.h\"\r\n+#include \"nvim/eval/window.h\"\r\n #include \"nvim/ex_cmds.h\"\r\n #include \"nvim/ex_cmds2.h\"\r\n #include \"nvim/ex_cmds_defs.h\"\r\n@@ -1461,13 +1461,24 @@ static int do_buffer_ext(int action, int start, int dir, int count, int flags)\r\n         mark_jumplist_forget_file(curwin, buf_fnum);\r\n       }\r\n\r\n-      close_windows(buf, false);\r\n-      // close_windows keeps the last non-float window. If it still\r\n-      // shows buf, jump there and retry so curbuf gets replaced.\r\n-      if (bufref_valid(&bufref) && buf->b_nwindows > 0) {\r\n-        win_T *holder = buf_jump_open_win(buf);\r\n-        if (holder != NULL && !holder->w_floating) {\r\n-          return do_buffer_ext(action, start, dir, count, flags);\r\n+      // close_windows() refuses to close the last non-float; if it still\r\n+      // shows buf, retry the delete from there so curbuf gets replaced.\r\n+      win_T *holder = close_windows(buf, false);\r\n+      if (buf != curbuf && bufref_valid(&bufref) && holder != NULL) {\r\n+        if (curwin->w_floating) {\r\n+          // Swap into the holder without entering it, so caller keeps focus\r\n+          // and BufEnter doesn't fire for the deleted buffer.\r\n+          switchwin_T switchwin;\r\n+          if (switch_win_noblock(&switchwin, holder, curtab, true) != OK) {\r\n+            return OK;  // holder vanished between find and switch\r\n+          }\r\n+          // After the recursive delete, buf may be gone; cleanup below is a\r\n+          // no-op via bufref_valid().\r\n+          do_buffer_ext(action, start, dir, count, flags);\r\n+          restore_win_noblock(&switchwin, true);\r\n+        } else {\r\n+          buf_jump_open_win(buf);\r\n+          return do_buffer_ext(action, start, dir, count, flags);\r\n         }\r\n       }\r\n```",
+            "created_at": "2026-05-20T14:07:51Z",
+            "html_url": "https://github.com/neovim/neovim/pull/39858#issuecomment-4499225665",
+            "id": 4499225665,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/39858",
+            "node_id": "IC_kwDOAPphoM8AAAABDCy8QQ",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4499225665/reactions"
+            },
+            "updated_at": "2026-05-21T08:58:47Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4499225665",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "Looks fine. If changing the semantics of close_windows is okay",
+            "created_at": "2026-05-21T02:49:17Z",
+            "html_url": "https://github.com/neovim/neovim/pull/39858#issuecomment-4504337182",
+            "id": 4504337182,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/39858",
+            "node_id": "IC_kwDOAPphoM8AAAABDHq7Hg",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4504337182/reactions"
+            },
+            "updated_at": "2026-05-21T04:02:28Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4504337182",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",
+                "events_url": "https://api.github.com/users/glepnir/events{/privacy}",
+                "followers_url": "https://api.github.com/users/glepnir/followers",
+                "following_url": "https://api.github.com/users/glepnir/following{/other_user}",
+                "gists_url": "https://api.github.com/users/glepnir/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/glepnir",
+                "id": 41671631,
+                "login": "glepnir",
+                "node_id": "MDQ6VXNlcjQxNjcxNjMx",
+                "organizations_url": "https://api.github.com/users/glepnir/orgs",
+                "received_events_url": "https://api.github.com/users/glepnir/received_events",
+                "repos_url": "https://api.github.com/users/glepnir/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/glepnir/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/glepnir/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/glepnir",
+                "user_view_type": "public"
+            }
+        }
+    ],
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/39858/comments",
     "commits_url": "https://api.github.com/repos/neovim/neovim/pulls/39858/commits",
     "created_at": "2026-05-18T10:04:48Z",
     "diff_url": "https://github.com/neovim/neovim/pull/39858.diff",
-    "draft": true,
+    "draft": false,
     "head": {
         "label": "glepnir:39827",
         "ref": "39827",
@@ -412,9 +917,9 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/glepnir/neovim/pulls{/number}",
-            "pushed_at": "2026-05-19T05:01:09Z",
+            "pushed_at": "2026-05-26T04:33:11Z",
             "releases_url": "https://api.github.com/repos/glepnir/neovim/releases{/id}",
-            "size": 372378,
+            "size": 372189,
             "ssh_url": "git@github.com:glepnir/neovim.git",
             "stargazers_count": 2,
             "stargazers_url": "https://api.github.com/repos/glepnir/neovim/stargazers",
@@ -426,14 +931,14 @@
             "teams_url": "https://api.github.com/repos/glepnir/neovim/teams",
             "topics": [],
             "trees_url": "https://api.github.com/repos/glepnir/neovim/git/trees{/sha}",
-            "updated_at": "2026-05-19T04:44:36Z",
+            "updated_at": "2026-05-23T06:35:23Z",
             "url": "https://api.github.com/repos/glepnir/neovim",
             "visibility": "public",
             "watchers": 2,
             "watchers_count": 2,
             "web_commit_signoff_required": false
         },
-        "sha": "33dbf642bbd531fe80f4ad52930b879059b75c23",
+        "sha": "3675f9a0a7b6460b7ef2b5063cbc0fa4d6301da5",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",
             "events_url": "https://api.github.com/users/glepnir/events{/privacy}",
@@ -459,10 +964,20 @@
     "html_url": "https://github.com/neovim/neovim/pull/39858",
     "id": 3701063536,
     "issue_url": "https://api.github.com/repos/neovim/neovim/issues/39858",
-    "labels": [],
+    "labels": [
+        {
+            "color": "C5DEF5",
+            "default": false,
+            "description": "floating windows, popups, hover",
+            "id": 3234818716,
+            "name": "floatwin",
+            "node_id": "MDU6TGFiZWwzMjM0ODE4NzE2",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/floatwin"
+        }
+    ],
     "locked": false,
-    "merge_commit_sha": "537666cac2fc4d896c8bda802d12c58f453abe56",
-    "merged_at": null,
+    "merge_commit_sha": "26df751adde08027c9828db9a8f131bf3330d422",
+    "merged_at": "2026-05-21T09:06:51Z",
     "milestone": null,
     "node_id": "PR_kwDOAPphoM7cmb9w",
     "number": 39858,
@@ -471,10 +986,10 @@
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/39858/comments",
-    "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/33dbf642bbd531fe80f4ad52930b879059b75c23",
-    "title": "fix(float): keep the calling float focused on buf_delete",
-    "updated_at": "2026-05-19T04:44:12Z",
+    "state": "closed",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/3675f9a0a7b6460b7ef2b5063cbc0fa4d6301da5",
+    "title": "fix(float): `:bufdelete` in floatwin may change focus",
+    "updated_at": "2026-05-21T11:17:37Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/39858",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",

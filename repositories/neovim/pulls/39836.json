@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/39836"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/22d8f2f6212f926495a892bb0d9b7768de549e3e"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/4c8e7a0c8796f53289d0e910e681db6d5a0e4905"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6907,
-            "forks_count": 6907,
+            "forks": 6904,
+            "forks_count": 6904,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -95,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1927,
-            "open_issues_count": 1927,
+            "open_issues": 1934,
+            "open_issues_count": 1934,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -121,11 +121,11 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2026-05-19T04:32:35Z",
+            "pushed_at": "2026-05-26T04:32:56Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 383139,
+            "size": 383270,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 99745,
+            "stargazers_count": 99869,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -143,14 +143,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2026-05-19T05:10:39Z",
+            "updated_at": "2026-05-26T03:28:21Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 99745,
-            "watchers_count": 99745,
+            "watchers": 99869,
+            "watchers_count": 99869,
             "web_commit_signoff_required": false
         },
-        "sha": "84d5c5f4bf0650235c72c3567453b70a91caa12f",
+        "sha": "a952575c3bb8e23cccaaeb91bc5cc0cb908cb02c",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -174,7 +174,7 @@
         }
     },
     "body": "## Problem\r\nPotential documentation drift in `tui.txt` if fields for `$NVIM_TERMDEFS` change.\r\n\r\n## Solution\r\nGenerate docs for `tui.txt`. Add `brief_xform` to `gen_vimdoc.lua` to allow transforming briefs during generation.\r\nAlso fixed some extra whitespace and alignment while I was at it. We were using two ways of aligning helptags, but now both places call the same function.\r\nThe helptags still aren't fully right-aligned to 78 chars if `conceallevel=2`. Not sure if that's desired, but it's an easy fix in `align_tags` if needed.",
-    "closed_at": null,
+    "closed_at": "2026-05-21T08:39:45Z",
     "comment_data": [
         {
             "_links": {
@@ -195,14 +195,14 @@
             "diff_hunk": "@@ -477,6 +480,90 @@ local config = {\n       return name\n     end,\n   },\n+  tui = {\n+    filename = 'tui.txt',\n+    section_order = { 'tui.lua' },\n+    files = { 'runtime/lua/vim/_meta/tui.lua' },\n+    section_fmt = function(_name)\n+      return 'Startup'\n+    end,\n+    helptag_fmt = function()\n+      return { 'startup-tui', 'startup-terminal' }\n+    end,\n+    brief_xform = function(brief)\n+      local terminfo = require('src.gen.terminfo').fields\n+      local booleans = terminfo.bools\n+      local numbers = terminfo.ints\n+      local strings = terminfo.strings\n+\n+      local strings_ext = vim.tbl_map(function(v)\n+        return v[1]\n+      end, terminfo.strings_ext)\n+\n+      local unshifted_keys = vim.tbl_map(function(v)\n+        return 'key_' .. v[1]\n+      end, (vim.tbl_filter(function(v)\n+        return not v[2]\n+      end, terminfo.termkeys)))\n+\n+      local shifted_keys = vim.tbl_map(function(v)\n+        return 'key_' .. v[1]\n+      end, (vim.tbl_filter(function(v)\n+        return v[2]\n+      end, terminfo.termkeys)))\n+\n+      local f_keys = { 'key_f1', '...', 'key_f' .. terminfo.func_key_max }\n+\n+      local table_rows = { { 'Field', 'Type' } }\n+      local col1_max_width = 0\n+      --- @param defs string[]\n+      --- @param type string\n+      --- @param omit_padding_row nil | boolean\n+      --- @param skip_sort nil | boolean\n+      local function add_defs(defs, type, omit_padding_row, skip_sort)\n+        if not skip_sort then\n+          table.sort(defs)\n+        end\n+        for _, def in ipairs(defs) do\n+          table.insert(table_rows, { def, type })\n+          col1_max_width = math.max(col1_max_width, #def)\n+        end\n+        if not omit_padding_row then\n+          table.insert(table_rows, { '', '' })\n+        end\n+      end\n+\n+      add_defs(booleans, 'bool')\n+      add_defs(numbers, 'int')\n+      add_defs(strings, 'string')\n+      add_defs(strings_ext, 'string')\n+      add_defs(unshifted_keys, 'string')\n+      add_defs(shifted_keys, 'string[]')\n+      add_defs(f_keys, 'string', true, true)\n+\n+      -- Convert all the table rows into strings by calculating the padding\n+      -- needed between them\n+      local table_str_rows = {}\n+      local min_padding = 3 -- padding between table columns\n+      local max_width = 0 -- max width of col1 + padding + col2\n+      local indent = '  '\n+      for _, row in ipairs(table_rows) do\n+        if #row[1] == 0 then\n+          table.insert(table_str_rows, '')\n+          goto continue\n+        end\n+        local padding = string.rep(' ', col1_max_width + min_padding - #row[1])\n+        local val = table.concat(row, padding)\n+        max_width = math.max(max_width, #val)\n+        table.insert(table_str_rows, indent .. val)\n+        ::continue::",
             "html_url": "https://github.com/neovim/neovim/pull/39836#discussion_r3259179022",
             "id": 3259179022,
-            "line": 559,
+            "line": null,
             "node_id": "PRRC_kwDOAPphoM7CQyAO",
             "original_commit_id": "22d8f2f6212f926495a892bb0d9b7768de549e3e",
             "original_line": 559,
             "original_position": 97,
             "original_start_line": null,
             "path": "src/gen/gen_vimdoc.lua",
-            "position": 97,
+            "position": 1,
             "pull_request_review_id": 4310466696,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39836",
             "reactions": {
@@ -264,14 +264,14 @@
             "diff_hunk": "@@ -0,0 +1,296 @@\n+--- @meta\n+-- This file is NOT generated, edit it directly.\n+error('Cannot require a meta file')\n+\n+---@brief <pre>help",
             "html_url": "https://github.com/neovim/neovim/pull/39836#discussion_r3259214586",
             "id": 3259214586,
-            "line": 5,
+            "line": null,
             "node_id": "PRRC_kwDOAPphoM7CQ6r6",
             "original_commit_id": "22d8f2f6212f926495a892bb0d9b7768de549e3e",
             "original_line": 5,
             "original_position": 5,
             "original_start_line": null,
             "path": "runtime/lua/vim/_meta/tui.lua",
-            "position": 5,
+            "position": 1,
             "pull_request_review_id": 4310506006,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39836",
             "reactions": {
@@ -334,14 +334,14 @@
             "html_url": "https://github.com/neovim/neovim/pull/39836#discussion_r3259250437",
             "id": 3259250437,
             "in_reply_to_id": 3259214586,
-            "line": 5,
+            "line": null,
             "node_id": "PRRC_kwDOAPphoM7CRDcF",
             "original_commit_id": "22d8f2f6212f926495a892bb0d9b7768de549e3e",
             "original_line": 5,
             "original_position": 5,
             "original_start_line": null,
             "path": "runtime/lua/vim/_meta/tui.lua",
-            "position": 5,
+            "position": 1,
             "pull_request_review_id": 4310546171,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39836",
             "reactions": {
@@ -381,6 +381,76 @@
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
                 "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/39836#discussion_r3278338830"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/39836"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3278338830"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "Maybe, got rid of it.",
+            "commit_id": "22d8f2f6212f926495a892bb0d9b7768de549e3e",
+            "created_at": "2026-05-21T02:44:20Z",
+            "diff_hunk": "@@ -477,6 +480,90 @@ local config = {\n       return name\n     end,\n   },\n+  tui = {\n+    filename = 'tui.txt',\n+    section_order = { 'tui.lua' },\n+    files = { 'runtime/lua/vim/_meta/tui.lua' },\n+    section_fmt = function(_name)\n+      return 'Startup'\n+    end,\n+    helptag_fmt = function()\n+      return { 'startup-tui', 'startup-terminal' }\n+    end,\n+    brief_xform = function(brief)\n+      local terminfo = require('src.gen.terminfo').fields\n+      local booleans = terminfo.bools\n+      local numbers = terminfo.ints\n+      local strings = terminfo.strings\n+\n+      local strings_ext = vim.tbl_map(function(v)\n+        return v[1]\n+      end, terminfo.strings_ext)\n+\n+      local unshifted_keys = vim.tbl_map(function(v)\n+        return 'key_' .. v[1]\n+      end, (vim.tbl_filter(function(v)\n+        return not v[2]\n+      end, terminfo.termkeys)))\n+\n+      local shifted_keys = vim.tbl_map(function(v)\n+        return 'key_' .. v[1]\n+      end, (vim.tbl_filter(function(v)\n+        return v[2]\n+      end, terminfo.termkeys)))\n+\n+      local f_keys = { 'key_f1', '...', 'key_f' .. terminfo.func_key_max }\n+\n+      local table_rows = { { 'Field', 'Type' } }\n+      local col1_max_width = 0\n+      --- @param defs string[]\n+      --- @param type string\n+      --- @param omit_padding_row nil | boolean\n+      --- @param skip_sort nil | boolean\n+      local function add_defs(defs, type, omit_padding_row, skip_sort)\n+        if not skip_sort then\n+          table.sort(defs)\n+        end\n+        for _, def in ipairs(defs) do\n+          table.insert(table_rows, { def, type })\n+          col1_max_width = math.max(col1_max_width, #def)\n+        end\n+        if not omit_padding_row then\n+          table.insert(table_rows, { '', '' })\n+        end\n+      end\n+\n+      add_defs(booleans, 'bool')\n+      add_defs(numbers, 'int')\n+      add_defs(strings, 'string')\n+      add_defs(strings_ext, 'string')\n+      add_defs(unshifted_keys, 'string')\n+      add_defs(shifted_keys, 'string[]')\n+      add_defs(f_keys, 'string', true, true)\n+\n+      -- Convert all the table rows into strings by calculating the padding\n+      -- needed between them\n+      local table_str_rows = {}\n+      local min_padding = 3 -- padding between table columns\n+      local max_width = 0 -- max width of col1 + padding + col2\n+      local indent = '  '\n+      for _, row in ipairs(table_rows) do\n+        if #row[1] == 0 then\n+          table.insert(table_str_rows, '')\n+          goto continue\n+        end\n+        local padding = string.rep(' ', col1_max_width + min_padding - #row[1])\n+        local val = table.concat(row, padding)\n+        max_width = math.max(max_width, #val)\n+        table.insert(table_str_rows, indent .. val)\n+        ::continue::",
+            "html_url": "https://github.com/neovim/neovim/pull/39836#discussion_r3278338830",
+            "id": 3278338830,
+            "in_reply_to_id": 3259179022,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7DZ3sO",
+            "original_commit_id": "22d8f2f6212f926495a892bb0d9b7768de549e3e",
+            "original_line": 559,
+            "original_position": 97,
+            "original_start_line": null,
+            "path": "src/gen/gen_vimdoc.lua",
+            "position": 1,
+            "pull_request_review_id": 4333562598,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39836",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3278338830/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-05-21T02:44:21Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3278338830",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/50718101?v=4",
+                "events_url": "https://api.github.com/users/kylesower/events{/privacy}",
+                "followers_url": "https://api.github.com/users/kylesower/followers",
+                "following_url": "https://api.github.com/users/kylesower/following{/other_user}",
+                "gists_url": "https://api.github.com/users/kylesower/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/kylesower",
+                "id": 50718101,
+                "login": "kylesower",
+                "node_id": "MDQ6VXNlcjUwNzE4MTAx",
+                "organizations_url": "https://api.github.com/users/kylesower/orgs",
+                "received_events_url": "https://api.github.com/users/kylesower/received_events",
+                "repos_url": "https://api.github.com/users/kylesower/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/kylesower/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/kylesower/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/kylesower",
                 "user_view_type": "public"
             }
         }
@@ -482,9 +552,9 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/kylesower/neovim/pulls{/number}",
-            "pushed_at": "2026-05-19T03:15:12Z",
+            "pushed_at": "2026-05-25T09:09:27Z",
             "releases_url": "https://api.github.com/repos/kylesower/neovim/releases{/id}",
-            "size": 368498,
+            "size": 368458,
             "ssh_url": "git@github.com:kylesower/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/kylesower/neovim/stargazers",
@@ -503,7 +573,7 @@
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "22d8f2f6212f926495a892bb0d9b7768de549e3e",
+        "sha": "4c8e7a0c8796f53289d0e910e681db6d5a0e4905",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/50718101?v=4",
             "events_url": "https://api.github.com/users/kylesower/events{/privacy}",
@@ -550,42 +620,20 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": null,
-    "merged_at": null,
+    "merge_commit_sha": "7337e02563b5fbcc7ac8d50f127efa740fde38d6",
+    "merged_at": "2026-05-21T08:39:45Z",
     "milestone": null,
     "node_id": "PR_kwDOAPphoM7cbZ7x",
     "number": 39836,
     "patch_url": "https://github.com/neovim/neovim/pull/39836.patch",
-    "requested_reviewers": [
-        {
-            "avatar_url": "https://avatars.githubusercontent.com/u/8965202?v=4",
-            "events_url": "https://api.github.com/users/gpanders/events{/privacy}",
-            "followers_url": "https://api.github.com/users/gpanders/followers",
-            "following_url": "https://api.github.com/users/gpanders/following{/other_user}",
-            "gists_url": "https://api.github.com/users/gpanders/gists{/gist_id}",
-            "gravatar_id": "",
-            "html_url": "https://github.com/gpanders",
-            "id": 8965202,
-            "login": "gpanders",
-            "node_id": "MDQ6VXNlcjg5NjUyMDI=",
-            "organizations_url": "https://api.github.com/users/gpanders/orgs",
-            "received_events_url": "https://api.github.com/users/gpanders/received_events",
-            "repos_url": "https://api.github.com/users/gpanders/repos",
-            "site_admin": false,
-            "starred_url": "https://api.github.com/users/gpanders/starred{/owner}{/repo}",
-            "subscriptions_url": "https://api.github.com/users/gpanders/subscriptions",
-            "type": "User",
-            "url": "https://api.github.com/users/gpanders",
-            "user_view_type": "public"
-        }
-    ],
+    "requested_reviewers": [],
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/39836/comments",
-    "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/22d8f2f6212f926495a892bb0d9b7768de549e3e",
+    "state": "closed",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/4c8e7a0c8796f53289d0e910e681db6d5a0e4905",
     "title": "refactor(gen): use terminfo field data to generate tui.txt",
-    "updated_at": "2026-05-18T13:26:29Z",
+    "updated_at": "2026-05-22T01:25:37Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/39836",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/50718101?v=4",

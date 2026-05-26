@@ -22,13 +22,13 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/39061"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/ed7cfe8f19022ac36b951489e0af80df3276c5b6"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/e5b85e4798fa2fb6af627c502fc72c0b5663354d"
         }
     },
     "active_lock_reason": null,
     "assignee": null,
     "assignees": [],
-    "author_association": "CONTRIBUTOR",
+    "author_association": "MEMBER",
     "auto_merge": null,
     "base": {
         "label": "neovim:master",
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6907,
-            "forks_count": 6907,
+            "forks": 6904,
+            "forks_count": 6904,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -95,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1927,
-            "open_issues_count": 1927,
+            "open_issues": 1934,
+            "open_issues_count": 1934,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -121,11 +121,11 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2026-05-19T04:32:35Z",
+            "pushed_at": "2026-05-26T04:32:56Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 383139,
+            "size": 383270,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 99745,
+            "stargazers_count": 99869,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -143,14 +143,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2026-05-19T05:10:39Z",
+            "updated_at": "2026-05-26T03:28:21Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 99745,
-            "watchers_count": 99745,
+            "watchers": 99869,
+            "watchers_count": 99869,
             "web_commit_signoff_required": false
         },
-        "sha": "f3bb21e71da09a357c0b05e53b4e11afdceb6621",
+        "sha": "c7ea9c075a0a5d280d9a2e33efdb6314d5fb6b77",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -174,7 +174,7 @@
         }
     },
     "body": ":backlog:\r\n\r\n## Problem\r\n\r\n`nvim_exec_autocmds({ buf = ... })` already uses the passed buffer for (`<abuf>`, buffer-local autocommands, etc.), but it doesn't execute *in* that buffer's context.\r\n\r\nA minimal example explains it best:\r\n\r\n```lua\r\nlocal target = vim.api.nvim_create_buf(false, true)\r\nlocal caller = vim.api.nvim_create_buf(false, true)\r\n\r\nvim.api.nvim_set_current_buf(caller)\r\nvim.api.nvim_create_autocmd('SomeEvents', {\r\n  buffer = target,\r\n  callback = function()\r\n    print(vim.fn.expand('<abuf>'), vim.api.nvim_get_current_buf())\r\n  end,\r\n})\r\n\r\nvim.api.nvim_exec_autocmds('SomeEvent', { buf = target })\r\n\r\n-- (<abuf> == target) != (current_buf == caller)\r\n```\r\n\r\nFixes #35393.\r\n\r\n## Solution\r\n\r\nThe tempting & suggested fix is to wrap w/ `aucmd_prepbuf()` / `aucmd_restbuf()` but this is not right. Consider the following example: \r\n\r\n```lua\r\nlocal target = vim.api.nvim_create_buf(false, false)\r\nlocal caller = vim.api.nvim_create_buf(false, false)\r\n\r\nvim.api.nvim_set_current_buf(caller)\r\nvim.cmd.split()\r\nvim.api.nvim_set_current_buf(target)\r\nlocal left = vim.api.nvim_get_current_win()\r\nvim.cmd.vsplit()\r\nlocal right = vim.api.nvim_get_current_win()\r\nvim.cmd.wincmd('j')\r\nvim.api.nvim_set_current_buf(caller)\r\n\r\nlocal chosen = vim.api.nvim_buf_call(target, function()\r\n  return vim.api.nvim_get_current_win()\r\nend)\r\nlocal other = chosen == left and right or left\r\n\r\nvim.wo[chosen].eventignorewin = 'CursorHold'\r\nvim.wo[other].eventignorewin = ''\r\n\r\nvim.g.fired = 0\r\nvim.api.nvim_create_autocmd('CursorHold', {\r\n  buffer = target,\r\n  callback = function() vim.g.fired = vim.g.fired + 1 end,\r\n})\r\n\r\nvim.api.nvim_exec_autocmds('CursorHold', { buf = target })\r\nprint(vim.g.fired)  -- 1\r\n```\r\n\r\nHere the target buffer is visible in two windows `left` and `right` but only one of them ignores `CursorHold` via `eventignorewin`. Currently, the full window set is seen and the event fires (one window allows it). With the erroneous fix, `aucmd_prepbuf()` picks a window up front and doesn't ask all windows whether it is allowed, which can incorrectly suppress the autocmd.\r\n\r\nInstead, add a separate buffer-context path for buffer-specific `nvim_exec_autocmds()` and delay the context switch until dispatch executes. This preserves the described semantics (callbacks, modelines run in the buffer too).\r\n\r\n***NOTE***: I am not a C dev. This is the most C that I have written in the last year. It is also the most complex issue I have fixed so far so I'm almost certainly missing some things.",
-    "closed_at": null,
+    "closed_at": "2026-05-20T07:48:56Z",
     "comment_data": [
         {
             "_links": {
@@ -188,7 +188,7 @@
                     "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3082978054"
                 }
             },
-            "author_association": "CONTRIBUTOR",
+            "author_association": "MEMBER",
             "body": "better name? should this even be declared lol",
             "commit_id": "dfd2491542cc694b99bdee668d3590e129c64227",
             "created_at": "2026-04-14T22:54:41Z",
@@ -257,7 +257,7 @@
                     "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3082982707"
                 }
             },
-            "author_association": "CONTRIBUTOR",
+            "author_association": "MEMBER",
             "body": "i tried to strip these tests down but modelines and the `eventignorewin` example seemed quite important to keep, as there are many edge cases in this. open to removing, changing, combining. could've explored existing test suite more...",
             "commit_id": "dfd2491542cc694b99bdee668d3590e129c64227",
             "created_at": "2026-04-14T22:55:38Z",
@@ -603,7 +603,7 @@
                     "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3127983296"
                 }
             },
-            "author_association": "CONTRIBUTOR",
+            "author_association": "MEMBER",
             "body": "Apologies - I should've marked my pr as a draft before the latest change.\r\n\r\n(I believe) #35392 can be reverted according to the latest (more complex) changes.\r\n\r\nplease re-review when you have a moment",
             "commit_id": "2556d7c0a6064f8d1499d12da0e509f16c3bb034",
             "created_at": "2026-04-23T02:28:04Z",
@@ -811,7 +811,7 @@
                     "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3262587503"
                 }
             },
-            "author_association": "CONTRIBUTOR",
+            "author_association": "MEMBER",
             "body": "Not quite. the modeline block needs buffer-specific context in order to just be correct here. now that the current buffer isn't always just 0.\r\n\r\nconsider if callbacks run with target as curbuf but do_modelines() runs after restoring the caller buffer, the autocmd part is fixed while the modeline part still mutates the wrong buffer.\r\n\r\ntrying to explain this as best as i can XD",
             "commit_id": "0867b81913aca9a34cf5e4dea2d07e6931b3151d",
             "created_at": "2026-05-18T22:33:36Z",
@@ -881,7 +881,7 @@
                     "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3262588317"
                 }
             },
-            "author_association": "CONTRIBUTOR",
+            "author_association": "MEMBER",
             "body": "done",
             "commit_id": "6b6cc60476cced8faf2d936dc342e464af5c994c",
             "created_at": "2026-05-18T22:33:49Z",
@@ -1230,19 +1230,19 @@
             },
             "author_association": "MEMBER",
             "body": "```suggestion\n```",
-            "commit_id": "ed7cfe8f19022ac36b951489e0af80df3276c5b6",
+            "commit_id": "e5b85e4798fa2fb6af627c502fc72c0b5663354d",
             "created_at": "2026-05-18T22:57:41Z",
             "diff_hunk": "@@ -1860,6 +1863,14 @@ bool apply_autocmds_group(event_T event, char *fname, char *fname_io, bool force\n     goto BYPASS_AU;\n   }\n \n+  if (use_buf_context && buf != NULL && buf != curbuf) {\n+    aucmd_prepbuf(&aco, buf);\n+    did_prepbuf = true;\n+  }\n+",
             "html_url": "https://github.com/neovim/neovim/pull/39061#discussion_r3262668887",
             "id": 3262668887,
-            "line": 1870,
+            "line": 1883,
             "node_id": "PRRC_kwDOAPphoM7CeGBX",
             "original_commit_id": "0867b81913aca9a34cf5e4dea2d07e6931b3151d",
             "original_line": 1870,
             "original_position": 88,
             "original_start_line": null,
             "path": "src/nvim/autocmd.c",
-            "position": 88,
+            "position": 86,
             "pull_request_review_id": 4314532005,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39061",
             "reactions": {
@@ -1299,7 +1299,7 @@
             },
             "author_association": "MEMBER",
             "body": "non-blocker: do we need tests for:\n\n- An autocmd that wipes the target buffer during `nvim_exec_autocmds`\n- An autocmd that changes `curbuf` during `nvim_exec_autocmds`\n- A `nested = true` autocmd that itself triggers `nvim_exec_autocmds({buf=other})` (re-entrancy)",
-            "commit_id": "ed7cfe8f19022ac36b951489e0af80df3276c5b6",
+            "commit_id": "e5b85e4798fa2fb6af627c502fc72c0b5663354d",
             "created_at": "2026-05-18T23:10:22Z",
             "diff_hunk": "@@ -1205,6 +1205,82 @@ describe('autocmd api', function()\n       eq(1, api.nvim_get_var('buffer_executed'))\n     end)\n \n+    it('executes in target buf context for one visible window', function()",
             "html_url": "https://github.com/neovim/neovim/pull/39061#discussion_r3262708740",
@@ -1435,9 +1435,9 @@
                     "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3263031571"
                 }
             },
-            "author_association": "CONTRIBUTOR",
+            "author_association": "MEMBER",
             "body": "just added some more",
-            "commit_id": "ed7cfe8f19022ac36b951489e0af80df3276c5b6",
+            "commit_id": "e5b85e4798fa2fb6af627c502fc72c0b5663354d",
             "created_at": "2026-05-19T00:48:49Z",
             "diff_hunk": "@@ -1205,6 +1205,82 @@ describe('autocmd api', function()\n       eq(1, api.nvim_get_var('buffer_executed'))\n     end)\n \n+    it('executes in target buf context for one visible window', function()",
             "html_url": "https://github.com/neovim/neovim/pull/39061#discussion_r3263031571",
@@ -1505,7 +1505,7 @@
                     "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3263032140"
                 }
             },
-            "author_association": "CONTRIBUTOR",
+            "author_association": "MEMBER",
             "body": "fixed",
             "commit_id": "0867b81913aca9a34cf5e4dea2d07e6931b3151d",
             "created_at": "2026-05-19T00:49:02Z",
@@ -1575,22 +1575,22 @@
                     "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3263032314"
                 }
             },
-            "author_association": "CONTRIBUTOR",
+            "author_association": "MEMBER",
             "body": "fixed",
-            "commit_id": "ed7cfe8f19022ac36b951489e0af80df3276c5b6",
+            "commit_id": "e5b85e4798fa2fb6af627c502fc72c0b5663354d",
             "created_at": "2026-05-19T00:49:06Z",
             "diff_hunk": "@@ -1860,6 +1863,14 @@ bool apply_autocmds_group(event_T event, char *fname, char *fname_io, bool force\n     goto BYPASS_AU;\n   }\n \n+  if (use_buf_context && buf != NULL && buf != curbuf) {\n+    aucmd_prepbuf(&aco, buf);\n+    did_prepbuf = true;\n+  }\n+",
             "html_url": "https://github.com/neovim/neovim/pull/39061#discussion_r3263032314",
             "id": 3263032314,
             "in_reply_to_id": 3262668887,
-            "line": 1870,
+            "line": 1883,
             "node_id": "PRRC_kwDOAPphoM7Cfev6",
             "original_commit_id": "0867b81913aca9a34cf5e4dea2d07e6931b3151d",
             "original_line": 1870,
             "original_position": 88,
             "original_start_line": null,
             "path": "src/nvim/autocmd.c",
-            "position": 88,
+            "position": 86,
             "pull_request_review_id": 4314968390,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39061",
             "reactions": {
@@ -1645,7 +1645,7 @@
                     "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3263032611"
                 }
             },
-            "author_association": "CONTRIBUTOR",
+            "author_association": "MEMBER",
             "body": "fixed",
             "commit_id": "0867b81913aca9a34cf5e4dea2d07e6931b3151d",
             "created_at": "2026-05-19T00:49:14Z",
@@ -1771,6 +1771,145 @@
                 "url": "https://api.github.com/users/justinmk",
                 "user_view_type": "public"
             }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/39061#discussion_r3265063973"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/39061"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3265063973"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "can drop this check after rebasing onto https://github.com/neovim/neovim/pull/39879",
+            "commit_id": "ed7cfe8f19022ac36b951489e0af80df3276c5b6",
+            "created_at": "2026-05-19T09:11:08Z",
+            "diff_hunk": "@@ -2053,6 +2064,10 @@ bool apply_autocmds_group(event_T event, char *fname, char *fname_io, bool force\n     curbuf->b_au_did_filetype = true;\n   }\n \n+  if (did_prepbuf) {",
+            "html_url": "https://github.com/neovim/neovim/pull/39061#discussion_r3265063973",
+            "id": 3265063973,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7CnOwl",
+            "original_commit_id": "ed7cfe8f19022ac36b951489e0af80df3276c5b6",
+            "original_line": 2067,
+            "original_position": 99,
+            "original_start_line": null,
+            "path": "src/nvim/autocmd.c",
+            "position": 1,
+            "pull_request_review_id": 4317482283,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39061",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3265063973/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-05-19T09:11:08Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3265063973",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/39061#discussion_r3268033055"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/39061"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3268033055"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "duh. done",
+            "commit_id": "ed7cfe8f19022ac36b951489e0af80df3276c5b6",
+            "created_at": "2026-05-19T16:48:10Z",
+            "diff_hunk": "@@ -2053,6 +2064,10 @@ bool apply_autocmds_group(event_T event, char *fname, char *fname_io, bool force\n     curbuf->b_au_did_filetype = true;\n   }\n \n+  if (did_prepbuf) {",
+            "html_url": "https://github.com/neovim/neovim/pull/39061#discussion_r3268033055",
+            "id": 3268033055,
+            "in_reply_to_id": 3265063973,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7Cyjof",
+            "original_commit_id": "ed7cfe8f19022ac36b951489e0af80df3276c5b6",
+            "original_line": 2067,
+            "original_position": 99,
+            "original_start_line": null,
+            "path": "src/nvim/autocmd.c",
+            "position": 1,
+            "pull_request_review_id": 4321119393,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39061",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3268033055/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-05-19T16:48:11Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3268033055",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/62671086?v=4",
+                "events_url": "https://api.github.com/users/barrettruth/events{/privacy}",
+                "followers_url": "https://api.github.com/users/barrettruth/followers",
+                "following_url": "https://api.github.com/users/barrettruth/following{/other_user}",
+                "gists_url": "https://api.github.com/users/barrettruth/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/barrettruth",
+                "id": 62671086,
+                "login": "barrettruth",
+                "node_id": "MDQ6VXNlcjYyNjcxMDg2",
+                "organizations_url": "https://api.github.com/users/barrettruth/orgs",
+                "received_events_url": "https://api.github.com/users/barrettruth/received_events",
+                "repos_url": "https://api.github.com/users/barrettruth/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/barrettruth/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/barrettruth/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/barrettruth",
+                "user_view_type": "public"
+            }
         }
     ],
     "comment_regular_data": [
@@ -1820,7 +1959,7 @@
             }
         },
         {
-            "author_association": "CONTRIBUTOR",
+            "author_association": "MEMBER",
             "body": "Reworked. The buffer-context switch now only fires when the target has exactly one window in the current tab. Also, hidden and multi-window targets fall through to the pre-existing path.\r\n\r\nNGL, while i ran like a billion local tests including strange scenarios, I would appreciate a second reviewer with someone especially knowledgeable on this sectoin of the code - not certain of who that'd be.\r\n",
             "created_at": "2026-04-22T18:40:14Z",
             "html_url": "https://github.com/neovim/neovim/pull/39061#issuecomment-4299041753",
@@ -1910,7 +2049,7 @@
             }
         },
         {
-            "author_association": "CONTRIBUTOR",
+            "author_association": "MEMBER",
             "body": "(missed that one, sorry). i don't directly apply the commits because I didn't know the behavior of the commit body/subject on merge with multiple commits... looking into it now sorry for the inconvenience.\r\n\r\nEDIT: just fixed up the commits.",
             "created_at": "2026-05-19T01:10:42Z",
             "html_url": "https://github.com/neovim/neovim/pull/39061#issuecomment-4483585407",
@@ -2096,9 +2235,9 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/barrettruth/neovim/pulls{/number}",
-            "pushed_at": "2026-05-19T02:54:22Z",
+            "pushed_at": "2026-05-25T09:10:22Z",
             "releases_url": "https://api.github.com/repos/barrettruth/neovim/releases{/id}",
-            "size": 381881,
+            "size": 381437,
             "ssh_url": "git@github.com:barrettruth/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/barrettruth/neovim/stargazers",
@@ -2117,7 +2256,7 @@
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "ed7cfe8f19022ac36b951489e0af80df3276c5b6",
+        "sha": "e5b85e4798fa2fb6af627c502fc72c0b5663354d",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/62671086?v=4",
             "events_url": "https://api.github.com/users/barrettruth/events{/privacy}",
@@ -2155,8 +2294,8 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "37d8cb28d3c628fb65b0fdb1765d7c61ef90929e",
-    "merged_at": null,
+    "merge_commit_sha": "5181984db990111c76d7d7bceb3d7acba7da4406",
+    "merged_at": "2026-05-20T07:48:56Z",
     "milestone": null,
     "node_id": "PR_kwDOAPphoM7SdLsr",
     "number": 39061,
@@ -2165,10 +2304,10 @@
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/39061/comments",
-    "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/ed7cfe8f19022ac36b951489e0af80df3276c5b6",
+    "state": "closed",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/e5b85e4798fa2fb6af627c502fc72c0b5663354d",
     "title": "fix(api): make `nvim_exec_autocmds({ buf = ... })` use target buffer context",
-    "updated_at": "2026-05-19T01:45:25Z",
+    "updated_at": "2026-05-20T07:48:56Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/39061",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/62671086?v=4",
