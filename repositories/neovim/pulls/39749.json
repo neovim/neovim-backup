@@ -28,7 +28,7 @@
     "active_lock_reason": null,
     "assignee": null,
     "assignees": [],
-    "author_association": "FIRST_TIME_CONTRIBUTOR",
+    "author_association": "CONTRIBUTOR",
     "auto_merge": null,
     "base": {
         "label": "neovim:master",
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6904,
-            "forks_count": 6904,
+            "forks": 6913,
+            "forks_count": 6913,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -95,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1934,
-            "open_issues_count": 1934,
+            "open_issues": 1948,
+            "open_issues_count": 1948,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -121,11 +121,11 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2026-05-26T04:32:56Z",
+            "pushed_at": "2026-06-02T05:30:13Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 383270,
+            "size": 383561,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 99869,
+            "stargazers_count": 100075,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -143,11 +143,11 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2026-05-26T03:28:21Z",
+            "updated_at": "2026-06-02T05:49:30Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 99869,
-            "watchers_count": 99869,
+            "watchers": 100075,
+            "watchers_count": 100075,
             "web_commit_signoff_required": false
         },
         "sha": "b58ce1ab792e64c8d0582e166ecc8c1f4a34d8de",
@@ -174,7 +174,7 @@
         }
     },
     "body": "\r\nProblem:\r\nCurrently, only some file systems on linux (among them: Btrfs, ext2, ext3, and ext4) have full support of accessing the type of a `dirent` entry. In the cases where it is not supported` uv.fs_scandir_next` returns `nil` for the entry type. This causes downstream functions (such as M.del) and logic that rely on a type to be specified to behave incorrectly.\r\n\r\nSolution:\r\nfall back to `uv.fs_lstat` when `etype` is `nil`, and if `fs_lstat` fails fall back to \"unknown\". It should be noted that it is not possible to handle `nil` as we would handle \"unknown\" because there is overlap in code logic for when directories aren't installed.\r\n\r\n`fs_lstat` must also be used instead of `fs_stat` in order to prevent incorrectly assigning the entry type of symlinks.\r\n\r\nThis PR should close #39612",
-    "closed_at": null,
+    "closed_at": "2026-05-29T18:24:23Z",
     "comment_data": [
         {
             "_links": {
@@ -464,7 +464,7 @@
                     "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3237378166"
                 }
             },
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "Can you elaborate? I dont see how `fs_scandir_next` is being used twice in this function. The fs_lstat fall back is independent of `fs_scandir` and `fs_scandir_next`, and from what I understand that pattern is used to separate the stream of the path and returning the matches in an iterator-like style. \r\n\r\nI also think it may be cleaner to keep it here as the code logic is simple and easy to follow.",
             "commit_id": "98046f122848420f6e2b69f8f077123b46452d5c",
             "created_at": "2026-05-13T20:51:56Z",
@@ -604,7 +604,7 @@
                     "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3243329820"
                 }
             },
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "Thanks for the clarification. I completely forgot about it in `coroutine` .... You are also absolutely correct, a helper is indeed the correct approach for this. It would avoid a repetitive code and a necessary check every time `fs_scandir_next` is called for future development that ends up needing to using it. What do you think of the following:\r\n\r\n```lua\r\n--- Wrapper around `uv.fs_scandir_next()` that ensures a file type is returned.\r\n--- If `uv.fs_scandir_next()` returns a `nil` type for an existing entry, \r\n--- this helper falls back to `fs_lstat` to resolve it. if fs_lstat fails it \r\n--- defaults to 'unknown'.\r\n---\r\n--- @param fs uv.uv_fs_t The scan handle.\r\n--- @param path string The directory path being scanned.\r\n--- @return string? name The entry name. Nil when the scan is complete.\r\n--- @return string? type The entry type guaranteed if a name is present or an error message.\r\nfunction fallback_scandir_next(fs, path)\r\n   -- use lstat instead of stat to avoid descending into a symlink entry as a directory/file\r\n    local name, etype = uv.fs_scandir_next(fs)               \r\n    if not name then             \r\n      return   \r\n    end                                                                             \r\n    if etype == nil then                 \r\n      local stat = vim.uv.fs_lstat(M.joinpath(path, name))                          \r\n      -- Workaround #39612 https://github.com/luvit/luv/issues/660\r\n      etype = stat and stat.type or 'unknown'\r\n    end \r\n    return name, etype\r\n  end\r\n\r\n```\r\nOn the same note; where do you think this helper should live?\r\n",
             "commit_id": "98046f122848420f6e2b69f8f077123b46452d5c",
             "created_at": "2026-05-14T18:07:12Z",
@@ -744,7 +744,7 @@
                     "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3244225599"
                 }
             },
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "Please review my latest [commit](https://github.com/neovim/neovim/pull/39749/changes/40f363d780d8201751d80e3f85c69d7bc76cb003).\r\n\r\nAlso some basic testing and double checking  I made a change to what I had proposed for the wrapper function:\r\n- Instead of doing:\r\n```lua\r\nif not name then             \r\n      return   \r\n    end\r\n```\r\nI slightly modified the structure and removed the explicit `return` so it naturally returns nil, etype (which is also still nil). \r\n\r\nI made sure to also pass in the second parameter for both instances where this wrapper function is called.\r\n",
             "commit_id": "98046f122848420f6e2b69f8f077123b46452d5c",
             "created_at": "2026-05-14T20:55:21Z",
@@ -1057,7 +1057,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "> I guess it might be hard to test this, but this is one of those times where it's tricky enough that \"mocking\" is justified. And it will also help us avoid surprises in the future if luv's behavior changes later. Maybe ask an AI to come up with a test, then try to refine it.\r\n\r\nWhen you say \"mocking\", are you still referring to a a functional test? like by manually modifying what the function returns in order to test the fallback? Also I guess this depends on your answer to the previous question, but where would that go? under `test/functional/lua/fs_spec.lua`?",
             "created_at": "2026-05-13T22:06:54Z",
             "html_url": "https://github.com/neovim/neovim/pull/39749#issuecomment-4445572128",
@@ -1102,7 +1102,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "> > I guess it might be hard to test this, but this is one of those times where it's tricky enough that \"mocking\" is justified. And it will also help us avoid surprises in the future if luv's behavior changes later. Maybe ask an AI to come up with a test, then try to refine it.\r\n> \r\n> When you say \"mocking\", are you still referring to a a functional test? like by manually modifying what the function returns in order to test the fallback? Also I guess this depends on your answer to the previous question, but where would that go? under `test/functional/lua/fs_spec.lua`?\r\n\r\nIt seems like we are pivoting to creating a wrapper around `fs_scandir_next` to use... I assume what you are looking for with regards to testing will also change?",
             "created_at": "2026-05-14T18:09:51Z",
             "html_url": "https://github.com/neovim/neovim/pull/39749#issuecomment-4453416286",
@@ -1192,7 +1192,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "\r\n> using `n.exec_lua` in a functional test, you can override stuff in the Nvim test process. by \"mocking\" I just mean monkey patching, instead of trying to arrange an actual filesystem failure, since I assume that will be difficult for this case.\r\n\r\n\r\nHere's my shot at this:\r\n```lua\r\ndescribe('fs_scandir_next fallback', function()\r\n  before_each(function()\r\n    mkdir('testdir')\r\n    write_file('testdir/test.txt', 'test file')\r\n  end)\r\n\r\n  after_each(function()\r\n    rmdir('testdir')\r\n  end)\r\n\r\n  it('falls back to fs_lstat when uv.fs_scandir_next returns nil type', function()\r\n    local result = n.exec_lua([[\r\n      local orig = vim.uv.fs_scandir_next\r\n\r\n      vim.uv.fs_scandir_next = function(fs)\r\n        local name = orig(fs)\r\n        if name then\r\n          return name, nil\r\n        end\r\n        return name\r\n      end\r\n\r\n      local out = {}\r\n      for name, etype in vim.fs.dir('testdir') do\r\n        out[name] = etype \r\n      end\r\n\r\n      return out\r\n    ]])\r\n\r\n    eq('file', result['test.txt'])\r\n  end)\r\nend)\r\n```\r\n",
             "created_at": "2026-05-20T19:17:35Z",
             "html_url": "https://github.com/neovim/neovim/pull/39749#issuecomment-4501803574",
@@ -1282,7 +1282,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "> yep 👍\r\n\r\nWhere should this go?  ",
             "created_at": "2026-05-21T17:32:42Z",
             "html_url": "https://github.com/neovim/neovim/pull/39749#issuecomment-4510879954",
@@ -1372,7 +1372,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "\r\n> [This](https://github.com/neovim/neovim/blob/7662001c482d63e1119aafcebc0e13d1201a2805/test/functional/lua/fs_spec.lua#L143-L255) is a test set for `vim.fs.dir()`. So probably [after the currently test case](https://github.com/neovim/neovim/blob/7662001c482d63e1119aafcebc0e13d1201a2805/test/functional/lua/fs_spec.lua#L254).\r\n\r\nUnless I'm missing something this PR is ready to be merged into master, but I'm not sure why the functional test suite on MacOS intel has a failure:\r\n```\r\nFAILED   1 test, listed below:\r\nFAILED   ...Xtest_xdg_terminal/test/functional/terminal/tui_spec.lua @ 1082: TUI split sequences work within 'ttimeoutlen' time\r\n...Xtest_xdg_terminal/test/functional/terminal/tui_spec.lua:1082: Row 1 did not match.\r\n```\r\nDoes it have a history of failing sporadically? ",
             "created_at": "2026-05-22T21:00:30Z",
             "html_url": "https://github.com/neovim/neovim/pull/39749#issuecomment-4522664036",
@@ -1458,6 +1458,89 @@
                 "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
                 "type": "User",
                 "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "NONE",
+            "body": "Successfully created backport PR for `release-0.12`:\n- #40053",
+            "created_at": "2026-05-29T18:24:49Z",
+            "html_url": "https://github.com/neovim/neovim/pull/39749#issuecomment-4578537939",
+            "id": 4578537939,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/39749",
+            "node_id": "IC_kwDOAPphoM8AAAABEObx0w",
+            "performed_via_github_app": {
+                "client_id": "Iv23lig4DyAliuVagKSN",
+                "created_at": "2024-07-16T09:59:15Z",
+                "description": "",
+                "events": [],
+                "external_url": "https://neovim.io/",
+                "html_url": "https://github.com/apps/neovim-backports",
+                "id": 946290,
+                "name": "neovim backports",
+                "node_id": "A_kwHOAGK_Pc4ADnBy",
+                "owner": {
+                    "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
+                    "events_url": "https://api.github.com/users/neovim/events{/privacy}",
+                    "followers_url": "https://api.github.com/users/neovim/followers",
+                    "following_url": "https://api.github.com/users/neovim/following{/other_user}",
+                    "gists_url": "https://api.github.com/users/neovim/gists{/gist_id}",
+                    "gravatar_id": "",
+                    "html_url": "https://github.com/neovim",
+                    "id": 6471485,
+                    "login": "neovim",
+                    "node_id": "MDEyOk9yZ2FuaXphdGlvbjY0NzE0ODU=",
+                    "organizations_url": "https://api.github.com/users/neovim/orgs",
+                    "received_events_url": "https://api.github.com/users/neovim/received_events",
+                    "repos_url": "https://api.github.com/users/neovim/repos",
+                    "site_admin": false,
+                    "starred_url": "https://api.github.com/users/neovim/starred{/owner}{/repo}",
+                    "subscriptions_url": "https://api.github.com/users/neovim/subscriptions",
+                    "type": "Organization",
+                    "url": "https://api.github.com/users/neovim",
+                    "user_view_type": "public"
+                },
+                "permissions": {
+                    "contents": "write",
+                    "metadata": "read",
+                    "pull_requests": "write"
+                },
+                "slug": "neovim-backports",
+                "updated_at": "2024-09-11T10:04:42Z"
+            },
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4578537939/reactions"
+            },
+            "updated_at": "2026-05-29T18:24:49Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4578537939",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/in/946290?v=4",
+                "events_url": "https://api.github.com/users/neovim-backports%5Bbot%5D/events{/privacy}",
+                "followers_url": "https://api.github.com/users/neovim-backports%5Bbot%5D/followers",
+                "following_url": "https://api.github.com/users/neovim-backports%5Bbot%5D/following{/other_user}",
+                "gists_url": "https://api.github.com/users/neovim-backports%5Bbot%5D/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/apps/neovim-backports",
+                "id": 175700243,
+                "login": "neovim-backports[bot]",
+                "node_id": "BOT_kgDOCnj5Ew",
+                "organizations_url": "https://api.github.com/users/neovim-backports%5Bbot%5D/orgs",
+                "received_events_url": "https://api.github.com/users/neovim-backports%5Bbot%5D/received_events",
+                "repos_url": "https://api.github.com/users/neovim-backports%5Bbot%5D/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/neovim-backports%5Bbot%5D/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/neovim-backports%5Bbot%5D/subscriptions",
+                "type": "Bot",
+                "url": "https://api.github.com/users/neovim-backports%5Bbot%5D",
                 "user_view_type": "public"
             }
         }
@@ -1614,11 +1697,20 @@
             "name": "filesystem",
             "node_id": "LA_kwDOAPphoM7J01RD",
             "url": "https://api.github.com/repos/neovim/neovim/labels/filesystem"
+        },
+        {
+            "color": "0052CC",
+            "default": false,
+            "description": "",
+            "id": 10554731424,
+            "name": "ci:backport release-0.12",
+            "node_id": "LA_kwDOAPphoM8AAAACdRxroA",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/ci:backport%20release-0.12"
         }
     ],
     "locked": false,
-    "merge_commit_sha": "864875602a0d2478e1cd5d59e0c2b4624cf9ca1d",
-    "merged_at": null,
+    "merge_commit_sha": "4b5f026ac924d8f3d8efb4d66b00c2e3ebcf6757",
+    "merged_at": "2026-05-29T18:24:23Z",
     "milestone": null,
     "node_id": "PR_kwDOAPphoM7aeath",
     "number": 39749,
@@ -1627,10 +1719,10 @@
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/39749/comments",
-    "state": "open",
+    "state": "closed",
     "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/b2140d5d3c34d9803cc3c58ca908e9be523dcb23",
-    "title": "fix(fs): use uv.fs_lstat fallback when uv.fs_scandir_next returns no type in M.dir",
-    "updated_at": "2026-05-23T00:07:25Z",
+    "title": "fix(vim.fs): fs.dir() may return nil \"type\" on some filesystems #39749",
+    "updated_at": "2026-05-29T18:24:49Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/39749",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/254546608?v=4",

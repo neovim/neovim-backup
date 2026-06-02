@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/39946"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/5ec04dfea3a45f9bf9ead4fe49deaab8747a8ec0"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/5d50c956c8d9c62623da4d4d039c7495f6056ae7"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6904,
-            "forks_count": 6904,
+            "forks": 6913,
+            "forks_count": 6913,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -95,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1934,
-            "open_issues_count": 1934,
+            "open_issues": 1948,
+            "open_issues_count": 1948,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -121,11 +121,11 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2026-05-26T04:32:56Z",
+            "pushed_at": "2026-06-02T05:30:13Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 383270,
+            "size": 383561,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 99869,
+            "stargazers_count": 100075,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -143,14 +143,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2026-05-26T03:28:21Z",
+            "updated_at": "2026-06-02T05:49:30Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 99869,
-            "watchers_count": 99869,
+            "watchers": 100075,
+            "watchers_count": 100075,
             "web_commit_signoff_required": false
         },
-        "sha": "dee602e659b3da167b63d0ae74df940dc7c111b4",
+        "sha": "3f4a108cf46f7de17d65949f86e629e584cd310a",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -175,11 +175,427 @@
     },
     "body": "## Problem\r\n\r\nWe'd like to export a PDF version of the user manual (https://github.com/neovim/neovim/issues/39950), but `gen_help_html.lua` assumes an HTML output in several places.\r\n\r\n## Solution\r\n\r\nMake gen() take an output param\r\nRename gen_one() -> gen_one_html()\r\nRename visit_node() -> ts_node_to_html()\r\nAdd a mapping to gen() that calls the correct gen_one*() function.\r\n\r\nThis prepares the addition of new methods for Typst output.",
     "closed_at": null,
-    "comment_data": [],
+    "comment_data": [
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/39946#discussion_r3321353680"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/39946"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3321353680"
+                }
+            },
+            "author_association": "NONE",
+            "body": "This code block is mostly just extracted from `gen()`. One change is that we used to print `redirect_from .. '.txt'` here, which duplicated the .txt:\n```\n[...]\ngenerated (0  errors): credits.txt     => credits.html\ngenerated (redirect) : backers.txt.txt => credits.html\ngenerated (0  errors): deprecated.txt  => deprecated.html\ngenerated (0  errors): dev.txt         => dev.html\ngenerated (redirect) : develop.txt.txt => dev.html\n[...]\n```\netc\n\nSo I changed to just `redirect_from`.",
+            "commit_id": "5d50c956c8d9c62623da4d4d039c7495f6056ae7",
+            "created_at": "2026-05-29T00:16:52Z",
+            "diff_hunk": "@@ -1092,6 +1092,53 @@ function M._test()\n   print('all tests passed.\\n')\n end\n \n+--- Generate redirect pages for renamed help files.\n+\n+--- @param commit string?\n+--- @param helpfile string Name of the help file being generated\n+--- @param to_dir string Target directory where the output files will be written.\n+--- @param to_fname string Name of the already-generated page in the new location\n+---\n+--- @return boolean Whether a redirect page has been generated\n+local function generate_redirect_pages(commit, helpfile, to_dir, to_fname)\n+  local helpfile_tag = (helpfile:gsub('%.txt$', '')):gsub('_', '-') -- \"dev_tools.txt\" => \"dev-tools\"\n+  local redirect_from = redirects[helpfile]\n+  if not redirect_from then\n+    return false\n+  end\n+\n+  local redirect_text = vim.text\n+    .indent(\n+      0,\n+      [[\n+      *%s*      Nvim\n+\n+      Document moved to: |%s|\n+\n+      ==============================================================================\n+      Document moved\n+\n+      Document moved to: |%s|\n+\n+      ==============================================================================\n+        vim:tw=78:ts=8:ft=help:norl:\n+      ]]\n+    )\n+    :format(redirect_from, helpfile_tag, helpfile_tag, helpfile_tag, helpfile_tag, helpfile_tag)\n+  local redirect_to_fname = get_helppage_html(redirect_from, true)\n+  local redirect_to = ('%s/%s'):format(to_dir, redirect_to_fname)\n+  local redirect_html, _ =\n+    gen_one_html(redirect_from, redirect_text, redirect_to, false, commit or '?')\n+  assert(\n+    redirect_html:find(vim.pesc(helpfile_tag)),\n+    ('not found in redirect html: %s'):format(helpfile_tag)\n+  )\n+  tofile(redirect_to, redirect_html)\n+\n+  print(('generated (redirect) : %-15s => %s'):format(redirect_from, vim.fs.basename(to_fname)))",
+            "html_url": "https://github.com/neovim/neovim/pull/39946#discussion_r3321353680",
+            "id": 3321353680,
+            "line": 1138,
+            "node_id": "PRRC_kwDOAPphoM7F99XQ",
+            "original_commit_id": "3585202fc739afc02d4be5f82d78c8016a4bcf90",
+            "original_line": 1138,
+            "original_position": 133,
+            "original_start_line": null,
+            "path": "src/gen/gen_help_html.lua",
+            "position": 133,
+            "pull_request_review_id": 4385624153,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39946",
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3321353680/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-05-29T00:23:58Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3321353680",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/4351932?v=4",
+                "events_url": "https://api.github.com/users/SqAtx/events{/privacy}",
+                "followers_url": "https://api.github.com/users/SqAtx/followers",
+                "following_url": "https://api.github.com/users/SqAtx/following{/other_user}",
+                "gists_url": "https://api.github.com/users/SqAtx/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/SqAtx",
+                "id": 4351932,
+                "login": "SqAtx",
+                "node_id": "MDQ6VXNlcjQzNTE5MzI=",
+                "organizations_url": "https://api.github.com/users/SqAtx/orgs",
+                "received_events_url": "https://api.github.com/users/SqAtx/received_events",
+                "repos_url": "https://api.github.com/users/SqAtx/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/SqAtx/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/SqAtx/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/SqAtx",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/39946#discussion_r3323625768"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/39946"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3323625768"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\nlocal function gen_redirect_pages(commit, helpfile, to_dir, to_fname)\n```",
+            "commit_id": "3585202fc739afc02d4be5f82d78c8016a4bcf90",
+            "created_at": "2026-05-29T10:08:20Z",
+            "diff_hunk": "@@ -1092,6 +1092,53 @@ function M._test()\n   print('all tests passed.\\n')\n end\n \n+--- Generate redirect pages for renamed help files.\n+\n+--- @param commit string?\n+--- @param helpfile string Name of the help file being generated\n+--- @param to_dir string Target directory where the output files will be written.\n+--- @param to_fname string Name of the already-generated page in the new location\n+---\n+--- @return boolean Whether a redirect page has been generated\n+local function generate_redirect_pages(commit, helpfile, to_dir, to_fname)",
+            "html_url": "https://github.com/neovim/neovim/pull/39946#discussion_r3323625768",
+            "id": 3323625768,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7GGoEo",
+            "original_commit_id": "3585202fc739afc02d4be5f82d78c8016a4bcf90",
+            "original_line": 1103,
+            "original_position": 98,
+            "original_start_line": null,
+            "path": "src/gen/gen_help_html.lua",
+            "position": 1,
+            "pull_request_review_id": 4388610434,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39946",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3323625768/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-05-29T10:08:21Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3323625768",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/39946#discussion_r3323631423"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/39946"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3323631423"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "seems more readable if `output_format` is the first arg",
+            "commit_id": "3585202fc739afc02d4be5f82d78c8016a4bcf90",
+            "created_at": "2026-05-29T10:09:30Z",
+            "diff_hunk": "@@ -1104,13 +1151,14 @@ end\n ---   gen('$VIMRUNTIME/doc', '/path/to/neovim.github.io/_site/doc/', {'api.txt', 'autocmd.txt', 'channel.txt'}, nil)\n ---\n --- @param help_dir string Source directory containing the :help files. Must run `make helptags` first.\n---- @param to_dir string Target directory where the .html files will be written.\n+--- @param to_dir string Target directory where the output files will be written.\n+--- @param output_format string Currently only \"html\"\n --- @param include string[]|nil Process only these filenames. Example: {'api.txt', 'autocmd.txt', 'channel.txt'}\n --- @param commit string?\n --- @param parser_path string? path to non-default vimdoc.so/dylib/dll\n ---\n --- @return nvim.gen_help_html.gen_result result\n-function M.gen(help_dir, to_dir, include, commit, parser_path)\n+function M.gen(help_dir, to_dir, output_format, include, commit, parser_path)",
+            "html_url": "https://github.com/neovim/neovim/pull/39946#discussion_r3323631423",
+            "id": 3323631423,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7GGpc_",
+            "original_commit_id": "3585202fc739afc02d4be5f82d78c8016a4bcf90",
+            "original_line": 1161,
+            "original_position": 153,
+            "original_start_line": null,
+            "path": "src/gen/gen_help_html.lua",
+            "position": 1,
+            "pull_request_review_id": 4388617423,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39946",
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3323631423/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-05-29T10:09:30Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3323631423",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/39946#discussion_r3323632627"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/39946"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3323632627"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\nfunction M.gen(output_format, help_dir, to_dir, include, commit, parser_path)\n```",
+            "commit_id": "3585202fc739afc02d4be5f82d78c8016a4bcf90",
+            "created_at": "2026-05-29T10:09:44Z",
+            "diff_hunk": "@@ -1104,13 +1151,14 @@ end\n ---   gen('$VIMRUNTIME/doc', '/path/to/neovim.github.io/_site/doc/', {'api.txt', 'autocmd.txt', 'channel.txt'}, nil)\n ---\n --- @param help_dir string Source directory containing the :help files. Must run `make helptags` first.\n---- @param to_dir string Target directory where the .html files will be written.\n+--- @param to_dir string Target directory where the output files will be written.\n+--- @param output_format string Currently only \"html\"\n --- @param include string[]|nil Process only these filenames. Example: {'api.txt', 'autocmd.txt', 'channel.txt'}\n --- @param commit string?\n --- @param parser_path string? path to non-default vimdoc.so/dylib/dll\n ---\n --- @return nvim.gen_help_html.gen_result result\n-function M.gen(help_dir, to_dir, include, commit, parser_path)\n+function M.gen(help_dir, to_dir, output_format, include, commit, parser_path)",
+            "html_url": "https://github.com/neovim/neovim/pull/39946#discussion_r3323632627",
+            "id": 3323632627,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7GGpvz",
+            "original_commit_id": "3585202fc739afc02d4be5f82d78c8016a4bcf90",
+            "original_line": 1161,
+            "original_position": 153,
+            "original_start_line": null,
+            "path": "src/gen/gen_help_html.lua",
+            "position": 1,
+            "pull_request_review_id": 4388618911,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39946",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3323632627/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-05-29T10:09:44Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3323632627",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/39946#discussion_r3323723138"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/39946"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3323723138"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "validate?\n\n```suggestion\n  local gen_one = generators[output_format]\n  vim.validate('output_format', gen_one, 'string', output_format)\n```",
+            "commit_id": "3585202fc739afc02d4be5f82d78c8016a4bcf90",
+            "created_at": "2026-05-29T10:29:16Z",
+            "diff_hunk": "@@ -1139,17 +1187,35 @@ function M.gen(help_dir, to_dir, include, commit, parser_path)\n \n   print(('output dir: %s\\n\\n'):format(to_dir))\n   vim.fn.mkdir(to_dir, 'p')\n-  -- NOTE: Better for Hugo to be in static/, but works fine with contents/ as to_dir\n-  gen_helptags_json(('%s/helptags.json'):format(to_dir))\n-  gen_helptag_html(('%s/helptag.html'):format(to_dir))\n+\n+  if output_format == 'html' then\n+    -- NOTE: Better for Hugo to be in static/, but works fine with contents/ as to_dir\n+    gen_helptags_json(('%s/helptags.json'):format(to_dir))\n+    gen_helptag_html(('%s/helptag.html'):format(to_dir))\n+  end\n+\n+  -- Map output formats to the function that outputs one file in that format\n+  -- NOTE: Only .html for now, but .typ is coming\n+  local generators = {\n+    html = gen_one_html,\n+  }\n+  local gen_one_file = generators[output_format]",
+            "html_url": "https://github.com/neovim/neovim/pull/39946#discussion_r3323723138",
+            "id": 3323723138,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7GG_2C",
+            "original_commit_id": "3585202fc739afc02d4be5f82d78c8016a4bcf90",
+            "original_line": 1202,
+            "original_position": 176,
+            "original_start_line": null,
+            "path": "src/gen/gen_help_html.lua",
+            "position": 1,
+            "pull_request_review_id": 4388731386,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39946",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3323723138/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-05-29T10:30:57Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3323723138",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/39946#discussion_r3330767353"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/39946"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3330767353"
+                }
+            },
+            "author_association": "NONE",
+            "body": "Oh TIL. Should have noticed the pattern. I added the validate() call next to the other arguments.",
+            "commit_id": "3585202fc739afc02d4be5f82d78c8016a4bcf90",
+            "created_at": "2026-05-31T19:03:51Z",
+            "diff_hunk": "@@ -1139,17 +1187,35 @@ function M.gen(help_dir, to_dir, include, commit, parser_path)\n \n   print(('output dir: %s\\n\\n'):format(to_dir))\n   vim.fn.mkdir(to_dir, 'p')\n-  -- NOTE: Better for Hugo to be in static/, but works fine with contents/ as to_dir\n-  gen_helptags_json(('%s/helptags.json'):format(to_dir))\n-  gen_helptag_html(('%s/helptag.html'):format(to_dir))\n+\n+  if output_format == 'html' then\n+    -- NOTE: Better for Hugo to be in static/, but works fine with contents/ as to_dir\n+    gen_helptags_json(('%s/helptags.json'):format(to_dir))\n+    gen_helptag_html(('%s/helptag.html'):format(to_dir))\n+  end\n+\n+  -- Map output formats to the function that outputs one file in that format\n+  -- NOTE: Only .html for now, but .typ is coming\n+  local generators = {\n+    html = gen_one_html,\n+  }\n+  local gen_one_file = generators[output_format]",
+            "html_url": "https://github.com/neovim/neovim/pull/39946#discussion_r3330767353",
+            "id": 3330767353,
+            "in_reply_to_id": 3323723138,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7Gh3n5",
+            "original_commit_id": "3585202fc739afc02d4be5f82d78c8016a4bcf90",
+            "original_line": 1202,
+            "original_position": 176,
+            "original_start_line": null,
+            "path": "src/gen/gen_help_html.lua",
+            "position": 1,
+            "pull_request_review_id": 4397421537,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39946",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3330767353/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-05-31T19:03:52Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3330767353",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/4351932?v=4",
+                "events_url": "https://api.github.com/users/SqAtx/events{/privacy}",
+                "followers_url": "https://api.github.com/users/SqAtx/followers",
+                "following_url": "https://api.github.com/users/SqAtx/following{/other_user}",
+                "gists_url": "https://api.github.com/users/SqAtx/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/SqAtx",
+                "id": 4351932,
+                "login": "SqAtx",
+                "node_id": "MDQ6VXNlcjQzNTE5MzI=",
+                "organizations_url": "https://api.github.com/users/SqAtx/orgs",
+                "received_events_url": "https://api.github.com/users/SqAtx/received_events",
+                "repos_url": "https://api.github.com/users/SqAtx/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/SqAtx/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/SqAtx/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/SqAtx",
+                "user_view_type": "public"
+            }
+        }
+    ],
     "comment_regular_data": [
         {
             "author_association": "NONE",
-            "body": "Same idea as #37742 but this time with an incremental plan described at https://github.com/neovim/neovim/issues/39950#issuecomment-4514025663.\r\n\r\nThere is a rough version of `node_to_typ()` at https://github.com/SqAtx/neovim/blob/gen_help_typ/src/gen/gen_help_html.lua, that can generate a passable `usr_01.typ`.\r\n\r\nI have not yet tested end-to-end with Hugo. The HTML files get generated without errors, at least.\r\n\r\nhttps://github.com/neovim/neovim.github.io/pull/479 will need to be merged immediately after this.\r\n\r\nOne thing I wanted to do but didn't is rename the file to `export_help_docs.lua` and generally gen* to export* (the script doesn't generate the help - it converts its format). Let me know if anyone has strong opinions about that - it can be done in the next commit.",
+            "body": "Same idea as #37742 but this time with an incremental plan described at https://github.com/neovim/neovim/issues/39950#issuecomment-4514025663.\r\n\r\nThere is a rough version of `node_to_typ()` at https://github.com/SqAtx/neovim/blob/gen_help_typ/src/gen/gen_help_html.lua, that can generate a passable `usr_01.typ`.\r\n\r\nhttps://github.com/neovim/neovim.github.io/pull/479 will need to be merged immediately after this.\r\n\r\nI have tested end-to-end with Hugo alongside the website PR:\r\n```\r\n$ ./gendoc.lua ../neovim\r\n$ hugo server\r\n```\r\nSame Hugo 0.158.0.\r\nVerified that the website runs fine locally, the docs pages render correctly, including the redirect ones.\r\n\r\nOne thing I wanted to do but didn't is rename the file to `export_help_docs.lua` and generally gen* to export* (the script doesn't generate the help - it converts its format). Let me know if anyone has strong opinions about that - I'd like to do it in the next commit.",
             "created_at": "2026-05-22T01:39:56Z",
             "html_url": "https://github.com/neovim/neovim/pull/39946#issuecomment-4514207985",
             "id": 4514207985,
@@ -198,7 +614,7 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4514207985/reactions"
             },
-            "updated_at": "2026-05-22T01:43:03Z",
+            "updated_at": "2026-05-29T00:39:22Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4514207985",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/4351932?v=4",
@@ -227,7 +643,7 @@
     "commits_url": "https://api.github.com/repos/neovim/neovim/pulls/39946/commits",
     "created_at": "2026-05-22T01:10:14Z",
     "diff_url": "https://github.com/neovim/neovim/pull/39946.diff",
-    "draft": true,
+    "draft": false,
     "head": {
         "label": "SqAtx:gen_help_more_output_formats",
         "ref": "gen_help_more_output_formats",
@@ -319,7 +735,7 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/SqAtx/neovim/pulls{/number}",
-            "pushed_at": "2026-05-22T01:41:24Z",
+            "pushed_at": "2026-05-31T19:14:57Z",
             "releases_url": "https://api.github.com/repos/SqAtx/neovim/releases{/id}",
             "size": 367856,
             "ssh_url": "git@github.com:SqAtx/neovim.git",
@@ -340,7 +756,7 @@
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "5ec04dfea3a45f9bf9ead4fe49deaab8747a8ec0",
+        "sha": "5d50c956c8d9c62623da4d4d039c7495f6056ae7",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/4351932?v=4",
             "events_url": "https://api.github.com/users/SqAtx/events{/privacy}",
@@ -378,7 +794,7 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "6ddf44b466d8070ed76039bda7c7847f0d036a3f",
+    "merge_commit_sha": "2499afa4af955f83130124a0144633424a208e85",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM7eKM6K",
@@ -389,9 +805,9 @@
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/39946/comments",
     "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/5ec04dfea3a45f9bf9ead4fe49deaab8747a8ec0",
-    "title": "refactor(docs): Separate HTML-specific bits from gen_help_html",
-    "updated_at": "2026-05-22T01:43:03Z",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/5d50c956c8d9c62623da4d4d039c7495f6056ae7",
+    "title": "refactor(docs): separate HTML-specific bits from gen_help_html",
+    "updated_at": "2026-05-31T19:14:59Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/39946",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/4351932?v=4",

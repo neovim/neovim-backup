@@ -2,10 +2,30 @@
     "active_lock_reason": null,
     "assignee": null,
     "assignees": [],
-    "author_association": "NONE",
+    "author_association": "CONTRIBUTOR",
     "body": "### Problem\n\nHey,\n\nVim.pack incorrectly prompts to reinstall all plugins on every launch of neovim. \n\nThis is because the implementation used to determine if plugins are installed attempts to optimize by using  `vim.fs.dir()` in `/runtime/lua/vim/pack.lua` which avoids doing a stat() on every plugin's directory. Under the hood vim.fs.dir() calls libuv to get directory content. As per [libuv's docs](https://github.com/libuv/libuv/blob/v1.x/docs/src/fs.rst#:~:text=..%20c%3Atype%3A%3A%20uv_dirent_t%0A%0A%20%20%20%20Cross%20platform%20(reduced)%20equivalent%20of%20%60%60struct%20dirent%60%60.%0A%20%20%20%20Used%20in%20%3Ac%3Afunc%3A%60uv_fs_scandir_next%60.%0A%0A%20%20%20%20%3A%3A%0A%0A%20%20%20%20%20%20%20%20typedef%20struct%20uv_dirent_s%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20const%20char*%20name%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20uv_dirent_type_t%20type%3B%0A%20%20%20%20%20%20%20%20%7D%20uv_dirent_t%3B)  This includes the  use of \n>Cross platform (reduced) equivalent of ``struct dirent``. Used in :c:func:`uv_fs_scandir_next\n\nThis struct contains only the name and the type of the directory. T**he issue with that is `vim.fs.dir()` relies on the assumption that libuv always returns one of the expected types** (nonetheless, a type in general)  [as per outlined in `runtime/lua/vim/fs.lua:`](https://github.com/neovim/neovim/blob/v0.12.1/runtime/lua/vim/fs.lua)\n```lua\n--@since 10\n---@param path (string) Directory to iterate over, normalized via |vim.fs.normalize()|.\n---@param opts? vim.fs.dir.Opts Optional keyword arguments:\n---@return Iterator over items in {path}. Each iteration yields two values: \"name\" and \"type\".\n---        \"name\" is the basename of the item relative to {path}.\n---        \"type\" is one of the following:\n---        \"file\", \"directory\", \"link\", \"fifo\", \"socket\", \"char\", \"block\", \"unknown\".\nfunction M.dir(path, opts)\n```\n\nThis implementation _appears_  to handle the problematic case where some file systems (such as Jfs and NFS) do not support accessing the `type` of a `dirent` entry. This case is  clearly documented by [linux's man page for getdents(2)](https://linux.die.net/man/2/getdents#:~:text=DT_UNKNOWN,of%20DT_UNKNOWN)\n>Currently, only some file systems (among them: Btrfs, ext2, ext3, and ext4) have full support for returning the file type in d_type. All applications must properly handle a return of DT_UNKNOWN.\n\nand indeed reinforced by [libuv's docs](https://github.com/libuv/libuv/blob/v1.x/docs/src/fs.rst):\n>On Linux, getting the type of an entry is only supported by some file systems ... see man:`getdents(2)` man page\n  \n\n_In other words_..... The expected return that vim.fs.dir() should be getting on file systems that do not support accessing the `type` of a `dirent` entry is `DT_UNKNOWN` (or \"unknown\"). The _actual_ result is `nil`. This is problematic as `nil` is later used in `/runtime/lua/vim/pack.lua` to ultimately evaluate if plugin directories exist, which is why plugins are being prompted for reinstall everytime even if they actually exist.\n\nThe divergence lies in neovim's use of https://github.com/luvit/luv. lualuv appears to have a different interpretation of libuv's definition. This is seen in the implemenation under src/fs.c line 131:\n```C\n  switch (ent->type) {\n    case UV_DIRENT_UNKNOWN: return 1;\n    case UV_DIRENT_FILE:    type = \"file\"; break;\n    case UV_DIRENT_DIR:     type = \"directory\"; break;\n    case UV_DIRENT_LINK:    type = \"link\"; break;\n    case UV_DIRENT_FIFO:    type = \"fifo\"; break;\n    case UV_DIRENT_SOCKET:  type = \"socket\"; break;\n    case UV_DIRENT_CHAR:    type = \"char\"; break;\n    case UV_DIRENT_BLOCK:   type = \"block\"; break;\n    default:                type = \"unknown\"; break;\n```\n\nIt seems that lualuv emphatically chooses to skip returning anything for the type field of the struct, granted that dt_type is `UV_DIRENT_UNKNOWN` which explains why the value is `nil`. This is decision is not clearly documented.\n\nThere are already open issues luvit/luv#660 about this decision in https://github.com/luvit/luv but the consensus to address this does not  go beyond clarifying the docs https://github.com/luvit/luv/issues/660#issuecomment-1650447164 \n\nMy suggested fix is to perhaps avoid using vim.fs.dir() and fall back to a `uv.fs_stat()` call for every plugin directory. The optimization here is very minimal....hard to see someone having thousands of plugins.\n\nThis bug was discovered while porting Neovim 0.12.1 to QNX which uses a different filesystem, but worth opening an issue as it affects Linux environment's that use Jfs or (more commonly a NFS based FS) Lastly, it is worth mentioning that other projects that make use of lualuv's similar functionality already have merged commits to deal with this https://github.com/L3MON4D3/LuaSnip/pull/966, https://github.com/mason-org/mason.nvim/pull/1783. \n\n\n\n### Steps to reproduce\n\nAn easily reproducible scenario that breaks the assumption that libuv always returns one the expected types (nonetheless, a type in general):\n\n1. Mount a JFS partition on /mnt/jfs\n2. Create directories in the jfs partition mkdir /mnt/jfs/dir{1,2}\n3. launch neovim and run :lua for name, t in vim.fs.dir('/mnt/jfs') do print(name, t) done\n\nExpected result\n```\ndir1 directory\ndir2 directory\n```\nActual result\n\n```\ndir1 nil\ndir2 nil\n```\n___\n\nFor vim.pack a basic reproducible scenario that breaks the assumption:\n1. in ~/config/nvim/init.lua:\n```lua\nvim.pack.add({\n    'https://github.com/nvim-telescope/telescope.nvim'\n})\n```\n2. launch neovim and run `:lua for name, t in vim.fs.dir(vim.fn.stdpath('data')..'/site/pack/core/opt') do print(name, t) end`\n\nExpected result\n\n`telescope.nvim directory`\n\nActual result\n\n`telescope.nvim nil`\n\n\n\n### Expected behavior\n\n**Above** ^^\n\n### Nvim version (nvim -v)\n\n0.12.1 commit 7ac5a26\n\n### Vim (not Nvim) behaves the same?\n\nN/A\n\n### Operating system/version\n\nLinux (Unix) (at least JFS and NFS based file systems)\n\n### Terminal name/version\n\nxterm\n\n### $TERM environment variable\n\nxterm-256color\n\n### Installation\n\nbuild from repo",
-    "closed_at": null,
-    "closed_by": null,
+    "closed_at": "2026-05-29T18:24:24Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+        "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+        "followers_url": "https://api.github.com/users/justinmk/followers",
+        "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+        "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/justinmk",
+        "id": 1359421,
+        "login": "justinmk",
+        "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+        "organizations_url": "https://api.github.com/users/justinmk/orgs",
+        "received_events_url": "https://api.github.com/users/justinmk/received_events",
+        "repos_url": "https://api.github.com/users/justinmk/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -100,7 +120,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "> Maybe. But is this something we can/should fix in `vim.fs.dir()` ?\n> \n> Or a different question: even if [luv returned \"unknown\"](https://github.com/luvit/luv/issues/660#issuecomment-1650438191), would it help? Why can't handle `nil` as we would handle \"unknown\"?\n\nThis should indeed be fixed in `vim.fs.dir()`.. Upon closer inspection it seems like that assumption is scattered throughout neovim's src code. \n\nAnother example that results in the same bug is attempting to use `vim.pack.del()` to remove plugin directories that are on disk and no longer used. \n\nFollowing the docs under [runtime/doc/pack.txt](https://github.com/neovim/neovim/blob/v0.12.1/runtime/doc/pack.txt):\n>Remove plugins from disk ~\n• Remove plugin specs from |vim.pack.add()| calls in 'init.lua' or they will\n  be reinstalled later.\n• |:restart|.\n• Use |vim.pack.del()| with a list of plugin names to remove. Use\n  |vim.pack.get()| to get all non-active plugins: >lua\n  ...\n\ncalling` vim.pack.del()` results in an `EPERM` error preventing the removal of the directory from disk. This is because `vim.fs.dir()` is also used in this function's logic to determine the type of the `dirent` entry. You can find it under [runtime/lua/vim/fs.lua](https://github.com/neovim/neovim/blob/v0.12.1/runtime/lua/vim/fs.lua):\n```lua\n\n  if ty == 'directory' then\n    if recursive then\n      for file, fty in vim.fs.dir(path) do\n        rm(M.joinpath(path, file), fty, true, force)\n      end\n    elseif not force then\n      error(string.format('%s is a directory', path))\n    end\n\n    rm_fn = uv.fs_rmdir\n  else\n    rm_fn = uv.fs_unlink\n  end\n```\n\nit jumps straight to the `else` and attempts to call `uv.fs_unlink()` on a directory which explains the `EPERM` error.\n\nI don't find the fix for vim.fs.dir() to be trivial either. Based on my understanding The only way to preserve vim.fs.dir()'s signature is to nest a check [after calling fs_scandir_next()](https://github.com/neovim/neovim/blob/v0.12.1/runtime/lua/vim/fs.lua). Something like:\n```lua\n\nfunction M.dir(path, opts)\n  opts = opts or {}\n\n  vim.validate('path', path, 'string')\n  vim.validate('depth', opts.depth, 'number', true)\n  vim.validate('skip', opts.skip, 'function', true)\n  vim.validate('follow', opts.follow, 'boolean', true)\n\n  path = M.normalize(path)\n  if not opts.depth or opts.depth == 1 then\n    local fs = uv.fs_scandir(path)\n    return function()\n      if not fs then\n        return\n      end\n-- something like\n   local name, etype = uv.fs_scandir_next(fs)\n   if not name then\n    return\n  end\n\n  if etype == nil then\n    local stat = vim.uv.fs_stat(M.joinpath(path, name))\n    etype = stat and stat.type \n  end\n\n  return name, etype\nend\n```\nAlso a decision needs to be made for what to return if uv.fs_stat() also fails. Above it would once again be nil. \nI also don't think we can handle nil as we would handle \"unknown\" because there is an overlap in code logic for when directories aren't installed.\n\n\n\n\n\n\n",
             "created_at": "2026-05-06T21:59:07Z",
             "html_url": "https://github.com/neovim/neovim/issues/39612#issuecomment-4392504578",
@@ -238,7 +258,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "> sounds like we have a plan, just need a pr for `fs.dir`\n\nPlease see #39749\n\nAlso you will notice that I have instead opted to fall back to `vim.uv.fs_lstat`  instead of `vim.uv.fs_stat` . I ran into an issue where attempting to delete plugin directories on disk using vim.pack.del(). results in an \"ENOTDIR: not a directory\" error\n\nThis is after removing the plugin from vim.pack.add() under ~/.config/nvim. and running` :checkhealth vim.pack` to find the plugin warning \n> Plugin is not active. Is it lazy loaded or did you forget to run vim.pack.del()\n\nThe stack traceback of the error:\n```\nstack traceback:                                                                                                                                                             \n        [C]: in function 'error'                                                                                                                                             \n        vim/fs.lua: in function ''                                                                                                                                           \n        vim/fs.lua: in function ''                                                                                                                                           \n        vim/fs.lua: in function 'rm'                                                                                                                                         \n        /usr/share/nvim/runtime/lua/vim/pack.lua:1368: in function 'del'                                                                                                     \n        [string \":lua\"]:1: in main chunk        \n``` \n\nquickly leads to `rm` under src/neovim/runtime/lua:\n\n```lua\nlocal function rm(path, ty, recursive, force)\n  --- @diagnostic disable-next-line:no-unknown\n  local rm_fn\n\n  if ty == 'directory' then\n    if recursive then\n      for file, fty in vim.fs.dir(path) do\n        rm(M.joinpath(path, file), fty, true, force)\n      end\n...\n\n```\n\nwhere `fs.dir()` is once again used to get the name and type of the entry. The issue with `fs_stat` is that is it follows symlinks. that causes `rm`  to treat a symlink as a directory and iterate through its children, the filesystem driver returns ENOTDIR because the path itself is a link, not the container. The trivial solution is to just swap `fs_stat` with `fs_lstat` so if the entry is a symlink, it wont be descended into as a directory.\n\nI have also followed through with @echasnovski's [logic](https://github.com/neovim/neovim/issues/39612#issuecomment-4395433893), trying a stat first and fall back to 'unknown'.\n\nI apologize for the overtly long comments. I thought to provide detail and justification in case there is any doubt in my thought process.",
             "created_at": "2026-05-12T00:34:54Z",
             "html_url": "https://github.com/neovim/neovim/issues/39612#issuecomment-4426277959",
@@ -321,7 +341,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 41,
+        "closed_issues": 49,
         "created_at": "2026-04-22T14:48:24Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -354,7 +374,7 @@
         "open_issues": 15,
         "state": "open",
         "title": "0.12.3",
-        "updated_at": "2026-05-19T00:42:07Z",
+        "updated_at": "2026-05-29T18:24:25Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/58"
     },
     "node_id": "I_kwDOAPphoM8AAAABBYPHKQ",
@@ -374,8 +394,8 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/39612/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "sub_issues_summary": {
         "completed": 0,
         "percent_completed": 0,
@@ -393,7 +413,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyr",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2026-05-12T13:12:51Z",
+    "updated_at": "2026-05-29T18:24:24Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/39612",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/254546608?v=4",
