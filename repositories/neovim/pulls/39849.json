@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6904,
-            "forks_count": 6904,
+            "forks": 6910,
+            "forks_count": 6910,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -95,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1934,
-            "open_issues_count": 1934,
+            "open_issues": 1943,
+            "open_issues_count": 1943,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -121,11 +121,11 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2026-05-26T04:32:56Z",
+            "pushed_at": "2026-06-09T04:32:46Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 383270,
+            "size": 384761,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 99869,
+            "stargazers_count": 100260,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -143,11 +143,11 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2026-05-26T03:28:21Z",
+            "updated_at": "2026-06-09T05:12:58Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 99869,
-            "watchers_count": 99869,
+            "watchers": 100260,
+            "watchers_count": 100260,
             "web_commit_signoff_required": false
         },
         "sha": "17f233d56ba26d633584256451ae0f97b3d96260",
@@ -1218,6 +1218,216 @@
                 "url": "https://api.github.com/users/kylesower",
                 "user_view_type": "public"
             }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/39849#discussion_r3363239314"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/39849"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3363239314"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "let's explore that in a followup?",
+            "commit_id": "2e12b83a11bf32eccb13a095aa6f93a608ec2adb",
+            "created_at": "2026-06-05T14:16:35Z",
+            "diff_hunk": "@@ -320,20 +367,84 @@ void nvim_set_option_value(uint64_t channel_id, String name, Object value, Dict(\n     }\n   }\n \n+  // Convert the incoming Lua object (which could be a table) into the proper\n+  // OptVal type (string even for list/dict style options)\n+  Error lua_err = ERROR_INIT;\n+  MAXSIZE_TEMP_ARRAY(args, 3);\n+  ADD_C(args, STRING_OBJ(name));\n+  ADD_C(args, value);\n+  ADD_C(args, CSTR_AS_OBJ(set_op_get_name(operation)));\n+  Object vim_val =\n+    NLUA_EXEC_STATIC(\"return require('vim._core.options').convert_value_to_vim(...)\",\n+                     args, kRetObject, NULL, &lua_err);\n+  VALIDATE(!ERROR_SET(&lua_err), \"%s\", lua_err.msg, {\n+    api_clear_error(&lua_err);\n+    return NIL;\n+  });\n   bool error = false;\n-  OptVal optval = object_as_optval(value, &error);\n+  OptVal optval_right = object_as_optval(vim_val, &error);\n \n   // Handle invalid option value type.\n   // Don't use `name` in the error message here, because `name` can be any String.\n   // No need to check if value type actually matches the types for the option, as set_option_value()\n   // already handles that.\n   VALIDATE_EXP(!error, \"value\", \"valid option type\", api_typename(value.type), {\n-    return;\n+    return NIL;\n   });\n \n-  WITH_SCRIPT_CONTEXT(channel_id, {\n-    set_option_value_for(name.data, opt_idx, optval, opt_flags, scope, to, err);\n-  });\n+  OptVal merged_val = NIL_OPTVAL;\n+  const char *errmsg = NULL;\n+  vimoption_T *option = get_option(opt_idx);\n+  // Not sure if we need get_varp_scope_from\n+  void *varp = get_varp_scope(option, opt_flags);\n+  char *argp = NULL;\n+  switch (optval_right.type) {\n+  case kOptValTypeNil:\n+    break;\n+  case kOptValTypeString: {\n+    char *optval_escaped = escape_option_str_cmdline(optval_right.data.string.data);\n+    // We need a leading equal sign because get_option_newval is used for\n+    // cmdline stuff and expects an =\n+    argp = arena_printf(arena, \"=%s\", optval_escaped).data;\n+    XFREE_CLEAR(optval_escaped);\n+    break;\n+  }\n+  case kOptValTypeNumber:\n+    argp = arena_printf(arena, \"=%\" PRId64, optval_right.data.number).data;\n+    break;\n+  case kOptValTypeBoolean:\n+    merged_val = optval_right;\n+    break;\n+  }\n+\n+  optval_free(optval_right);\n+\n+  if (optval_right.type == kOptValTypeNumber || optval_right.type == kOptValTypeString) {\n+    merged_val = get_option_newval(opt_idx, opt_flags, PREFIX_NONE, &argp, 0, operation,\n+                                   option->flags, varp, NULL, 0, &errmsg);\n+    arena_mem_free(arena_finish(arena));\n+    VALIDATE(errmsg == NULL, \"%s\", errmsg, {\n+      return NIL;\n+    });\n+  }\n+\n+  if (!dry_run) {\n+    WITH_SCRIPT_CONTEXT(channel_id, {\n+      set_option_value_for(name.data, opt_idx, merged_val, opt_flags, scope, to, err);\n+    });\n+  }\n+\n+  if (merged_val.type == kOptValTypeString) {\n+    String arena_val = arena_string(arena, merged_val.data.string);\n+    optval_free(merged_val);\n+    // Unfortunately, we return the value as a string rather than converting\n+    // to lua value. This is because if we convert to a lua value, maps may\n+    // not return in the expected order. I'm not sure if the order matters\n+    // for any of the map options.\n+    return STRING_OBJ(arena_val);\n+  }\n+\n+  return optval_as_object(merged_val);",
+            "html_url": "https://github.com/neovim/neovim/pull/39849#discussion_r3363239314",
+            "id": 3363239314,
+            "in_reply_to_id": 3289668127,
+            "line": 447,
+            "node_id": "PRRC_kwDOAPphoM7IdvWS",
+            "original_commit_id": "1e3652482b778d1c0308fdd2b237953745ebcb06",
+            "original_line": 447,
+            "original_position": 243,
+            "original_start_line": 437,
+            "path": "src/nvim/api/options.c",
+            "position": 243,
+            "pull_request_review_id": 4436984211,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39849",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3363239314/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 437,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-06-05T14:16:35Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3363239314",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/39849#discussion_r3365586126"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/39849"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3365586126"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "Sure, if you want. Do you also want me to look at changing the return type for nvim_get_option_value? That could cause a lot of breakage, so maybe there could be a flag.",
+            "commit_id": "2e12b83a11bf32eccb13a095aa6f93a608ec2adb",
+            "created_at": "2026-06-05T21:53:40Z",
+            "diff_hunk": "@@ -320,20 +367,84 @@ void nvim_set_option_value(uint64_t channel_id, String name, Object value, Dict(\n     }\n   }\n \n+  // Convert the incoming Lua object (which could be a table) into the proper\n+  // OptVal type (string even for list/dict style options)\n+  Error lua_err = ERROR_INIT;\n+  MAXSIZE_TEMP_ARRAY(args, 3);\n+  ADD_C(args, STRING_OBJ(name));\n+  ADD_C(args, value);\n+  ADD_C(args, CSTR_AS_OBJ(set_op_get_name(operation)));\n+  Object vim_val =\n+    NLUA_EXEC_STATIC(\"return require('vim._core.options').convert_value_to_vim(...)\",\n+                     args, kRetObject, NULL, &lua_err);\n+  VALIDATE(!ERROR_SET(&lua_err), \"%s\", lua_err.msg, {\n+    api_clear_error(&lua_err);\n+    return NIL;\n+  });\n   bool error = false;\n-  OptVal optval = object_as_optval(value, &error);\n+  OptVal optval_right = object_as_optval(vim_val, &error);\n \n   // Handle invalid option value type.\n   // Don't use `name` in the error message here, because `name` can be any String.\n   // No need to check if value type actually matches the types for the option, as set_option_value()\n   // already handles that.\n   VALIDATE_EXP(!error, \"value\", \"valid option type\", api_typename(value.type), {\n-    return;\n+    return NIL;\n   });\n \n-  WITH_SCRIPT_CONTEXT(channel_id, {\n-    set_option_value_for(name.data, opt_idx, optval, opt_flags, scope, to, err);\n-  });\n+  OptVal merged_val = NIL_OPTVAL;\n+  const char *errmsg = NULL;\n+  vimoption_T *option = get_option(opt_idx);\n+  // Not sure if we need get_varp_scope_from\n+  void *varp = get_varp_scope(option, opt_flags);\n+  char *argp = NULL;\n+  switch (optval_right.type) {\n+  case kOptValTypeNil:\n+    break;\n+  case kOptValTypeString: {\n+    char *optval_escaped = escape_option_str_cmdline(optval_right.data.string.data);\n+    // We need a leading equal sign because get_option_newval is used for\n+    // cmdline stuff and expects an =\n+    argp = arena_printf(arena, \"=%s\", optval_escaped).data;\n+    XFREE_CLEAR(optval_escaped);\n+    break;\n+  }\n+  case kOptValTypeNumber:\n+    argp = arena_printf(arena, \"=%\" PRId64, optval_right.data.number).data;\n+    break;\n+  case kOptValTypeBoolean:\n+    merged_val = optval_right;\n+    break;\n+  }\n+\n+  optval_free(optval_right);\n+\n+  if (optval_right.type == kOptValTypeNumber || optval_right.type == kOptValTypeString) {\n+    merged_val = get_option_newval(opt_idx, opt_flags, PREFIX_NONE, &argp, 0, operation,\n+                                   option->flags, varp, NULL, 0, &errmsg);\n+    arena_mem_free(arena_finish(arena));\n+    VALIDATE(errmsg == NULL, \"%s\", errmsg, {\n+      return NIL;\n+    });\n+  }\n+\n+  if (!dry_run) {\n+    WITH_SCRIPT_CONTEXT(channel_id, {\n+      set_option_value_for(name.data, opt_idx, merged_val, opt_flags, scope, to, err);\n+    });\n+  }\n+\n+  if (merged_val.type == kOptValTypeString) {\n+    String arena_val = arena_string(arena, merged_val.data.string);\n+    optval_free(merged_val);\n+    // Unfortunately, we return the value as a string rather than converting\n+    // to lua value. This is because if we convert to a lua value, maps may\n+    // not return in the expected order. I'm not sure if the order matters\n+    // for any of the map options.\n+    return STRING_OBJ(arena_val);\n+  }\n+\n+  return optval_as_object(merged_val);",
+            "html_url": "https://github.com/neovim/neovim/pull/39849#discussion_r3365586126",
+            "id": 3365586126,
+            "in_reply_to_id": 3289668127,
+            "line": 447,
+            "node_id": "PRRC_kwDOAPphoM7ImsTO",
+            "original_commit_id": "1e3652482b778d1c0308fdd2b237953745ebcb06",
+            "original_line": 447,
+            "original_position": 243,
+            "original_start_line": 437,
+            "path": "src/nvim/api/options.c",
+            "position": 243,
+            "pull_request_review_id": 4439986195,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39849",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3365586126/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 437,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-06-05T21:54:37Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3365586126",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/50718101?v=4",
+                "events_url": "https://api.github.com/users/kylesower/events{/privacy}",
+                "followers_url": "https://api.github.com/users/kylesower/followers",
+                "following_url": "https://api.github.com/users/kylesower/following{/other_user}",
+                "gists_url": "https://api.github.com/users/kylesower/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/kylesower",
+                "id": 50718101,
+                "login": "kylesower",
+                "node_id": "MDQ6VXNlcjUwNzE4MTAx",
+                "organizations_url": "https://api.github.com/users/kylesower/orgs",
+                "received_events_url": "https://api.github.com/users/kylesower/received_events",
+                "repos_url": "https://api.github.com/users/kylesower/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/kylesower/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/kylesower/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/kylesower",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/39849#discussion_r3376923336"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/39849"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3376923336"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "Map style options (as listed in `runtime/lua/vim/_core/options.lua`) are:\r\n- fillchars\r\n- listchars\r\n- winhighlight\r\n\r\nI read through all the options and also found some weird options that are kind of a mix of map and other things:\r\n- breakindentopt\r\n- diffopt\r\n- messagesopt\r\n\r\nThere's also mousescroll, which looks like a map, but I guess that just counts as a list style option.\r\n\r\nIn none of these cases does order appear to matter, so I think returning a Lua val from at least `nvim_set_option_value` would be fine.",
+            "commit_id": "2e12b83a11bf32eccb13a095aa6f93a608ec2adb",
+            "created_at": "2026-06-08T23:27:02Z",
+            "diff_hunk": "@@ -320,20 +367,84 @@ void nvim_set_option_value(uint64_t channel_id, String name, Object value, Dict(\n     }\n   }\n \n+  // Convert the incoming Lua object (which could be a table) into the proper\n+  // OptVal type (string even for list/dict style options)\n+  Error lua_err = ERROR_INIT;\n+  MAXSIZE_TEMP_ARRAY(args, 3);\n+  ADD_C(args, STRING_OBJ(name));\n+  ADD_C(args, value);\n+  ADD_C(args, CSTR_AS_OBJ(set_op_get_name(operation)));\n+  Object vim_val =\n+    NLUA_EXEC_STATIC(\"return require('vim._core.options').convert_value_to_vim(...)\",\n+                     args, kRetObject, NULL, &lua_err);\n+  VALIDATE(!ERROR_SET(&lua_err), \"%s\", lua_err.msg, {\n+    api_clear_error(&lua_err);\n+    return NIL;\n+  });\n   bool error = false;\n-  OptVal optval = object_as_optval(value, &error);\n+  OptVal optval_right = object_as_optval(vim_val, &error);\n \n   // Handle invalid option value type.\n   // Don't use `name` in the error message here, because `name` can be any String.\n   // No need to check if value type actually matches the types for the option, as set_option_value()\n   // already handles that.\n   VALIDATE_EXP(!error, \"value\", \"valid option type\", api_typename(value.type), {\n-    return;\n+    return NIL;\n   });\n \n-  WITH_SCRIPT_CONTEXT(channel_id, {\n-    set_option_value_for(name.data, opt_idx, optval, opt_flags, scope, to, err);\n-  });\n+  OptVal merged_val = NIL_OPTVAL;\n+  const char *errmsg = NULL;\n+  vimoption_T *option = get_option(opt_idx);\n+  // Not sure if we need get_varp_scope_from\n+  void *varp = get_varp_scope(option, opt_flags);\n+  char *argp = NULL;\n+  switch (optval_right.type) {\n+  case kOptValTypeNil:\n+    break;\n+  case kOptValTypeString: {\n+    char *optval_escaped = escape_option_str_cmdline(optval_right.data.string.data);\n+    // We need a leading equal sign because get_option_newval is used for\n+    // cmdline stuff and expects an =\n+    argp = arena_printf(arena, \"=%s\", optval_escaped).data;\n+    XFREE_CLEAR(optval_escaped);\n+    break;\n+  }\n+  case kOptValTypeNumber:\n+    argp = arena_printf(arena, \"=%\" PRId64, optval_right.data.number).data;\n+    break;\n+  case kOptValTypeBoolean:\n+    merged_val = optval_right;\n+    break;\n+  }\n+\n+  optval_free(optval_right);\n+\n+  if (optval_right.type == kOptValTypeNumber || optval_right.type == kOptValTypeString) {\n+    merged_val = get_option_newval(opt_idx, opt_flags, PREFIX_NONE, &argp, 0, operation,\n+                                   option->flags, varp, NULL, 0, &errmsg);\n+    arena_mem_free(arena_finish(arena));\n+    VALIDATE(errmsg == NULL, \"%s\", errmsg, {\n+      return NIL;\n+    });\n+  }\n+\n+  if (!dry_run) {\n+    WITH_SCRIPT_CONTEXT(channel_id, {\n+      set_option_value_for(name.data, opt_idx, merged_val, opt_flags, scope, to, err);\n+    });\n+  }\n+\n+  if (merged_val.type == kOptValTypeString) {\n+    String arena_val = arena_string(arena, merged_val.data.string);\n+    optval_free(merged_val);\n+    // Unfortunately, we return the value as a string rather than converting\n+    // to lua value. This is because if we convert to a lua value, maps may\n+    // not return in the expected order. I'm not sure if the order matters\n+    // for any of the map options.\n+    return STRING_OBJ(arena_val);\n+  }\n+\n+  return optval_as_object(merged_val);",
+            "html_url": "https://github.com/neovim/neovim/pull/39849#discussion_r3376923336",
+            "id": 3376923336,
+            "in_reply_to_id": 3289668127,
+            "line": 447,
+            "node_id": "PRRC_kwDOAPphoM7JR8LI",
+            "original_commit_id": "1e3652482b778d1c0308fdd2b237953745ebcb06",
+            "original_line": 447,
+            "original_position": 243,
+            "original_start_line": 437,
+            "path": "src/nvim/api/options.c",
+            "position": 243,
+            "pull_request_review_id": 4454103490,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39849",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3376923336/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 437,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-06-08T23:27:02Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3376923336",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/50718101?v=4",
+                "events_url": "https://api.github.com/users/kylesower/events{/privacy}",
+                "followers_url": "https://api.github.com/users/kylesower/followers",
+                "following_url": "https://api.github.com/users/kylesower/following{/other_user}",
+                "gists_url": "https://api.github.com/users/kylesower/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/kylesower",
+                "id": 50718101,
+                "login": "kylesower",
+                "node_id": "MDQ6VXNlcjUwNzE4MTAx",
+                "organizations_url": "https://api.github.com/users/kylesower/orgs",
+                "received_events_url": "https://api.github.com/users/kylesower/received_events",
+                "repos_url": "https://api.github.com/users/kylesower/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/kylesower/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/kylesower/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/kylesower",
+                "user_view_type": "public"
+            }
         }
     ],
     "comment_regular_data": [
@@ -1363,9 +1573,9 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/kylesower/neovim/pulls{/number}",
-            "pushed_at": "2026-05-25T09:09:27Z",
+            "pushed_at": "2026-06-08T09:58:37Z",
             "releases_url": "https://api.github.com/repos/kylesower/neovim/releases{/id}",
-            "size": 368458,
+            "size": 368459,
             "ssh_url": "git@github.com:kylesower/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/kylesower/neovim/stargazers",
@@ -1431,7 +1641,7 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "912c03bc302c976049c5e2d62d6ffc696d341825",
+    "merge_commit_sha": null,
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM7cfaHv",
@@ -1444,7 +1654,7 @@
     "state": "open",
     "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/2e12b83a11bf32eccb13a095aa6f93a608ec2adb",
     "title": "feat(api): add operation field to nvim_set_option_value",
-    "updated_at": "2026-05-22T16:33:49Z",
+    "updated_at": "2026-06-08T23:27:02Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/39849",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/50718101?v=4",

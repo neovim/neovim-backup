@@ -54,7 +54,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "Hey I'm looking into this as well! Currently studying [gen_help_html.lua](https://github.com/neovim/neovim/blob/master/scripts/gen_help_html.lua).\n\nMy goal is to produce a good-looking PDF of the user manual (`usr_*.txt`), using a script that can be easily run after each Neovim release.\n\nThe current attempts (https://github.com/jkbr-19/neovim-pdf-manual mentioned above, https://github.com/HugoForrat/LaTeX-Vim-User-Manual for Vim) use HTML as the input, but we'd get better results if we wrote LaTeX the same way we're writing HTML in that script. Which I think is what the comment above is getting at!\n\n",
             "created_at": "2026-01-09T01:56:58Z",
             "html_url": "https://github.com/neovim/neovim/issues/39950#issuecomment-4516965575",
@@ -100,7 +100,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "Small update - I'd opened https://github.com/neovim/neovim/pull/37742 but after some discussion at https://github.com/neovim/neovim/pull/37972#issuecomment-3970233139, figured it would be better to split `gen_help_html.lua` into:\n1. turn a help page into a JSON representation of its LanguageTree object\n2. convert the JSON file into HTML\n\nThat would make it easy to add output formats (such as PDF) without risks of messing up existing ones.",
             "created_at": "2026-05-08T01:49:15Z",
             "html_url": "https://github.com/neovim/neovim/issues/39950#issuecomment-4516965636",
@@ -192,7 +192,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "Better separation of concerns and less risk of output generation logic bleeding into tree walking logic. And we can add new output formats without even looking at the tree walking logic. But maybe it's a weak reason that's just based on my initial impressions of `gen_help_html.lua`, where the two are (understandably) not completely separate. I'll experiment.\n\n(side note: this is not going very fast because I have very limited time to dedicate to it. But hey I'll keep chipping at it)",
             "created_at": "2026-05-10T20:34:11Z",
             "html_url": "https://github.com/neovim/neovim/issues/39950#issuecomment-4516965715",
@@ -238,8 +238,8 @@
             }
         },
         {
-            "author_association": "NONE",
-            "body": "We can even move this issue to the main neovim repo, I think.\n\nI've looked at this again, and I've abandoned the idea of the intermediate JSON for now.\n\nBasically we just need to duplicate `gen_one()` (because it may add content to the page, e.g. the Hugo frontmatter in HTML) and `visit_node()` (that's the one that actually turns a node into the output format).\n\nHere's my proposed incremental approach to add a `typ` output format to the current `gen_help_html.lua`\n\n### Commit 1: Small refactor to separate the HTML-specific bits\n\n* Make gen() take an `output` param\n  * Update the website's `gendoc.lua` to use it\n* Rename `gen_one()` -> `gen_one_html()`\n* Rename `visit_node()` -> `ts_node_to_html()`\n* Add a mapping to gen() that calls the correct `gen_one*()` function.\n\nThis is what I have written at https://github.com/neovim/neovim/pull/39946 and https://github.com/neovim/neovim.github.io/pull/479.\n\nOptional: rename file to `export_help_docs.lua` and generally gen* to export* (the script doesn't generate the help - it converts its format).\nWe can bikeshed the naming a bit. Can also be done in its own commit after this one. \n\n### Commit 2: Simple version of Typst output\n\n* Add `gen_one_typ()` and `ts_node_to_typ()`\n  * I have a rough version at https://github.com/SqAtx/neovim/blob/gen_help_typ/src/gen/gen_help_html.lua that generates a passable usr_01.typ\n  * They should at least generate the user manual without errors\n\nIt's okay if the resulting PDF has visual problems\nIt's okay if the process is manual, like copy the user manual files -> run gen() -> merge all .typ files -> typst compile\n\nThe goal is to write enough Typst-specific Lua logic to be able to generate a version of the user manual, and be able to iterate on it without massive commits.\n\n### Commit 3: A readable user manual PDF\n\nFix formatting issues.\nMight take several commits, depending on the number and severity of issues.\nEnd goal: The user manual looks good. No formatting weirdness. Can be generated as a one-off for a specific version and distributed if we want to.\n\n### Commit 4: Automation\n\nThe user manual can be generated in one script call, and that script can be triggered by GHA.\nThen I can do this after every release, and maybe fix what got broken in that specific release.\nAt that point, we'll be in a good place.\n\n### Later: Nice to have\n\n* The manual gets generated automatically on release.\n  * I have a feeling it will require some tweaks so that version won't be good enough to e.g. be uploaded to the website. Maybe I can look at that version and fix things so that the PDF generated by x.1 is good\n* The reference manual can optionally get generated as well. Probably in the same PDF so that the links work.\n\n### When it comes up (no immediate plans)\n\n* Allow specifying different formats at the same time, so that we don't have to create the TS tree for each of them\n  * I don't think that's going to be a problem any time soon, so I'm okay with the small inefficiency for now\n\n",
+            "author_association": "CONTRIBUTOR",
+            "body": "We can even move this issue to the main neovim repo, I think.\n\nI've looked at this again, and I've abandoned the idea of the intermediate JSON for now.\n\nBasically we just need to duplicate `gen_one()` (because it may add content to the page, e.g. the Hugo frontmatter in HTML) and `visit_node()` (that's the one that actually turns a node into the output format).\n\nHere's my proposed incremental approach to add a `typ` output format to the current `gen_help_html.lua`\n\n### [DONE] Commit 1: Small refactor to separate the HTML-specific bits\n\n* Make gen() take an `output` param\n  * Update the website's `gendoc.lua` to use it\n* Rename `gen_one()` -> `gen_one_html()`\n* Rename `visit_node()` -> `ts_node_to_html()`\n* Add a mapping to gen() that calls the correct `gen_one*()` function.\n\nImplemented in https://github.com/neovim/neovim/commit/d0c7f870c29cdea5b13547f58b97983cfde9b345\nThe gendoc change is part of https://github.com/neovim/neovim.github.io/commit/6a0d2135758e91b13b357e5abfc169e08e5eaf12\n\nOptional: rename file to `export_help_docs.lua` and generally gen* to export* (the script doesn't generate the help - it converts its format).\nWe can bikeshed the naming a bit. Can also be done in its own commit after this one. \n\n### Commit 2: Simple version of Typst output\n\n* Add `gen_one_typ()` and `ts_node_to_typ()`\n  * I have a rough version at https://github.com/SqAtx/neovim/blob/gen_help_typ/src/gen/gen_help_html.lua that generates a passable usr_01.typ\n  * They should at least generate the user manual without errors\n\nIt's okay if the resulting PDF has visual problems\nIt's okay if the process is manual, like copy the user manual files -> run gen() -> merge all .typ files -> typst compile\n\nThe goal is to write enough Typst-specific Lua logic to be able to generate a version of the user manual, and be able to iterate on it without massive commits.\n\n### Commit 3: A readable user manual PDF\n\nFix formatting issues.\nMight take several commits, depending on the number and severity of issues.\nEnd goal: The user manual looks good. No formatting weirdness. Can be generated as a one-off for a specific version and distributed if we want to.\n\n### Commit 4: Automation\n\nThe user manual can be generated in one script call, and that script can be triggered by GHA.\nThen I can do this after every release, and maybe fix what got broken in that specific release.\nAt that point, we'll be in a good place.\n\n### Later: Nice to have\n\n* The manual gets generated automatically on release.\n  * I have a feeling it will require some tweaks so that version won't be good enough to e.g. be uploaded to the website. Maybe I can look at that version and fix things so that the PDF generated by x.1 is good\n* The reference manual can optionally get generated as well. Probably in the same PDF so that the links work.\n\n### When it comes up (no immediate plans)\n\n* Allow specifying different formats at the same time, so that we don't have to create the TS tree for each of them\n  * I don't think that's going to be a problem any time soon, so I'm okay with the small inefficiency for now\n\n",
             "created_at": "2026-05-22T01:00:04Z",
             "html_url": "https://github.com/neovim/neovim/issues/39950#issuecomment-4516965739",
             "id": 4516965739,
@@ -259,7 +259,7 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4516965739/reactions"
             },
-            "updated_at": "2026-05-22T01:42:03Z",
+            "updated_at": "2026-06-02T15:56:01Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4516965739",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/4351932?v=4",
@@ -343,10 +343,75 @@
         "total_blocking": 0
     },
     "issue_field_values": [],
-    "labels": [],
+    "labels": [
+        {
+            "color": "c5def5",
+            "default": false,
+            "description": "building and installing Neovim using the provided scripts",
+            "id": 84723321,
+            "name": "build",
+            "node_id": "MDU6TGFiZWw4NDcyMzMyMQ==",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/build"
+        },
+        {
+            "color": "c5def5",
+            "default": true,
+            "description": "",
+            "id": 84744038,
+            "name": "documentation",
+            "node_id": "MDU6TGFiZWw4NDc0NDAzOA==",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/documentation"
+        },
+        {
+            "color": "e6e6e6",
+            "default": false,
+            "description": "automation for build, test, and release",
+            "id": 212701006,
+            "name": "ci",
+            "node_id": "MDU6TGFiZWwyMTI3MDEwMDY=",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/ci"
+        }
+    ],
     "labels_url": "https://api.github.com/repos/neovim/neovim/issues/39950/labels{/name}",
     "locked": false,
-    "milestone": null,
+    "milestone": {
+        "closed_at": null,
+        "closed_issues": 845,
+        "created_at": "2014-05-10T20:43:04Z",
+        "creator": {
+            "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+            "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+            "followers_url": "https://api.github.com/users/justinmk/followers",
+            "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+            "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+            "gravatar_id": "",
+            "html_url": "https://github.com/justinmk",
+            "id": 1359421,
+            "login": "justinmk",
+            "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+            "organizations_url": "https://api.github.com/users/justinmk/orgs",
+            "received_events_url": "https://api.github.com/users/justinmk/received_events",
+            "repos_url": "https://api.github.com/users/justinmk/repos",
+            "site_admin": false,
+            "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+            "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+            "type": "User",
+            "url": "https://api.github.com/users/justinmk",
+            "user_view_type": "public"
+        },
+        "description": "Low priority items. We plan to work on this but don't have a target date.",
+        "due_on": null,
+        "html_url": "https://github.com/neovim/neovim/milestone/6",
+        "id": 655037,
+        "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
+        "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
+        "number": 6,
+        "open_issues": 674,
+        "state": "open",
+        "title": "backlog",
+        "updated_at": "2026-06-07T21:21:45Z",
+        "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
+    },
     "node_id": "MDU6SXNzdWU0NTAxMTM0MjU2",
     "number": 39950,
     "performed_via_github_app": null,
@@ -374,7 +439,7 @@
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/39950/timeline",
     "title": "automate building pdf documentation",
     "type": null,
-    "updated_at": "2026-05-22T15:00:51Z",
+    "updated_at": "2026-06-02T15:56:01Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/39950",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/45496068?v=4",
