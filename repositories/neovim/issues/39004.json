@@ -4,8 +4,28 @@
     "assignees": [],
     "author_association": "NONE",
     "body": "### Problem\n\nWhen starting NeoVim with multiple files as arguments, such as: \"nvim --clean A B C\", the successive command \":mksession!\" adds for each of the files two entries to Session.vim. 1: \"badd <index> <filename>\" and 2: \"$argadd <filename>\". badd = buffer add and $argadd = argument add -> append ($)\n\nIf during such an editing session of multiple files, the editing of a specific file is completed, it may be closed (:bd) and the session status should be updated (:mks!). \n\nThe session status update will remove the 1-st entry \"badd <index> <filename>\" from Session.vim, but not the 2-nd entry  \"$argadd <filename>\".\n\nWhen closing NeoVim and then reopening it with the session file (nvim --clean -S Session.vim) it is reasonable to expect, that NeoVim will load exactly the session state that has been saved last, i.e. only with the files that have been loaded at the time when the session has been saved. \n\nBut NeoVim also loads all of the files that have been passed as arguments, which the session manager remembers with the entries \"$argadd <filename>\" in Session.vim. \n\nThis is very undesired, because \"strictly spoken\", at the last session state update, only a subset of files has been loaded.\n\n**Usecase**\nAs a sysadmin I often open dozens of files to do some editing and reviewing, if other commands such as sed, awk or grep are not suitable:\ngrep -rl \"PATH\" git/salt/* | xargs vim\n\nWhen ever a file review or editing is completed I close it (:bd), leaving only the files loaded which still have to be edited / reviewed.\n\nThis work may take many hours and may require multiple editing sessions. Before pausing an editing session, I save the session state and then close NeoVim (:qa or :xa). \n\nActually I am using the plugin persistent.nvim to automatically save the session state. But this has no effect on the false behavior of mksession which is used by the plugin.\n\nWhen I have time to resume the work, I want **ONLY the files to be loaded that have not yet been edited / reviewed** and not all of the files that I already have processed / reviewed and have been already closed during the previous editing sessions.\n\n### Steps to reproduce\n\n1. nvim --clean A B C\n2. Save session: ':mks!'\n3. For each open buffers the session manager adds a line NeoVim has a built in function for session management. This has an   has an undesired behavior, which occurs after the following steps:\n1. I open three files in NeoVim such as: 'nvim --clean A B C.\n2. Then save the current session with the command: ':mks!'\n3. For each open buffer (file) the session manager adds a line 'badd <order-number> <filename>' to the session file Session.vim.:\n```\nbadd +3 ~/.config/A.txt\nbadd +1 ~/.config/B.txt\nbadd +1 ~/.config/C.txt\n```\n4. For each file, provided as an argument when NeoVim has been invoked, it adds a line '$argadd <filename>' to the session file Session.vim:\n```\n$argadd ~/.config/A.txt\n$argadd ~/.config/B.txt\n$argadd ~/.config/C.txt\n\n```\n5. Closing the file B because it needs no further editing, with the command ':bd'\n6. Updating the session file with the command: ':mks!'\n7. The line 'badd +1 ~/.config/B.txt' is removed from Session.vim, the line '$argadd ~/.config/B.txt' is not deleted from Session.vim\n8. Quitting NeoVim: ':qa'\n10. Starting NeoVim: nvim --clean -S Session.vim\n11. Instead of only loading the files which have been loaded, when the session has been saved, A and C, also the file B will be loaded, because of the entry: '$argadd ~/.config/B.txt'. This is undesired, because I want to continue my work where I left of last time and I have already completed editing file B and closed it.\n\nEven worse and very annoying, if I delete file B, because I do not need it anymore, NeoVim will open an empty file B when loading the session. \n\nI have either to manually remove the entry from Session.vim or by command \":argdel B\".  \n\n### Expected behavior\n\nOnly the files that have been loaded when the session has been updated must be loaded when NeoVim is started with saved session.\n\nAlternatively NeoVim should support to exclude 'args' from the sessionoptions, which is not the case. \n\nThe command \":set sessionoptions?\" shows that NeoVim does not support an option called \"args\": \"sessionoptions=blank,buffers,curdir,folds,halp,tabpages,winsize,terminal\"\n\nConsequently, removing an option \"args\" from \"sessionoptions\" will not have any effect on the malfunctioning of mksession.\n\":set sessionoptions-=args\" or \":set sessionoptions=buffers\" \n\n### Nvim version (nvim -v)\n\n-v0.12.1\n\n### Vim (not Nvim) behaves the same?\n\nThe VIM documentation states that args can be excluded: ':set sessionoptions-=args'\n\n### Operating system/version\n\narchlinux 6.19.11-arch1-1\n\n### Terminal name/version\n\nkitty 0.46.2\n\n### $TERM environment variable\n\nxterm-kitty\n\n### Installation\n\nArch Repo",
-    "closed_at": null,
-    "closed_by": null,
+    "closed_at": "2026-06-14T21:04:48Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+        "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+        "followers_url": "https://api.github.com/users/justinmk/followers",
+        "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+        "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/justinmk",
+        "id": 1359421,
+        "login": "justinmk",
+        "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+        "organizations_url": "https://api.github.com/users/justinmk/orgs",
+        "received_events_url": "https://api.github.com/users/justinmk/received_events",
+        "repos_url": "https://api.github.com/users/justinmk/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -319,6 +339,7 @@
         "total_blocked_by": 0,
         "total_blocking": 0
     },
+    "issue_field_values": [],
     "labels": [
         {
             "color": "BFDADC",
@@ -341,7 +362,7 @@
         {
             "color": "c5def5",
             "default": false,
-            "description": "startup, shutdown, attach, detach",
+            "description": "startup, shutdown, exit, attach, detach",
             "id": 870629450,
             "name": "lifecycle",
             "node_id": "MDU6TGFiZWw4NzA2Mjk0NTA=",
@@ -370,8 +391,8 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 815,
-        "created_at": "2014-05-10T20:43:04Z",
+        "closed_issues": 68,
+        "created_at": "2025-02-01T14:58:39Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
             "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
@@ -393,18 +414,18 @@
             "url": "https://api.github.com/users/justinmk",
             "user_view_type": "public"
         },
-        "description": "Low priority items. We plan to work on this but don't have a target date.",
+        "description": "",
         "due_on": null,
-        "html_url": "https://github.com/neovim/neovim/milestone/6",
-        "id": 655037,
-        "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
-        "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
-        "number": 6,
-        "open_issues": 653,
+        "html_url": "https://github.com/neovim/neovim/milestone/48",
+        "id": 12251313,
+        "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/48/labels",
+        "node_id": "MI_kwDOAPphoM4AuvCx",
+        "number": 48,
+        "open_issues": 72,
         "state": "open",
-        "title": "backlog",
-        "updated_at": "2026-04-20T19:41:06Z",
-        "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
+        "title": "0.13",
+        "updated_at": "2026-06-15T21:53:09Z",
+        "url": "https://api.github.com/repos/neovim/neovim/milestones/48"
     },
     "node_id": "I_kwDOAPphoM79kh4I",
     "number": 39004,
@@ -491,8 +512,8 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/39004/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "sub_issues_summary": {
         "completed": 0,
         "percent_completed": 0,
@@ -510,7 +531,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyv",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2026-04-14T09:24:29Z",
+    "updated_at": "2026-06-14T21:05:01Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/39004",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/97340436?v=4",

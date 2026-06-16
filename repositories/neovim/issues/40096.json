@@ -4,8 +4,28 @@
     "assignees": [],
     "author_association": "NONE",
     "body": "### Problem\n\ndisclaimer: the following analysis section is written by LLM, my concrete use case and discussion is attach at the end.\n\n---\nin runtime/lua/vim/lsp/completion.lua:\n\n - Incomplete re-triggering only happens here:\n\n ```lua\n   if vim.fn.pumvisible() ~= 0 then\n     if Context.isIncomplete then\n       M.get({ ctx = { triggerKind = TriggerForIncompleteCompletions } })\n     end\n     return\n   end\n ```\n\n So builtin completion only keeps asking for incomplete completions while the popup menu is visible.\n\n - But when the server returns:\n\n ```lua\n   { isIncomplete = true, items = {} }\n ```\n\n the code does not even set Context.isIncomplete, because it only does this inside:\n\n ```lua\n   elseif not vim.isnil(result) and #(result.items or result) > 0 then\n     Context.isIncomplete = Context.isIncomplete or result.isIncomplete\n ```\n\n So an empty-but-incomplete list is treated effectively like “no completion session”.\n\n This explains the difference from nvim-cmp / blink.cmp: those engines keep their own completion context and\n can re-query on further text changes even when the menu is empty. Builtin LSP ties incomplete re-querying to\n an active/visible PUM.\n\n The LSP spec says for CompletionList.isIncomplete:\n\n > This list is not complete. Further typing results in recomputing this list. Recomputed lists have all their\n > items replaced…\n\n It does not explicitly spell out empty items semantics, but { items = {}, isIncomplete = true } is still a\n valid CompletionList. A reasonable interpretation is: “there are no candidates for this prefix yet, but keep\n asking as the user types.” Neovim currently cannot represent that with builtin autocompletion.\n\n---\n\nI came across this issue when working on in-process LSP completion for obsidian.nvim, for these markdown LSPs, the expectation of behavior differs from normal code completion:\n\n1. it don't start completion as soon as trigger character hits, unlike typing a `:` in lua, typing a wiki link prefix `[[` is two chars, and some times you would even want `[[query` to only start sending you back items after `[[qu`.\n2. the trigger characters hack to insert all ascii chars that help docs provides also don't work with unicode characters.\n\nSo the solution I end up with is to use `{ items = {}, isIncomplete = true }` to communicate to the client that \"a activation char is set, don't have results yet, but client should now keep asking for more items until isIncomplete is false\"\n\nPure codewise, I think the change is also justified, since the flag is actually now just silently dropped in current implementation when list is empty, but empty + isIncomplete = true is a perfectly spec compliant response.\n\nUnfortunately this is still an unofficial interpretation for a vague part of the spec, and vscode also don't support this yet: https://github.com/microsoft/vscode/issues/155738\n\nBut custom completion client in neovim like blink.cmp and nvim-cmp did support this interpretation pretty well\n\nSo I just want to ask for opinions whether this should be in core, if not, then I can just properly document the limitation and move on.\n\n### Expected behavior\n\nre-query even if the popup is not visible",
-    "closed_at": null,
-    "closed_by": null,
+    "closed_at": "2026-06-15T22:29:29Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+        "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+        "followers_url": "https://api.github.com/users/justinmk/followers",
+        "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+        "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/justinmk",
+        "id": 1359421,
+        "login": "justinmk",
+        "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+        "organizations_url": "https://api.github.com/users/justinmk/orgs",
+        "received_events_url": "https://api.github.com/users/justinmk/received_events",
+        "repos_url": "https://api.github.com/users/justinmk/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -153,8 +173,8 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/40096/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "sub_issues_summary": {
         "completed": 0,
         "percent_completed": 0,
@@ -172,7 +192,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyr",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2026-06-03T15:18:14Z",
+    "updated_at": "2026-06-15T22:29:29Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/40096",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/111681693?v=4",
