@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/40214"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/af26e3a952c944149601208437514ddfef8883ba"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/76f3a24b234b54bcb9e98f7ba2c98d5ca6d21088"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6920,
-            "forks_count": 6920,
+            "forks": 6932,
+            "forks_count": 6932,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -95,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1942,
-            "open_issues_count": 1942,
+            "open_issues": 1934,
+            "open_issues_count": 1934,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -121,11 +121,11 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2026-06-16T04:42:23Z",
+            "pushed_at": "2026-06-23T04:30:56Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 385486,
+            "size": 386201,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 100426,
+            "stargazers_count": 100634,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -143,14 +143,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2026-06-16T06:32:49Z",
+            "updated_at": "2026-06-23T04:15:43Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 100426,
-            "watchers_count": 100426,
+            "watchers": 100634,
+            "watchers_count": 100634,
             "web_commit_signoff_required": false
         },
-        "sha": "724e1421f8f37e28c9084622002e916ad727622e",
+        "sha": "84cae24e448a3eed7dbc0cba93a24a75fc5aac24",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -313,6 +313,75 @@
                 "url": "https://api.github.com/users/zeertzjq",
                 "user_view_type": "public"
             }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/40214#discussion_r3447693258"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/40214"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3447693258"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "`nvim_chan_send`?",
+            "commit_id": "76f3a24b234b54bcb9e98f7ba2c98d5ca6d21088",
+            "created_at": "2026-06-21T00:16:15Z",
+            "diff_hunk": "@@ -1113,42 +1113,71 @@ Buffer nvim_create_buf(Boolean listed, Boolean scratch, Error *err)\n   return ret;\n }\n \n-/// Open a terminal instance in a buffer\n+/// Opens a terminal (libvterm) in `buf` and return its channel id.\n ///\n-/// By default (and currently the only option) the terminal will not be\n-/// connected to an external process. Instead, input sent on the channel\n-/// will be echoed directly by the terminal. This is useful to display\n-/// ANSI terminal sequences returned as part of an RPC message, or similar.\n+/// The terminal is not connected to an external process (may change in the future). Input sent on\n+/// the channel is processed by the terminal and echoed to `buf`. This is useful to display ANSI\n+/// terminal sequences returned as part of an RPC message, or similar. [terminal-concepts]\n ///\n-/// Note: |:ls| reports the buffer as \"R\" (running) until the channel is closed. |chanclose()|\n+/// The terminal processes two byte streams in opposite directions:\n ///\n-/// Note: To initialize the terminal size, display the buffer in a window first. E.g. for a floating display,\n+/// 1. INTO the terminal: bytes a child process would write to its stdout (terminal escape\n+///    sequences, text, etc.). Push these in via |nvim_chan_send()|. The terminal parses them and\n+///    renders to `buf`.\n+/// 2. OUT of the terminal: bytes the child would read from its stdin. Receive these via the\n+///    `on_input` callback. Includes:\n+///    - Keypresses in terminal mode (sent raw as they would be to the pty master end: CR is sent as\n+///      \"\\r\", not \"\\n\").\n+///    - Responses the terminal synthesizes when it parses a query (e.g. DA1 `\\e[c`, OSC color\n+///      queries) from the bytes you pushed via |nvim_chan_send()|.\n+///\n+/// Example: To connect the terminal to a child process, pair it with |jobstart()| (this is what\n+/// `:terminal` and `jobstart({term=true})` do internally):\n+///\n+/// ```lua\n+/// local chan\n+/// local job\n+/// chan = vim.api.nvim_open_term(buf, {\n+///   on_input = function(_, _, _, data)\n+///     -- Forward the terminal's output to the child's stdin.\n+///     vim.fn.chansend(job, data)",
+            "html_url": "https://github.com/neovim/neovim/pull/40214#discussion_r3447693258",
+            "id": 3447693258,
+            "line": 1143,
+            "node_id": "PRRC_kwDOAPphoM7Nf5_K",
+            "original_commit_id": "8fa0596a8c93761ab8ae6ea3a3f77b5b321d96c1",
+            "original_line": 1143,
+            "original_position": 38,
+            "original_start_line": null,
+            "path": "src/nvim/api/vim.c",
+            "position": 38,
+            "pull_request_review_id": 4538996499,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/40214",
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3447693258/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-06-21T00:16:15Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3447693258",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+                "followers_url": "https://api.github.com/users/zeertzjq/followers",
+                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/zeertzjq",
+                "id": 35768171,
+                "login": "zeertzjq",
+                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+                "repos_url": "https://api.github.com/users/zeertzjq/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
+            }
         }
     ],
     "comment_regular_data": [],
@@ -320,7 +389,7 @@
     "commits_url": "https://api.github.com/repos/neovim/neovim/pulls/40214/commits",
     "created_at": "2026-06-12T23:01:02Z",
     "diff_url": "https://github.com/neovim/neovim/pull/40214.diff",
-    "draft": false,
+    "draft": true,
     "head": {
         "label": "justinmk:doc2",
         "ref": "doc2",
@@ -412,9 +481,9 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/justinmk/neovim/pulls{/number}",
-            "pushed_at": "2026-06-15T21:54:48Z",
+            "pushed_at": "2026-06-22T22:09:41Z",
             "releases_url": "https://api.github.com/repos/justinmk/neovim/releases{/id}",
-            "size": 370946,
+            "size": 371840,
             "ssh_url": "git@github.com:justinmk/neovim.git",
             "stargazers_count": 2,
             "stargazers_url": "https://api.github.com/repos/justinmk/neovim/stargazers",
@@ -433,7 +502,7 @@
             "watchers_count": 2,
             "web_commit_signoff_required": false
         },
-        "sha": "af26e3a952c944149601208437514ddfef8883ba",
+        "sha": "76f3a24b234b54bcb9e98f7ba2c98d5ca6d21088",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
             "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
@@ -461,7 +530,7 @@
     "issue_url": "https://api.github.com/repos/neovim/neovim/issues/40214",
     "labels": [],
     "locked": false,
-    "merge_commit_sha": "9f23d1464a6af5ef7514ace57b63e83d44e8c2aa",
+    "merge_commit_sha": "e8212b69d8260bc500ad5f3c9cb129b2fbe15b81",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM7l9Np2",
@@ -472,9 +541,9 @@
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/40214/comments",
     "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/af26e3a952c944149601208437514ddfef8883ba",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/76f3a24b234b54bcb9e98f7ba2c98d5ca6d21088",
     "title": "docs: nvim_open_term, terminal jobs, misc",
-    "updated_at": "2026-06-15T21:54:49Z",
+    "updated_at": "2026-06-22T22:09:42Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/40214",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",

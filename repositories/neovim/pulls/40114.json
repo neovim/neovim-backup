@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/40114"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/48228c0c12bb4ad86195d9a09188c4ae80cfb9cf"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/517a9f5ad1d5d8343684621e13f322f4ac7c3c90"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6920,
-            "forks_count": 6920,
+            "forks": 6932,
+            "forks_count": 6932,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -95,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1942,
-            "open_issues_count": 1942,
+            "open_issues": 1934,
+            "open_issues_count": 1934,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -121,11 +121,11 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2026-06-16T04:42:23Z",
+            "pushed_at": "2026-06-23T04:30:56Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 385486,
+            "size": 386201,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 100426,
+            "stargazers_count": 100634,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -143,14 +143,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2026-06-16T06:32:49Z",
+            "updated_at": "2026-06-23T04:15:43Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 100426,
-            "watchers_count": 100426,
+            "watchers": 100634,
+            "watchers_count": 100634,
             "web_commit_signoff_required": false
         },
-        "sha": "fecc151d0306da95628a05203fd7273eb95580ee",
+        "sha": "d40c07511ad220c08cd2803921346c889da74a44",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -173,7 +173,7 @@
             "user_view_type": "public"
         }
     },
-    "body": "vim.fs.dir() currently drops errors returned by uv.fs_scandir().\r\n\r\nReturn root scan failures as a secondary return value and propagate recursive scan failures through the iterator so callers can distinguish unreadable directories from empty ones.\r\n\r\n<!--\r\n  Thank you for contributing to Neovim!\r\n  If this is your first time, check out https://github.com/neovim/neovim/blob/master/CONTRIBUTING.md#pull-requests-prs\r\n  for our PR guidelines.\r\n-->\r\n\r\n## Problem\r\nFixes #39878\r\n\r\nvim.fs.dir() currently drops filesystem errors from `uv.fs_scandir()`. If a directory cannot be read, callers see the same result as an empty directory.\r\n\r\n## Solution\r\n\r\nThis change adds optional error reporting to `vim.fs.dir()` while preserving existing behavior for callers that do not handle errors.\r\n\r\n* Root directory scan failures are returned as a secondary return value\r\n* Recursive scan failures are surfaced through the iterator as a third return value (`err`).\r\n* If a directory is unreadable, but does not need to be scanned (since its at a greater depth than the specified `depth`) then an error is not returned.\r\n\r\nExample:\r\n\r\n```lua\r\nlocal it, err = vim.fs.dir(path, { depth = math.huge })\r\n\r\nif err then\r\n  -- Root directory could not be scanned.\r\nend\r\n\r\nfor name, type, err in it do\r\n  if err then\r\n    -- Directory could not be traversed.\r\n  end\r\nend\r\n```\r\n",
+    "body": "Fixes #39878\r\n\r\n## Problem\r\n\r\n`vim.fs.dir()` and `vim.fs.find()` currently drops filesystem errors from `uv.fs_scandir()`. If a directory cannot be read, callers see the same result as an empty directory.\r\n\r\n## Solution\r\n\r\nThis change adds optional error reporting to `vim.fs.dir()` and `vim.fs.find()` while preserving existing behavior for callers that do not handle errors.\r\n\r\nFor `dir()`:\r\n* Root directory scan failures are returned as a secondary return value\r\n* Recursive scan failures are surfaced through the iterator as a third return value (`err`).\r\n* If a directory is unreadable, but does not need to be scanned (since its at a greater depth than the specified `depth`) then an error is not returned.\r\n\r\nFor `find()`:\r\n* Traversal errors are returned as a list/array of `{ path, err }` as a secondary return value.\r\n\r\nExample:\r\n\r\n```lua\r\nlocal it, err = vim.fs.dir(path, { depth = math.huge })\r\n\r\nif err then\r\n  -- Root directory could not be scanned.\r\nend\r\n\r\nfor name, type, err in it do\r\n  if err then\r\n    -- Directory could not be traversed.\r\n  end\r\nend\r\n```\r\n```lua\r\nlocal matches, errors = vim.fs.find('abc')\r\n-- errors = {\r\n--   { path = 'abc/foo/bar', err = 'EACCES: permission denied: foo/bar' },\r\n--   { path = 'abc/foo/baz', err = 'EACCES: permission denied: foo/baz' },\r\n-- }\r\n```\r\n",
     "closed_at": null,
     "comment_data": [],
     "comment_regular_data": [],
@@ -181,7 +181,7 @@
     "commits_url": "https://api.github.com/repos/neovim/neovim/pulls/40114/commits",
     "created_at": "2026-06-04T11:46:41Z",
     "diff_url": "https://github.com/neovim/neovim/pull/40114.diff",
-    "draft": true,
+    "draft": false,
     "head": {
         "label": "KineticTactic:fs-err-handling",
         "ref": "fs-err-handling",
@@ -273,9 +273,9 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/KineticTactic/neovim/pulls{/number}",
-            "pushed_at": "2026-06-10T15:48:22Z",
+            "pushed_at": "2026-06-22T10:50:22Z",
             "releases_url": "https://api.github.com/repos/KineticTactic/neovim/releases{/id}",
-            "size": 369159,
+            "size": 370462,
             "ssh_url": "git@github.com:KineticTactic/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/KineticTactic/neovim/stargazers",
@@ -287,14 +287,14 @@
             "teams_url": "https://api.github.com/repos/KineticTactic/neovim/teams",
             "topics": [],
             "trees_url": "https://api.github.com/repos/KineticTactic/neovim/git/trees{/sha}",
-            "updated_at": "2026-06-10T15:55:01Z",
+            "updated_at": "2026-06-21T05:47:15Z",
             "url": "https://api.github.com/repos/KineticTactic/neovim",
             "visibility": "public",
             "watchers": 0,
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "48228c0c12bb4ad86195d9a09188c4ae80cfb9cf",
+        "sha": "517a9f5ad1d5d8343684621e13f322f4ac7c3c90",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/63810712?v=4",
             "events_url": "https://api.github.com/users/KineticTactic/events{/privacy}",
@@ -341,7 +341,7 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "c1a161deab20d61ac62836e29e37c4f65606ea87",
+    "merge_commit_sha": "98bec23742b75b4f2454c5d7182f9cf10a5dbe54",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM7iqTQr",
@@ -352,9 +352,9 @@
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/40114/comments",
     "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/48228c0c12bb4ad86195d9a09188c4ae80cfb9cf",
-    "title": "feat(vim.fs): add error reporting to dir()",
-    "updated_at": "2026-06-15T21:35:56Z",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/517a9f5ad1d5d8343684621e13f322f4ac7c3c90",
+    "title": "feat(vim.fs): add error reporting to dir() and find()",
+    "updated_at": "2026-06-22T06:35:54Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/40114",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/63810712?v=4",

@@ -3,7 +3,7 @@
     "assignee": null,
     "assignees": [],
     "author_association": "MEMBER",
-    "body": "### Problem\n\n`_watch.lua`, and thus `autoread.lua`, does not handle the case where OS handles are exhausted. When using LSP this is not uncommon (on macOS at least) with big projects.\n\n`vim._watch.watch()` silently drops `handle:start()` failures other than `ENOENT`. When the OS file-watcher capacity is exhausted (e.g. Linux `inotify` watch limit, `EMFILE`), callers receive a no-op `cancel` function and have no way to tell that the watcher is dead. Events never fire; functionality silently degrades.\n\nAffected callers:\n\n- watcher-driven `'autoread'` silently stops working (falls back to `FocusGained` / `:checktime`)\n- `lsp/_watchfiles.lua`: LSP `workspace/didChangeWatchedFiles` notifications stop arriving from the affected paths.\n- `M.active.watch` counter shows healthy values because we counted the cancel-handle, not whether `handle:start` succeeded.\n\n\nThe existing TODO in `_watch.lua` acknowledges the gap: https://github.com/neovim/neovim/blob/37239e724e9362c11fcd6c4e0af73bf74ff1c295/runtime/lua/vim/_watch.lua#L130-L131\n\n## Repro\n\n\n```sh\n# Linux: lower inotify limit, then open many files in nvim\necho 8 | sudo tee /proc/sys/fs/inotify/max_user_watches\nnvim file1 file2 file3 ... file20  # past the limit, late buffers' watchers fail silently\n# externally modify any \"late\" file\n```\n\n## Proposal\n\n1. Return `(cancel, err)` from `M.watch` / `M.watchdirs`.\n2. TBD: what about `runtime/lua/vim/lsp/_watchfiles.lua` ?\n3. Bump a global `M.active.watch_failed` counter on `handle:start` failure.\n4. show advice in `:checkhealth`\n\n## Related\n\n- `:h inotify-limitations` (existing docs)\n- TODO at `runtime/lua/vim/_watch.lua:130`\n- https://github.com/neovim/neovim/pull/37971",
+    "body": "### Problem\n\n`_watch.lua`, and thus `autoread.lua`, does not handle the case where OS handles are exhausted. When using LSP this is not uncommon (on macOS at least: `(libuv) kqueue(): Too many open files`) with big projects.\n\n`vim._watch.watch()` silently drops `handle:start()` failures other than `ENOENT`. When the OS file-watcher capacity is exhausted (e.g. Linux `inotify` watch limit, `EMFILE`), callers receive a no-op `cancel` function and have no way to tell that the watcher is dead. Events never fire; functionality silently degrades.\n\nAffected callers:\n\n- watcher-driven `'autoread'` silently stops working (falls back to `FocusGained` / `:checktime`)\n- `lsp/_watchfiles.lua`: LSP `workspace/didChangeWatchedFiles` notifications stop arriving from the affected paths.\n- `M.active.watch` counter shows healthy values because we counted the cancel-handle, not whether `handle:start` succeeded.\n\n\nThe existing TODO in `_watch.lua` acknowledges the gap: https://github.com/neovim/neovim/blob/37239e724e9362c11fcd6c4e0af73bf74ff1c295/runtime/lua/vim/_watch.lua#L130-L131\n\n## Repro\n\n\n```sh\n# Linux: lower inotify limit, then open many files in nvim\necho 8 | sudo tee /proc/sys/fs/inotify/max_user_watches\nnvim file1 file2 file3 ... file20  # past the limit, late buffers' watchers fail silently\n# externally modify any \"late\" file\n```\n\n## Proposal\n\n1. Return `(cancel, err)` from `M.watch` / `M.watchdirs`.\n2. TBD: what about `runtime/lua/vim/lsp/_watchfiles.lua` ?\n3. Bump a global `M.active.watch_failed` counter on `handle:start` failure.\n4. show advice in `:checkhealth`\n\n## Related\n\n- `:h inotify-limitations` (existing docs)\n- TODO at `runtime/lua/vim/_watch.lua:130`\n- https://github.com/neovim/neovim/pull/37971",
     "closed_at": null,
     "closed_by": null,
     "comment_data": [],
@@ -53,7 +53,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 850,
+        "closed_issues": 854,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -83,10 +83,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 680,
+        "open_issues": 676,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2026-06-16T00:41:10Z",
+        "updated_at": "2026-06-23T01:13:21Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM8AAAABFbPK-w",
@@ -114,7 +114,7 @@
         "total": 0
     },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/40238/timeline",
-    "title": "filewatch: handle OS resource exhaustion",
+    "title": "filewatch: handle OS resource exhaustion (`(libuv) kqueue(): Too many open files`)",
     "type": {
         "color": "blue",
         "created_at": "2024-01-25T10:10:19Z",
@@ -125,7 +125,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyv",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2026-06-14T12:33:20Z",
+    "updated_at": "2026-06-19T12:47:17Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/40238",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",

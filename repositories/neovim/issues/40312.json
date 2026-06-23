@@ -1,0 +1,190 @@
+{
+    "active_lock_reason": null,
+    "assignee": null,
+    "assignees": [],
+    "author_association": "MEMBER",
+    "body": "## Problem\n\ncmdwin (the `q:` cmdline buffer) has various limitations which require [special-casing](https://github.com/neovim/neovim/pull/40077) all over the codebase.\n\nBesides complicating the code, it also breaks async plugins, which often asynchronously create buffers/windows after some work is done.\nIf the user happens to open cmdwin in the moment of such an async handler, the plugin cannot proceed:\n\n    Lua callback: …/guh.nvim/lua/guh/util.lua:531:\n    E11: Invalid in command-line window; <CR> executes, CTRL-C quits\n    stack traceback:\n        [C]: in function 'nvim_buf_delete'\n        …/guh.nvim/lua/guh/util.lua:531: in function <…/guh.nvim/lua/guh/util.lua:526>\n\nthen plugins have to do workarounds like:\n\n<details>\n<summary>workaround example</summary>\n\n\n      --- Deletes `buf`, deferring if the command-line window (`q:`/`q/`) is open.\n      function M.buf_delete_safe(buf)\n        if vim.fn.getcmdwintype() ~= '' then\n          vim.api.nvim_create_autocmd('CmdwinLeave', {\n            once = true,\n            callback = function()\n              vim.schedule(function()\n                if vim.api.nvim_buf_is_valid(buf) then\n                  vim.api.nvim_buf_delete(buf, { force = true })\n                end\n              end)\n            end,\n          })\n          return\n        end\n        vim.api.nvim_buf_delete(buf, { force = true })\n      end\n\n\n</details>\n\n## Expected behavior\n\nReimplement cmdwin as a normal buffer+window.\n\nAll of the cmdwin contortions (in both core, and innocent plugins) exist literally only to support \"inception\": recursive cmdwin-in-cmdline-things, like `<c-r>=`, `/`, search-during-substitute, `:input()`, etc. So we just won't support that (though I have a potential plan for that later, which I call \"modal parking lot\").\n\nThe benefit is that plugins, and core, no longer have to care about cmdwin.\n\n---\n\n## Analysis  (AI-assisted)\n\n### Why cmdwin is \"blocking\" today\n\nWhen you enter cmdwin, `getcmdline_int` calls into `open_cmdwin`, which spins up a nested `state_enter` loop. The outer cmdline call is suspended; the nested loop runs normal-mode against a scratchbuf until `<Enter>` sets `cmdwin_result` and exits the loop. Then `getcmdline_int` resumes and treats the returned string as if the user had typed it.\n\n### Arguments FOR blocking-cmdwin\n\n1. The cmdline reader has nontrivial state on its stack: partial buffer, cursor pos, history index, wildmenu/completion state, the prompt char. Whereas \"async\" = serialize and rehydrate all of it.\n2. Trivial reentrancy story.  Whereas with \"async\", every code path that asks \"is the user editing a command line?\" needs a new tri-state answer.\n\n### Arguments AGAINST blocking-cmdwin\n\n1. Every \"what mode am I in\" check has to special-case cmdwin. [#40077](https://github.com/neovim/neovim/pull/40077) (800 lines) exists because inccommand can't see the cmdwin's edits as edits to `:`. Same story for LSP-on-cmdline, completion popups, vim.on_key, autocommands. Each workaround is more code.\n2. cmdwin is interactive-only, it **doesn't actually support macros/mappings ??** Nested `state_enter` was maybe relevant when Ex-mode needed to read input mid-stream during macro playback (`input()`, `confirm()`, `getchar()`).\n3. The atomic-return advantage is illusory. \"Cmdwin returns a string to the cmdline reader\" is what `feedkeys()` + a `BufWinLeave` autocmd already does today in user-land.\n    - TODO: `vim.schedule_dispatch` ? To schedule functions in the input queue (as opposed to `vim.schedule`).\n\n",
+    "closed_at": null,
+    "closed_by": null,
+    "comment_data": [],
+    "comments": 0,
+    "comments_url": "https://api.github.com/repos/neovim/neovim/issues/40312/comments",
+    "created_at": "2026-06-18T23:08:54Z",
+    "events_url": "https://api.github.com/repos/neovim/neovim/issues/40312/events",
+    "html_url": "https://github.com/neovim/neovim/issues/40312",
+    "id": 4696597756,
+    "issue_dependencies_summary": {
+        "blocked_by": 0,
+        "blocking": 0,
+        "total_blocked_by": 0,
+        "total_blocking": 0
+    },
+    "issue_field_values": [
+        {
+            "data_type": "single_select",
+            "issue_field_id": 856327,
+            "node_id": "IFSSV_kgDOACcUnw",
+            "single_select_option": {
+                "color": "red",
+                "id": 1493132,
+                "name": "High"
+            },
+            "value": 1493132
+        }
+    ],
+    "labels": [
+        {
+            "color": "C5DEF5",
+            "default": false,
+            "description": "changes that are not features or bugfixes",
+            "id": 106949155,
+            "name": "refactor",
+            "node_id": "MDU6TGFiZWwxMDY5NDkxNTU=",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/refactor"
+        },
+        {
+            "color": "c5def5",
+            "default": false,
+            "description": null,
+            "id": 520282574,
+            "name": "event-loop",
+            "node_id": "MDU6TGFiZWw1MjAyODI1NzQ=",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/event-loop"
+        },
+        {
+            "color": "C5DEF5",
+            "default": false,
+            "description": "",
+            "id": 4457150369,
+            "name": "architecture",
+            "node_id": "LA_kwDOAPphoM8AAAABCaq3oQ",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/architecture"
+        },
+        {
+            "color": "C5DEF5",
+            "default": false,
+            "description": "normal commands, motions",
+            "id": 5826986707,
+            "name": "normal-mode",
+            "node_id": "LA_kwDOAPphoM8AAAABW1DC0w",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/normal-mode"
+        },
+        {
+            "color": "C5DEF5",
+            "default": false,
+            "description": "command line, also cmdwin",
+            "id": 5826989442,
+            "name": "cmdline-mode",
+            "node_id": "LA_kwDOAPphoM8AAAABW1DNgg",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/cmdline-mode"
+        },
+        {
+            "color": "c5def5",
+            "default": false,
+            "description": "Nvim 0.12 mesages/dialog/pager/notifications based on the UI-ext protocol",
+            "id": 8934685970,
+            "name": "ui2",
+            "node_id": "LA_kwDOAPphoM8AAAACFIx9Eg",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/ui2"
+        }
+    ],
+    "labels_url": "https://api.github.com/repos/neovim/neovim/issues/40312/labels{/name}",
+    "locked": false,
+    "milestone": {
+        "closed_at": null,
+        "closed_issues": 75,
+        "created_at": "2025-02-01T14:58:39Z",
+        "creator": {
+            "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+            "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+            "followers_url": "https://api.github.com/users/justinmk/followers",
+            "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+            "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+            "gravatar_id": "",
+            "html_url": "https://github.com/justinmk",
+            "id": 1359421,
+            "login": "justinmk",
+            "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+            "organizations_url": "https://api.github.com/users/justinmk/orgs",
+            "received_events_url": "https://api.github.com/users/justinmk/received_events",
+            "repos_url": "https://api.github.com/users/justinmk/repos",
+            "site_admin": false,
+            "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+            "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+            "type": "User",
+            "url": "https://api.github.com/users/justinmk",
+            "user_view_type": "public"
+        },
+        "description": "",
+        "due_on": null,
+        "html_url": "https://github.com/neovim/neovim/milestone/48",
+        "id": 12251313,
+        "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/48/labels",
+        "node_id": "MI_kwDOAPphoM4AuvCx",
+        "number": 48,
+        "open_issues": 75,
+        "state": "open",
+        "title": "0.13",
+        "updated_at": "2026-06-21T21:02:09Z",
+        "url": "https://api.github.com/repos/neovim/neovim/milestones/48"
+    },
+    "node_id": "I_kwDOAPphoM8AAAABF_Bk_A",
+    "number": 40312,
+    "performed_via_github_app": null,
+    "pinned_comment": null,
+    "reactions": {
+        "+1": 2,
+        "-1": 0,
+        "confused": 0,
+        "eyes": 0,
+        "heart": 0,
+        "hooray": 0,
+        "laugh": 0,
+        "rocket": 0,
+        "total_count": 2,
+        "url": "https://api.github.com/repos/neovim/neovim/issues/40312/reactions"
+    },
+    "repository_url": "https://api.github.com/repos/neovim/neovim",
+    "state": "open",
+    "state_reason": null,
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
+    "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/40312/timeline",
+    "title": "architecture: reimplement cmdwin as a normal window",
+    "type": {
+        "color": "blue",
+        "created_at": "2024-01-25T10:10:19Z",
+        "description": "A request, idea, or new functionality",
+        "id": 597167,
+        "is_enabled": true,
+        "name": "Enhancement",
+        "node_id": "IT_kwDOAGK_Pc4ACRyv",
+        "updated_at": "2024-07-26T10:12:30Z"
+    },
+    "updated_at": "2026-06-19T16:17:23Z",
+    "url": "https://api.github.com/repos/neovim/neovim/issues/40312",
+    "user": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+        "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+        "followers_url": "https://api.github.com/users/justinmk/followers",
+        "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+        "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/justinmk",
+        "id": 1359421,
+        "login": "justinmk",
+        "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+        "organizations_url": "https://api.github.com/users/justinmk/orgs",
+        "received_events_url": "https://api.github.com/users/justinmk/received_events",
+        "repos_url": "https://api.github.com/users/justinmk/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
+    }
+}

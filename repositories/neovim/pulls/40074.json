@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/40074"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/8b5bf607e7fd85ae52654c126ff36b6744dab1be"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/88a506f79d8e83ec40e505b321032de73ec78ab2"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6920,
-            "forks_count": 6920,
+            "forks": 6932,
+            "forks_count": 6932,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -95,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1942,
-            "open_issues_count": 1942,
+            "open_issues": 1934,
+            "open_issues_count": 1934,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -121,11 +121,11 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2026-06-16T04:42:23Z",
+            "pushed_at": "2026-06-23T04:30:56Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 385486,
+            "size": 386201,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 100426,
+            "stargazers_count": 100634,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -143,14 +143,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2026-06-16T06:32:49Z",
+            "updated_at": "2026-06-23T04:15:43Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 100426,
-            "watchers_count": 100426,
+            "watchers": 100634,
+            "watchers_count": 100634,
             "web_commit_signoff_required": false
         },
-        "sha": "a69f2db773b85e03c631a5eb3a37f43098288194",
+        "sha": "410a5b6544e1ef2d00772ce8afb30ec7ab6653e9",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -173,9 +173,355 @@
             "user_view_type": "public"
         }
     },
-    "body": "<small>Note: Used AI to assist. Reviewed code and tested manually.</small>\r\n\r\n## Problem\r\nhttps://github.com/neovim/neovim/issues/40009 On Windows, the embedded Nvim server calls `AttachConsole(ATTACH_PARENT_PROCESS)` to borrow the parent terminal's console (so server `io.stdout` rendering like SIXEL works). Its stdio handles then refer to that console (CON). Channel jobs inherit those handles, so libuv spawns them without `CREATE_NO_WINDOW`, leaving the child on the same console. A job writing directly to `CON `(e.g. gutentags) then draws into the shared console buffer over the TUI until a redraw\r\n## Solution\r\nAdded a Windows-only `stdio_noinherit` flag for channel jobs. When set, child `stdin` and `stderr` use `UV_CREATE_PIPE` instead of inherited handles, allowing libuv to use `CREATE_NO_WINDOW` and preventing `CON` writes from leaking onto the TUI.",
+    "body": "<small>Note: Used AI to assist. Reviewed code and tested manually.</small>\r\n\r\n## Problem\r\n\r\n#40009 — surfaced in 0.12.2. On Windows the embedded server first used a hidden\r\n`AllocConsole` (for `:terminal` + detach/restart), which broke SIXEL/Kitty `io.stdout` rendering (#38667) and Ctrl-C in `:terminal` (#38630). #38669 fixed both by switching to `AttachConsole(ATTACH_PARENT_PROCESS)`, borrowing the parent\r\nterminal's console so `CONOUT$` points at the real terminal again (though rendering on `:restart` won't work because of `AllocConsole()`). But now the server's stdio handles refer to that console (CON), and channel jobs inherit\r\nthem — so libuv spawns them without `CREATE_NO_WINDOW`, leaving the child on the shared console. \r\nA job writing directly to CON (e.g. gutentags) then draws over the TUI until a redraw. \r\nIt only showed up now because the earlier hidden console swallowed such writes.\r\n\r\n## Solution\r\nAdded a Windows-only `stdio_noinherit` flag for channel jobs. When set, child `stdin` and `stderr` use `UV_CREATE_PIPE` instead of inherited handles, allowing libuv to use `CREATE_NO_WINDOW` and preventing `CON` writes from leaking onto the TUI.",
     "closed_at": null,
-    "comment_data": [],
+    "comment_data": [
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/40074#discussion_r3420438126"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/40074"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3420438126"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Is this the right place for this test, i.e. is it related to detach?",
+            "commit_id": "8b5bf607e7fd85ae52654c126ff36b6744dab1be",
+            "created_at": "2026-06-16T11:48:31Z",
+            "diff_hunk": "@@ -203,6 +203,47 @@ describe('TUI :detach', function()\n   end)\n end)\n \n+if is_os('win') then\n+  describe('TUI Windows', function()",
+            "html_url": "https://github.com/neovim/neovim/pull/40074#discussion_r3420438126",
+            "id": 3420438126,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7L375u",
+            "original_commit_id": "8b5bf607e7fd85ae52654c126ff36b6744dab1be",
+            "original_line": 207,
+            "original_position": 5,
+            "original_start_line": 206,
+            "path": "test/functional/terminal/tui_spec.lua",
+            "position": 1,
+            "pull_request_review_id": 4506020338,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/40074",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3420438126/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-06-16T11:48:31Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3420438126",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/40074#discussion_r3420442799"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/40074"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3420442799"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\n  bool closed, detach, overlapped, fwd_err;\n  bool stdio_noinherit;  ///< Windows only: <1-line hint about the key idea>\n```",
+            "commit_id": "8b5bf607e7fd85ae52654c126ff36b6744dab1be",
+            "created_at": "2026-06-16T11:49:23Z",
+            "diff_hunk": "@@ -169,6 +169,6 @@ struct proc {\n   proc_exit_cb cb;\n   proc_state_cb state_cb;\n   internal_proc_cb internal_exit_cb, internal_close_cb;\n-  bool closed, detach, overlapped, fwd_err;\n+  bool closed, detach, overlapped, fwd_err, stdio_noinherit;",
+            "html_url": "https://github.com/neovim/neovim/pull/40074#discussion_r3420442799",
+            "id": 3420442799,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7L39Cv",
+            "original_commit_id": "8b5bf607e7fd85ae52654c126ff36b6744dab1be",
+            "original_line": 172,
+            "original_position": 5,
+            "original_start_line": null,
+            "path": "src/nvim/event/defs.h",
+            "position": 1,
+            "pull_request_review_id": 4506025927,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/40074",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3420442799/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-06-16T11:49:49Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3420442799",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/40074#discussion_r3420658195"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/40074"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3420658195"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\n    t.skip(not is_os('win'), 'N/A Windows only')\n```",
+            "commit_id": "fb49a27114cfa2b95abfc648850a891c5c144d7a",
+            "created_at": "2026-06-16T12:25:53Z",
+            "diff_hunk": "@@ -111,6 +111,44 @@ describe('TUI', function()\n     feed_data(':')\n     screen:expect(s1)\n   end)\n+\n+  it('jobstart child writing to CON does not leak to screen #40009', function()\n+    -- A child job that writes to CON must not leak onto the TUI screen. The\n+    -- embedded server AttachConsole()'s the parent terminal (so server io.stdout\n+    -- e.g. SIXEL works), but jobs must get their own (windowless) console so\n+    -- writes to CON go nowhere visible.\n+    t.skip(not is_os('win'), 'Windows only')",
+            "html_url": "https://github.com/neovim/neovim/pull/40074#discussion_r3420658195",
+            "id": 3420658195,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7L4xoT",
+            "original_commit_id": "fb49a27114cfa2b95abfc648850a891c5c144d7a",
+            "original_line": 120,
+            "original_position": 10,
+            "original_start_line": null,
+            "path": "test/functional/terminal/tui_spec.lua",
+            "position": 1,
+            "pull_request_review_id": 4506292268,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/40074",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3420658195/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-06-16T12:25:53Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3420658195",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/40074#discussion_r3420671957"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/40074"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3420671957"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\n      '--clean',\n      '--cmd',\n      'colorscheme vim',\n```",
+            "commit_id": "fb49a27114cfa2b95abfc648850a891c5c144d7a",
+            "created_at": "2026-06-16T12:28:15Z",
+            "diff_hunk": "@@ -111,6 +111,44 @@ describe('TUI', function()\n     feed_data(':')\n     screen:expect(s1)\n   end)\n+\n+  it('jobstart child writing to CON does not leak to screen #40009', function()\n+    -- A child job that writes to CON must not leak onto the TUI screen. The\n+    -- embedded server AttachConsole()'s the parent terminal (so server io.stdout\n+    -- e.g. SIXEL works), but jobs must get their own (windowless) console so\n+    -- writes to CON go nowhere visible.\n+    t.skip(not is_os('win'), 'Windows only')\n+    n.clear()\n+    finally(function()\n+      n.check_close()\n+    end)\n+\n+    local screen = tt.setup_child_nvim({\n+      '-u',\n+      'NONE',\n+      '-i',\n+      'NONE',\n+      '--cmd',\n+      'colorscheme vim',",
+            "html_url": "https://github.com/neovim/neovim/pull/40074#discussion_r3420671957",
+            "id": 3420671957,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7L40_V",
+            "original_commit_id": "fb49a27114cfa2b95abfc648850a891c5c144d7a",
+            "original_line": 132,
+            "original_position": 22,
+            "original_start_line": 127,
+            "path": "test/functional/terminal/tui_spec.lua",
+            "position": 1,
+            "pull_request_review_id": 4506309529,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/40074",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3420671957/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-06-16T12:28:15Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3420671957",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/40074#discussion_r3445096976"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/40074"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3445096976"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "`t.shallowcopy()` is only needed when you need to make further modifications to the `env` table.\n```suggestion\n    }, { env = env_notermguicolors })\n```",
+            "commit_id": "579426aa42f6ddbd21282cf45af13badf81dda23",
+            "created_at": "2026-06-20T00:50:15Z",
+            "diff_hunk": "@@ -111,6 +111,41 @@ describe('TUI', function()\n     feed_data(':')\n     screen:expect(s1)\n   end)\n+\n+  it('jobstart child writing to CON does not leak to screen', function()\n+    -- A child job that writes to CON must not leak onto the TUI screen. The\n+    -- embedded server AttachConsole()'s the parent terminal (so server io.stdout\n+    -- e.g. SIXEL works), but jobs must get their own (windowless) console so\n+    -- writes to CON go nowhere visible.\n+    t.skip(not is_os('win'), 'N/A Windows only')\n+    n.clear()\n+    finally(function()\n+      n.check_close()\n+    end)\n+\n+    local screen = tt.setup_child_nvim({\n+      '--clean',\n+      '--cmd',\n+      'colorscheme vim',\n+      '--cmd',\n+      nvim_set .. ' laststatus=2 background=dark',\n+    }, { env = t.shallowcopy(env_notermguicolors) })",
+            "html_url": "https://github.com/neovim/neovim/pull/40074#discussion_r3445096976",
+            "id": 3445096976,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7NWAIQ",
+            "original_commit_id": "579426aa42f6ddbd21282cf45af13badf81dda23",
+            "original_line": 132,
+            "original_position": 22,
+            "original_start_line": null,
+            "path": "test/functional/terminal/tui_spec.lua",
+            "position": 1,
+            "pull_request_review_id": 4536031927,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/40074",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3445096976/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-06-20T00:50:16Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3445096976",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+                "followers_url": "https://api.github.com/users/zeertzjq/followers",
+                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/zeertzjq",
+                "id": 35768171,
+                "login": "zeertzjq",
+                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+                "repos_url": "https://api.github.com/users/zeertzjq/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
+            }
+        }
+    ],
     "comment_regular_data": [
         {
             "author_association": "MEMBER",
@@ -200,6 +546,51 @@
             },
             "updated_at": "2026-06-11T15:18:04Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4682105799",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "This looks like something we probably need, but I'm wondering how we only just noticed it. https://github.com/neovim/neovim/issues/40009#issuecomment-4542916189 mentions that it started with 0.12.2 .\r\n\r\nPart of the work involved with proposing PRs is to track down those details and present a clear story, so we aren't just randomly merging things we don't really understand.",
+            "created_at": "2026-06-16T11:51:33Z",
+            "html_url": "https://github.com/neovim/neovim/pull/40074#issuecomment-4718414631",
+            "id": 4718414631,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/40074",
+            "node_id": "IC_kwDOAPphoM8AAAABGT1LJw",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4718414631/reactions"
+            },
+            "updated_at": "2026-06-16T11:51:33Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4718414631",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
                 "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
@@ -319,9 +710,9 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/SanzharKuandyk/neovim/pulls{/number}",
-            "pushed_at": "2026-06-15T09:19:23Z",
+            "pushed_at": "2026-06-22T11:00:09Z",
             "releases_url": "https://api.github.com/repos/SanzharKuandyk/neovim/releases{/id}",
-            "size": 369999,
+            "size": 370778,
             "ssh_url": "git@github.com:SanzharKuandyk/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/SanzharKuandyk/neovim/stargazers",
@@ -340,7 +731,7 @@
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "8b5bf607e7fd85ae52654c126ff36b6744dab1be",
+        "sha": "88a506f79d8e83ec40e505b321032de73ec78ab2",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/92693103?v=4",
             "events_url": "https://api.github.com/users/SanzharKuandyk/events{/privacy}",
@@ -366,9 +757,19 @@
     "html_url": "https://github.com/neovim/neovim/pull/40074",
     "id": 3781129541,
     "issue_url": "https://api.github.com/repos/neovim/neovim/issues/40074",
-    "labels": [],
+    "labels": [
+        {
+            "color": "c5def5",
+            "default": false,
+            "description": "OS processes, spawn",
+            "id": 182884815,
+            "name": "job-control",
+            "node_id": "MDU6TGFiZWwxODI4ODQ4MTU=",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/job-control"
+        }
+    ],
     "locked": false,
-    "merge_commit_sha": "27ed259c4e8487208edb81ee1795a0c0bf3d30c0",
+    "merge_commit_sha": "f0747236af44190e466f85df32b2fb3ed7369f81",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM7hX3VF",
@@ -379,9 +780,9 @@
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/40074/comments",
     "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/8b5bf607e7fd85ae52654c126ff36b6744dab1be",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/88a506f79d8e83ec40e505b321032de73ec78ab2",
     "title": "fix(process): avoid inherited stdio for Windows jobs",
-    "updated_at": "2026-06-15T09:19:25Z",
+    "updated_at": "2026-06-22T11:00:10Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/40074",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/92693103?v=4",
