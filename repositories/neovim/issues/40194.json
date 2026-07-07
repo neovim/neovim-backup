@@ -3,7 +3,7 @@
     "assignee": null,
     "assignees": [],
     "author_association": "MEMBER",
-    "body": "## Problem\n\nSome commands such as `gh` try to query the tty, and will hang/timeout until a query response. For `jobstart(pty=true)` the response never arrives, so the command behaves wrong.\n\nThere is a [workaround](https://github.com/justinmk/neovim/blob/0000890f0800e09c6f64b008455a4eb02cfccb19/runtime/doc/api.txt#L1282-L1299) which gets clumsy when orchestrating multiple such processes: for each job, hook up a channel between `jobstart{pty=true}` + `nvim_open_term{on_input}`.\n\nBuffers are a basic user-facing concept that users may add marks to, etc. Plugins shouldn't have to destroy terminal-display buffers to \"update\" them with the output of potentially multiple jobs. And they shouldn't have to cobble together shell-specific job orchestration.\n\n```lua\nlocal chan\nlocal job\nchan = vim.api.nvim_open_term(buf, {\n  on_input = function(_, _, _, data)\n    -- Forward the terminal's output to the child's stdin.\n    vim.fn.chansend(job, data)\n  end,\n})\njob = vim.fn.jobstart(cmd, {\n  pty = true,\n  on_stdout = function(_, data)\n    -- Forward the child's stdout to the terminal.\n    vim.api.nvim_chan_send(chan, table.concat(data, '\\n'))\n  end,\n})\n```\n\n### Use-case\n\n- [example](https://github.com/justinmk/guh.nvim/pull/67): run multiple commands concurrently, and then append their results to a pty or terminal buffer.\n\n\n## Expected behavior\n\n- `jobstart(buf = existing :terminal buffer)`\n\n## Existing (working) features\n\n<details>\n<summary>Existing (working) features</summary>\n\n\nPlugins can reuse terminal buffers. This is nice for apps like [guh.nvim](https://github.com/justinmk/guh.nvim) , which want to show some CLI output and reuse the buffer to \"refresh\" the output:\n\n```lua\nvim.fn.jobstart({'gh','status'}, {term=true})\n-- gh exits...\n\n-- plugin can overwrite the buffer\nvim.cmd[[set nomodified]]\nvim.fn.jobstart({'gh','status'}, {term=true})\n```\n\n</details>",
+    "body": "## Problem\n\nSome commands such as `gh` try to query the tty, and will hang/timeout until a query response. For `jobstart(pty=true)` the response never arrives, so the command behaves wrong.\n\nThere is a [workaround](https://github.com/justinmk/neovim/blob/0000890f0800e09c6f64b008455a4eb02cfccb19/runtime/doc/api.txt#L1282-L1299) which gets clumsy when orchestrating multiple such processes: for each job, hook up a channel between `jobstart{pty=true}` + `nvim_open_term{on_input}`.\n\nBuffers are a basic user-facing concept that users may add marks to, etc. Plugins shouldn't have to destroy terminal-display buffers to \"update\" them with the output of potentially multiple jobs. And they shouldn't have to cobble together shell-specific job orchestration.\n\n```lua\nlocal chan\nlocal job\nchan = vim.api.nvim_open_term(buf, {\n  on_input = function(_, _, _, data)\n    -- Forward the terminal's output to the child's stdin.\n    vim.fn.chansend(job, data)\n  end,\n})\njob = vim.fn.jobstart(cmd, {\n  pty = true,\n  on_stdout = function(_, data)\n    -- Forward the child's stdout to the terminal.\n    vim.api.nvim_chan_send(chan, table.concat(data, '\\n'))\n  end,\n})\n```\n\n### Use-case\n\n- [example](https://github.com/justinmk/guh.nvim/pull/67): run multiple commands concurrently, and then append their results to a pty or terminal buffer.\n\n\n## Expected behavior\n\n- `jobstart(buf = existing :terminal buffer)`\n\n## Existing (working) features\n\n<details>\n<summary>Existing (working) features</summary>\n\n\nPlugins can reuse terminal buffers. This is nice for apps like [guh.nvim](https://github.com/justinmk/guh.nvim) , which want to show some CLI output and reuse the buffer to \"refresh\" the output:\n\n```lua\nvim.fn.jobstart({'gh','status'}, {term=true})\n-- gh exits...\n\n-- plugin can overwrite the buffer\nvim.cmd[[set nomodified]]\nvim.fn.jobstart({'gh','status'}, {term=true})\n```\n\n</details>\n\n## Related\n\n- https://github.com/neovim/neovim/pull/23747\n- https://github.com/neovim/neovim/issues/9462 (plugin wants :term with unlimited scrollback)",
     "closed_at": null,
     "closed_by": null,
     "comment_data": [],
@@ -35,7 +35,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 850,
+        "closed_issues": 862,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -65,10 +65,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 680,
+        "open_issues": 668,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2026-06-16T00:41:10Z",
+        "updated_at": "2026-07-06T15:42:38Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM8AAAABFKGz3Q",
@@ -107,7 +107,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyv",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2026-06-14T22:50:18Z",
+    "updated_at": "2026-07-06T16:07:49Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/40194",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
