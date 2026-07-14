@@ -122,8 +122,8 @@
             }
         },
         {
-            "author_association": "NONE",
-            "body": "> > Triggered by any LSP server that sends  \"tags\": null  instead of omitting the field (confirmed with  psalm-language-server ).\n> \n> does the LSP spec allow that? if not, let's add an assert:\n> \n> assert(diagnostic.tags ~= vim.NIL, 'server response has invalid (null) tags')\n\nAs mikejmcguirk says and shows, I don't think it's allowed to have `tags: null`?!\n\n> or if so, can you confirm if this fixes it (and then PR welcome):\n> \n> ```\n> for _, tag in ipairs(vim.isnil(diagnostic.tags) and {} or diagnostic.tags) do\n> ```\n\nYes, this would fix it (see the first diff).\n\nI stumbled upon another case of the same issue - when using `vim.diagnostic.open_float()` - for which I added a change to the diffs below.\n\nThe defensive fix would look like this:\n```diff\ndiff --git i/runtime/lua/vim/diagnostic/_float.lua w/runtime/lua/vim/diagnostic/_float.lua\nindex 4cda1be61f..e4488c0115 100644\n--- i/runtime/lua/vim/diagnostic/_float.lua\n+++ w/runtime/lua/vim/diagnostic/_float.lua\n@@ -210,7 +210,8 @@ function M.open(opts, ...)\n     end\n\n     --- @type lsp.DiagnosticRelatedInformation[]\n-    local related_info = vim.tbl_get(diagnostic, 'user_data', 'lsp', 'relatedInformation') or {}\n+    local _ri = vim.tbl_get(diagnostic, 'user_data', 'lsp', 'relatedInformation')\n+    local related_info = vim.isnil(_ri) and {} or _ri or {}\n     -- Below the diagnostic, show its LSP related information (if any) in the form of file name and\n     -- range, plus description.\n     for _, info in ipairs(related_info) do\ndiff --git i/runtime/lua/vim/lsp/diagnostic.lua w/runtime/lua/vim/lsp/diagnostic.lua\nindex f0dec95be0..3958291e36 100644\n--- i/runtime/lua/vim/lsp/diagnostic.lua\n+++ w/runtime/lua/vim/lsp/diagnostic.lua\n@@ -72,7 +72,7 @@ end\n --- @return table?\n local function tags_lsp_to_vim(diagnostic, client_id)\n   local tags ---@type table?\n-  for _, tag in ipairs(diagnostic.tags or {}) do\n+  for _, tag in ipairs(vim.isnil(diagnostic.tags) and {} or diagnostic.tags) do\n     if tag == protocol.DiagnosticTag.Unnecessary then\n       tags = tags or {}\n       tags.unnecessary = true\n```\nOr maybe like this, to prevent the `param-type-mismatch` diagnostic-error, that the example above causes?\n```diff\ndiff --git i/runtime/lua/vim/diagnostic/_float.lua w/runtime/lua/vim/diagnostic/_float.lua\nindex 4cda1be61f..564a1f670f 100644\n--- i/runtime/lua/vim/diagnostic/_float.lua\n+++ w/runtime/lua/vim/diagnostic/_float.lua\n@@ -210,7 +210,8 @@ function M.open(opts, ...)\n     end\n\n     --- @type lsp.DiagnosticRelatedInformation[]\n-    local related_info = vim.tbl_get(diagnostic, 'user_data', 'lsp', 'relatedInformation') or {}\n+    local _ri = vim.tbl_get(diagnostic, 'user_data', 'lsp', 'relatedInformation')\n+    local related_info = type(_ri) == 'table' and _ri or {}\n     -- Below the diagnostic, show its LSP related information (if any) in the form of file name and\n     -- range, plus description.\n     for _, info in ipairs(related_info) do\ndiff --git i/runtime/lua/vim/lsp/diagnostic.lua w/runtime/lua/vim/lsp/diagnostic.lua\nindex f0dec95be0..a25d912c05 100644\n--- i/runtime/lua/vim/lsp/diagnostic.lua\n+++ w/runtime/lua/vim/lsp/diagnostic.lua\n@@ -72,7 +72,7 @@ end\n --- @return table?\n local function tags_lsp_to_vim(diagnostic, client_id)\n   local tags ---@type table?\n-  for _, tag in ipairs(diagnostic.tags or {}) do\n+  for _, tag in ipairs(type(diagnostic.tags) == 'table' and diagnostic.tags or {}) do\n     if tag == protocol.DiagnosticTag.Unnecessary then\n       tags = tags or {}\n       tags.unnecessary = true\n```\nBut, adding an `assert`-statement would actually ensure that the issue gets fixed at the source ([vimeo/psalm](https://github.com/vimeo/psalm) in this case) :D\n```diff\ndiff --git i/runtime/lua/vim/diagnostic/_float.lua w/runtime/lua/vim/diagnostic/_float.lua\nindex 4cda1be61f..e61ba8e72f 100644\n--- i/runtime/lua/vim/diagnostic/_float.lua\n+++ w/runtime/lua/vim/diagnostic/_float.lua\n@@ -210,7 +210,9 @@ function M.open(opts, ...)\n     end\n\n     --- @type lsp.DiagnosticRelatedInformation[]\n-    local related_info = vim.tbl_get(diagnostic, 'user_data', 'lsp', 'relatedInformation') or {}\n+    local related_info = vim.tbl_get(diagnostic, 'user_data', 'lsp', 'relatedInformation')\n+    assert(related_info ~= vim.NIL, 'server response has invalid (null) relatedInformation')\n+    related_info = related_info or {}\n     -- Below the diagnostic, show its LSP related information (if any) in the form of file name and\n     -- range, plus description.\n     for _, info in ipairs(related_info) do\ndiff --git i/runtime/lua/vim/lsp/diagnostic.lua w/runtime/lua/vim/lsp/diagnostic.lua\nindex f0dec95be0..38ecdbea04 100644\n--- i/runtime/lua/vim/lsp/diagnostic.lua\n+++ w/runtime/lua/vim/lsp/diagnostic.lua\n@@ -72,6 +72,7 @@ end\n --- @return table?\n local function tags_lsp_to_vim(diagnostic, client_id)\n   local tags ---@type table?\n+  assert(diagnostic.tags ~= vim.NIL, 'server response has invalid (null) tags')\n   for _, tag in ipairs(diagnostic.tags or {}) do\n     if tag == protocol.DiagnosticTag.Unnecessary then\n       tags = tags or {}\n```\nAll three solutions would work for me. Which one should be put into a PR?",
+            "author_association": "CONTRIBUTOR",
+            "body": "> > Triggered by any LSP server that sends  \"tags\": null  instead of omitting the field (confirmed with  psalm-language-server ).\n> \n> does the LSP spec allow that? if not, let's add an assert:\n> \n> assert(diagnostic.tags ~= vim.NIL, 'server response has invalid (null) tags')\n\nAs mikejmcguirk says and shows, I don't think it's allowed to have `tags: null`?!\n\n> or if so, can you confirm if this fixes it (and then PR welcome):\n> \n> ```\n> for _, tag in ipairs(vim.isnil(diagnostic.tags) and {} or diagnostic.tags) do\n> ```\n\nYes, this would fix it (see the first diff).\n\nI stumbled upon another case of the same issue - when using `vim.diagnostic.open_float()` - for which I added a change to the diffs below.\n\nThe defensive fix would look like this:\n```diff\ndiff --git i/runtime/lua/vim/diagnostic/_float.lua w/runtime/lua/vim/diagnostic/_float.lua\nindex 4cda1be61f..e4488c0115 100644\n--- i/runtime/lua/vim/diagnostic/_float.lua\n+++ w/runtime/lua/vim/diagnostic/_float.lua\n@@ -210,7 +210,8 @@ function M.open(opts, ...)\n     end\n\n     --- @type lsp.DiagnosticRelatedInformation[]\n-    local related_info = vim.tbl_get(diagnostic, 'user_data', 'lsp', 'relatedInformation') or {}\n+    local _ri = vim.tbl_get(diagnostic, 'user_data', 'lsp', 'relatedInformation')\n+    local related_info = vim.isnil(_ri) and {} or _ri or {}\n     -- Below the diagnostic, show its LSP related information (if any) in the form of file name and\n     -- range, plus description.\n     for _, info in ipairs(related_info) do\ndiff --git i/runtime/lua/vim/lsp/diagnostic.lua w/runtime/lua/vim/lsp/diagnostic.lua\nindex f0dec95be0..3958291e36 100644\n--- i/runtime/lua/vim/lsp/diagnostic.lua\n+++ w/runtime/lua/vim/lsp/diagnostic.lua\n@@ -72,7 +72,7 @@ end\n --- @return table?\n local function tags_lsp_to_vim(diagnostic, client_id)\n   local tags ---@type table?\n-  for _, tag in ipairs(diagnostic.tags or {}) do\n+  for _, tag in ipairs(vim.isnil(diagnostic.tags) and {} or diagnostic.tags) do\n     if tag == protocol.DiagnosticTag.Unnecessary then\n       tags = tags or {}\n       tags.unnecessary = true\n```\nOr maybe like this, to prevent the `param-type-mismatch` diagnostic-error, that the example above causes?\n```diff\ndiff --git i/runtime/lua/vim/diagnostic/_float.lua w/runtime/lua/vim/diagnostic/_float.lua\nindex 4cda1be61f..564a1f670f 100644\n--- i/runtime/lua/vim/diagnostic/_float.lua\n+++ w/runtime/lua/vim/diagnostic/_float.lua\n@@ -210,7 +210,8 @@ function M.open(opts, ...)\n     end\n\n     --- @type lsp.DiagnosticRelatedInformation[]\n-    local related_info = vim.tbl_get(diagnostic, 'user_data', 'lsp', 'relatedInformation') or {}\n+    local _ri = vim.tbl_get(diagnostic, 'user_data', 'lsp', 'relatedInformation')\n+    local related_info = type(_ri) == 'table' and _ri or {}\n     -- Below the diagnostic, show its LSP related information (if any) in the form of file name and\n     -- range, plus description.\n     for _, info in ipairs(related_info) do\ndiff --git i/runtime/lua/vim/lsp/diagnostic.lua w/runtime/lua/vim/lsp/diagnostic.lua\nindex f0dec95be0..a25d912c05 100644\n--- i/runtime/lua/vim/lsp/diagnostic.lua\n+++ w/runtime/lua/vim/lsp/diagnostic.lua\n@@ -72,7 +72,7 @@ end\n --- @return table?\n local function tags_lsp_to_vim(diagnostic, client_id)\n   local tags ---@type table?\n-  for _, tag in ipairs(diagnostic.tags or {}) do\n+  for _, tag in ipairs(type(diagnostic.tags) == 'table' and diagnostic.tags or {}) do\n     if tag == protocol.DiagnosticTag.Unnecessary then\n       tags = tags or {}\n       tags.unnecessary = true\n```\nBut, adding an `assert`-statement would actually ensure that the issue gets fixed at the source ([vimeo/psalm](https://github.com/vimeo/psalm/issues/11895#issue-4763229643) in this case) :D\n```diff\ndiff --git i/runtime/lua/vim/diagnostic/_float.lua w/runtime/lua/vim/diagnostic/_float.lua\nindex 4cda1be61f..e61ba8e72f 100644\n--- i/runtime/lua/vim/diagnostic/_float.lua\n+++ w/runtime/lua/vim/diagnostic/_float.lua\n@@ -210,7 +210,9 @@ function M.open(opts, ...)\n     end\n\n     --- @type lsp.DiagnosticRelatedInformation[]\n-    local related_info = vim.tbl_get(diagnostic, 'user_data', 'lsp', 'relatedInformation') or {}\n+    local related_info = vim.tbl_get(diagnostic, 'user_data', 'lsp', 'relatedInformation')\n+    assert(related_info ~= vim.NIL, 'server response has invalid (null) relatedInformation')\n+    related_info = related_info or {}\n     -- Below the diagnostic, show its LSP related information (if any) in the form of file name and\n     -- range, plus description.\n     for _, info in ipairs(related_info) do\ndiff --git i/runtime/lua/vim/lsp/diagnostic.lua w/runtime/lua/vim/lsp/diagnostic.lua\nindex f0dec95be0..38ecdbea04 100644\n--- i/runtime/lua/vim/lsp/diagnostic.lua\n+++ w/runtime/lua/vim/lsp/diagnostic.lua\n@@ -72,6 +72,7 @@ end\n --- @return table?\n local function tags_lsp_to_vim(diagnostic, client_id)\n   local tags ---@type table?\n+  assert(diagnostic.tags ~= vim.NIL, 'server response has invalid (null) tags')\n   for _, tag in ipairs(diagnostic.tags or {}) do\n     if tag == protocol.DiagnosticTag.Unnecessary then\n       tags = tags or {}\n```\nAll three solutions would work for me. Which one should be put into a PR?",
             "created_at": "2026-06-24T17:52:22Z",
             "html_url": "https://github.com/neovim/neovim/issues/40390#issuecomment-4792164633",
             "id": 4792164633,
@@ -144,7 +144,7 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4792164633/reactions"
             },
-            "updated_at": "2026-06-24T18:31:49Z",
+            "updated_at": "2026-07-11T11:37:05Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4792164633",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/326337?v=4",
@@ -263,7 +263,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "Rather than patching each site where `vim.NIL` slips through (like\n`tags_lsp_to_vim`), I looked at handling it upstream — at the RPC layer, before\nparams reach any handler.\n\nThe idea: use the LSP specification itself to auto-generate validators that\nintercept incoming messages and flag any field that is `null` but shouldn't be —\nbefore the message is handed off to any handler. This way, no handler needs to\nguard against `vim.NIL` individually.\n\nBelow is an unfinished proposal, shared as food for thought. The approach may\nbe too broad or too costly for a general solution — but it could point toward a\nmore systematic way of hardening the LSP layer against malformed server\nresponses, without scattering defensive checks across individual handlers.\n\nPoC (AI assisted 🤖): https://github.com/neovim/neovim/pull/40465",
             "created_at": "2026-06-28T12:42:44Z",
             "html_url": "https://github.com/neovim/neovim/issues/40390#issuecomment-4826128720",
@@ -355,9 +355,103 @@
                 "url": "https://api.github.com/users/justinmk",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "> the error message should be more useful after [#40475](https://github.com/neovim/neovim/pull/40475)\n\nJust to make sure this isn't overlooked, I'd like to point out that #40475 doesn't cover the cases involving `ipairs`, `pairs`, and `next`.\nThese tests would fail (copy from https://github.com/neovim/neovim/pull/40422#issuecomment-4902504107):\n```diff\ndiff --git i/test/functional/lua/json_spec.lua w/test/functional/lua/json_spec.lua\nindex 7d1ba36b7b..9f9377fb0a 100644\n--- i/test/functional/lua/json_spec.lua\n+++ w/test/functional/lua/json_spec.lua\n@@ -185,6 +185,24 @@ describe('vim.json.decode()', function()\n     eq('attempt to index vim.NIL', pcall_err(exec_lua, [[ return parsed.foo.sub_field ]]))\n     eq('attempt to index vim.NIL', pcall_err(exec_lua, [[ parsed.foo.new_field = 3 ]]))\n   end)\n+\n+  it('gives nice error message when passing null value to ipairs', function()\n+    exec_lua [[ parsed = vim.json.decode('{\"foo\": null}') ]]\n+\n+    eq('attempt to index vim.NIL', pcall_err(exec_lua, [[ for _, v in ipairs(parsed.foo) do end ]]))\n+  end)\n+\n+  it('gives nice error message when passing null value to pairs', function()\n+    exec_lua [[ parsed = vim.json.decode('{\"foo\": null}') ]]\n+\n+    eq('attempt to iterate vim.NIL', pcall_err(exec_lua, [[ for k, v in pairs(parsed.foo) do end ]]))\n+  end)\n+\n+  it('gives nice error message when passing null value to next', function()\n+    exec_lua [[ parsed = vim.json.decode('{\"foo\": null}') ]]\n+\n+    eq('attempt to iterate vim.NIL', pcall_err(exec_lua, [[ return next(parsed.foo) ]]))\n+  end)\n end)\n\n describe('vim.json.encode()', function()\n```\n\nwith a `bad argument #1 to` error:\n```\nFAILED   ...neovim/build/Xtest_xdg/test/functional/lua/json_spec.lua @ 189: vim.json.decode() gives nice error message when passing null value to ipairs\nExpected values to be equal.\nExpected:\n\"attempt to index vim.NIL\"\nActual:\n\"bad argument #1 to 'ipairs' (table expected, got userdata)\"\nstack traceback:\n        ...neovim/build/Xtest_xdg/test/functional/lua/json_spec.lua:192: in function <...neovim/build/Xtest_xdg/test/functional/lua/json_spec.lua:189>\nFAILED   ...neovim/build/Xtest_xdg/test/functional/lua/json_spec.lua @ 195: vim.json.decode() gives nice error message when passing null value to pairs\nExpected values to be equal.\nExpected:\n\"attempt to iterate vim.NIL\"\nActual:\n\"bad argument #1 to 'pairs' (table expected, got userdata)\"\nstack traceback:\n        ...neovim/build/Xtest_xdg/test/functional/lua/json_spec.lua:198: in function <...neovim/build/Xtest_xdg/test/functional/lua/json_spec.lua:195>\nFAILED   ...neovim/build/Xtest_xdg/test/functional/lua/json_spec.lua @ 201: vim.json.decode() gives nice error message when passing null value to next\nExpected values to be equal.\nExpected:\n\"attempt to iterate vim.NIL\"\nActual:\n\"bad argument #1 to '?' (table expected, got userdata)\"\nstack traceback:\n        ...neovim/build/Xtest_xdg/test/functional/lua/json_spec.lua:204: in function <...neovim/build/Xtest_xdg/test/functional/lua/json_spec.lua:201>\n```",
+            "created_at": "2026-07-10T19:29:05Z",
+            "html_url": "https://github.com/neovim/neovim/issues/40390#issuecomment-4938803963",
+            "id": 4938803963,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/40390",
+            "minimized": null,
+            "node_id": "IC_kwDOAPphoM8AAAABJmAq-w",
+            "performed_via_github_app": null,
+            "pin": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4938803963/reactions"
+            },
+            "updated_at": "2026-07-10T19:29:05Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4938803963",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/326337?v=4",
+                "events_url": "https://api.github.com/users/kimabrandt/events{/privacy}",
+                "followers_url": "https://api.github.com/users/kimabrandt/followers",
+                "following_url": "https://api.github.com/users/kimabrandt/following{/other_user}",
+                "gists_url": "https://api.github.com/users/kimabrandt/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/kimabrandt",
+                "id": 326337,
+                "login": "kimabrandt",
+                "node_id": "MDQ6VXNlcjMyNjMzNw==",
+                "organizations_url": "https://api.github.com/users/kimabrandt/orgs",
+                "received_events_url": "https://api.github.com/users/kimabrandt/received_events",
+                "repos_url": "https://api.github.com/users/kimabrandt/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/kimabrandt/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/kimabrandt/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/kimabrandt",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "make a new issue por favor (it happens to the [best(? 🤔 ) of us](https://github.com/neovim/neovim/issues/34918#event-27740434328) , thanks for pointing this out",
+            "created_at": "2026-07-10T19:33:01Z",
+            "html_url": "https://github.com/neovim/neovim/issues/40390#issuecomment-4938831665",
+            "id": 4938831665,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/40390",
+            "minimized": null,
+            "node_id": "IC_kwDOAPphoM8AAAABJmCXMQ",
+            "performed_via_github_app": null,
+            "pin": null,
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 1,
+                "rocket": 0,
+                "total_count": 2,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4938831665/reactions"
+            },
+            "updated_at": "2026-07-10T19:33:46Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4938831665",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/62671086?v=4",
+                "events_url": "https://api.github.com/users/barrettruth/events{/privacy}",
+                "followers_url": "https://api.github.com/users/barrettruth/followers",
+                "following_url": "https://api.github.com/users/barrettruth/following{/other_user}",
+                "gists_url": "https://api.github.com/users/barrettruth/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/barrettruth",
+                "id": 62671086,
+                "login": "barrettruth",
+                "node_id": "MDQ6VXNlcjYyNjcxMDg2",
+                "organizations_url": "https://api.github.com/users/barrettruth/orgs",
+                "received_events_url": "https://api.github.com/users/barrettruth/received_events",
+                "repos_url": "https://api.github.com/users/barrettruth/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/barrettruth/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/barrettruth/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/barrettruth",
+                "user_view_type": "public"
+            }
         }
     ],
-    "comments": 7,
+    "comments": 9,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/40390/comments",
     "created_at": "2026-06-24T09:29:39Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/40390/events",
@@ -403,7 +497,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 104,
+        "closed_issues": 113,
         "created_at": "2025-02-01T14:58:39Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -436,7 +530,7 @@
         "open_issues": 71,
         "state": "open",
         "title": "0.13",
-        "updated_at": "2026-07-06T21:21:04Z",
+        "updated_at": "2026-07-13T14:28:26Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/48"
     },
     "node_id": "I_kwDOAPphoM8AAAABGiODRw",
@@ -475,7 +569,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyv",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2026-07-05T22:05:34Z",
+    "updated_at": "2026-07-11T11:37:05Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/40390",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/57096137?v=4",

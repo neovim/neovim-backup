@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/39485"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/b360b485d16c1fa92c2e0765b9b1470457f14ff1"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/16caad1efc33558a5780f1618c19f24830a02765"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6913,
-            "forks_count": 6913,
+            "forks": 6967,
+            "forks_count": 6967,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -95,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1948,
-            "open_issues_count": 1948,
+            "open_issues": 1884,
+            "open_issues_count": 1884,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -121,11 +121,11 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2026-06-02T05:30:13Z",
+            "pushed_at": "2026-07-14T01:26:08Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 383561,
+            "size": 389484,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 100075,
+            "stargazers_count": 101118,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -143,14 +143,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2026-06-02T05:49:30Z",
+            "updated_at": "2026-07-14T03:43:13Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 100075,
-            "watchers_count": 100075,
+            "watchers": 101118,
+            "watchers_count": 101118,
             "web_commit_signoff_required": false
         },
-        "sha": "e728c100b5bd4b0c6671d8eb524e15d67cacb42a",
+        "sha": "0bb2f5cc08012175cf9915ce6309b2691e7ae44c",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -175,7 +175,77 @@
     },
     "body": "## Problem\r\n\r\n`globals.h` exposes ~283 bare `EXTERN` symbols to every translation unit (~150 files). This makes subsystem ownership unclear, prevents unit-testing individual subsystems in isolation, and blocks future threading work.\r\n\r\nCloses #39481 (first incremental slice).\r\n\r\n## Solution\r\n\r\nIntroduce `search_defs.h` with a `SearchState` struct that owns the 8 search/highlight globals previously declared as bare `EXTERN` symbols in `globals.h`:\r\n\r\n- `highlight_match`\r\n- `search_match_lines` / `search_match_endcol`\r\n- `search_first_line` / `search_last_line`\r\n- `no_smartcase`\r\n- `searchcmdlen`\r\n- `no_hlsearch`\r\n\r\n`globals.h` now declares a single `EXTERN SearchState search_state` in place of those 8 lines. All ~60 call sites across 16 files are updated to use `search_state.<field>`.\r\n\r\nThis is an opt-in, incremental migration — no function signatures are changed and no behavior is altered. The struct creates a named seam for future per-thread or parameter-threaded instantiation.\r\n",
     "closed_at": null,
-    "comment_data": [],
+    "comment_data": [
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/39485#discussion_r3574753713"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/39485"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3574753713"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Perhaps the \"search\" prefix can be dropped?",
+            "commit_id": "16caad1efc33558a5780f1618c19f24830a02765",
+            "created_at": "2026-07-13T22:50:19Z",
+            "diff_hunk": "@@ -0,0 +1,25 @@\n+#pragma once\n+\n+#include <stdbool.h>\n+\n+#include \"nvim/pos_defs.h\"\n+\n+/// State owned by the search subsystem.  Previously declared as bare EXTERN\n+/// symbols in globals.h; grouped here to make subsystem ownership explicit.\n+typedef struct {\n+  // When highlight_match is true, highlight a match, starting at the cursor\n+  // position.  search_match_lines is the number of lines after the match (0\n+  // for a match within one line), search_match_endcol the column number of\n+  // the character just after the match in the last line.\n+  bool highlight_match;            // show search match pos\n+  linenr_T search_match_lines;     // lines of matched string\n+  colnr_T search_match_endcol;     // col nr of match end\n+  linenr_T search_first_line;      // for :{FIRST},{last}s/pat\n+  linenr_T search_last_line;       // for :{first},{LAST}s/pat\n+\n+  bool no_smartcase;               // don't use 'smartcase' once\n+\n+  int searchcmdlen;                // length of previous search cmd",
+            "html_url": "https://github.com/neovim/neovim/pull/39485#discussion_r3574753713",
+            "id": 3574753713,
+            "line": 22,
+            "node_id": "PRRC_kwDOAPphoM7VEmmx",
+            "original_commit_id": "16caad1efc33558a5780f1618c19f24830a02765",
+            "original_line": 22,
+            "original_position": 22,
+            "original_start_line": 15,
+            "path": "src/nvim/search_defs.h",
+            "position": 22,
+            "pull_request_review_id": 4689433132,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39485",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3574753713/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 15,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-07-13T22:50:19Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3574753713",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+                "followers_url": "https://api.github.com/users/zeertzjq/followers",
+                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/zeertzjq",
+                "id": 35768171,
+                "login": "zeertzjq",
+                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+                "repos_url": "https://api.github.com/users/zeertzjq/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
+            }
+        }
+    ],
     "comment_regular_data": [
         {
             "author_association": "CONTRIBUTOR",
@@ -184,6 +254,7 @@
             "html_url": "https://github.com/neovim/neovim/pull/39485#issuecomment-4581334084",
             "id": 4581334084,
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/39485",
+            "minimized": null,
             "node_id": "IC_kwDOAPphoM8AAAABERGcRA",
             "performed_via_github_app": {
                 "client_id": "Iv1.05c79e9ad1f6bdfa",
@@ -258,6 +329,7 @@
                     "copilot_requests": "write",
                     "deployments": "write",
                     "discussions": "write",
+                    "drives": "write",
                     "issues": "write",
                     "merge_queues": "write",
                     "metadata": "read",
@@ -272,7 +344,7 @@
                     "vulnerability_alerts": "read"
                 },
                 "slug": "github-actions",
-                "updated_at": "2026-05-05T14:51:38Z"
+                "updated_at": "2026-06-18T16:17:48Z"
             },
             "reactions": {
                 "+1": 0,
@@ -307,6 +379,52 @@
                 "subscriptions_url": "https://api.github.com/users/github-actions%5Bbot%5D/subscriptions",
                 "type": "Bot",
                 "url": "https://api.github.com/users/github-actions%5Bbot%5D",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "please rebase\r\n\r\n@zeertzjq do you still have unresolved comments on this?",
+            "created_at": "2026-07-13T19:28:25Z",
+            "html_url": "https://github.com/neovim/neovim/pull/39485#issuecomment-4961783460",
+            "id": 4961783460,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/39485",
+            "minimized": null,
+            "node_id": "IC_kwDOAPphoM8AAAABJ77OpA",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4961783460/reactions"
+            },
+            "updated_at": "2026-07-13T19:28:25Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4961783460",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
                 "user_view_type": "public"
             }
         }
@@ -407,9 +525,9 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/carladams1299-lab/neovim/pulls{/number}",
-            "pushed_at": "2026-04-30T14:10:12Z",
+            "pushed_at": "2026-07-13T22:48:52Z",
             "releases_url": "https://api.github.com/repos/carladams1299-lab/neovim/releases{/id}",
-            "size": 364825,
+            "size": 373517,
             "ssh_url": "git@github.com:carladams1299-lab/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/carladams1299-lab/neovim/stargazers",
@@ -428,7 +546,7 @@
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "b360b485d16c1fa92c2e0765b9b1470457f14ff1",
+        "sha": "16caad1efc33558a5780f1618c19f24830a02765",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/274836639?v=4",
             "events_url": "https://api.github.com/users/carladams1299-lab/events{/privacy}",
@@ -466,7 +584,7 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "2b8c5483e4f38deedcebde542652684c0c27a285",
+    "merge_commit_sha": "353ed62dc93e9f52ee321a85ed3fea4990bb1d5b",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM7WgUHF",
@@ -477,9 +595,9 @@
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/39485/comments",
     "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/b360b485d16c1fa92c2e0765b9b1470457f14ff1",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/16caad1efc33558a5780f1618c19f24830a02765",
     "title": "refactor(globals): group search state into SearchState struct",
-    "updated_at": "2026-05-30T02:53:30Z",
+    "updated_at": "2026-07-13T22:50:19Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/39485",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/274836639?v=4",

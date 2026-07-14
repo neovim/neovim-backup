@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/26799"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/5a08c0c953fed134f3968b250090a0fb886fd59e"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/6902b576d99ff00e1aefb0e77598cfa348bcc343"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6960,
-            "forks_count": 6960,
+            "forks": 6967,
+            "forks_count": 6967,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -95,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1895,
-            "open_issues_count": 1895,
+            "open_issues": 1884,
+            "open_issues_count": 1884,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -121,11 +121,11 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2026-07-07T04:27:39Z",
+            "pushed_at": "2026-07-14T01:26:08Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 388018,
+            "size": 389484,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 100959,
+            "stargazers_count": 101118,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -143,14 +143,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2026-07-07T04:28:49Z",
+            "updated_at": "2026-07-14T03:43:13Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 100959,
-            "watchers_count": 100959,
+            "watchers": 101118,
+            "watchers_count": 101118,
             "web_commit_signoff_required": false
         },
-        "sha": "81e01a80b9a1271ba8c990e17d3e0943772dff1b",
+        "sha": "653f2092ce5545da3a10743e95aae435d0e0c182",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -1490,6 +1490,628 @@
                 "url": "https://api.github.com/users/glepnir",
                 "user_view_type": "public"
             }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26799#discussion_r3538000812"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26799"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3538000812"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "hmm 👉 https://github.com/neovim/neovim/pull/35845#discussion_r3537974511  👈 ",
+            "commit_id": "6902b576d99ff00e1aefb0e77598cfa348bcc343",
+            "created_at": "2026-07-07T16:13:57Z",
+            "diff_hunk": "@@ -451,11 +492,168 @@ win_T *win_float_create_preview(bool enter, bool new_buf)\n   }\n   unblock_autocmds();\n   wp->w_p_diff = false;\n-  wp->w_float_is_info = true;\n   wp->w_p_wrap = true;  // 'wrap' is default on\n   wp->w_p_so = 0;       // 'scrolloff' zero\n+\n+  if (preview) {\n+    wp->w_p_pvw = true;\n+    RESET_BINDING(wp);\n+    wp->w_maxheight = config.height;\n+    wp->w_maxwidth = config.width;\n+    wp->w_wantline = curwin->w_winrow + curwin->w_wrow;\n+    wp->w_wantcol = curwin->w_wincol + curwin->w_wcol;\n+  }\n+  wp->w_float_kind = kind;\n+\n   if (enter) {\n     win_enter(wp, false);\n   }\n   return wp;\n }\n+\n+/// Closes a specified floating window used for previews or popups.\n+/// Searches for and closes a floating window based on given criteria.\n+///\n+/// @param kind floating window preview kind.\n+///\n+/// @return True if the window is successfully closed, otherwise false.\n+bool win_float_close(FloatWinKind kind)\n+{\n+  win_T *wp = win_float_find_preview(kind);\n+  return wp && win_close(wp, false, false) != FAIL;\n+}\n+\n+/// Set bufname as title for a floating window.\n+/// Title position is center.\n+///\n+/// @param wp pointer of floating preview window\n+void win_float_set_title(win_T *wp)\n+{\n+  if (!wp->w_floating || !wp->w_config.border || wp->w_buffer->b_fname == NULL) {\n+    return;\n+  }\n+\n+  char dirname[MAXPATHL];\n+  os_dirname(dirname, MAXPATHL);\n+  shorten_buf_fname(wp->w_buffer, dirname, false);\n+  if (kv_size(wp->w_config.title_chunks)) {\n+    clear_virttext(&wp->w_config.title_chunks);\n+  }\n+\n+  wp->w_config.title = true;\n+  wp->w_config.title_pos = kAlignCenter;\n+  wp->w_config.title_width = (int)mb_string2cells(wp->w_buffer->b_fname);\n+  kv_push(wp->w_config.title_chunks,\n+          ((VirtTextChunk){ .text = xstrdup(wp->w_buffer->b_fname), .hl_id = -1 }));\n+  win_config_float(wp, wp->w_config);\n+}\n+\n+/// Adjust a preview floating window position to fit the screen.\n+///\n+/// @param wp pointer of floating preview window\n+void win_float_adjust_position(win_T *wp)",
+            "html_url": "https://github.com/neovim/neovim/pull/26799#discussion_r3538000812",
+            "id": 3538000812,
+            "line": 534,
+            "node_id": "PRRC_kwDOAPphoM7S4Zus",
+            "original_commit_id": "c8b641a164442f169d3c7ef1eaed957410d0520a",
+            "original_line": 554,
+            "original_position": 166,
+            "original_start_line": null,
+            "path": "src/nvim/winfloat.c",
+            "position": 219,
+            "pull_request_review_id": 4646954593,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26799",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3538000812/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-07-07T16:13:57Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3538000812",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26799#discussion_r3538009087"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26799"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3538009087"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "floats already support setting a title. could the existing title-setting code reuse this ?",
+            "commit_id": "6902b576d99ff00e1aefb0e77598cfa348bcc343",
+            "created_at": "2026-07-07T16:15:14Z",
+            "diff_hunk": "@@ -451,11 +492,168 @@ win_T *win_float_create_preview(bool enter, bool new_buf)\n   }\n   unblock_autocmds();\n   wp->w_p_diff = false;\n-  wp->w_float_is_info = true;\n   wp->w_p_wrap = true;  // 'wrap' is default on\n   wp->w_p_so = 0;       // 'scrolloff' zero\n+\n+  if (preview) {\n+    wp->w_p_pvw = true;\n+    RESET_BINDING(wp);\n+    wp->w_maxheight = config.height;\n+    wp->w_maxwidth = config.width;\n+    wp->w_wantline = curwin->w_winrow + curwin->w_wrow;\n+    wp->w_wantcol = curwin->w_wincol + curwin->w_wcol;\n+  }\n+  wp->w_float_kind = kind;\n+\n   if (enter) {\n     win_enter(wp, false);\n   }\n   return wp;\n }\n+\n+/// Closes a specified floating window used for previews or popups.\n+/// Searches for and closes a floating window based on given criteria.\n+///\n+/// @param kind floating window preview kind.\n+///\n+/// @return True if the window is successfully closed, otherwise false.\n+bool win_float_close(FloatWinKind kind)\n+{\n+  win_T *wp = win_float_find_preview(kind);\n+  return wp && win_close(wp, false, false) != FAIL;\n+}\n+\n+/// Set bufname as title for a floating window.\n+/// Title position is center.\n+///\n+/// @param wp pointer of floating preview window\n+void win_float_set_title(win_T *wp)",
+            "html_url": "https://github.com/neovim/neovim/pull/26799#discussion_r3538009087",
+            "id": 3538009087,
+            "line": 514,
+            "node_id": "PRRC_kwDOAPphoM7S4bv_",
+            "original_commit_id": "c8b641a164442f169d3c7ef1eaed957410d0520a",
+            "original_line": 530,
+            "original_position": 142,
+            "original_start_line": null,
+            "path": "src/nvim/winfloat.c",
+            "position": 199,
+            "pull_request_review_id": 4646963747,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26799",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3538009087/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-07-07T16:15:14Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3538009087",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26799#discussion_r3538012993"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26799"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3538012993"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "too verbose\n\nmax line-length is 100\n\nplease consider this for all other docstrings",
+            "commit_id": "6902b576d99ff00e1aefb0e77598cfa348bcc343",
+            "created_at": "2026-07-07T16:15:53Z",
+            "diff_hunk": "@@ -451,11 +492,168 @@ win_T *win_float_create_preview(bool enter, bool new_buf)\n   }\n   unblock_autocmds();\n   wp->w_p_diff = false;\n-  wp->w_float_is_info = true;\n   wp->w_p_wrap = true;  // 'wrap' is default on\n   wp->w_p_so = 0;       // 'scrolloff' zero\n+\n+  if (preview) {\n+    wp->w_p_pvw = true;\n+    RESET_BINDING(wp);\n+    wp->w_maxheight = config.height;\n+    wp->w_maxwidth = config.width;\n+    wp->w_wantline = curwin->w_winrow + curwin->w_wrow;\n+    wp->w_wantcol = curwin->w_wincol + curwin->w_wcol;\n+  }\n+  wp->w_float_kind = kind;\n+\n   if (enter) {\n     win_enter(wp, false);\n   }\n   return wp;\n }\n+\n+/// Closes a specified floating window used for previews or popups.\n+/// Searches for and closes a floating window based on given criteria.\n+///\n+/// @param kind floating window preview kind.\n+///\n+/// @return True if the window is successfully closed, otherwise false.\n+bool win_float_close(FloatWinKind kind)\n+{\n+  win_T *wp = win_float_find_preview(kind);\n+  return wp && win_close(wp, false, false) != FAIL;\n+}\n+\n+/// Set bufname as title for a floating window.\n+/// Title position is center.",
+            "html_url": "https://github.com/neovim/neovim/pull/26799#discussion_r3538012993",
+            "id": 3538012993,
+            "line": 511,
+            "node_id": "PRRC_kwDOAPphoM7S4ctB",
+            "original_commit_id": "c8b641a164442f169d3c7ef1eaed957410d0520a",
+            "original_line": 527,
+            "original_position": 139,
+            "original_start_line": 526,
+            "path": "src/nvim/winfloat.c",
+            "position": 196,
+            "pull_request_review_id": 4646967979,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26799",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3538012993/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 510,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-07-07T16:16:07Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3538012993",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26799#discussion_r3538022688"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26799"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3538022688"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "seems like `w_floating` could also be eliminated. the \"kind\" would be `kWinSplit`.\n\n",
+            "commit_id": "c8b641a164442f169d3c7ef1eaed957410d0520a",
+            "created_at": "2026-07-07T16:17:31Z",
+            "diff_hunk": "@@ -1371,7 +1382,8 @@ struct window_S {\n   ScreenGrid w_grid_alloc;              // the grid specific to the window\n   bool w_pos_changed;                   // true if window position changed\n   bool w_floating;                      ///< whether the window is floating\n-  bool w_float_is_info;                 // the floating window is info float\n+  FloatWinKind w_float_kind;            // preview/info float, or kFloatWinNone",
+            "html_url": "https://github.com/neovim/neovim/pull/26799#discussion_r3538022688",
+            "id": 3538022688,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7S4fEg",
+            "original_commit_id": "c8b641a164442f169d3c7ef1eaed957410d0520a",
+            "original_line": 1385,
+            "original_position": 30,
+            "original_start_line": 1384,
+            "path": "src/nvim/buffer_defs.h",
+            "position": 1,
+            "pull_request_review_id": 4646978402,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26799",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3538022688/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-07-07T16:18:59Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3538022688",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26799#discussion_r3538030587"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26799"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3538030587"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\n  WinKind w_float;            // preview/info float, or kWinSplit\n```",
+            "commit_id": "c8b641a164442f169d3c7ef1eaed957410d0520a",
+            "created_at": "2026-07-07T16:18:53Z",
+            "diff_hunk": "@@ -1371,7 +1382,8 @@ struct window_S {\n   ScreenGrid w_grid_alloc;              // the grid specific to the window\n   bool w_pos_changed;                   // true if window position changed\n   bool w_floating;                      ///< whether the window is floating\n-  bool w_float_is_info;                 // the floating window is info float\n+  FloatWinKind w_float_kind;            // preview/info float, or kFloatWinNone",
+            "html_url": "https://github.com/neovim/neovim/pull/26799#discussion_r3538030587",
+            "id": 3538030587,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7S4g_7",
+            "original_commit_id": "c8b641a164442f169d3c7ef1eaed957410d0520a",
+            "original_line": 1385,
+            "original_position": 30,
+            "original_start_line": null,
+            "path": "src/nvim/buffer_defs.h",
+            "position": 1,
+            "pull_request_review_id": 4646987711,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26799",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3538030587/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-07-07T16:18:53Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3538030587",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26799#discussion_r3538036444"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26799"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3538036444"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "why is this special for \"float\" windows? windows are windows. they have different kinds.\n\nalso, non-float windows might be \"preview\" window. and that makes me think there's another field that could be eliminated....\n\n\n```suggestion\n} WinKind;\n```",
+            "commit_id": "c8b641a164442f169d3c7ef1eaed957410d0520a",
+            "created_at": "2026-07-07T16:19:55Z",
+            "diff_hunk": "@@ -995,6 +995,12 @@ typedef enum {\n   kBorderTextFooter = 1,\n } BorderTextType;\n \n+typedef enum {\n+  kFloatWinNone,\n+  kFloatWinPreview,\n+  kFloatWinInfo,\n+} FloatWinKind;",
+            "html_url": "https://github.com/neovim/neovim/pull/26799#discussion_r3538036444",
+            "id": 3538036444,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7S4ibc",
+            "original_commit_id": "c8b641a164442f169d3c7ef1eaed957410d0520a",
+            "original_line": 1002,
+            "original_position": 8,
+            "original_start_line": null,
+            "path": "src/nvim/buffer_defs.h",
+            "position": 1,
+            "pull_request_review_id": 4646994924,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26799",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3538036444/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-07-07T16:19:55Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3538036444",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26799#discussion_r3543518340"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26799"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3543518340"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Vim uses `popup_flags` to distinguish `info/preview/hide/show`, so this change simply follows that design.\r\n\r\nI previously experimented with unifying the window types, but I want to finish that in a dedicated refactoring PR since it involves much broader design changes. For now, I refactored this part only. Let me know if you're happy with it.",
+            "commit_id": "c8b641a164442f169d3c7ef1eaed957410d0520a",
+            "created_at": "2026-07-08T11:26:11Z",
+            "diff_hunk": "@@ -995,6 +995,12 @@ typedef enum {\n   kBorderTextFooter = 1,\n } BorderTextType;\n \n+typedef enum {\n+  kFloatWinNone,\n+  kFloatWinPreview,\n+  kFloatWinInfo,\n+} FloatWinKind;",
+            "html_url": "https://github.com/neovim/neovim/pull/26799#discussion_r3543518340",
+            "id": 3543518340,
+            "in_reply_to_id": 3538036444,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7TNcyE",
+            "original_commit_id": "c8b641a164442f169d3c7ef1eaed957410d0520a",
+            "original_line": 1002,
+            "original_position": 8,
+            "original_start_line": null,
+            "path": "src/nvim/buffer_defs.h",
+            "position": 1,
+            "pull_request_review_id": 4653639716,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26799",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3543518340/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-07-08T11:26:11Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3543518340",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",
+                "events_url": "https://api.github.com/users/glepnir/events{/privacy}",
+                "followers_url": "https://api.github.com/users/glepnir/followers",
+                "following_url": "https://api.github.com/users/glepnir/following{/other_user}",
+                "gists_url": "https://api.github.com/users/glepnir/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/glepnir",
+                "id": 41671631,
+                "login": "glepnir",
+                "node_id": "MDQ6VXNlcjQxNjcxNjMx",
+                "organizations_url": "https://api.github.com/users/glepnir/orgs",
+                "received_events_url": "https://api.github.com/users/glepnir/received_events",
+                "repos_url": "https://api.github.com/users/glepnir/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/glepnir/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/glepnir/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/glepnir",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26799#discussion_r3543550974"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26799"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3543550974"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "`kWinFloating | kWinPreview` is not a valid `WinKind`\n```suggestion\n  int w_kind;                       // preview/info float, or kWinSplit\n```",
+            "commit_id": "b78639edaba39cdce7ddd446ad3bc044dc67c08a",
+            "created_at": "2026-07-08T11:31:50Z",
+            "diff_hunk": "@@ -1370,8 +1384,8 @@ struct window_S {\n   GridView w_grid;                      // area to draw on, excluding borders and winbar\n   ScreenGrid w_grid_alloc;              // the grid specific to the window\n   bool w_pos_changed;                   // true if window position changed\n-  bool w_floating;                      ///< whether the window is floating\n-  bool w_float_is_info;                 // the floating window is info float\n+  WinKind w_kind;                       // preview/info float, or kWinSplit",
+            "html_url": "https://github.com/neovim/neovim/pull/26799#discussion_r3543550974",
+            "id": 3543550974,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7TNkv-",
+            "original_commit_id": "7057be8814dd409bc1cf1fa0e74ffa3f543661c6",
+            "original_line": 1387,
+            "original_position": 34,
+            "original_start_line": null,
+            "path": "src/nvim/buffer_defs.h",
+            "position": 1,
+            "pull_request_review_id": 4653673785,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26799",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3543550974/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-07-08T11:32:55Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3543550974",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+                "followers_url": "https://api.github.com/users/zeertzjq/followers",
+                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/zeertzjq",
+                "id": 35768171,
+                "login": "zeertzjq",
+                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+                "repos_url": "https://api.github.com/users/zeertzjq/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/26799#discussion_r3543556802"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/26799"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3543556802"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "```suggestion\nwin_T *win_float_create_preview(bool enter, bool new_buf, int kind)\n```",
+            "commit_id": "b78639edaba39cdce7ddd446ad3bc044dc67c08a",
+            "created_at": "2026-07-08T11:32:46Z",
+            "diff_hunk": "@@ -410,9 +445,10 @@ static inline win_T *handle_error_and_cleanup(win_T *wp, Error *err)\n ///\n /// @param[in] bool enter floating window.\n /// @param[in] bool create a new buffer for window.\n+/// @param[in] int floating preview window kind.\n ///\n /// @return win_T\n-win_T *win_float_create_preview(bool enter, bool new_buf)\n+win_T *win_float_create_preview(bool enter, bool new_buf, WinKind kind)",
+            "html_url": "https://github.com/neovim/neovim/pull/26799#discussion_r3543556802",
+            "id": 3543556802,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7TNmLC",
+            "original_commit_id": "7057be8814dd409bc1cf1fa0e74ffa3f543661c6",
+            "original_line": 451,
+            "original_position": 165,
+            "original_start_line": null,
+            "path": "src/nvim/winfloat.c",
+            "position": 1,
+            "pull_request_review_id": 4653673785,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/26799",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3543556802/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-07-08T11:32:55Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3543556802",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+                "followers_url": "https://api.github.com/users/zeertzjq/followers",
+                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/zeertzjq",
+                "id": 35768171,
+                "login": "zeertzjq",
+                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+                "repos_url": "https://api.github.com/users/zeertzjq/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
+            }
         }
     ],
     "comment_regular_data": [
@@ -1912,9 +2534,9 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/glepnir/neovim/pulls{/number}",
-            "pushed_at": "2026-07-06T10:30:09Z",
+            "pushed_at": "2026-07-14T02:11:37Z",
             "releases_url": "https://api.github.com/repos/glepnir/neovim/releases{/id}",
-            "size": 376626,
+            "size": 377568,
             "ssh_url": "git@github.com:glepnir/neovim.git",
             "stargazers_count": 2,
             "stargazers_url": "https://api.github.com/repos/glepnir/neovim/stargazers",
@@ -1926,14 +2548,14 @@
             "teams_url": "https://api.github.com/repos/glepnir/neovim/teams",
             "topics": [],
             "trees_url": "https://api.github.com/repos/glepnir/neovim/git/trees{/sha}",
-            "updated_at": "2026-07-06T02:34:03Z",
+            "updated_at": "2026-07-13T07:03:21Z",
             "url": "https://api.github.com/repos/glepnir/neovim",
             "visibility": "public",
             "watchers": 2,
             "watchers_count": 2,
             "web_commit_signoff_required": false
         },
-        "sha": "5a08c0c953fed134f3968b250090a0fb886fd59e",
+        "sha": "6902b576d99ff00e1aefb0e77598cfa348bcc343",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",
             "events_url": "https://api.github.com/users/glepnir/events{/privacy}",
@@ -1971,11 +2593,11 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "3a86a06a934d3eb5873bad6eb79d8a795112c442",
+    "merge_commit_sha": null,
     "merged_at": null,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 104,
+        "closed_issues": 113,
         "created_at": "2025-02-01T14:58:39Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -2008,7 +2630,7 @@
         "open_issues": 71,
         "state": "open",
         "title": "0.13",
-        "updated_at": "2026-07-06T21:21:04Z",
+        "updated_at": "2026-07-13T14:28:26Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/48"
     },
     "node_id": "PR_kwDOAPphoM5i9mLj",
@@ -2019,9 +2641,9 @@
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/26799/comments",
     "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/5a08c0c953fed134f3968b250090a0fb886fd59e",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/6902b576d99ff00e1aefb0e77598cfa348bcc343",
     "title": "feat(float): add previewpopup option",
-    "updated_at": "2026-07-05T12:36:43Z",
+    "updated_at": "2026-07-08T11:36:42Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/26799",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",
