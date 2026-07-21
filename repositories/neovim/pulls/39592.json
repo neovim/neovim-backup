@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6913,
-            "forks_count": 6913,
+            "forks": 6978,
+            "forks_count": 6978,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -95,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1948,
-            "open_issues_count": 1948,
+            "open_issues": 1882,
+            "open_issues_count": 1882,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -121,11 +121,11 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2026-06-02T05:30:13Z",
+            "pushed_at": "2026-07-21T04:10:13Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 383561,
+            "size": 390332,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 100075,
+            "stargazers_count": 101270,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -143,11 +143,11 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2026-06-02T05:49:30Z",
+            "updated_at": "2026-07-21T04:11:08Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 100075,
-            "watchers_count": 100075,
+            "watchers": 101270,
+            "watchers_count": 101270,
             "web_commit_signoff_required": false
         },
         "sha": "ed194b99ac7ddf84dda8c8239fdc10bb02275b4b",
@@ -383,6 +383,75 @@
                 "url": "https://api.github.com/users/tris203",
                 "user_view_type": "public"
             }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/39592#discussion_r3617889202"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/39592"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3617889202"
+                }
+            },
+            "author_association": "NONE",
+            "body": "We should check also whether after rename for example (which will trigger refresh) neovim will refresh diagnostics since currently it might leave stale ones.\n\nThis is right after rename and content refresh\n<img width=\"2405\" height=\"424\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/0c4bd9f1-c83f-44bb-87ed-6ded70c23230\" />\n\nCurrently I am just using `vim.lsp.diagnostic._refresh()` but AFAIK it's not availably in nightly anymore",
+            "commit_id": "35bf6a08cf8eeba4c4b66be6f1e4599f470bc304",
+            "created_at": "2026-07-20T22:08:22Z",
+            "diff_hunk": "@@ -0,0 +1,278 @@\n+--- @brief\n+--- This module provides the LSP `workspace/textDocumentContent` feature, for loading virtual\n+--- documents whose content is provided by an attached language server.\n+---\n+--- LSP spec: https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification/#workspace_textDocumentContent\n+\n+local api = vim.api\n+local log = require('vim.lsp.log')\n+\n+local Capability = require('vim.lsp._capability')\n+\n+local M = {}\n+\n+---@class (private) vim.lsp.text_document_content.Provider : vim.lsp.Capability\n+---@field active table<integer, vim.lsp.text_document_content.Provider?>\n+---@field client_state table<integer, table>\n+local Provider = {\n+  name = 'text_document_content',\n+  method = 'workspace/textDocumentContent',\n+  active = {},\n+}\n+Provider.__index = Provider\n+setmetatable(Provider, Capability)\n+Capability.all[Provider.name] = Provider\n+\n+local augroup = api.nvim_create_augroup('nvim.lsp.text_document_content', {})\n+local active_patterns = {} --- @type string[]\n+\n+---@param client vim.lsp.Client\n+---@return string[]\n+local function client_schemes(client)\n+  local schemes = {} --- @type string[]\n+  ---@param cap lsp.TextDocumentContentRegistrationOptions\n+  client:_provider_foreach('workspace/textDocumentContent', function(cap)\n+    for _, scheme in ipairs(cap.schemes or {}) do\n+      schemes[#schemes + 1] = scheme\n+    end\n+  end)\n+  return schemes\n+end\n+\n+---@param client vim.lsp.Client\n+---@param uri string\n+---@return boolean\n+local function client_supports_uri(client, uri)\n+  return client:supports_method('workspace/textDocumentContent')\n+    and vim.iter(client_schemes(client)):any(function(scheme)\n+      return vim.startswith(uri, scheme .. ':')\n+    end)\n+end\n+\n+---@return table<string, true>\n+local function supported_schemes()\n+  local schemes = {} --- @type table<string, true>\n+  for _, client in ipairs(vim.lsp.get_clients()) do\n+    if client:supports_method('workspace/textDocumentContent') then\n+      vim.iter(client_schemes(client)):each(function(scheme)\n+        schemes[scheme] = true\n+      end)\n+    end\n+  end\n+  return schemes\n+end\n+\n+---@param text string\n+---@return string[]\n+local function text_to_lines(text)\n+  text = text:gsub('\\r\\n?', '\\n')\n+  local lines = vim.split(text, '\\n', { plain = true })\n+  if #text > 0 and text:sub(-1) == '\\n' then\n+    table.remove(lines, #lines)\n+  end\n+  return lines\n+end\n+\n+---@param bufnr integer\n+local function set_virtual_buf_options(bufnr)\n+  vim.bo[bufnr].buftype = 'nofile'\n+  vim.bo[bufnr].swapfile = false\n+  vim.bo[bufnr].readonly = true\n+  vim.bo[bufnr].modifiable = false\n+end\n+\n+---@param bufnr integer\n+---@param text string\n+local function apply_content(bufnr, text)\n+  if not api.nvim_buf_is_valid(bufnr) then\n+    return\n+  end\n+\n+  vim.bo[bufnr].modifiable = true\n+  api.nvim_buf_set_lines(bufnr, 0, -1, false, text_to_lines(text))\n+  vim.bo[bufnr].modified = false\n+  set_virtual_buf_options(bufnr)\n+end\n+\n+---@param uri string\n+---@param bufnr integer\n+---@return vim.lsp.Client?\n+local function select_client(uri, bufnr)\n+  local clients = {} --- @type vim.lsp.Client[]\n+  local candidates = vim.lsp.get_clients({\n+    bufnr = bufnr,\n+    method = 'workspace/textDocumentContent',\n+  }) or {}\n+  if #candidates == 0 then\n+    candidates = vim.lsp.get_clients({ method = 'workspace/textDocumentContent' })\n+  end\n+\n+  for _, client in ipairs(candidates) do\n+    if client_supports_uri(client, uri) then\n+      clients[#clients + 1] = client\n+    end\n+  end\n+  table.sort(clients, function(a, b)\n+    return a.id < b.id\n+  end)\n+\n+  if #clients > 1 then\n+    local client = clients[1]\n+    vim.notify(\n+      ('Multiple LSP clients support workspace/textDocumentContent for %s; using %s (id=%d)'):format(\n+        uri,\n+        client.name,\n+        client.id\n+      ),\n+      vim.log.levels.WARN\n+    )\n+  end\n+\n+  return clients[1]\n+end\n+\n+---@param client vim.lsp.Client\n+---@param bufnr integer\n+---@param uri string\n+---@param notify_error boolean\n+local function request_content(client, bufnr, uri, notify_error)\n+  ---@param message string\n+  local function notify(message)\n+    if notify_error then\n+      vim.notify(\n+        ('Failed to load LSP text document content for %s: %s'):format(uri, message),\n+        vim.log.levels.ERROR\n+      )\n+    end\n+  end\n+\n+  local response, err =\n+    client:request_sync('workspace/textDocumentContent', { uri = uri }, nil, bufnr)\n+  if err then\n+    notify(err)\n+    log.error('text_document_content', err)\n+    return\n+  end\n+\n+  if not response then\n+    return\n+  end\n+\n+  if response.err then\n+    notify(response.err.message)\n+    log.error('text_document_content', response.err)\n+    return\n+  end\n+\n+  apply_content(bufnr, response.result and response.result.text or '')\n+end\n+\n+local function on_buf_read(ev)\n+  set_virtual_buf_options(ev.buf)\n+\n+  local client = select_client(ev.file, ev.buf)\n+  if not client then\n+    vim.notify(\n+      ('No LSP client supports workspace/textDocumentContent for %s'):format(ev.file),\n+      vim.log.levels.ERROR\n+    )\n+    return\n+  end\n+\n+  request_content(client, ev.buf, ev.file, true)\n+end\n+\n+--- Rebuild the global `BufReadCmd` autocmds from all active text document content providers.\n+function M._update_autocmds()\n+  local patterns = vim.tbl_keys(supported_schemes())\n+  table.sort(patterns)\n+  patterns = vim\n+    .iter(patterns)\n+    :map(function(scheme)\n+      return { scheme .. ':*', scheme .. '://*' }\n+    end)\n+    :flatten()\n+    :totable()\n+\n+  if vim.deep_equal(patterns, active_patterns) then\n+    return\n+  end\n+\n+  active_patterns = patterns\n+  api.nvim_clear_autocmds({ group = augroup })\n+  if #patterns > 0 then\n+    api.nvim_create_autocmd('BufReadCmd', {\n+      group = augroup,\n+      pattern = patterns,\n+      desc = 'Load LSP text document content',\n+      callback = on_buf_read,\n+    })\n+  end\n+end\n+\n+---@package\n+---@param bufnr integer\n+---@return vim.lsp.text_document_content.Provider\n+function Provider:new(bufnr)\n+  self = Capability.new(self, bufnr)\n+  self.client_state = {}\n+  return self\n+end\n+\n+---@package\n+---@param client_id integer\n+function Provider:on_attach(client_id)\n+  self.client_state[client_id] = {}\n+  M._update_autocmds()\n+  vim.schedule(M._update_autocmds)\n+end\n+\n+---@package\n+---@param client_id integer\n+function Provider:on_detach(client_id)\n+  self.client_state[client_id] = nil\n+  M._update_autocmds()\n+  vim.schedule(M._update_autocmds)\n+end\n+\n+---@package\n+function Provider:destroy()\n+  Capability.destroy(self)\n+  M._update_autocmds()\n+end\n+\n+--- |lsp-handler| for the method `workspace/textDocumentContent/refresh`\n+---\n+---@private\n+---@type lsp.Handler\n+---@param params? lsp.TextDocumentContentRefreshParams\n+---@param ctx lsp.HandlerContext\n+function M.on_refresh(err, params, ctx)",
+            "html_url": "https://github.com/neovim/neovim/pull/39592#discussion_r3617889202",
+            "id": 3617889202,
+            "line": 250,
+            "node_id": "PRRC_kwDOAPphoM7XpJuy",
+            "original_commit_id": "35bf6a08cf8eeba4c4b66be6f1e4599f470bc304",
+            "original_line": 250,
+            "original_position": 250,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/lsp/text_document_content.lua",
+            "position": 250,
+            "pull_request_review_id": 4739351793,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/39592",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3617889202/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-07-20T22:08:55Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3617889202",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/47817529?v=4",
+                "events_url": "https://api.github.com/users/sebastianstudniczek/events{/privacy}",
+                "followers_url": "https://api.github.com/users/sebastianstudniczek/followers",
+                "following_url": "https://api.github.com/users/sebastianstudniczek/following{/other_user}",
+                "gists_url": "https://api.github.com/users/sebastianstudniczek/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/sebastianstudniczek",
+                "id": 47817529,
+                "login": "sebastianstudniczek",
+                "node_id": "MDQ6VXNlcjQ3ODE3NTI5",
+                "organizations_url": "https://api.github.com/users/sebastianstudniczek/orgs",
+                "received_events_url": "https://api.github.com/users/sebastianstudniczek/received_events",
+                "repos_url": "https://api.github.com/users/sebastianstudniczek/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/sebastianstudniczek/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/sebastianstudniczek/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/sebastianstudniczek",
+                "user_view_type": "public"
+            }
         }
     ],
     "comment_regular_data": [
@@ -393,6 +462,7 @@
             "html_url": "https://github.com/neovim/neovim/pull/39592#issuecomment-4375528984",
             "id": 4375528984,
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/39592",
+            "minimized": null,
             "node_id": "IC_kwDOAPphoM8AAAABBM1GGA",
             "performed_via_github_app": null,
             "reactions": {
@@ -438,6 +508,7 @@
             "html_url": "https://github.com/neovim/neovim/pull/39592#issuecomment-4391171751",
             "id": 4391171751,
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/39592",
+            "minimized": null,
             "node_id": "IC_kwDOAPphoM8AAAABBbv2pw",
             "performed_via_github_app": null,
             "reactions": {
@@ -478,11 +549,12 @@
         },
         {
             "author_association": "NONE",
-            "body": "FYI I noticed issue with `textDocument/rename` when testing with roslyn. Not sure currently whether it's an issue with proposed implementation in neovim or roslyn itself cause I couldn't reproduce it in vscode.\r\n\r\nhttps://github.com/dotnet/roslyn/issues/83826\r\n\r\n",
+            "body": "FYI I noticed issue with `textDocument/rename` when testing with roslyn. Not sure currently whether it's an issue with proposed implementation in neovim or roslyn itself cause I couldn't reproduce it in vscode.\r\n\r\nhttps://github.com/dotnet/roslyn/issues/83826\r\n\r\nEdit: \r\nnevermind, looking at this implemenation it should work fine (watching out for additional empty lines at the end of content)\r\n\r\n",
             "created_at": "2026-05-30T16:35:06Z",
             "html_url": "https://github.com/neovim/neovim/pull/39592#issuecomment-4583439039",
             "id": 4583439039,
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/39592",
+            "minimized": null,
             "node_id": "IC_kwDOAPphoM8AAAABETG6vw",
             "performed_via_github_app": null,
             "reactions": {
@@ -497,7 +569,7 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4583439039/reactions"
             },
-            "updated_at": "2026-05-30T16:35:28Z",
+            "updated_at": "2026-07-20T21:10:38Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4583439039",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/47817529?v=4",
@@ -618,9 +690,9 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/tris203/neovim/pulls{/number}",
-            "pushed_at": "2026-05-21T15:27:58Z",
+            "pushed_at": "2026-07-07T20:58:47Z",
             "releases_url": "https://api.github.com/repos/tris203/neovim/releases{/id}",
-            "size": 374948,
+            "size": 379282,
             "ssh_url": "git@github.com:tris203/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/tris203/neovim/stargazers",
@@ -632,7 +704,7 @@
             "teams_url": "https://api.github.com/repos/tris203/neovim/teams",
             "topics": [],
             "trees_url": "https://api.github.com/repos/tris203/neovim/git/trees{/sha}",
-            "updated_at": "2026-05-21T15:36:52Z",
+            "updated_at": "2026-07-07T20:59:30Z",
             "url": "https://api.github.com/repos/tris203/neovim",
             "visibility": "public",
             "watchers": 0,
@@ -667,6 +739,15 @@
     "issue_url": "https://api.github.com/repos/neovim/neovim/issues/39592",
     "labels": [
         {
+            "color": "FBCA04",
+            "default": false,
+            "description": "Waiting for reply, will auto-close after 30 days.",
+            "id": 248229439,
+            "name": "needs:response",
+            "node_id": "MDU6TGFiZWwyNDgyMjk0Mzk=",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/needs:response"
+        },
+        {
             "color": "c5def5",
             "default": false,
             "description": null,
@@ -686,7 +767,7 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "42354ce24186654cc92e36754475e02e0fbfb3cb",
+    "merge_commit_sha": null,
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM7YFRW9",
@@ -699,7 +780,7 @@
     "state": "open",
     "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/35bf6a08cf8eeba4c4b66be6f1e4599f470bc304",
     "title": "feat(lsp): support textDocumentContent",
-    "updated_at": "2026-05-30T16:35:28Z",
+    "updated_at": "2026-07-20T23:31:39Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/39592",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/18444302?v=4",

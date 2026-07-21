@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6967,
-            "forks_count": 6967,
+            "forks": 6978,
+            "forks_count": 6978,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -95,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1884,
-            "open_issues_count": 1884,
+            "open_issues": 1882,
+            "open_issues_count": 1882,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -121,11 +121,11 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2026-07-14T01:26:08Z",
+            "pushed_at": "2026-07-21T04:10:13Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 389484,
+            "size": 390332,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 101118,
+            "stargazers_count": 101270,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -143,11 +143,11 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2026-07-14T03:43:13Z",
+            "updated_at": "2026-07-21T04:11:08Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 101118,
-            "watchers_count": 101118,
+            "watchers": 101270,
+            "watchers_count": 101270,
             "web_commit_signoff_required": false
         },
         "sha": "0f1e0a79006f4b758f448606918597e6b213eb5d",
@@ -174,7 +174,7 @@
         }
     },
     "body": "## Problem\r\n\r\nThe ui2 ruler no longer is a (left-aligned) box of fixed width, but the remnants of ui1 still unnecessarily constrain the ruler to a maximum width. This width is configured by reusing the item group syntax in an inconsistent way, which causes a number of surprising edge-cases. The inconsistencies have become more apparent when the C implementation of the statusline was replaced with a default expression in 0.12, since it reuses the ruler as an expression instead of pre-rendered. And also, because the fixed width, which was configured in the `minwid` position, is now a de-facto maximum width. Furthermore, `v:echospace` is still set according to the old rules.\r\n\r\n## Solution\r\n\r\nRemove arbitrary constraints and process item groups in `rulerformat` the same as in all the other statusline-style options. The current fallback ruler expression in the default `statusline` (`%-14.(%l,%c%V%)\\ %P`) now actually works for `rulerformat` itself, even with different `minwid` values and both with or without the period.\r\n\r\nDeprecate `v:echospace`, since it's main purpose was to avoid \"Press ENTER\" prompts, which ui2 was designed to get rid of, and it would add undue complexity to ui2 to keep supporting it.\r\n\r\n~Make ui2 itself responsible of setting `v:echospace` according to its layout of the last line. It must be updated whenever the ruler changes in size, e.g. when `rulerformat=%l` and the cursor moves from line 9 to line 10.\r\nThere are edge-cases with a flexible ruler when the command that evaluates `v:echospace` changes the ruler width.~\r\n\r\n~I couldn't find any internal state that could simply be exposed as `v:echospace`. In particular, `messages.cmd.last_col` is related, but different: as far as I can tell, it tracks the current space allocated for a currently displayed message, which can fluctuate e.g. when search count or `showcmd` (dis)appear. But this is uninteresting for the purposes of `v:echospace`, which tracks the space available for newly appearing messages, and those write over any search count and are delayed until `showcmd` disappears again (this is another departure from ui1, where space is reserved for `showcmd` outside of `v:echospace`). I documented my current understanding of the cropping behaviour in the form of unit tests, except for an `echo` inside a multi-line/control-flow command, which I found difficult to test.~\r\n\r\nI don't know if the breaking changes need mentioning in vim_diff.txt and/or news.txt, since ui2 is still experimental/unstable but was already mentioned as a new feature in news-0.12.txt.\r\nThe breaking changes from ui1 to ui2 are more interesting than those between beta versions of ui2, but they will probably be announced collectively when ui2 replaces ui1. Is news-breaking-dev the place to collect those?\r\n\r\nFix #40247",
-    "closed_at": null,
+    "closed_at": "2026-07-15T12:13:37Z",
     "comment_data": [
         {
             "_links": {
@@ -593,6 +593,145 @@
                 "url": "https://api.github.com/users/epithet",
                 "user_view_type": "public"
             }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/40621#discussion_r3587172087"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/40621"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3587172087"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "ai claims there may be an overflow potential here. repro use \"±\" (which is 2 bytes)\n\n```\n:set fillchars=stl:±\n:set statusline=%-1500000000(x%)\n```\n\n`added_bytes = 1.5e9*2` wraps negative",
+            "commit_id": "5e5cd87aa6a63d2cc38426c2f44e43662717abe0",
+            "created_at": "2026-07-15T12:23:07Z",
+            "diff_hunk": "@@ -1459,9 +1467,8 @@ int build_stl_str_hl(win_T *wp, char *out, size_t outlen, char *fmt, OptIndex op\n       }\n     }\n \n-    // Bound the minimum width at 50.\n     // Make the number negative to denote left alignment of the item\n-    minwid = (minwid > 50 ? 50 : minwid) * (left_align ? -1 : 1);\n+    minwid *= left_align ? -1 : 1;",
+            "html_url": "https://github.com/neovim/neovim/pull/40621#discussion_r3587172087",
+            "id": 3587172087,
+            "line": 1471,
+            "node_id": "PRRC_kwDOAPphoM7Vz-b3",
+            "original_commit_id": "5e5cd87aa6a63d2cc38426c2f44e43662717abe0",
+            "original_line": 1471,
+            "original_position": 35,
+            "original_start_line": null,
+            "path": "src/nvim/statusline.c",
+            "position": 35,
+            "pull_request_review_id": 4704000469,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/40621",
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3587172087/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-07-15T12:23:07Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3587172087",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/40621#discussion_r3587197771"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/40621"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3587197771"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "I'll fix it.",
+            "commit_id": "5e5cd87aa6a63d2cc38426c2f44e43662717abe0",
+            "created_at": "2026-07-15T12:27:04Z",
+            "diff_hunk": "@@ -1459,9 +1467,8 @@ int build_stl_str_hl(win_T *wp, char *out, size_t outlen, char *fmt, OptIndex op\n       }\n     }\n \n-    // Bound the minimum width at 50.\n     // Make the number negative to denote left alignment of the item\n-    minwid = (minwid > 50 ? 50 : minwid) * (left_align ? -1 : 1);\n+    minwid *= left_align ? -1 : 1;",
+            "html_url": "https://github.com/neovim/neovim/pull/40621#discussion_r3587197771",
+            "id": 3587197771,
+            "in_reply_to_id": 3587172087,
+            "line": 1471,
+            "node_id": "PRRC_kwDOAPphoM7V0EtL",
+            "original_commit_id": "5e5cd87aa6a63d2cc38426c2f44e43662717abe0",
+            "original_line": 1471,
+            "original_position": 35,
+            "original_start_line": null,
+            "path": "src/nvim/statusline.c",
+            "position": 35,
+            "pull_request_review_id": 4704028073,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/40621",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3587197771/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-07-15T12:27:04Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3587197771",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/9403243?v=4",
+                "events_url": "https://api.github.com/users/epithet/events{/privacy}",
+                "followers_url": "https://api.github.com/users/epithet/followers",
+                "following_url": "https://api.github.com/users/epithet/following{/other_user}",
+                "gists_url": "https://api.github.com/users/epithet/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/epithet",
+                "id": 9403243,
+                "login": "epithet",
+                "node_id": "MDQ6VXNlcjk0MDMyNDM=",
+                "organizations_url": "https://api.github.com/users/epithet/orgs",
+                "received_events_url": "https://api.github.com/users/epithet/received_events",
+                "repos_url": "https://api.github.com/users/epithet/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/epithet/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/epithet/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/epithet",
+                "user_view_type": "public"
+            }
         }
     ],
     "comment_regular_data": [
@@ -969,9 +1108,9 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/epithet/neovim/pulls{/number}",
-            "pushed_at": "2026-07-11T16:45:00Z",
+            "pushed_at": "2026-07-19T15:03:52Z",
             "releases_url": "https://api.github.com/repos/epithet/neovim/releases{/id}",
-            "size": 373230,
+            "size": 374676,
             "ssh_url": "git@github.com:epithet/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/epithet/neovim/stargazers",
@@ -983,7 +1122,7 @@
             "teams_url": "https://api.github.com/repos/epithet/neovim/teams",
             "topics": [],
             "trees_url": "https://api.github.com/repos/epithet/neovim/git/trees{/sha}",
-            "updated_at": "2026-07-06T20:40:40Z",
+            "updated_at": "2026-07-19T14:41:03Z",
             "url": "https://api.github.com/repos/epithet/neovim",
             "visibility": "public",
             "watchers": 0,
@@ -1028,8 +1167,8 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "3479b3f7d78210ec12ef27dfee4c7915e6590ecd",
-    "merged_at": null,
+    "merge_commit_sha": "31ad7d45274bb7b79e0cbc6a67fc69a80bb28c89",
+    "merged_at": "2026-07-15T12:13:37Z",
     "milestone": null,
     "node_id": "PR_kwDOAPphoM7ujmoF",
     "number": 40621,
@@ -1038,10 +1177,10 @@
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/40621/comments",
-    "state": "open",
+    "state": "closed",
     "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/5e5cd87aa6a63d2cc38426c2f44e43662717abe0",
     "title": "fix(ui2)!: fix some legacy 'ruler' inconsistencies",
-    "updated_at": "2026-07-11T16:48:03Z",
+    "updated_at": "2026-07-15T12:27:04Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/40621",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/9403243?v=4",

@@ -4,8 +4,28 @@
     "assignees": [],
     "author_association": "NONE",
     "body": "### Problem\n\nWhen using `:argdelete {pattern}` to remove an argument from the `arglist`, the \"argument list pointer\" (i.e. `:echo argidx()`) is not correctly updated, leaving `argidx` potentially invalid (particularly if we deleted the last argument in the `arglist`), and affecting further commands that mutate the `arglist` that are working from a now-broken invariant about the `argidx`.\n\nFrom my testing, it seems to always seems to be off by exactly one, e.g. if the `arglist` has 5 elements, the `argidx` is 5 (the 6th index with 0-based indexing).\n\nI also noticed that the range variant, `:[range]argdelete` (e.g. `:3argd`) seems to work correctly (from limited testing), so perhaps this bug just affects the pattern-based `:argdelete` command\n\n### Steps to reproduce\n\n`nvim --clean a b c` -- Open neovim with files `a`, `b`, and `c` as the arguments\n`:3argument` -- Switch to 3rd argument which is `c`\n`:args` -- Outputs `a   b   [c]`\n`:echo argidx()` -- Outputs `2` (the 3rd index in 0-based indexing). This is correct so far.\n\n`:argdelete %` -- Delete file `c`\n`:args` -- Outputs `a b`. **Notice that neither argument is marked selected with square brackets**\n`:echo argidx()` -- Outputs `2` still, which is an **invalid index** for 0-based indexing\n\n`:argument` -- Outputs error \"E165: Cannot go beyond last file\"\n\n`:argedit c` -- Attempt to add `c` again and edit it\n`:args`-- Outputs `a b c`. **Notice that c is NOT selected with square brackets, despite us just calling `:argedit c`**\n`:echo argidx()` -- Outputs `3` (the 4th index in 0-based indexing), proving that the value incremented, but it's **not a valid index**\n\n`:argument` -- Outputs error \"E165: Cannot go beyond last file\"\n\n`:argdelete b`\n`:argdelete a`\n`:args` -- Outputs `c`. Again notice the lack of square brackets.\n`:echo argidx()` -- Outputs `1`, proving that the value decremented for each delete of `a` and `b`, but it's still an **invalid index** for 0-based indexing.\n\n`:argument` -- Outputs error \"E163: There is only one file to edit\"\n\n`:1argument` -- MANUALLY FIX THE BROKEN INDEX\n\n`:args` -- Outputs `[c]` which is correct now\n`:echo argidx()` -- Outputs `0`, which is correct now\n`:argument` -- Works now\n\n### Expected behavior\n\nI expect the argument list pointer (argidx) to always be a valid index (except when the arglist is empty, where `0` is perhaps a reasonable value).\n\nHowever, I also expect that `:argdelete` continues to ensure that `argidx` remains pointed at the exact same file in the arglist when it's NOT the file that was just removed (i.e. not just any random valid index). Note: This invariant seems to already be working, but should remain working following a bug fix.\n\n- Example 1: If my `arglist` is `a a [b] c` with `b` as the currently pointed at argument, and I run `:argd a`, then I expect `:args` to show `[b] c` with `b` still as the currently pointed at argument. [In this scenario, **argidx decrements by 2**]\n- Example 2: If my `arglist` is `a a [b] c` with `b` as the currently pointed at argument, and I run `:argd c`, then I expect `:args` to show `a a [b]` with `b` still as the currently pointed at argument. [In this scenario, **argidx does not change**]\n\n### Nvim version (nvim -v)\n\nNVIM v0.12.3, Build type: Release, LuaJIT 2.1.1774638290\n\n### Vim (not Nvim) behaves the same?\n\nNot sure, I don't have it installed on the computer I'm writing this Issue on\n\n### Operating system/version\n\nWindows 11 or OpenSUSE Leap 16\n\n### Terminal name/version\n\nWindows Terminal (Windows) or Konsole (OpenSUSE)\n\n### $TERM environment variable\n\nxterm-256color\n\n### Installation\n\nwinget package manager (Windows) or built-from-source (OpenSUSE)",
-    "closed_at": null,
-    "closed_by": null,
+    "closed_at": "2026-07-20T23:01:53Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+        "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+        "followers_url": "https://api.github.com/users/zeertzjq/followers",
+        "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+        "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/zeertzjq",
+        "id": 35768171,
+        "login": "zeertzjq",
+        "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+        "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+        "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+        "repos_url": "https://api.github.com/users/zeertzjq/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/zeertzjq",
+        "user_view_type": "public"
+    },
     "comment_data": [],
     "comments": 0,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/40564/comments",
@@ -22,6 +42,15 @@
     "issue_field_values": [],
     "labels": [
         {
+            "color": "0E8A16",
+            "default": false,
+            "description": "Issue is fixed in Vim, patch needs to be ported.",
+            "id": 152276149,
+            "name": "has:vim-patch",
+            "node_id": "MDU6TGFiZWwxNTIyNzYxNDk=",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/has:vim-patch"
+        },
+        {
             "color": "F9D0C4",
             "default": false,
             "description": "wrong behavior inherited from vim",
@@ -29,15 +58,6 @@
             "name": "bug-vim",
             "node_id": "MDU6TGFiZWwxNTQzMTA0OTI=",
             "url": "https://api.github.com/repos/neovim/neovim/labels/bug-vim"
-        },
-        {
-            "color": "FBCA04",
-            "default": false,
-            "description": "Upstream issue that must be fixed in Vim first.",
-            "id": 2639399975,
-            "name": "needs:vim-patch",
-            "node_id": "MDU6TGFiZWwyNjM5Mzk5OTc1",
-            "url": "https://api.github.com/repos/neovim/neovim/labels/needs:vim-patch"
         }
     ],
     "labels_url": "https://api.github.com/repos/neovim/neovim/issues/40564/labels{/name}",
@@ -60,8 +80,8 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/40564/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "sub_issues_summary": {
         "completed": 0,
         "percent_completed": 0,
@@ -79,7 +99,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyr",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2026-07-03T23:57:02Z",
+    "updated_at": "2026-07-20T23:01:53Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/40564",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/116997361?v=4",

@@ -4,8 +4,28 @@
     "assignees": [],
     "author_association": "NONE",
     "body": "## Problem\n\n`fnamemodify(path, ':p')` can crashes with `SIGABRT` if it is called from a fast-context, **and** it receives a path in the form of `~non-existent-user`.\nThis is because `~user` expansion falls bask to a shell call which re-enters the event loop and triggers an `abort()` guard.\n\nI encountered this issue while debugging an issue in snacks.nvim. After finding the root cause I discovered that someone already encountered the same issue in folke/snacks.nvim#2507 .\n\nBacktrace (lldb, macOS arm64, `nvim` from Homebrew — note the nested `loop_poll_events` at frames #3 and #31, i.e. the abort is a re-entry of the poll already running at #31):\n\n```\n* thread #1, queue = 'com.apple.main-thread', stop reason = signal SIGABRT\n  * frame #0:  libsystem_kernel.dylib`__pthread_kill + 8\n    frame #1:  libsystem_pthread.dylib`pthread_kill + 296\n    frame #2:  libsystem_c.dylib`abort + 148\n    frame #3:  nvim`loop_poll_events + 156\n    frame #4:  nvim`proc_wait + 216\n    frame #5:  nvim`do_os_system + 1256\n    frame #6:  nvim`os_call_shell + 240\n    frame #7:  nvim`call_shell + 252\n    frame #8:  nvim`os_expand_wildcards + 1676\n    frame #9:  nvim`expand_wildcards + 40\n    frame #10: nvim`expand_wildcards_eval + 248\n    frame #11: nvim`ExpandFromContext + 724\n    frame #12: nvim`ExpandOne + 544\n    frame #13: nvim`expand_env_esc + 1348\n    frame #14: nvim`gen_expand_wildcards + 780\n    frame #15: nvim`expand_wildcards + 40\n    frame #16: nvim`expand_wildcards_eval + 248\n    frame #17: nvim`ExpandFromContext + 724\n    frame #18: nvim`ExpandOne + 544\n    frame #19: nvim`expand_env_esc + 1348\n    frame #20: nvim`modify_fname + 236\n    frame #21: nvim`f_fnamemodify + 144\n    frame #22: nvim`call_internal_func + 140\n    frame #23: nvim`call_func + 1700\n    frame #24: nvim`nlua_call + 676\n    frame #25: libluajit-5.1.2.dylib`___lldb_unnamed_symbol_2fd8 + 44\n    frame #26: libluajit-5.1.2.dylib`lua_pcall + 152\n    frame #27: nvim`nlua_pcall + 132\n    frame #28: nvim`nlua_fast_cfpcall + 100\n    frame #29: libuv.1.dylib`uv__run_timers + 152\n    frame #30: libuv.1.dylib`uv_run + 576\n    frame #31: nvim`loop_poll_events + 84\n    frame #32: nvim`nlua_wait + 676\n    frame #33: libluajit-5.1.2.dylib`___lldb_unnamed_symbol_2fd8 + 44\n    frame #34: libluajit-5.1.2.dylib`lua_pcall + 152\n    frame #35: nvim`nlua_pcall + 132\n    frame #36: nvim`nlua_exec_file + 252\n    frame #37: nvim`execute_cmd0 + 244\n    frame #38: nvim`do_cmdline + 7856\n    frame #39: nvim`main + 10396\n    frame #40: dyld`start + 6992\n```\n\n### Steps to reproduce\n\n```\nnvim --clean -u NONE --headless \\\n  -c 'lua local t=(vim.uv or vim.loop).new_timer(); t:start(0,0,function() vim.fn.fnamemodify(\"~nonexistentuser/\", \":p\") end); vim.wait(500)' \\\n  -c 'qa'\necho $?   # -> 134 (SIGABRT)\n```\n\n### Expected behavior\n\n`fnamemodify(..., ':p')` on a `~user` path should not crash Neovim, and should be safe to call from a libuv callback / fast-event context (or at least return an error if it is not supported).\n\n### Nvim version (nvim -v)\n\nNVIM v0.12.4\nBuild type: Release\nLuaJIT 2.1.1783773675\n\n### Vim (not Nvim) behaves the same?\n\nN/A — Vim has no libuv event loop / fast-event context.\n\n### Operating system/version\n\nmacOS (Darwin 26.5.2), arm64\n\n### Terminal name/version\n\nghostty\n\n### $TERM environment variable\n\nxterm-ghostty\n\n### How did you install Neovim?\n\nhomebrew",
-    "closed_at": null,
-    "closed_by": null,
+    "closed_at": "2026-07-17T18:21:31Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+        "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+        "followers_url": "https://api.github.com/users/justinmk/followers",
+        "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+        "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/justinmk",
+        "id": 1359421,
+        "login": "justinmk",
+        "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+        "organizations_url": "https://api.github.com/users/justinmk/orgs",
+        "received_events_url": "https://api.github.com/users/justinmk/received_events",
+        "repos_url": "https://api.github.com/users/justinmk/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -345,8 +365,8 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 864,
-        "created_at": "2014-05-10T20:43:04Z",
+        "closed_issues": 123,
+        "created_at": "2025-02-01T14:58:39Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
             "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
@@ -368,18 +388,18 @@
             "url": "https://api.github.com/users/justinmk",
             "user_view_type": "public"
         },
-        "description": "Low priority items. We plan to work on this but don't have a target date.",
+        "description": "",
         "due_on": null,
-        "html_url": "https://github.com/neovim/neovim/milestone/6",
-        "id": 655037,
-        "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
-        "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
-        "number": 6,
-        "open_issues": 667,
+        "html_url": "https://github.com/neovim/neovim/milestone/48",
+        "id": 12251313,
+        "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/48/labels",
+        "node_id": "MI_kwDOAPphoM4AuvCx",
+        "number": 48,
+        "open_issues": 71,
         "state": "open",
-        "title": "backlog",
-        "updated_at": "2026-07-13T18:55:58Z",
-        "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
+        "title": "0.13",
+        "updated_at": "2026-07-20T11:03:25Z",
+        "url": "https://api.github.com/repos/neovim/neovim/milestones/48"
     },
     "node_id": "I_kwDOAPphoM8AAAABIiczGg",
     "number": 40707,
@@ -398,8 +418,8 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/40707/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "sub_issues_summary": {
         "completed": 0,
         "percent_completed": 0,
@@ -417,7 +437,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyv",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2026-07-12T23:11:26Z",
+    "updated_at": "2026-07-17T18:21:38Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/40707",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/48057913?v=4",

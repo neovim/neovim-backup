@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/40214"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/d76feec114c0087ebefdc0d901673c96755067d8"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/e9923da3ff961144e4cc8208abdaa87057c90756"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6967,
-            "forks_count": 6967,
+            "forks": 6978,
+            "forks_count": 6978,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -95,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1884,
-            "open_issues_count": 1884,
+            "open_issues": 1882,
+            "open_issues_count": 1882,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -121,11 +121,11 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2026-07-14T01:26:08Z",
+            "pushed_at": "2026-07-21T04:10:13Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 389484,
+            "size": 390332,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 101118,
+            "stargazers_count": 101270,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -143,14 +143,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2026-07-14T03:43:13Z",
+            "updated_at": "2026-07-21T04:11:08Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 101118,
-            "watchers_count": 101118,
+            "watchers": 101270,
+            "watchers_count": 101270,
             "web_commit_signoff_required": false
         },
-        "sha": "4d736cd41feb863274ccc73cf9e10407bdddd913",
+        "sha": "12e8db38471eacd12da28d42103d67619ea9af0f",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -173,8 +173,8 @@
             "user_view_type": "public"
         }
     },
-    "body": null,
-    "closed_at": null,
+    "body": "Close #40119\r\nClose #40630\r\nClose #40660\r\nClose #40681\r\nClose #40744\r\nClose #40784\r\n",
+    "closed_at": "2026-07-18T08:29:51Z",
     "comment_data": [
         {
             "_links": {
@@ -328,19 +328,19 @@
             },
             "author_association": "MEMBER",
             "body": "`nvim_chan_send`?",
-            "commit_id": "d76feec114c0087ebefdc0d901673c96755067d8",
+            "commit_id": "54240dea05dca7dee867bebc46e39c589dddfaf2",
             "created_at": "2026-06-21T00:16:15Z",
             "diff_hunk": "@@ -1113,42 +1113,71 @@ Buffer nvim_create_buf(Boolean listed, Boolean scratch, Error *err)\n   return ret;\n }\n \n-/// Open a terminal instance in a buffer\n+/// Opens a terminal (libvterm) in `buf` and return its channel id.\n ///\n-/// By default (and currently the only option) the terminal will not be\n-/// connected to an external process. Instead, input sent on the channel\n-/// will be echoed directly by the terminal. This is useful to display\n-/// ANSI terminal sequences returned as part of an RPC message, or similar.\n+/// The terminal is not connected to an external process (may change in the future). Input sent on\n+/// the channel is processed by the terminal and echoed to `buf`. This is useful to display ANSI\n+/// terminal sequences returned as part of an RPC message, or similar. [terminal-concepts]\n ///\n-/// Note: |:ls| reports the buffer as \"R\" (running) until the channel is closed. |chanclose()|\n+/// The terminal processes two byte streams in opposite directions:\n ///\n-/// Note: To initialize the terminal size, display the buffer in a window first. E.g. for a floating display,\n+/// 1. INTO the terminal: bytes a child process would write to its stdout (terminal escape\n+///    sequences, text, etc.). Push these in via |nvim_chan_send()|. The terminal parses them and\n+///    renders to `buf`.\n+/// 2. OUT of the terminal: bytes the child would read from its stdin. Receive these via the\n+///    `on_input` callback. Includes:\n+///    - Keypresses in terminal mode (sent raw as they would be to the pty master end: CR is sent as\n+///      \"\\r\", not \"\\n\").\n+///    - Responses the terminal synthesizes when it parses a query (e.g. DA1 `\\e[c`, OSC color\n+///      queries) from the bytes you pushed via |nvim_chan_send()|.\n+///\n+/// Example: To connect the terminal to a child process, pair it with |jobstart()| (this is what\n+/// `:terminal` and `jobstart({term=true})` do internally):\n+///\n+/// ```lua\n+/// local chan\n+/// local job\n+/// chan = vim.api.nvim_open_term(buf, {\n+///   on_input = function(_, _, _, data)\n+///     -- Forward the terminal's output to the child's stdin.\n+///     vim.fn.chansend(job, data)",
             "html_url": "https://github.com/neovim/neovim/pull/40214#discussion_r3447693258",
             "id": 3447693258,
-            "line": 1137,
+            "line": null,
             "node_id": "PRRC_kwDOAPphoM7Nf5_K",
             "original_commit_id": "8fa0596a8c93761ab8ae6ea3a3f77b5b321d96c1",
             "original_line": 1143,
             "original_position": 38,
             "original_start_line": null,
             "path": "src/nvim/api/vim.c",
-            "position": 56,
+            "position": 1,
             "pull_request_review_id": 4538996499,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/40214",
             "reactions": {
@@ -382,6 +382,564 @@
                 "url": "https://api.github.com/users/zeertzjq",
                 "user_view_type": "public"
             }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/40214#discussion_r3598037383"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/40214"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3598037383"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "@barrettruth i moved this to the end since it's a big strange to introduce a plugin with \"how to replace it\" :) also renamed the tag to `dir-disable` since that aligns with existing tags.",
+            "commit_id": "e9923da3ff961144e4cc8208abdaa87057c90756",
+            "created_at": "2026-07-16T18:39:03Z",
+            "diff_hunk": "@@ -100,6 +78,29 @@ after use: >vim\n <\n Use \"wipe\" to discard all buffer state; see 'bufhidden'.\n \n+\n+Replacing the directory browser                                  *dir-disable*",
+            "html_url": "https://github.com/neovim/neovim/pull/40214#discussion_r3598037383",
+            "id": 3598037383,
+            "line": 82,
+            "node_id": "PRRC_kwDOAPphoM7WdbGH",
+            "original_commit_id": "47b6f9e8269e390d5c684cf9d53701ec222454ab",
+            "original_line": 82,
+            "original_position": 34,
+            "original_start_line": null,
+            "path": "runtime/doc/plugins.txt",
+            "position": 34,
+            "pull_request_review_id": 4716676943,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/40214",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3598037383/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-07-16T18:39:03Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3598037383",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/40214#discussion_r3598700160"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/40214"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3598700160"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "yeah i thought this was odd I think I followed the structure of some other builtin... thanks. should have some more autonomy on stuff like this... ",
+            "commit_id": "e9923da3ff961144e4cc8208abdaa87057c90756",
+            "created_at": "2026-07-16T20:27:40Z",
+            "diff_hunk": "@@ -100,6 +78,29 @@ after use: >vim\n <\n Use \"wipe\" to discard all buffer state; see 'bufhidden'.\n \n+\n+Replacing the directory browser                                  *dir-disable*",
+            "html_url": "https://github.com/neovim/neovim/pull/40214#discussion_r3598700160",
+            "id": 3598700160,
+            "in_reply_to_id": 3598037383,
+            "line": 82,
+            "node_id": "PRRC_kwDOAPphoM7Wf86A",
+            "original_commit_id": "47b6f9e8269e390d5c684cf9d53701ec222454ab",
+            "original_line": 82,
+            "original_position": 34,
+            "original_start_line": null,
+            "path": "runtime/doc/plugins.txt",
+            "position": 34,
+            "pull_request_review_id": 4717429111,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/40214",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3598700160/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-07-16T20:27:40Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3598700160",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/62671086?v=4",
+                "events_url": "https://api.github.com/users/barrettruth/events{/privacy}",
+                "followers_url": "https://api.github.com/users/barrettruth/followers",
+                "following_url": "https://api.github.com/users/barrettruth/following{/other_user}",
+                "gists_url": "https://api.github.com/users/barrettruth/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/barrettruth",
+                "id": 62671086,
+                "login": "barrettruth",
+                "node_id": "MDQ6VXNlcjYyNjcxMDg2",
+                "organizations_url": "https://api.github.com/users/barrettruth/orgs",
+                "received_events_url": "https://api.github.com/users/barrettruth/received_events",
+                "repos_url": "https://api.github.com/users/barrettruth/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/barrettruth/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/barrettruth/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/barrettruth",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/40214#discussion_r3607266015"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/40214"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3607266015"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "@zeertzjq @janlazo this might be too aggressive, but I think it's the direction we should go for future Vim patches. There are probably a bunch of relevant patches from Vim 9.0/9.1 . But for Vim 9.2+ I think we should plan to reject most of their patches.\n\nIf you have major concerns we can adjust this in a followup.",
+            "commit_id": "2cc4f31edb701d3b3b20bbd8adf5c30dead4f8b4",
+            "created_at": "2026-07-18T01:34:44Z",
+            "diff_hunk": "@@ -82,73 +82,44 @@ a commit message in the following format:\n where `<version-or-commit>` is a valid Vim version (like `8.0.0123`) or\n commit-id (SHA). Each patch is on a separate line.\n \n-It is preferred to include NA patches by squashing it in applicable Vim\n-patches, especially if the Vim patches are related. First line of the commit\n-message should be from the applicable Vim patch.\n->\n-    ./scripts/vim-patch -p <na-patch>\n-    ./scripts/vim-patch -p <na-patch>\n-    ...\n-    ./scripts/vim-patch -P <patch>\n-    git rebase -i master\n-<\n-Example:\n-https://github.com/neovim/neovim/commit/00f60c2ce78fc1280e93d5a36bc7b2267d5f4ac6\n+Example: https://github.com/neovim/neovim/commit/00f60c2ce78fc1280e93d5a36bc7b2267d5f4ac6\n+\n+------------------------------------------------------------------------------\n+HOW TO DECIDE IF A VIM-PATCH IS WANTED\n+\n+Legacy Vim is becoming much less relevant to Nvim: we expect to decline the\n+majority of their patches. Thus this is an \"allow-list\" instead of\n+a \"deny-list\". Generally, only modules explicitly noted in the \"OWNED BY VIM\"\n+list below, are in-scope; everything else should be marked \"N/A\".\n+\n+MODULES OWNED BY VIM\n+\n+- quickfix\n+- regex\n+- runtime files\n+\n+Everything else is owned by Nvim. Most of Vim's \"bug fixes\" for e.g.",
+            "html_url": "https://github.com/neovim/neovim/pull/40214#discussion_r3607266015",
+            "id": 3607266015,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7XAoLf",
+            "original_commit_id": "54b5232584187238337fe0d6d9a6361104489fd6",
+            "original_line": 101,
+            "original_position": 92,
+            "original_start_line": 95,
+            "path": "runtime/doc/dev_vimpatch.txt",
+            "position": 1,
+            "pull_request_review_id": 4727307468,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/40214",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3607266015/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-07-18T01:34:44Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3607266015",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/40214#discussion_r3607293799"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/40214"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3607293799"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "When has Nvim redesigned buffer/window behavior?",
+            "commit_id": "2cc4f31edb701d3b3b20bbd8adf5c30dead4f8b4",
+            "created_at": "2026-07-18T01:46:36Z",
+            "diff_hunk": "@@ -82,73 +82,44 @@ a commit message in the following format:\n where `<version-or-commit>` is a valid Vim version (like `8.0.0123`) or\n commit-id (SHA). Each patch is on a separate line.\n \n-It is preferred to include NA patches by squashing it in applicable Vim\n-patches, especially if the Vim patches are related. First line of the commit\n-message should be from the applicable Vim patch.\n->\n-    ./scripts/vim-patch -p <na-patch>\n-    ./scripts/vim-patch -p <na-patch>\n-    ...\n-    ./scripts/vim-patch -P <patch>\n-    git rebase -i master\n-<\n-Example:\n-https://github.com/neovim/neovim/commit/00f60c2ce78fc1280e93d5a36bc7b2267d5f4ac6\n+Example: https://github.com/neovim/neovim/commit/00f60c2ce78fc1280e93d5a36bc7b2267d5f4ac6\n+\n+------------------------------------------------------------------------------\n+HOW TO DECIDE IF A VIM-PATCH IS WANTED\n+\n+Legacy Vim is becoming much less relevant to Nvim: we expect to decline the\n+majority of their patches. Thus this is an \"allow-list\" instead of\n+a \"deny-list\". Generally, only modules explicitly noted in the \"OWNED BY VIM\"\n+list below, are in-scope; everything else should be marked \"N/A\".\n+\n+MODULES OWNED BY VIM\n+\n+- quickfix\n+- regex\n+- runtime files\n+\n+Everything else is owned by Nvim. Most of Vim's \"bug fixes\" for e.g.",
+            "html_url": "https://github.com/neovim/neovim/pull/40214#discussion_r3607293799",
+            "id": 3607293799,
+            "in_reply_to_id": 3607266015,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7XAu9n",
+            "original_commit_id": "54b5232584187238337fe0d6d9a6361104489fd6",
+            "original_line": 101,
+            "original_position": 92,
+            "original_start_line": 95,
+            "path": "runtime/doc/dev_vimpatch.txt",
+            "position": 1,
+            "pull_request_review_id": 4727334061,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/40214",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3607293799/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-07-18T01:46:37Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3607293799",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+                "followers_url": "https://api.github.com/users/zeertzjq/followers",
+                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/zeertzjq",
+                "id": 35768171,
+                "login": "zeertzjq",
+                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+                "repos_url": "https://api.github.com/users/zeertzjq/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/40214#discussion_r3607849262"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/40214"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3607849262"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "I'm not sure if the policy is too aggressive, but I do think the reasoning below is too offensive.",
+            "commit_id": "2cc4f31edb701d3b3b20bbd8adf5c30dead4f8b4",
+            "created_at": "2026-07-18T07:06:46Z",
+            "diff_hunk": "@@ -82,73 +82,44 @@ a commit message in the following format:\n where `<version-or-commit>` is a valid Vim version (like `8.0.0123`) or\n commit-id (SHA). Each patch is on a separate line.\n \n-It is preferred to include NA patches by squashing it in applicable Vim\n-patches, especially if the Vim patches are related. First line of the commit\n-message should be from the applicable Vim patch.\n->\n-    ./scripts/vim-patch -p <na-patch>\n-    ./scripts/vim-patch -p <na-patch>\n-    ...\n-    ./scripts/vim-patch -P <patch>\n-    git rebase -i master\n-<\n-Example:\n-https://github.com/neovim/neovim/commit/00f60c2ce78fc1280e93d5a36bc7b2267d5f4ac6\n+Example: https://github.com/neovim/neovim/commit/00f60c2ce78fc1280e93d5a36bc7b2267d5f4ac6\n+\n+------------------------------------------------------------------------------\n+HOW TO DECIDE IF A VIM-PATCH IS WANTED\n+\n+Legacy Vim is becoming much less relevant to Nvim: we expect to decline the\n+majority of their patches. Thus this is an \"allow-list\" instead of\n+a \"deny-list\". Generally, only modules explicitly noted in the \"OWNED BY VIM\"\n+list below, are in-scope; everything else should be marked \"N/A\".\n+\n+MODULES OWNED BY VIM\n+\n+- quickfix\n+- regex\n+- runtime files\n+\n+Everything else is owned by Nvim. Most of Vim's \"bug fixes\" for e.g.",
+            "html_url": "https://github.com/neovim/neovim/pull/40214#discussion_r3607849262",
+            "id": 3607849262,
+            "in_reply_to_id": 3607266015,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7XC2ku",
+            "original_commit_id": "54b5232584187238337fe0d6d9a6361104489fd6",
+            "original_line": 101,
+            "original_position": 92,
+            "original_start_line": 95,
+            "path": "runtime/doc/dev_vimpatch.txt",
+            "position": 1,
+            "pull_request_review_id": 4727971806,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/40214",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3607849262/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-07-18T07:06:47Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3607849262",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+                "followers_url": "https://api.github.com/users/zeertzjq/followers",
+                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/zeertzjq",
+                "id": 35768171,
+                "login": "zeertzjq",
+                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+                "repos_url": "https://api.github.com/users/zeertzjq/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/40214#discussion_r3607974754"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/40214"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3607974754"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "I dropped the \"reasoning\" sentence.\r\n\r\n> When has Nvim redesigned buffer/window behavior?\r\n\r\nNot a redesign yet, but floatwin and cmdwin are very different. And we should consider simplifying how buffer deletion is handled, since it's a source of endless bugs.",
+            "commit_id": "2cc4f31edb701d3b3b20bbd8adf5c30dead4f8b4",
+            "created_at": "2026-07-18T08:14:09Z",
+            "diff_hunk": "@@ -82,73 +82,44 @@ a commit message in the following format:\n where `<version-or-commit>` is a valid Vim version (like `8.0.0123`) or\n commit-id (SHA). Each patch is on a separate line.\n \n-It is preferred to include NA patches by squashing it in applicable Vim\n-patches, especially if the Vim patches are related. First line of the commit\n-message should be from the applicable Vim patch.\n->\n-    ./scripts/vim-patch -p <na-patch>\n-    ./scripts/vim-patch -p <na-patch>\n-    ...\n-    ./scripts/vim-patch -P <patch>\n-    git rebase -i master\n-<\n-Example:\n-https://github.com/neovim/neovim/commit/00f60c2ce78fc1280e93d5a36bc7b2267d5f4ac6\n+Example: https://github.com/neovim/neovim/commit/00f60c2ce78fc1280e93d5a36bc7b2267d5f4ac6\n+\n+------------------------------------------------------------------------------\n+HOW TO DECIDE IF A VIM-PATCH IS WANTED\n+\n+Legacy Vim is becoming much less relevant to Nvim: we expect to decline the\n+majority of their patches. Thus this is an \"allow-list\" instead of\n+a \"deny-list\". Generally, only modules explicitly noted in the \"OWNED BY VIM\"\n+list below, are in-scope; everything else should be marked \"N/A\".\n+\n+MODULES OWNED BY VIM\n+\n+- quickfix\n+- regex\n+- runtime files\n+\n+Everything else is owned by Nvim. Most of Vim's \"bug fixes\" for e.g.",
+            "html_url": "https://github.com/neovim/neovim/pull/40214#discussion_r3607974754",
+            "id": 3607974754,
+            "in_reply_to_id": 3607266015,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7XDVNi",
+            "original_commit_id": "54b5232584187238337fe0d6d9a6361104489fd6",
+            "original_line": 101,
+            "original_position": 92,
+            "original_start_line": 95,
+            "path": "runtime/doc/dev_vimpatch.txt",
+            "position": 1,
+            "pull_request_review_id": 4728120159,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/40214",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3607974754/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-07-18T08:14:09Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3607974754",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/40214#discussion_r3609253930"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/40214"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3609253930"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Unless the next release is 1.0, it's too early to take this stance because of the grey area between  \"owned\" and \"unwanted\" for the remaining patches even if the scope is restricted to v9.2+ or \"new features/behavior\" that are  contrary to Neovim's goals.\r\n\r\nFocus on the updated criteria for what makes a patch \"relevant\" because tooling can demonstrate/explain this criteria.\r\n\r\n----\r\n\r\nIdea:\r\n\r\nYou've brought up moving code from vim-patch.sh to vimpatch.lua but ... we could go further by moving in `runtime/lua/` and moving the \"low-level\" details to that lua module so that `:h dev-vimpatch` can be \"high-level\" instead.",
+            "commit_id": "2cc4f31edb701d3b3b20bbd8adf5c30dead4f8b4",
+            "created_at": "2026-07-18T21:47:46Z",
+            "diff_hunk": "@@ -82,73 +82,44 @@ a commit message in the following format:\n where `<version-or-commit>` is a valid Vim version (like `8.0.0123`) or\n commit-id (SHA). Each patch is on a separate line.\n \n-It is preferred to include NA patches by squashing it in applicable Vim\n-patches, especially if the Vim patches are related. First line of the commit\n-message should be from the applicable Vim patch.\n->\n-    ./scripts/vim-patch -p <na-patch>\n-    ./scripts/vim-patch -p <na-patch>\n-    ...\n-    ./scripts/vim-patch -P <patch>\n-    git rebase -i master\n-<\n-Example:\n-https://github.com/neovim/neovim/commit/00f60c2ce78fc1280e93d5a36bc7b2267d5f4ac6\n+Example: https://github.com/neovim/neovim/commit/00f60c2ce78fc1280e93d5a36bc7b2267d5f4ac6\n+\n+------------------------------------------------------------------------------\n+HOW TO DECIDE IF A VIM-PATCH IS WANTED\n+\n+Legacy Vim is becoming much less relevant to Nvim: we expect to decline the\n+majority of their patches. Thus this is an \"allow-list\" instead of\n+a \"deny-list\". Generally, only modules explicitly noted in the \"OWNED BY VIM\"\n+list below, are in-scope; everything else should be marked \"N/A\".\n+\n+MODULES OWNED BY VIM\n+\n+- quickfix\n+- regex\n+- runtime files\n+\n+Everything else is owned by Nvim. Most of Vim's \"bug fixes\" for e.g.",
+            "html_url": "https://github.com/neovim/neovim/pull/40214#discussion_r3609253930",
+            "id": 3609253930,
+            "in_reply_to_id": 3607266015,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7XINgq",
+            "original_commit_id": "54b5232584187238337fe0d6d9a6361104489fd6",
+            "original_line": 101,
+            "original_position": 92,
+            "original_start_line": 95,
+            "path": "runtime/doc/dev_vimpatch.txt",
+            "position": 1,
+            "pull_request_review_id": 4729353848,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/40214",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3609253930/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-07-18T21:47:46Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3609253930",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/8740057?v=4",
+                "events_url": "https://api.github.com/users/janlazo/events{/privacy}",
+                "followers_url": "https://api.github.com/users/janlazo/followers",
+                "following_url": "https://api.github.com/users/janlazo/following{/other_user}",
+                "gists_url": "https://api.github.com/users/janlazo/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/janlazo",
+                "id": 8740057,
+                "login": "janlazo",
+                "node_id": "MDQ6VXNlcjg3NDAwNTc=",
+                "organizations_url": "https://api.github.com/users/janlazo/orgs",
+                "received_events_url": "https://api.github.com/users/janlazo/received_events",
+                "repos_url": "https://api.github.com/users/janlazo/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/janlazo/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/janlazo/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/janlazo",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/40214#discussion_r3610389203"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/40214"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3610389203"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "> You've brought up moving code from vim-patch.sh to vimpatch.lua but ... we could go further by moving in `runtime/lua/` and moving the \"low-level\" details to that lua module so that `:h dev-vimpatch` can be \"high-level\" instead.\r\n\r\nthe \"further\" step 2 is not blocked by step 1 (moving the logic to lua), right?\r\n\r\nanyways, the function-name-based ignore-list is hugely helpful so I agree that might be a good enough mitigation for now.",
+            "commit_id": "2cc4f31edb701d3b3b20bbd8adf5c30dead4f8b4",
+            "created_at": "2026-07-19T10:39:29Z",
+            "diff_hunk": "@@ -82,73 +82,44 @@ a commit message in the following format:\n where `<version-or-commit>` is a valid Vim version (like `8.0.0123`) or\n commit-id (SHA). Each patch is on a separate line.\n \n-It is preferred to include NA patches by squashing it in applicable Vim\n-patches, especially if the Vim patches are related. First line of the commit\n-message should be from the applicable Vim patch.\n->\n-    ./scripts/vim-patch -p <na-patch>\n-    ./scripts/vim-patch -p <na-patch>\n-    ...\n-    ./scripts/vim-patch -P <patch>\n-    git rebase -i master\n-<\n-Example:\n-https://github.com/neovim/neovim/commit/00f60c2ce78fc1280e93d5a36bc7b2267d5f4ac6\n+Example: https://github.com/neovim/neovim/commit/00f60c2ce78fc1280e93d5a36bc7b2267d5f4ac6\n+\n+------------------------------------------------------------------------------\n+HOW TO DECIDE IF A VIM-PATCH IS WANTED\n+\n+Legacy Vim is becoming much less relevant to Nvim: we expect to decline the\n+majority of their patches. Thus this is an \"allow-list\" instead of\n+a \"deny-list\". Generally, only modules explicitly noted in the \"OWNED BY VIM\"\n+list below, are in-scope; everything else should be marked \"N/A\".\n+\n+MODULES OWNED BY VIM\n+\n+- quickfix\n+- regex\n+- runtime files\n+\n+Everything else is owned by Nvim. Most of Vim's \"bug fixes\" for e.g.",
+            "html_url": "https://github.com/neovim/neovim/pull/40214#discussion_r3610389203",
+            "id": 3610389203,
+            "in_reply_to_id": 3607266015,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7XMirT",
+            "original_commit_id": "54b5232584187238337fe0d6d9a6361104489fd6",
+            "original_line": 101,
+            "original_position": 92,
+            "original_start_line": 95,
+            "path": "runtime/doc/dev_vimpatch.txt",
+            "position": 1,
+            "pull_request_review_id": 4730601449,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/40214",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3610389203/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-07-19T10:39:29Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3610389203",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
         }
     ],
     "comment_regular_data": [],
@@ -389,7 +947,7 @@
     "commits_url": "https://api.github.com/repos/neovim/neovim/pulls/40214/commits",
     "created_at": "2026-06-12T23:01:02Z",
     "diff_url": "https://github.com/neovim/neovim/pull/40214.diff",
-    "draft": true,
+    "draft": false,
     "head": {
         "label": "justinmk:doc2",
         "ref": "doc2",
@@ -481,9 +1039,9 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/justinmk/neovim/pulls{/number}",
-            "pushed_at": "2026-07-13T21:57:16Z",
+            "pushed_at": "2026-07-20T19:37:32Z",
             "releases_url": "https://api.github.com/repos/justinmk/neovim/releases{/id}",
-            "size": 374774,
+            "size": 375910,
             "ssh_url": "git@github.com:justinmk/neovim.git",
             "stargazers_count": 2,
             "stargazers_url": "https://api.github.com/repos/justinmk/neovim/stargazers",
@@ -495,14 +1053,14 @@
             "teams_url": "https://api.github.com/repos/justinmk/neovim/teams",
             "topics": [],
             "trees_url": "https://api.github.com/repos/justinmk/neovim/git/trees{/sha}",
-            "updated_at": "2026-04-15T12:00:25Z",
+            "updated_at": "2026-07-17T19:21:49Z",
             "url": "https://api.github.com/repos/justinmk/neovim",
             "visibility": "public",
             "watchers": 2,
             "watchers_count": 2,
             "web_commit_signoff_required": false
         },
-        "sha": "d76feec114c0087ebefdc0d901673c96755067d8",
+        "sha": "e9923da3ff961144e4cc8208abdaa87057c90756",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
             "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
@@ -530,8 +1088,8 @@
     "issue_url": "https://api.github.com/repos/neovim/neovim/issues/40214",
     "labels": [],
     "locked": false,
-    "merge_commit_sha": "be6acaca9995c5a7ed198b13818c8cdfaef72c74",
-    "merged_at": null,
+    "merge_commit_sha": "446b9d8c5589f931a71904cd5bf384fec56ebf2b",
+    "merged_at": "2026-07-18T08:29:51Z",
     "milestone": null,
     "node_id": "PR_kwDOAPphoM7l9Np2",
     "number": 40214,
@@ -540,10 +1098,10 @@
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/40214/comments",
-    "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/d76feec114c0087ebefdc0d901673c96755067d8",
-    "title": "docs: nvim_open_term, terminal jobs, misc",
-    "updated_at": "2026-07-13T18:58:27Z",
+    "state": "closed",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/e9923da3ff961144e4cc8208abdaa87057c90756",
+    "title": "docs: misc, remove some old help tags",
+    "updated_at": "2026-07-19T10:39:29Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/40214",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",

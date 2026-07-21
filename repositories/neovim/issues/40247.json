@@ -4,8 +4,28 @@
     "assignees": [],
     "author_association": "CONTRIBUTOR",
     "body": "### Problem\n\nThe de-facto rules of the ruler and its integration into the statusline are a bit hacky and not well documented.\n\n### Original vim behavior\n\nThe default ruler width is 17 cells. When `rulerformat` is set, this width can be configured by wrapping the format string with the item group syntax with `minwid` set. This syntax is confusing and problematic because it looks like an item group, but means something different. The `rulerformat` expression can have wildly different effects when reused in the `statusline`.\n\n<details>\n<summary>I found 7 inconsistencies so far</summary>\n\n- the configured ruler width appears in the `minwid` position of the leading group spec, but it's actually more like a maximum width, because the ruler will truncate its contents instead of expanding, and can even shrink because it's bound by half the screen width\n- `minwid` of a real item group is capped to 50 cells, whereas the ruler is not\n- item groups can have a `maxwid` set after a `.` in the group spec, but as soon as there's a `.` in the ruler's leading group spec, it is treated as a normal item group and the ruler width is no longer configured (e.g. `ruf=%15(%l%=%P%)` and `ruf=%15.(%l%=%P%)` have entirely different effects, even though they mean the same thing in the statusline)\n- when setting the ruler width according to the leading group spec, it's not verified that the group introduced by that group opener actually wraps the whole rulerformat; e.g. `ruf=%-14(%l,%c%V%)\\ %P` would set the ruler width to 14 instead of the clearly intended 18 (it would be less confusing to leave the default 17)\n- item groups are right-aligned by default, but the ruler is left-align like the statusline, which is why a `-` in the ruler's leading group spec is ignored; e.g. `ruf=%-15(%l%=%P%)` and `ruf=%15(%l%=%P%)` have the same effect\n- the ruler allows for `%=` separators, whether the ruler width is configured or not, but item groups don't support this; e.g. `ruf=%15(%l%=%P%)` and `stl=%15(%l%=%P%)` behave differently\n- the ruler has a 1-cell safety margin on the right, but when the ruler is incorporated into the default statusline, it is directly at the screen edge and the width is increased by 1 cell to compensate, i.e. 18 cells by default (this one is no longer the case in 0.12 with ui2, except in the case of the quickfix list, which doesn't seem to use the `rulerformat`)\n\n</details>\n\n### Changes in Neovim 0.12\n\nThe changes from #33036 now force the user to find a `rulerformat` expression that works in both contexts, which can be hard due to all of the inconsistencies (cf. #39984), or to adapt `statusline` without reusing the expression.\n\n### Changes with ui2\n\nWhen ui2 is disabled, the ruler is fixed-width, left-aligned, and 1 cell away from the screen border.\nWhen ui2 is enabled, the ruler is flexible-width, right-aligned, and directly at the screen border.\nI know it's still beta, but I like these changes and hope the old quirks will not be reimplemented in the new UI.\nThis makes it already easier to define a `rulerformat` that works the same in both places, but the ruler is still constrained by `ru_wid`, which is still set in the old way.\n\n\n### Expected behavior\n\nWhenever ui2 is enabled:\n- skip the special-case treatment of the ruler's leading group spec, process it like a normal item group\n- don't constrain the ruler by `ru_wid`/`ru_col`, keep only the limit to half the screen width\n- increase the default width in the ruler's C implementation to 18 (it will still be used when `ruf` is unset, but won't have the safety cell on the right because of ui2)\n\nThis takes advantage of the already breaking changes in ui2, the code will be easier to understand and maintain once ui2 has replaced the old UI and the legacy code is removed, and I think it would also make it easier to replace the ruler's C implementation with a default expression in the spirit of #33036, if that's ever planned; for the user, the ruler configuration is easier to understand and behaves essentially the same in the ruler position and when incorporated right-aligned in the statusline (e.g. `stl=%f%=%{%&ruf%}`). Exceptions: different size limits (half screen width vs. depending on other items in `stl`) and a `%=` might expand to a different number of fillchars.\n\nBreaking changes I can think of (on top of the ones already introduced by 0.12 and ui2):\n- the maximum size of a fixed-width ruler will be 50 cells (but this limit could just be removed from the item group code)\n- if the user used to set the ruler's fixed width, it will now be treated as minimum width, which is a better default in my opinion, won't affect users who tuned the width so that the ruler is never truncated, and can in any case be changed back by additionally setting `maxwid`\n- if `rulerformat` contained a `%=` without enclosing item group, it will expand to fill half the screen width, which is probably too much and will have to be constrained by an item group with `maxwid` set, in which case the `%=` stops working; but this can be solved by increasing the capabilities of item groups #39984, and in any case, since 0.12, the genie is out of the bottle already, because even if `laststatus=1`, as soon as a split is open, the configured rulerformat by default reappears in a statusline, where it also expands too much\n\nI volunteer to create a PR if something like this is accepted.",
-    "closed_at": null,
-    "closed_by": null,
+    "closed_at": "2026-07-15T12:13:38Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+        "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+        "followers_url": "https://api.github.com/users/justinmk/followers",
+        "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+        "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/justinmk",
+        "id": 1359421,
+        "login": "justinmk",
+        "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+        "organizations_url": "https://api.github.com/users/justinmk/orgs",
+        "received_events_url": "https://api.github.com/users/justinmk/received_events",
+        "repos_url": "https://api.github.com/users/justinmk/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -157,8 +177,8 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 862,
-        "created_at": "2014-05-10T20:43:04Z",
+        "closed_issues": 123,
+        "created_at": "2025-02-01T14:58:39Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
             "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
@@ -180,18 +200,18 @@
             "url": "https://api.github.com/users/justinmk",
             "user_view_type": "public"
         },
-        "description": "Low priority items. We plan to work on this but don't have a target date.",
+        "description": "",
         "due_on": null,
-        "html_url": "https://github.com/neovim/neovim/milestone/6",
-        "id": 655037,
-        "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
-        "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
-        "number": 6,
-        "open_issues": 668,
+        "html_url": "https://github.com/neovim/neovim/milestone/48",
+        "id": 12251313,
+        "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/48/labels",
+        "node_id": "MI_kwDOAPphoM4AuvCx",
+        "number": 48,
+        "open_issues": 71,
         "state": "open",
-        "title": "backlog",
-        "updated_at": "2026-07-06T15:42:38Z",
-        "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
+        "title": "0.13",
+        "updated_at": "2026-07-20T11:03:25Z",
+        "url": "https://api.github.com/repos/neovim/neovim/milestones/48"
     },
     "node_id": "I_kwDOAPphoM8AAAABFce6Tg",
     "number": 40247,
@@ -210,8 +230,8 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/40247/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "sub_issues_summary": {
         "completed": 0,
         "percent_completed": 0,
@@ -229,7 +249,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyv",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2026-06-27T11:36:41Z",
+    "updated_at": "2026-07-15T12:13:38Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/40247",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/9403243?v=4",

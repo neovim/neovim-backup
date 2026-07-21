@@ -530,7 +530,7 @@
         },
         {
             "author_association": "NONE",
-            "body": "> That seems like more evidence that [this approach](https://github.com/neovim/neovim/issues/23645#issuecomment-1576850696) is the most sane. Then the only \"messy part\" is (1) getting the line from the shell, and (2) updating/overwriting it. The ctrl-u approach is the \"dumb\" solution, and can always be replaced with a smart solution later. No other magic or hacks are needed, just show a normal buffer in a floatwin, then some keymap \"submits\" it.\n\nI attempted this read/write API + floating window approach. \nhttps://github.com/kalomak/termio.nvim (has demo videos)\n\nThe editor is pretty complex but the API is simple and can be hooked up to a very minimal window.\n\nIt currently has some major issues like:\n```zsh\n>> ls<tab>\nls            lsappinfo     lsbom         lskq          lsm           lsmp          lsof          lstmeval      lstmtraining  lsvfs\n```\nThese completions are included when `read()` is called, there is no way to differentiate them (without regex at least) from the actual user typed command.  This should be solvable, VSCode handles this by setting up custom markers (if I understood correctly) [here](https://github.com/microsoft/vscode/blob/621079ff563d3d38b7c167b3d74425c629d0584f/src/vs/workbench/contrib/terminal/common/scripts/shellIntegration-bash.sh#L351-L377).\n\nSo a lot remains to be done but I think this is already an improvement over the standard terminal experience.",
+            "body": "> That seems like more evidence that [this approach](https://github.com/neovim/neovim/issues/23645#issuecomment-1576850696) is the most sane. Then the only \"messy part\" is (1) getting the line from the shell, and (2) updating/overwriting it. The ctrl-u approach is the \"dumb\" solution, and can always be replaced with a smart solution later. No other magic or hacks are needed, just show a normal buffer in a floatwin, then some keymap \"submits\" it.\n\nI attempted this read/write API + floating window approach. \nhttps://github.com/kalomak/termio.nvim (has demo videos)\n\nThe editor is pretty complex but the API is simple and can be hooked up to a very minimal window.\n\nIt currently has some major issues like:\n```zsh\n>> ls<tab>\nls            lsappinfo     lsbom         lskq          lsm           lsmp          lsof          lstmeval      lstmtraining  lsvfs\n```\nThese completions are included when `read()` is called, there is no way to differentiate them (without regex at least) from the actual user typed command.  This should be solvable, VSCode handles this by setting up custom markers (if I understood correctly) [here](https://github.com/microsoft/vscode/blob/621079ff563d3d38b7c167b3d74425c629d0584f/src/vs/workbench/contrib/terminal/common/scripts/shellIntegration-bash.sh#L351-L377). \n\n> EDIT: the plugin now clears completions before reading via shell integration.\n\nSo a lot remains to be done but I think this is already an improvement over the standard terminal experience.",
             "created_at": "2026-06-05T15:34:59Z",
             "html_url": "https://github.com/neovim/neovim/issues/23645#issuecomment-4633130642",
             "id": 4633130642,
@@ -544,14 +544,14 @@
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
-                "heart": 1,
+                "heart": 2,
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 1,
+                "total_count": 2,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4633130642/reactions"
             },
-            "updated_at": "2026-06-30T08:43:59Z",
+            "updated_at": "2026-07-20T11:10:26Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4633130642",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/31903287?v=4",
@@ -668,9 +668,56 @@
                 "url": "https://api.github.com/users/kalomak",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "NONE",
+            "body": "Update on the read / write API  + floatwin approach:\n\nTLDR: There are ways to make this work in most cases but afaik not in all cases.\n\nIt is pretty straightforward to create a clean and fast read / write integration with a command-line editor, like zle for zsh, readline for bash. This can be achieved e.g. via a named pipe. However, this will only work with the particular process it is set up for, so e.g. activating a REPL or sshing will break this connection. This would be the most native feeling, but most narrow solution.\n\nAnother slightly less clean way is to use OSC markers, which neovim already supports, to infer where the command starts and reading from the terminal buffer. This is dependent on the user having set up OSC markers correctly. Most [terminal emulators do this for your shell](https://github.com/ghostty-org/ghostty/blob/main/src/shell-integration/zsh/ghostty-integration) by default, but most REPLs do not. This also runs into some problems like parsing what part of the terminal buffer is the command and what is a suggestion / completion, which is surprisingly hard. \n\nThere is a way that is not dependent on shell integration or markers:\n- send C-e (goes to command end)\n- mark cursor position as command end (needed to ignore completions and suggestions)\n- read + cache terminal buffer content\n- send C-u (clears the command) or C-a if clearing the command here is not desired\n- mark cursor position as command start\n- set the text between command start and end to the floatwin\n\nThis seems to work in all shells and REPLs I have tried UNLESS a 'vi mode' is enabled in the shell editor. Also [only around 300 LOC](https://github.com/kalomak/termio.nvim/blob/e11767af44581c70ead3342affc0312eee58ff50/lua/termio/init.lua). But, even this fails in some cases, for example if the command is larger than the terminal window.\n\nWrite is easy with all approaches. `nvim_chan_send` with bracketed paste is fast and reliable. '\\r' at the end submits.\n\nIf the API works it is also relatively easy to extend the floatwin approach to making the terminal buffer command area itself editable. It is already possible to modify the terminal buffer independent of the terminal state and it does not seem to cause issues.  Then the command part of the desynced terminal buffer could be treated the same way as the floatwin editor. \n\nIf you are interested, you can try prototypes for these with [termio](https://github.com/kalomak/termio.nvim) (or just check demo videos):\n- `overlay` floatwin on top of the command\n- `centered` centered floatwin\n- `integrated` editable terminal buffer, hacky\n\nThese rely on manually sourcing a shell integration script and OSC markers. README tells how,`:checkhealth termio` checks if you have them set up.",
+            "created_at": "2026-07-16T11:54:46Z",
+            "html_url": "https://github.com/neovim/neovim/issues/23645#issuecomment-4991511513",
+            "id": 4991511513,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/23645",
+            "minimized": null,
+            "node_id": "IC_kwDOAPphoM8AAAABKYRr2Q",
+            "performed_via_github_app": null,
+            "pin": null,
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4991511513/reactions"
+            },
+            "updated_at": "2026-07-16T12:17:21Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4991511513",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/31903287?v=4",
+                "events_url": "https://api.github.com/users/kalomak/events{/privacy}",
+                "followers_url": "https://api.github.com/users/kalomak/followers",
+                "following_url": "https://api.github.com/users/kalomak/following{/other_user}",
+                "gists_url": "https://api.github.com/users/kalomak/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/kalomak",
+                "id": 31903287,
+                "login": "kalomak",
+                "node_id": "MDQ6VXNlcjMxOTAzMjg3",
+                "organizations_url": "https://api.github.com/users/kalomak/orgs",
+                "received_events_url": "https://api.github.com/users/kalomak/received_events",
+                "repos_url": "https://api.github.com/users/kalomak/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/kalomak/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/kalomak/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/kalomak",
+                "user_view_type": "public"
+            }
         }
     ],
-    "comments": 14,
+    "comments": 15,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/23645/comments",
     "created_at": "2023-05-16T01:08:49Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/23645/events",
@@ -733,7 +780,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyv",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2026-06-30T08:43:59Z",
+    "updated_at": "2026-07-20T11:10:26Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/23645",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/24964845?v=4",
