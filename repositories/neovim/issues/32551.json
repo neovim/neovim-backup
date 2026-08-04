@@ -4,8 +4,28 @@
     "assignees": [],
     "author_association": "CONTRIBUTOR",
     "body": "### Problem\n\nOn a 32-bit system, when I open a new buffer or I switch to a buffer, which triggers a treesitter folds update, I get this backtrace:\n\n```\nError executing vim.schedule lua callback: .../.neovim/share/nvim/runtime/lua/vim/treesitter/_fold.lua:257: invalid bot\nstack traceback:\n\t[C]: in function '_foldupdate'\n\t.../.neovim/share/nvim/runtime/lua/vim/treesitter/_fold.lua:257: in function 'do_foldupdate'\n\t.../.neovim/share/nvim/runtime/lua/vim/treesitter/_fold.lua:239: in function 'foldupdate'\n\t.../.neovim/share/nvim/runtime/lua/vim/treesitter/_fold.lua:311: in function 'callback'\n\t.../.neovim/share/nvim/runtime/lua/vim/treesitter/_fold.lua:193: in function 'cb'\n\t...m/share/nvim/runtime/lua/vim/treesitter/languagetree.lua:474: in function '_run_async_callbacks'\n\t...m/share/nvim/runtime/lua/vim/treesitter/languagetree.lua:530: in function 'parse'\n\t.../.neovim/share/nvim/runtime/lua/vim/treesitter/_fold.lua:90: in function 'compute_folds_levels'\n\t.../.neovim/share/nvim/runtime/lua/vim/treesitter/_fold.lua:308: in function 'fn'\n\t.../.neovim/share/nvim/runtime/lua/vim/treesitter/_fold.lua:275: in function <.../.neovim/share/nvim/runtime/lua/vim/treesitter/_fold.lua:271>\n```\n\nThe error is caused by the fact that `vim._foldupdate` is called with `erow=-1`\n\nI traced the issue to https://github.com/neovim/neovim/blob/55b165ac15a7528a3c679d928b1edf9d701f850b/runtime/lua/vim/treesitter/_fold.lua#L294-L299 where `erow` is extracted from `change`. According to the comments there, if the parser doesn't provide any explicit ranges, treesitter will return a range with `erow` and `ecol` set to a value of `UINT32_MAX`.\n\nBut on 32-bit platforms, `UINT32_MAX` cannot be represented as a positive integer and becomes `-1`, which is what `UINT32_MAX` maps to when converted to a signed 32-bit integer.\n\nAs a quick fix I changed the logic there to account for `-1` as a possible value and treat it the same as `UINT32_MAX`:\n\n```diff\n--- _fold.lua.orig\t2025-02-21 07:13:01.000000000 +0200\n+++ _fold.lua\t2025-02-21 07:27:23.000000000 +0200\n@@ -296,7 +296,7 @@\n       -- return a range with end_row and end_bytes with a value of UINT32_MAX,\n       -- so clip end_row to the max buffer line.\n       -- TODO(lewis6991): Handle this generally\n-      if erow > max_erow then\n+      if erow > max_erow or erow < 0 then\n         erow = max_erow\n       elseif ecol > 0 then\n         erow = erow + 1\n```\n\nThis gets rid of the error, but it's just a quick fix that's also probably incomplete because it doesn't handle `ecol` being `-1`, mostly because I do not understand what `ecol` does there and why it increments `erow` when positive.\n\nAlso the fix is just addressing the symptoms and just in this particular place, because I think every other place that receives `UINT32_MAX` from C will see `-1` instead of `4294967295`. At least in theory returning `INT32_MAX` instead should fix this for every place that expects the largest possible integer value, but it could also have unintended and unforeseen consequences. \n\n\n### Steps to reproduce\n\nI do not know how to reproduce this with `nvim --clean`. The problem appears because I'm running with plugins that set `vim.opt.foldmethod = \"expr\"` and trigger a foldupdate when loading a buffer. Without `foldmethod=expr`, the `vim._foldupdate` function is not called, so it doesn't see `erow=-1`.\n\nHopefully the analysis I provided above in the bug description is enough to pinpoint the problem.\n\n### Expected behavior\n\nI would expect no stacktrace.\n\n### Nvim version (nvim -v)\n\nNVIM v0.11.0-dev-1796+g 08f7c22377\n\n### Vim (not Nvim) behaves the same?\n\ndon't know. not using vim\n\n### Operating system/version\n\nDebian unstable\n\n### Terminal name/version\n\nalacritty 0.16.0-dev\n\n### $TERM environment variable\n\nalacritty\n\n### Installation\n\ncompiled from git",
-    "closed_at": null,
-    "closed_by": null,
+    "closed_at": "2026-07-28T09:00:32Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/2361214?v=4",
+        "events_url": "https://api.github.com/users/clason/events{/privacy}",
+        "followers_url": "https://api.github.com/users/clason/followers",
+        "following_url": "https://api.github.com/users/clason/following{/other_user}",
+        "gists_url": "https://api.github.com/users/clason/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/clason",
+        "id": 2361214,
+        "login": "clason",
+        "node_id": "MDQ6VXNlcjIzNjEyMTQ=",
+        "organizations_url": "https://api.github.com/users/clason/orgs",
+        "received_events_url": "https://api.github.com/users/clason/received_events",
+        "repos_url": "https://api.github.com/users/clason/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/clason/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/clason/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/clason",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -14,8 +34,10 @@
             "html_url": "https://github.com/neovim/neovim/issues/32551#issuecomment-2674248142",
             "id": 2674248142,
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/32551",
+            "minimized": null,
             "node_id": "IC_kwDOAPphoM6fZcnO",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -59,8 +81,10 @@
             "html_url": "https://github.com/neovim/neovim/issues/32551#issuecomment-2676135003",
             "id": 2676135003,
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/32551",
+            "minimized": null,
             "node_id": "IC_kwDOAPphoM6fgpRb",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -104,8 +128,10 @@
             "html_url": "https://github.com/neovim/neovim/issues/32551#issuecomment-2676929501",
             "id": 2676929501,
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/32551",
+            "minimized": null,
             "node_id": "IC_kwDOAPphoM6fjrPd",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -149,10 +175,12 @@
             "html_url": "https://github.com/neovim/neovim/issues/32551#issuecomment-3765141360",
             "id": 3765141360,
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/32551",
+            "minimized": null,
             "node_id": "IC_kwDOAPphoM7ga39w",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
-                "+1": 0,
+                "+1": 1,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -160,7 +188,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 0,
+                "total_count": 1,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/3765141360/reactions"
             },
             "updated_at": "2026-01-18T10:22:32Z",
@@ -200,6 +228,7 @@
         "total_blocked_by": 0,
         "total_blocking": 0
     },
+    "issue_field_values": [],
     "labels": [
         {
             "color": "BFDADC",
@@ -233,8 +262,8 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 769,
-        "created_at": "2014-05-10T20:43:04Z",
+        "closed_issues": 22,
+        "created_at": "2026-07-05T11:58:52Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
             "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
@@ -256,22 +285,23 @@
             "url": "https://api.github.com/users/justinmk",
             "user_view_type": "public"
         },
-        "description": "Low priority items. We plan to work on this but don't have a target date.",
-        "due_on": null,
-        "html_url": "https://github.com/neovim/neovim/milestone/6",
-        "id": 655037,
-        "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
-        "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
-        "number": 6,
-        "open_issues": 639,
+        "description": "",
+        "due_on": "2026-08-01T00:00:00Z",
+        "html_url": "https://github.com/neovim/neovim/milestone/60",
+        "id": 16667379,
+        "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/60/labels",
+        "node_id": "MI_kwDOAPphoM4A_lLz",
+        "number": 60,
+        "open_issues": 13,
         "state": "open",
-        "title": "backlog",
-        "updated_at": "2026-01-17T23:56:52Z",
-        "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
+        "title": "0.12.5",
+        "updated_at": "2026-08-03T23:43:10Z",
+        "url": "https://api.github.com/repos/neovim/neovim/milestones/60"
     },
     "node_id": "I_kwDOAPphoM6q8_uf",
     "number": 32551,
     "performed_via_github_app": null,
+    "pinned_comment": null,
     "reactions": {
         "+1": 0,
         "-1": 0,
@@ -285,8 +315,8 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/32551/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "sub_issues_summary": {
         "completed": 0,
         "percent_completed": 0,
@@ -304,7 +334,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyr",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2026-01-18T10:22:32Z",
+    "updated_at": "2026-07-28T10:03:33Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/32551",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/4569572?v=4",

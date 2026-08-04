@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/40387"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/afefc693c89c7013e4c8dd61018be2ee0a0ae54b"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/f4426d52e4b692edb8256655c8291c1dbcb829b9"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 6989,
-            "forks_count": 6989,
+            "forks": 7006,
+            "forks_count": 7006,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -95,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1888,
-            "open_issues_count": 1888,
+            "open_issues": 1894,
+            "open_issues_count": 1894,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -121,11 +121,11 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2026-07-28T04:08:29Z",
+            "pushed_at": "2026-08-04T04:09:13Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 391717,
+            "size": 392783,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 101375,
+            "stargazers_count": 101556,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -143,14 +143,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2026-07-28T02:41:31Z",
+            "updated_at": "2026-08-04T04:02:32Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 101375,
-            "watchers_count": 101375,
+            "watchers": 101556,
+            "watchers_count": 101556,
             "web_commit_signoff_required": false
         },
-        "sha": "7f8175dc48f9fbceb2d89f0646f03e2e18f9debb",
+        "sha": "d060d91ef8aa2febbc8f1186b12eadab58ae4ec0",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -175,7 +175,284 @@
     },
     "body": "Fix #39394\r\n\r\n### Problem\r\n\r\n`:cabbrev` replaces abbreviations anywhere in the cmdline, causing unwanted expansions when the abbreviated word appears as an argument rather than a command:\r\n\r\n```vim\r\n:cabbrev x y\r\n:cmd x    \" expands to :cmd y - unwanted\r\n```\r\n\r\n### Solution\r\n\r\nIntroduce a fourth abbreviation type identified by a `:` prefix on the LHS:\r\n\r\n```vim\r\n:cabbrev :man :Man\r\n```\r\n\r\n`:` prefix abbreviations only expand when the word appears at command position, which is either the start of the cmdline or after a `|`. Regular abbreviations are unchanged.\r\n\r\nTwo fields are added to `mapblock_T`: `is_cmd_abbr` and `cmdidx`. `map_add` strips the `:` prefix, resolves `cmdidx` via `find_ex_command`, and sets `is_cmd_abbr`. `check_abbr` matches `:` prefix abbreviations by `cmdidx` at command position rather than by string comparison.\r\n\r\nHandles `[range]` and standard cmdline modifiers:\r\n\r\n`:cabbrev :grep :& grep`\r\n- `:gr` to `:& grep`\r\n- `:1,2gr` to `:& 1,2grep`\r\n- `:echo gr | 1,2gr` to `:echo gr | & 1,2grep`\r\n- `:!gr` to `:& !gr`",
     "closed_at": null,
-    "comment_data": [],
+    "comment_data": [
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/40387#discussion_r3680456963"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/40387"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3680456963"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "Why ALL_CAPS?",
+            "commit_id": "f4426d52e4b692edb8256655c8291c1dbcb829b9",
+            "created_at": "2026-07-30T06:21:54Z",
+            "diff_hunk": "@@ -1600,6 +1729,33 @@ bool check_abbr(int c, char *ptr, int col, int mincol)\n       char *s;\n       if (expr) {\n         s = eval_map_expr(mp, c);\n+      } else if (has_modifier) {\n+        char *M_STR = mp->m_str + 1;",
+            "html_url": "https://github.com/neovim/neovim/pull/40387#discussion_r3680456963",
+            "id": 3680456963,
+            "line": 1733,
+            "node_id": "PRRC_kwDOAPphoM7bX1ED",
+            "original_commit_id": "b9dad8d03c0cf0f378c2c09cb2f27de1b0ededdc",
+            "original_line": 1733,
+            "original_position": 228,
+            "original_start_line": null,
+            "path": "src/nvim/mapping.c",
+            "position": 228,
+            "pull_request_review_id": 4815914633,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/40387",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3680456963/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-07-30T06:21:54Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3680456963",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/35768171?v=4",
+                "events_url": "https://api.github.com/users/zeertzjq/events{/privacy}",
+                "followers_url": "https://api.github.com/users/zeertzjq/followers",
+                "following_url": "https://api.github.com/users/zeertzjq/following{/other_user}",
+                "gists_url": "https://api.github.com/users/zeertzjq/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/zeertzjq",
+                "id": 35768171,
+                "login": "zeertzjq",
+                "node_id": "MDQ6VXNlcjM1NzY4MTcx",
+                "organizations_url": "https://api.github.com/users/zeertzjq/orgs",
+                "received_events_url": "https://api.github.com/users/zeertzjq/received_events",
+                "repos_url": "https://api.github.com/users/zeertzjq/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/zeertzjq/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/zeertzjq/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/zeertzjq",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/40387#discussion_r3680897049"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/40387"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3680897049"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "\"cmd\" can mean normal commands so let's say \"cmdline\", esp bc this is about interactive cmdline.\n\n```suggestion\n  bool cmdline_abbr;        ///< if this abbr is for cmdline\n```",
+            "commit_id": "f4426d52e4b692edb8256655c8291c1dbcb829b9",
+            "created_at": "2026-07-30T07:40:15Z",
+            "diff_hunk": "@@ -27,4 +28,6 @@ struct mapblock {\n   sctx_T m_script_ctx;      ///< SCTX where map was defined\n   char *m_desc;             ///< description of mapping\n   bool m_replace_keycodes;  ///< replace keycodes in result of expression\n+  bool is_cmd_abbr;         ///< if this abbr is for cmdline",
+            "html_url": "https://github.com/neovim/neovim/pull/40387#discussion_r3680897049",
+            "id": 3680897049,
+            "line": 31,
+            "node_id": "PRRC_kwDOAPphoM7bZggZ",
+            "original_commit_id": "b9dad8d03c0cf0f378c2c09cb2f27de1b0ededdc",
+            "original_line": 31,
+            "original_position": 12,
+            "original_start_line": null,
+            "path": "src/nvim/mapping_defs.h",
+            "position": 12,
+            "pull_request_review_id": 4816492517,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/40387",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3680897049/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-07-30T07:41:18Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3680897049",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/40387#discussion_r3680910634"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/40387"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3680910634"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "this is not how we document parameters",
+            "commit_id": "f4426d52e4b692edb8256655c8291c1dbcb829b9",
+            "created_at": "2026-07-30T07:42:52Z",
+            "diff_hunk": "@@ -1451,6 +1466,55 @@ int ExpandMappings(char *pat, regmatch_T *regmatch, int *numMatches, char ***mat\n   return count == 0 ? FAIL : OK;\n }\n \n+// p - character we're on\n+// ptr - full cmdline",
+            "html_url": "https://github.com/neovim/neovim/pull/40387#discussion_r3680910634",
+            "id": 3680910634,
+            "line": 1470,
+            "node_id": "PRRC_kwDOAPphoM7bZj0q",
+            "original_commit_id": "b9dad8d03c0cf0f378c2c09cb2f27de1b0ededdc",
+            "original_line": 1470,
+            "original_position": 54,
+            "original_start_line": 1469,
+            "path": "src/nvim/mapping.c",
+            "position": 54,
+            "pull_request_review_id": 4816509216,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/40387",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3680910634/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 1469,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-07-30T07:42:52Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3680910634",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/40387#discussion_r3680926918"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/40387"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3680926918"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "if this is only for the cmdline-abbreviation, then we don't need `is_cmd_abbr`, right?\n```suggestion\n  cmdidx_T abbr_rhs;       ///< RHS for cmdline abbrev.\n```",
+            "commit_id": "f4426d52e4b692edb8256655c8291c1dbcb829b9",
+            "created_at": "2026-07-30T07:45:37Z",
+            "diff_hunk": "@@ -27,4 +28,6 @@ struct mapblock {\n   sctx_T m_script_ctx;      ///< SCTX where map was defined\n   char *m_desc;             ///< description of mapping\n   bool m_replace_keycodes;  ///< replace keycodes in result of expression\n+  bool is_cmd_abbr;         ///< if this abbr is for cmdline\n+  cmdidx_T cmdidx;          ///< cmdidx for rhs",
+            "html_url": "https://github.com/neovim/neovim/pull/40387#discussion_r3680926918",
+            "id": 3680926918,
+            "line": 32,
+            "node_id": "PRRC_kwDOAPphoM7bZnzG",
+            "original_commit_id": "b9dad8d03c0cf0f378c2c09cb2f27de1b0ededdc",
+            "original_line": 32,
+            "original_position": 13,
+            "original_start_line": null,
+            "path": "src/nvim/mapping_defs.h",
+            "position": 13,
+            "pull_request_review_id": 4816530921,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/40387",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3680926918/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-07-30T07:45:51Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3680926918",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        }
+    ],
     "comment_regular_data": [
         {
             "author_association": "MEMBER",
@@ -320,7 +597,7 @@
     "commits_url": "https://api.github.com/repos/neovim/neovim/pulls/40387/commits",
     "created_at": "2026-06-24T00:12:54Z",
     "diff_url": "https://github.com/neovim/neovim/pull/40387.diff",
-    "draft": false,
+    "draft": true,
     "head": {
         "label": "TheSilentIce:better-cmd-abbr",
         "ref": "better-cmd-abbr",
@@ -412,9 +689,9 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/TheSilentIce/neovim/pulls{/number}",
-            "pushed_at": "2026-07-27T08:41:40Z",
+            "pushed_at": "2026-08-03T08:43:55Z",
             "releases_url": "https://api.github.com/repos/TheSilentIce/neovim/releases{/id}",
-            "size": 375815,
+            "size": 376647,
             "ssh_url": "git@github.com:TheSilentIce/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/TheSilentIce/neovim/stargazers",
@@ -426,14 +703,14 @@
             "teams_url": "https://api.github.com/repos/TheSilentIce/neovim/teams",
             "topics": [],
             "trees_url": "https://api.github.com/repos/TheSilentIce/neovim/git/trees{/sha}",
-            "updated_at": "2026-07-26T22:13:04Z",
+            "updated_at": "2026-08-01T20:38:05Z",
             "url": "https://api.github.com/repos/TheSilentIce/neovim",
             "visibility": "public",
             "watchers": 0,
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "afefc693c89c7013e4c8dd61018be2ee0a0ae54b",
+        "sha": "f4426d52e4b692edb8256655c8291c1dbcb829b9",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/76627190?v=4",
             "events_url": "https://api.github.com/users/TheSilentIce/events{/privacy}",
@@ -461,7 +738,7 @@
     "issue_url": "https://api.github.com/repos/neovim/neovim/issues/40387",
     "labels": [],
     "locked": false,
-    "merge_commit_sha": "2bbf11d112d931bc8695ed476d9610258e7a612f",
+    "merge_commit_sha": "3b2b608e0e8e8f68d51556ce5962e079ea28da7a",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM7p4tNG",
@@ -472,9 +749,9 @@
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/40387/comments",
     "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/afefc693c89c7013e4c8dd61018be2ee0a0ae54b",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/f4426d52e4b692edb8256655c8291c1dbcb829b9",
     "title": "feat(abbrev): add position-aware cmdline abbreviation",
-    "updated_at": "2026-07-27T02:00:53Z",
+    "updated_at": "2026-08-01T20:38:06Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/40387",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/76627190?v=4",
