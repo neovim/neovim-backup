@@ -4,8 +4,28 @@
     "assignees": [],
     "author_association": "NONE",
     "body": "### Problem\n\nCalling `vim.fn.bufload()` followed by `vim.cmd(\"e <file>\")` marks the buffer as `modified = true` on nightly. The same sequence produces `modified = false` on stable.\n\nI am not sure whether this is an intentional behavior change in nightly or an unintended side effect of an internal refactor. If it is intentional, I would like to understand the correct way to programmatically load a buffer in the\nbackground without it becoming spuriously modified, since `bufload()` is the documented API for this use case and there does not seem to be a clean alternative that avoids the issue.\n\n\n### Steps to reproduce\n\nSave the following as `/tmp/test_bufload.lua` and run with:\n\n```bash\n# stable — expected: no modified\nnvim --clean -u /tmp/test_bufload.lua\n\n# nightly — actual: modified = true\nnvim --clean -u /tmp/test_bufload.lua\n```\n\n```lua\nlocal tmpfile = vim.fn.tempname() .. \".lua\"\nvim.fn.writefile({ \"dihina2 saya diam, kali ini saya akan lawan!\" }, tmpfile)\n\nlocal bufnr = vim.fn.bufadd(tmpfile)\nlocal before_load = vim.bo[bufnr].modified\n\nvim.fn.bufload(bufnr)\nvim.cmd(\"e \" .. tmpfile)\n\nlocal after_load = vim.bo[bufnr].modified\nlocal loaded = vim.api.nvim_buf_is_loaded(bufnr)\n\nprint(string.format(\"file      : %s\", tmpfile))\nprint(string.format(\"bufnr     : %d\", bufnr))\nprint(string.format(\"is_loaded : %s\", tostring(loaded)))\nprint(string.format(\"modified before bufload : %s\", tostring(before_load)))\nprint(string.format(\"modified after  bufload : %s\", tostring(after_load)))\n\nif after_load and not before_load then\n\tprint(\"\")\n\tprint(\"[BUG] buffer marked as modified after bufload + e\")\n\tprint(\"      expected: modified should remain false\")\nelse\n\tprint(\"\")\n\tprint(\"[OK] no spurious modified flag\")\nend\n```\n\n## Additional context\n- `bufload()` alone without `vim.cmd(\"e\")` does **not** trigger the issue\n- `noautocmd call bufload(bufnr)` does **not** reliably prevent it\n- The only workaround found so far is to avoid `bufload()` entirely and use `bufadd()` instead, but this means the buffer is never loaded until the user opens it manually, which is not always acceptable\n\n### Expected behavior\n\n```\nmodified before bufload : false\nmodified after  bufload : false\n\n[OK] no spurious modified flag\n```\n\n### Nvim version (nvim -v)\n\nNVIM v0.13.0-dev-1202+g1f4335fe72\n\n### Vim (not Nvim) behaves the same?\n\nno\n\n### Operating system/version\n\nLinux\n\n### Terminal name/version\n\nN/A. reproducible with `--clean`\n\n### $TERM environment variable\n\nN/A\n\n### Installation\n\nBuilt from source / nightly appimage",
-    "closed_at": null,
-    "closed_by": null,
+    "closed_at": "2026-08-04T08:50:38Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+        "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+        "followers_url": "https://api.github.com/users/justinmk/followers",
+        "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+        "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/justinmk",
+        "id": 1359421,
+        "login": "justinmk",
+        "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+        "organizations_url": "https://api.github.com/users/justinmk/orgs",
+        "received_events_url": "https://api.github.com/users/justinmk/received_events",
+        "repos_url": "https://api.github.com/users/justinmk/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -92,7 +112,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 142,
+        "closed_issues": 158,
         "created_at": "2025-02-01T14:58:39Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -122,10 +142,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/48/labels",
         "node_id": "MI_kwDOAPphoM4AuvCx",
         "number": 48,
-        "open_issues": 72,
+        "open_issues": 73,
         "state": "open",
         "title": "0.13",
-        "updated_at": "2026-08-04T00:38:25Z",
+        "updated_at": "2026-08-10T08:17:52Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/48"
     },
     "node_id": "I_kwDOAPphoM8AAAABLVMNRQ",
@@ -145,8 +165,8 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/41148/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "sub_issues_summary": {
         "completed": 0,
         "percent_completed": 0,
@@ -164,7 +184,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyr",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2026-08-04T00:54:32Z",
+    "updated_at": "2026-08-04T08:50:38Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/41148",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/151346058?v=4",

@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/41114"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/5169b3beecfb1d9a266b0ab78dd3a7f7f1ba690e"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/ca07e505f939e8ff6e70571ef130722bdc40b292"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 7006,
-            "forks_count": 7006,
+            "forks": 7018,
+            "forks_count": 7018,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -95,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1894,
-            "open_issues_count": 1894,
+            "open_issues": 1880,
+            "open_issues_count": 1880,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -121,11 +121,11 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2026-08-04T04:09:13Z",
+            "pushed_at": "2026-08-11T02:35:52Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 392783,
+            "size": 394100,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 101556,
+            "stargazers_count": 101723,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -143,14 +143,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2026-08-04T04:02:32Z",
+            "updated_at": "2026-08-11T02:35:57Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 101556,
-            "watchers_count": 101556,
+            "watchers": 101723,
+            "watchers_count": 101723,
             "web_commit_signoff_required": false
         },
-        "sha": "3b85a689ab55312e42646a569252545bfdd161dc",
+        "sha": "0abc9ccc19dcc6255f2b2bf9dd0496644160f929",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -174,7 +174,7 @@
         }
     },
     "body": "## Problem\r\n\r\nThe default 'ruler' is implemented in C instead of the 'statusline' DSL.\r\nUsers cannot take the default as a starting point for customisation.\r\n\r\n## Solution\r\n\r\nReplace the C implementation with a default 'rulerformat' expression.\r\n\r\nBased on the decisions made in #33036. In particular, the main breaking change is that 'rulerformat' cannot be set empty anymore. Since configuring 'rulerformat' is likely less popular than 'statusline', I expect fewer problems like #33576 or #38670.\r\n\r\nThe default ruler now has a consistent width, no matter where it is displayed. See #41076 for details.\r\n\r\nCloses #41076",
-    "closed_at": null,
+    "closed_at": "2026-08-04T10:51:35Z",
     "comment_data": [
         {
             "_links": {
@@ -190,7 +190,7 @@
             },
             "author_association": "CONTRIBUTOR",
             "body": "My initial intention behind the first refactoring commit was to clean up `redraw_ruler` in order to make the changes in the following commit a little more straightforward. But because `win_redr_stl_expr` had similar and related problems, I refactored it in the same commit. I also think that, as this function gets more important, it helps to have a clearer separation between the code paths of all the different cases. That said, I found the previous version hard to reason about and the changes are not trivial, but also not necessary for this PR.",
-            "commit_id": "5169b3beecfb1d9a266b0ab78dd3a7f7f1ba690e",
+            "commit_id": "ca07e505f939e8ff6e70571ef130722bdc40b292",
             "created_at": "2026-08-02T13:37:07Z",
             "diff_hunk": "@@ -293,65 +294,66 @@ static void win_redr_stl_expr(win_T *wp, bool draw_winbar, bool draw_ruler, bool\n     stl_clear_click_defs(wp->w_winbar_click_defs, wp->w_winbar_click_defs_size);\n     wp->w_winbar_click_defs = stl_alloc_click_defs(wp->w_winbar_click_defs, maxwidth,\n                                                    &wp->w_winbar_click_defs_size);\n+    click_defs = wp->w_winbar_click_defs;\n+  } else if (draw_ruler && ui_event) {\n+    stl = p_ruf;\n+    opt_idx = kOptRulerformat;\n+    maxwidth = Columns / 2;\n+    fillchar = schar_from_ascii(' ');\n+    group = HLF_MSG;\n+    attr = HL_ATTR(group);\n+    click_defs = NULL;\n+  } else if (draw_ruler) {\n+    stl = p_ruf;\n+    opt_idx = kOptRulerformat;\n+    // advance past any leading group spec - implicit in ru_col\n+    if (*stl == '%') {\n+      if (*++stl == '-') {\n+        stl++;\n+      }\n+      if (atoi(stl)) {\n+        while (ascii_isdigit(*stl)) {\n+          stl++;\n+        }\n+      }\n+      if (*stl++ != '(') {\n+        stl = p_ruf;\n+      }\n+    }\n+    row = Rows - 1;\n+    col = MAX(ru_col, Columns / 2);\n+    grid = grid_adjust(&msg_grid_adj, &row, &col);\n+    maxwidth = Columns - col;\n+    fillchar = schar_from_ascii(' ');\n+    group = HLF_MSG;\n+    attr = HL_ATTR(group);\n+    click_defs = NULL;\n   } else {\n-    const bool in_status_line = wp->w_status_height != 0 || is_stl_global;\n-    if (wp->w_floating && !is_stl_global && !draw_ruler) {\n+    // statusline\n+    stl = ((*wp->w_p_stl != NUL) ? wp->w_p_stl : p_stl);\n+    opt_idx = kOptStatusline;\n+    opt_scope = ((*wp->w_p_stl != NUL) ? OPT_LOCAL : 0);\n+    if (is_stl_global) {",
             "html_url": "https://github.com/neovim/neovim/pull/41114#discussion_r3699198731",
@@ -264,14 +264,14 @@
             "diff_hunk": "@@ -163,6 +165,12 @@ TREESITTER\n \n • todo\n \n+TUI",
             "html_url": "https://github.com/neovim/neovim/pull/41114#discussion_r3700673159",
             "id": 3700673159,
-            "line": 168,
+            "line": null,
             "node_id": "PRRC_kwDOAPphoM7ck8qH",
             "original_commit_id": "5169b3beecfb1d9a266b0ab78dd3a7f7f1ba690e",
             "original_line": 168,
             "original_position": 13,
             "original_start_line": null,
             "path": "runtime/doc/news.txt",
-            "position": 13,
+            "position": 1,
             "pull_request_review_id": 4840064856,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41114",
             "reactions": {
@@ -333,14 +333,14 @@
             "diff_hunk": "@@ -5205,19 +5205,16 @@ A jump table for the options with a short description can be found at |Q_op|.\n \tyou are, use \"g CTRL-G\" |g_CTRL-G|.\n \n \t\t\t\t\t\t*'rulerformat'* *'ruf'*\n-'rulerformat' 'ruf'\tstring\t(default \"\")\n+'rulerformat' 'ruf'\tstring\t(default \"%18(%l,%c%V%= %P%)%<\")\n \t\t\tglobal\n \tWhen this option is not empty, it determines the content of the ruler\n \tstring, as displayed for the 'ruler' option.",
             "html_url": "https://github.com/neovim/neovim/pull/41114#discussion_r3705567361",
             "id": 3705567361,
-            "line": 5211,
+            "line": null,
             "node_id": "PRRC_kwDOAPphoM7c3niB",
             "original_commit_id": "5169b3beecfb1d9a266b0ab78dd3a7f7f1ba690e",
             "original_line": 5211,
             "original_position": 8,
             "original_start_line": 5210,
             "path": "runtime/doc/options.txt",
-            "position": 8,
+            "position": 1,
             "pull_request_review_id": 4846050371,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41114",
             "reactions": {
@@ -356,7 +356,7 @@
                 "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3705567361/reactions"
             },
             "side": "RIGHT",
-            "start_line": 5210,
+            "start_line": null,
             "start_side": "RIGHT",
             "subject_type": "line",
             "updated_at": "2026-08-03T15:57:45Z",
@@ -380,6 +380,355 @@
                 "subscriptions_url": "https://api.github.com/users/blami/subscriptions",
                 "type": "User",
                 "url": "https://api.github.com/users/blami",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41114#discussion_r3710907455"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41114"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3710907455"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "`Note:` has special highlighting, that's the usual convention. also might be good to format the items as a list.",
+            "commit_id": "e4ec4866cf2400ce1a57af14ff718c43a8692913",
+            "created_at": "2026-08-04T09:00:17Z",
+            "diff_hunk": "@@ -6625,6 +6634,18 @@ A jump table for the options with a short description can be found at |Q_op|.\n \t      if exists(a:var) | return a:val | else | return '' | endif\n \t  endfunction\n <\n+\tPitfalls:",
+            "html_url": "https://github.com/neovim/neovim/pull/41114#discussion_r3710907455",
+            "id": 3710907455,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7dL_Q_",
+            "original_commit_id": "e4ec4866cf2400ce1a57af14ff718c43a8692913",
+            "original_line": 6637,
+            "original_position": 142,
+            "original_start_line": null,
+            "path": "runtime/doc/options.txt",
+            "position": 1,
+            "pull_request_review_id": 4852440149,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41114",
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3710907455/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-08-04T09:00:17Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3710907455",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41114#discussion_r3711122252"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41114"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3711122252"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "So, I'll make a \"Note:\" for the pitfall, and two list items for the two ways of dealing with it, right?\r\nAnd I'll format the examples above as a list.",
+            "commit_id": "e4ec4866cf2400ce1a57af14ff718c43a8692913",
+            "created_at": "2026-08-04T09:32:43Z",
+            "diff_hunk": "@@ -6625,6 +6634,18 @@ A jump table for the options with a short description can be found at |Q_op|.\n \t      if exists(a:var) | return a:val | else | return '' | endif\n \t  endfunction\n <\n+\tPitfalls:",
+            "html_url": "https://github.com/neovim/neovim/pull/41114#discussion_r3711122252",
+            "id": 3711122252,
+            "in_reply_to_id": 3710907455,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7dMztM",
+            "original_commit_id": "e4ec4866cf2400ce1a57af14ff718c43a8692913",
+            "original_line": 6637,
+            "original_position": 142,
+            "original_start_line": null,
+            "path": "runtime/doc/options.txt",
+            "position": 1,
+            "pull_request_review_id": 4852715852,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41114",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3711122252/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-08-04T09:32:44Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3711122252",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/9403243?v=4",
+                "events_url": "https://api.github.com/users/epithet/events{/privacy}",
+                "followers_url": "https://api.github.com/users/epithet/followers",
+                "following_url": "https://api.github.com/users/epithet/following{/other_user}",
+                "gists_url": "https://api.github.com/users/epithet/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/epithet",
+                "id": 9403243,
+                "login": "epithet",
+                "node_id": "MDQ6VXNlcjk0MDMyNDM=",
+                "organizations_url": "https://api.github.com/users/epithet/orgs",
+                "received_events_url": "https://api.github.com/users/epithet/received_events",
+                "repos_url": "https://api.github.com/users/epithet/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/epithet/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/epithet/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/epithet",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41114#discussion_r3711251341"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41114"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3711251341"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "sure. the above examples are fine though. up to you",
+            "commit_id": "e4ec4866cf2400ce1a57af14ff718c43a8692913",
+            "created_at": "2026-08-04T09:52:42Z",
+            "diff_hunk": "@@ -6625,6 +6634,18 @@ A jump table for the options with a short description can be found at |Q_op|.\n \t      if exists(a:var) | return a:val | else | return '' | endif\n \t  endfunction\n <\n+\tPitfalls:",
+            "html_url": "https://github.com/neovim/neovim/pull/41114#discussion_r3711251341",
+            "id": 3711251341,
+            "in_reply_to_id": 3710907455,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7dNTON",
+            "original_commit_id": "e4ec4866cf2400ce1a57af14ff718c43a8692913",
+            "original_line": 6637,
+            "original_position": 142,
+            "original_start_line": null,
+            "path": "runtime/doc/options.txt",
+            "position": 1,
+            "pull_request_review_id": 4852881861,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41114",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3711251341/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-08-04T09:52:42Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3711251341",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41114#discussion_r3711417304"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41114"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3711417304"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "Done. I didn't itemise the examples because the last example contains several code blocks, and a code block terminates a `line_li`.\r\n\r\nUnfortunately, a `<` before a list item is currently not concealed, see for example `:help path`.",
+            "commit_id": "e4ec4866cf2400ce1a57af14ff718c43a8692913",
+            "created_at": "2026-08-04T10:18:52Z",
+            "diff_hunk": "@@ -6625,6 +6634,18 @@ A jump table for the options with a short description can be found at |Q_op|.\n \t      if exists(a:var) | return a:val | else | return '' | endif\n \t  endfunction\n <\n+\tPitfalls:",
+            "html_url": "https://github.com/neovim/neovim/pull/41114#discussion_r3711417304",
+            "id": 3711417304,
+            "in_reply_to_id": 3710907455,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7dN7vY",
+            "original_commit_id": "e4ec4866cf2400ce1a57af14ff718c43a8692913",
+            "original_line": 6637,
+            "original_position": 142,
+            "original_start_line": null,
+            "path": "runtime/doc/options.txt",
+            "position": 1,
+            "pull_request_review_id": 4853099725,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41114",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3711417304/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-08-04T10:18:53Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3711417304",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/9403243?v=4",
+                "events_url": "https://api.github.com/users/epithet/events{/privacy}",
+                "followers_url": "https://api.github.com/users/epithet/followers",
+                "following_url": "https://api.github.com/users/epithet/following{/other_user}",
+                "gists_url": "https://api.github.com/users/epithet/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/epithet",
+                "id": 9403243,
+                "login": "epithet",
+                "node_id": "MDQ6VXNlcjk0MDMyNDM=",
+                "organizations_url": "https://api.github.com/users/epithet/orgs",
+                "received_events_url": "https://api.github.com/users/epithet/received_events",
+                "repos_url": "https://api.github.com/users/epithet/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/epithet/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/epithet/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/epithet",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41114#discussion_r3711632131"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41114"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3711632131"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "> Unfortunately, a `<` before a list item is currently not concealed, see for example `:help path`.\r\n\r\nyeah, need to fix that in https://github.com/neovim/tree-sitter-vimdoc . no worries.",
+            "commit_id": "e4ec4866cf2400ce1a57af14ff718c43a8692913",
+            "created_at": "2026-08-04T10:50:53Z",
+            "diff_hunk": "@@ -6625,6 +6634,18 @@ A jump table for the options with a short description can be found at |Q_op|.\n \t      if exists(a:var) | return a:val | else | return '' | endif\n \t  endfunction\n <\n+\tPitfalls:",
+            "html_url": "https://github.com/neovim/neovim/pull/41114#discussion_r3711632131",
+            "id": 3711632131,
+            "in_reply_to_id": 3710907455,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7dOwMD",
+            "original_commit_id": "e4ec4866cf2400ce1a57af14ff718c43a8692913",
+            "original_line": 6637,
+            "original_position": 142,
+            "original_start_line": null,
+            "path": "runtime/doc/options.txt",
+            "position": 1,
+            "pull_request_review_id": 4853371010,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41114",
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3711632131/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-08-04T10:50:54Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3711632131",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
                 "user_view_type": "public"
             }
         }
@@ -522,6 +871,52 @@
                 "url": "https://api.github.com/users/epithet",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "@justinmk, @zeertzjq, @blami Thank you for the reviews! I rebased onto master, fixed news, added the leading-`%<` requirement, and I fixed all the out-of-date information that I could find for 'stl', 'ruf', and 'ru'.\r\n\r\nI also added two workarounds to help with [HTML formatting](https://neovim.io/doc/user/options/#'statusline'). \"- not applicable\" was interpreted as a bullet point, and the fourth list item in the documentation for `%@` was consuming the documentation of the next 5 'stl' items (`<`, `=`, `#`, `$`, `*`).\r\n\r\nThe failing test looks unrelated (\"API nvim_list_chans, nvim_get_chan_info stream=job :terminal channel\").",
+            "created_at": "2026-08-04T04:59:41Z",
+            "html_url": "https://github.com/neovim/neovim/pull/41114#issuecomment-5174799689",
+            "id": 5174799689,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/41114",
+            "minimized": null,
+            "node_id": "IC_kwDOAPphoM8AAAABNHEtSQ",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/5174799689/reactions"
+            },
+            "updated_at": "2026-08-04T04:59:41Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/5174799689",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/9403243?v=4",
+                "events_url": "https://api.github.com/users/epithet/events{/privacy}",
+                "followers_url": "https://api.github.com/users/epithet/followers",
+                "following_url": "https://api.github.com/users/epithet/following{/other_user}",
+                "gists_url": "https://api.github.com/users/epithet/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/epithet",
+                "id": 9403243,
+                "login": "epithet",
+                "node_id": "MDQ6VXNlcjk0MDMyNDM=",
+                "organizations_url": "https://api.github.com/users/epithet/orgs",
+                "received_events_url": "https://api.github.com/users/epithet/received_events",
+                "repos_url": "https://api.github.com/users/epithet/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/epithet/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/epithet/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/epithet",
+                "user_view_type": "public"
+            }
         }
     ],
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/41114/comments",
@@ -620,9 +1015,9 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/epithet/neovim/pulls{/number}",
-            "pushed_at": "2026-08-02T13:41:11Z",
+            "pushed_at": "2026-08-04T10:14:39Z",
             "releases_url": "https://api.github.com/repos/epithet/neovim/releases{/id}",
-            "size": 377182,
+            "size": 376945,
             "ssh_url": "git@github.com:epithet/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/epithet/neovim/stargazers",
@@ -641,7 +1036,7 @@
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "5169b3beecfb1d9a266b0ab78dd3a7f7f1ba690e",
+        "sha": "ca07e505f939e8ff6e70571ef130722bdc40b292",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/9403243?v=4",
             "events_url": "https://api.github.com/users/epithet/events{/privacy}",
@@ -688,8 +1083,8 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "45e978655bf039d22baadfb65d798f118a95cb37",
-    "merged_at": null,
+    "merge_commit_sha": "dab5fab948aeb54045d0b63d23f67774cf76e4ad",
+    "merged_at": "2026-08-04T10:51:35Z",
     "milestone": null,
     "node_id": "PR_kwDOAPphoM75pj3C",
     "number": 41114,
@@ -698,10 +1093,10 @@
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/41114/comments",
-    "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/5169b3beecfb1d9a266b0ab78dd3a7f7f1ba690e",
+    "state": "closed",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/ca07e505f939e8ff6e70571ef130722bdc40b292",
     "title": "refactor(ruler)!: replace C implementation with 'rulerformat' expression",
-    "updated_at": "2026-08-03T15:58:00Z",
+    "updated_at": "2026-08-04T10:51:35Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/41114",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/9403243?v=4",

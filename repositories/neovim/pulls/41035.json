@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/41035"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/db04a2a2f14d4af195a356a8a708aa56f5c1fa1d"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/8d90f5d156e691a3ced2b5ca96103a46f8a285ab"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 7006,
-            "forks_count": 7006,
+            "forks": 7018,
+            "forks_count": 7018,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -95,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1894,
-            "open_issues_count": 1894,
+            "open_issues": 1880,
+            "open_issues_count": 1880,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -121,11 +121,11 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2026-08-04T04:09:13Z",
+            "pushed_at": "2026-08-11T02:35:52Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 392783,
+            "size": 394100,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 101556,
+            "stargazers_count": 101723,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -143,14 +143,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2026-08-04T04:02:32Z",
+            "updated_at": "2026-08-11T02:35:57Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 101556,
-            "watchers_count": 101556,
+            "watchers": 101723,
+            "watchers_count": 101723,
             "web_commit_signoff_required": false
         },
-        "sha": "0aed30b4de042dce9941f789b6df1035b0fa73c8",
+        "sha": "b53c00b42599f31c0bd30be75b4dd4be32fd883d",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -173,8 +173,8 @@
             "user_view_type": "public"
         }
     },
-    "body": "## Problem\r\nRedudant code. Related to #36112\r\n\r\n## Solution\r\nCombine `pathcmp()`, `path_fnamencmp()` and `path_fnamecmp()`.\r\nAdd a helper `path_fold_char()` to fold `\\` and `/` as equal, and also consults 'fileignorecase'.\r\n\r\n| feature                  | pathcmp        | path_fnamencmp | now          |\r\n| ------------------------ | -------------- | -------------- | ------------ |\r\n| case folding             | `mb_toupper()` | `utf_fold()`   | `utf_fold()` |\r\n| consults &fileignorecase | ✅             | ✅             | ✅           |\r\n| `maxlen`                 | ✅             | ✅             | ✅           |\r\n| `/` == `\\`               | ✅             | ✅             | ✅           |\r\n| MSWIN drive letter       | ❌             | ✅             | ✅           |\r\n| sep affects sorting      | ✅             | ❌             | ✅           |\r\n| ignores a trailing slash | ✅             | ❌             | ✅           |\r\n\r\nI checked all the callers of the three functions. Looks like these changes won't have any significant impact on them. As for `path_full_compare`, seems only `kEqualFiles` and `kEqualFileNames` are currently used. If needed, we could simplify it to return a bool? It would still require one call to `pathcmp` and two calls to `os_fileid`.\r\n\r\nTODO:\r\naudit callers again. Verify if new tests are needed, update comments and commit messages.\r\n\r\n<!--\r\n  Thank you for contributing to Neovim!\r\n  If this is your first time, check out https://github.com/neovim/neovim/blob/master/CONTRIBUTING.md#pull-requests-prs\r\n  for our PR guidelines.\r\n-->\r\n\r\n\r\n\r\n\r\n",
-    "closed_at": null,
+    "body": "## Problem\r\nRedudant code. Related to #36112\r\n\r\n## Solution\r\nAdd `path_fold_char()` to normalize path sep.\r\nRefactor `pathcmp()` and `path_fnamencmp()` into `path_cmp`.\r\n\r\n| feature                  | pathcmp        | path_fnamencmp | path_cmp(now) |\r\n| ------------------------ | -------------- | -------------- | ------------- |\r\n| case folding             | `mb_toupper()` | `utf_fold()`   | `utf_fold()`  |\r\n| consults fileignorecase  | ✅             | ✅             | `ic` param            |\r\n| `maxlen`                 | ✅             | ✅             | ✅            |\r\n| `/` == `\\`               | ✅             | ✅             | ✅            |\r\n| MSWIN drive letter       | ❌             | ✅             | ✅            |\r\n| sep affects sorting      | ✅             | ❌             | ✅            |\r\n| ignores a trailing slash | ✅             | ❌             | ✅            |\r\n\r\nRefactor `path_fnamecmp` and `path_full_compare` into `path_equal`, with flags controlling char-level comparison(i.e. `path_cmp`), env variables expansion, absolute path resolution and filesystem access.\r\n\r\n\r\n<!--\r\n  Thank you for contributing to Neovim!\r\n  If this is your first time, check out https://github.com/neovim/neovim/blob/master/CONTRIBUTING.md#pull-requests-prs\r\n  for our PR guidelines.\r\n-->\r\n\r\n\r\n\r\n\r\n",
+    "closed_at": "2026-08-07T23:54:29Z",
     "comment_data": [
         {
             "_links": {
@@ -834,7 +834,7 @@
             "pull_request_review_id": 4845110321,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41035",
             "reactions": {
-                "+1": 0,
+                "+1": 1,
                 "-1": 0,
                 "confused": 0,
                 "eyes": 0,
@@ -842,7 +842,7 @@
                 "hooray": 0,
                 "laugh": 0,
                 "rocket": 0,
-                "total_count": 0,
+                "total_count": 1,
                 "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3704775949/reactions"
             },
             "side": "RIGHT",
@@ -872,14 +872,1983 @@
                 "url": "https://api.github.com/users/ntdiary",
                 "user_view_type": "public"
             }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41035#discussion_r3730940901"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41035"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3730940901"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "> However, the `autocmd-pattern` docs already state that `/` affects matching behavior.\r\n\r\nwell, we are also losing:\r\n\r\n- Windows: `\\` = `/`\r\n- Windows: drive-letter normalization (`C:\\foo` = `\\foo`)\r\n- Unix/macOS: single trailing slash ignored\r\n\r\nwhy do we need to lose these features? would be quite breaking.",
+            "commit_id": "147c2517018840d7ca01f51664735786be9d3a7b",
+            "created_at": "2026-08-06T17:53:41Z",
+            "diff_hunk": "@@ -2270,7 +2272,7 @@ bool au_exists(const char *const arg)\n         && (group == AUGROUP_ALL || ap->group == group)\n         && (pattern == NULL\n             || (buflocal_buf == NULL\n-                ? path_fnamecmp(ap->pat, pattern) == 0\n+                ? path_equal(ap->pat, pattern, kLiteral)",
+            "html_url": "https://github.com/neovim/neovim/pull/41035#discussion_r3730940901",
+            "id": 3730940901,
+            "in_reply_to_id": 3691293918,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7eYaPl",
+            "original_commit_id": "147c2517018840d7ca01f51664735786be9d3a7b",
+            "original_line": 2275,
+            "original_position": 48,
+            "original_start_line": null,
+            "path": "src/nvim/autocmd.c",
+            "position": 1,
+            "pull_request_review_id": 4877198476,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41035",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3730940901/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-08-06T17:53:49Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3730940901",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41035#discussion_r3733079702"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41035"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3733079702"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "> Unix/macOS: single trailing slash ignored\r\n\r\nEh, This is exactly what #40552 introduced, if Unix/macOS want to preserve it, I think we could apply it to Windows as well instead of treating it as a step backwards. Then we could just use `path_equal`? 🤔\r\n\r\n> * Windows: \\ = /\r\n> * Windows: drive-letter normalization (C:\\foo = \\foo)\r\n\r\nI dropped them earlier for the following reasons:\r\n* The `exists` doc says: `the pattern is taken literally and compared to the autocommand patterns character by character`\r\n* Allowing Windows to use `\\` as a separator here may conflict with its escaping semantics.\r\n* The drive-letter normalization was introduced to [address completion issue](https://github.com/vim/vim/commit/a2f13bf782f723e116c5d4cc7d79a23e918a24db), and they may not have considered that it could affect this case? (#35373)\r\n* I noticed that [most cases](https://sourcegraph.com/search?q=context%3Aglobal+exists%5C%28%27%23.*%23.%2B&patternType=regexp&case=yes&sm=0) only use alpha chars, `<buffer>`, `*.xx` etc. None of them use `\\` as a separator. The few cases that pass paths have already converted them to `/` beforehand (e.g. https://github.com/tpope/dotfiles/blob/30b0609c6bdc38eb607530d6a1b603dbfdc8a8ef/.vim/after/plugin/eunuch.vim#L276-L280).\r\n\r\nIdeally, I feel this should be a strict char-by-char comparison. If we don't want to lose those features, perhaps we could update the doc accordingly and then either use `path_equal` here, or add a condition to  avoid ignoring single trailing slash?",
+            "commit_id": "147c2517018840d7ca01f51664735786be9d3a7b",
+            "created_at": "2026-08-07T02:45:29Z",
+            "diff_hunk": "@@ -2270,7 +2272,7 @@ bool au_exists(const char *const arg)\n         && (group == AUGROUP_ALL || ap->group == group)\n         && (pattern == NULL\n             || (buflocal_buf == NULL\n-                ? path_fnamecmp(ap->pat, pattern) == 0\n+                ? path_equal(ap->pat, pattern, kLiteral)",
+            "html_url": "https://github.com/neovim/neovim/pull/41035#discussion_r3733079702",
+            "id": 3733079702,
+            "in_reply_to_id": 3691293918,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7egkaW",
+            "original_commit_id": "147c2517018840d7ca01f51664735786be9d3a7b",
+            "original_line": 2275,
+            "original_position": 48,
+            "original_start_line": null,
+            "path": "src/nvim/autocmd.c",
+            "position": 1,
+            "pull_request_review_id": 4879501053,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41035",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3733079702/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-08-07T02:48:37Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3733079702",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/8579651?v=4",
+                "events_url": "https://api.github.com/users/ntdiary/events{/privacy}",
+                "followers_url": "https://api.github.com/users/ntdiary/followers",
+                "following_url": "https://api.github.com/users/ntdiary/following{/other_user}",
+                "gists_url": "https://api.github.com/users/ntdiary/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/ntdiary",
+                "id": 8579651,
+                "login": "ntdiary",
+                "node_id": "MDQ6VXNlcjg1Nzk2NTE=",
+                "organizations_url": "https://api.github.com/users/ntdiary/orgs",
+                "received_events_url": "https://api.github.com/users/ntdiary/received_events",
+                "repos_url": "https://api.github.com/users/ntdiary/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/ntdiary/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/ntdiary/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/ntdiary",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41035#discussion_r3735016252"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41035"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3735016252"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": ">  if Unix/macOS want to preserve it, I think we could apply it to Windows as well instead of treating it as a step backwards. Then we could just use `path_equal`? 🤔\r\n\r\nsure, all OSes should have the same feature.\r\n\r\n\r\n\r\n> Allowing Windows to use `\\` as a separator here may conflict with its escaping semantics\r\n\r\nhmm.... ok.\r\n\r\n\r\n\r\n>  The drive-letter normalization was introduced to [address completion issue](https://github.com/vim/vim/commit/a2f13bf782f723e116c5d4cc7d79a23e918a24db), and they may not have considered that it could affect this case\r\n\r\nnice, good point.",
+            "commit_id": "147c2517018840d7ca01f51664735786be9d3a7b",
+            "created_at": "2026-08-07T10:09:21Z",
+            "diff_hunk": "@@ -2270,7 +2272,7 @@ bool au_exists(const char *const arg)\n         && (group == AUGROUP_ALL || ap->group == group)\n         && (pattern == NULL\n             || (buflocal_buf == NULL\n-                ? path_fnamecmp(ap->pat, pattern) == 0\n+                ? path_equal(ap->pat, pattern, kLiteral)",
+            "html_url": "https://github.com/neovim/neovim/pull/41035#discussion_r3735016252",
+            "id": 3735016252,
+            "in_reply_to_id": 3691293918,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7en9M8",
+            "original_commit_id": "147c2517018840d7ca01f51664735786be9d3a7b",
+            "original_line": 2275,
+            "original_position": 48,
+            "original_start_line": null,
+            "path": "src/nvim/autocmd.c",
+            "position": 1,
+            "pull_request_review_id": 4881896047,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41035",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3735016252/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-08-07T10:09:21Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3735016252",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41035#discussion_r3735149434"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41035"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3735149434"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "AI adds a note that further supports the PR changes:\r\n\r\n> `ap->pat` is stored verbatim (autocmd.c:1036), and `do_autocmd`'s own lookup for adding/removing autocmds uses plain `strncmp` (autocmd.c:939-940, 1007-1008). So `au_exists()` was the odd one out — `:autocmd! User foo\\bar` never matched a `foo/bar` autocmd, but `exists('#User#foo\\bar')` did.",
+            "commit_id": "147c2517018840d7ca01f51664735786be9d3a7b",
+            "created_at": "2026-08-07T10:34:33Z",
+            "diff_hunk": "@@ -2270,7 +2272,7 @@ bool au_exists(const char *const arg)\n         && (group == AUGROUP_ALL || ap->group == group)\n         && (pattern == NULL\n             || (buflocal_buf == NULL\n-                ? path_fnamecmp(ap->pat, pattern) == 0\n+                ? path_equal(ap->pat, pattern, kLiteral)",
+            "html_url": "https://github.com/neovim/neovim/pull/41035#discussion_r3735149434",
+            "id": 3735149434,
+            "in_reply_to_id": 3691293918,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7eodt6",
+            "original_commit_id": "147c2517018840d7ca01f51664735786be9d3a7b",
+            "original_line": 2275,
+            "original_position": 48,
+            "original_start_line": null,
+            "path": "src/nvim/autocmd.c",
+            "position": 1,
+            "pull_request_review_id": 4882074542,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41035",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3735149434/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-08-07T10:34:33Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3735149434",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41035#discussion_r3735576213"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41035"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3735576213"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "the comment will be hard to understand in the future. suggestion:\n\n\n    // Patterns are matched verbatim (like do_autocmd): mb_strcmp_ic instead of path_equal.",
+            "commit_id": "ff5e13cb617d36045d9751bdc30df71e4698f9f9",
+            "created_at": "2026-08-07T11:56:52Z",
+            "diff_hunk": "@@ -2265,12 +2266,13 @@ bool au_exists(const char *const arg)\n   for (size_t i = 0; i < kv_size(*acs); i++) {\n     AutoPat *const ap = kv_A(*acs, i).pat;\n     // Only use a pattern when it has not been removed.\n-    // For buffer-local autocommands, path_fnamecmp() works fine.\n+    // path_equal (formerly path_fnamecmp) is not suitable because it treats a\n+    // single trailing slash as insignificant.",
+            "html_url": "https://github.com/neovim/neovim/pull/41035#discussion_r3735576213",
+            "id": 3735576213,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7eqF6V",
+            "original_commit_id": "ff5e13cb617d36045d9751bdc30df71e4698f9f9",
+            "original_line": 2270,
+            "original_position": 23,
+            "original_start_line": 2269,
+            "path": "src/nvim/autocmd.c",
+            "position": 1,
+            "pull_request_review_id": 4882617843,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41035",
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 1,
+                "total_count": 2,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3735576213/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-08-07T11:56:52Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3735576213",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41035#discussion_r3735582500"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41035"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3735582500"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "just for reference (not a blocker): there is still a remaining inconsistency: `mb_strcmp_ic(p_fic` still checks 'fileignorecase', while `do_autocmd`'s `strncmp` does not.\n\nSo with 'fileignorecase' set, `:au! User Foo` won't remove `User foo` (lowercase) autocmd, but `exists('#User#Foo')` returns 1.",
+            "commit_id": "8d90f5d156e691a3ced2b5ca96103a46f8a285ab",
+            "created_at": "2026-08-07T11:58:06Z",
+            "diff_hunk": "@@ -2265,12 +2266,13 @@ bool au_exists(const char *const arg)\n   for (size_t i = 0; i < kv_size(*acs); i++) {\n     AutoPat *const ap = kv_A(*acs, i).pat;\n     // Only use a pattern when it has not been removed.\n-    // For buffer-local autocommands, path_fnamecmp() works fine.\n+    // path_equal (formerly path_fnamecmp) is not suitable because it treats a\n+    // single trailing slash as insignificant.\n     if (ap != NULL\n         && (group == AUGROUP_ALL || ap->group == group)\n         && (pattern == NULL\n             || (buflocal_buf == NULL\n-                ? path_fnamecmp(ap->pat, pattern) == 0\n+                ? mb_strcmp_ic(p_fic, ap->pat, pattern) == 0",
+            "html_url": "https://github.com/neovim/neovim/pull/41035#discussion_r3735582500",
+            "id": 3735582500,
+            "line": 2274,
+            "node_id": "PRRC_kwDOAPphoM7eqHck",
+            "original_commit_id": "ff5e13cb617d36045d9751bdc30df71e4698f9f9",
+            "original_line": 2275,
+            "original_position": 29,
+            "original_start_line": null,
+            "path": "src/nvim/autocmd.c",
+            "position": 28,
+            "pull_request_review_id": 4882625225,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41035",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3735582500/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-08-07T11:59:46Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3735582500",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41035#discussion_r3735599065"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41035"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3735599065"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "also worth asserting:\n\n    eq(0, fn.exists([[#User#foo/bar/]]))",
+            "commit_id": "8d90f5d156e691a3ced2b5ca96103a46f8a285ab",
+            "created_at": "2026-08-07T12:01:20Z",
+            "diff_hunk": "@@ -869,4 +869,16 @@ describe('autocmd', function()\n     eq(vim.fs.normalize('~'), cmds[1].pattern)\n     eq(vim.fs.normalize(path), cmds[2].pattern)\n   end)\n+\n+  it('exists() consults &fileignorecase', function()",
+            "html_url": "https://github.com/neovim/neovim/pull/41035#discussion_r3735599065",
+            "id": 3735599065,
+            "line": 873,
+            "node_id": "PRRC_kwDOAPphoM7eqLfZ",
+            "original_commit_id": "ff5e13cb617d36045d9751bdc30df71e4698f9f9",
+            "original_line": 873,
+            "original_position": 5,
+            "original_start_line": null,
+            "path": "test/functional/autocmd/autocmd_spec.lua",
+            "position": 5,
+            "pull_request_review_id": 4882644817,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41035",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 1,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3735599065/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-08-07T12:01:20Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3735599065",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41035#discussion_r3735612965"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41035"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3735612965"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "the command part is emtpy which looks weird, add `echo` ?\n\n    command([[autocmd User foo/bar echo]])",
+            "commit_id": "ff5e13cb617d36045d9751bdc30df71e4698f9f9",
+            "created_at": "2026-08-07T12:04:01Z",
+            "diff_hunk": "@@ -869,4 +869,16 @@ describe('autocmd', function()\n     eq(vim.fs.normalize('~'), cmds[1].pattern)\n     eq(vim.fs.normalize(path), cmds[2].pattern)\n   end)\n+\n+  it('exists() consults &fileignorecase', function()\n+    command([[autocmd User foo/bar \"]])",
+            "html_url": "https://github.com/neovim/neovim/pull/41035#discussion_r3735612965",
+            "id": 3735612965,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7eqO4l",
+            "original_commit_id": "ff5e13cb617d36045d9751bdc30df71e4698f9f9",
+            "original_line": 874,
+            "original_position": 6,
+            "original_start_line": null,
+            "path": "test/functional/autocmd/autocmd_spec.lua",
+            "position": 1,
+            "pull_request_review_id": 4882661625,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41035",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 1,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3735612965/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-08-07T12:04:01Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3735612965",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41035#discussion_r3735625908"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41035"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3735625908"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "`hash_path_t` is very low-level, not great to save/restore options in it. can we add a `bool ic` param to `path_fold_char()` and `path_cmp()`, then path_equal() can pass `p_fic` ?\n\nthat also means `path_cmp()` can be `FUNC_ATTR_PURE`",
+            "commit_id": "ff5e13cb617d36045d9751bdc30df71e4698f9f9",
+            "created_at": "2026-08-07T12:06:31Z",
+            "diff_hunk": "@@ -45,35 +46,44 @@ static inline uint32_t hash_cstr_t(const char *s)\n \n #define equal_cstr_t strequal\n \n-/// Hash/equality for path strings. On case-insensitive platforms, case-fold first (via\n-/// str_foldcase, the same fold used by mb_stricmp/path_fnamencmp) so the hash↔equality invariant\n-/// holds.\n+/// Hash/equality for path strings. When 'fileignorecase' is on, case-fold first (via\n+/// path_fold_char, the same fold used by path_equal) so the hash↔equality invariant holds.\n ///\n-/// On Windows we additionally:\n-///   - fold '\\\\' -> '/'   (path_fnamencmp treats them as equal)\n-///   - drop a leading drive letter \"[A-Za-z]:\" so that \"C:\\foo\" and \"\\foo\" land in the same bucket\n-///     (path_fnamencmp considers them equal when the current drive matches the explicit drive\n-///     letter). Two paths with *different* explicit drives (\"C:\\foo\" vs \"D:\\foo\") may now\n-///     share a bucket — that's a permitted collision; equal_path_t still rejects them.\n-///\n-/// path_fnamencmp's non-Windows branch consults &fileignorecase, which is runtime-mutable and would\n-/// break the hash invariant if flipped. So the macOS branch deliberately bypasses path_fnamencmp\n-/// and uses the compile-time CASE_INSENSITIVE_FILENAME switch instead.\n+/// We additionally:\n+///   - drop a leading drive letter \"[A-Za-z]:\" on Windows, so that \"C:\\foo\" and \"\\foo\" land in\n+///     the same bucket (path_equal considers them equal when the current drive matches the\n+///     explicit drive letter). Two paths with *different* explicit drives (\"C:\\foo\" vs \"D:\\foo\")\n+///     may now share a bucket — that's a permitted collision; equal_path_t still rejects them.\n+///   - ignore a single trailing path separator.\n+/// &fileignorecase is runtime-mutable and would break the hash invariant if flipped.\n+/// So we force it to the compile-time CASE_INSENSITIVE_FILENAME value during hash/equality.\n static inline uint32_t hash_path_t(const char *p)\n {\n-#ifdef BACKSLASH_IN_FILENAME\n-  if (p[1] == ':' && ASCII_ISALPHA(p[0])) {\n+  uint32_t h = 0;\n+#ifdef MSWIN\n+  if (ASCII_ISALPHA(*p) && p[1] == ':') {\n     p += 2;\n   }\n #endif\n+  int p_fic_save = p_fic;\n #ifdef CASE_INSENSITIVE_FILENAME\n-  char *folded = str_foldcase((char *)p, (int)strlen(p), NULL, 0);\n-  uint32_t h = hash_cstr_t(folded);\n-  xfree(folded);\n-  return h;\n+  p_fic = true;\n #else\n-  return hash_cstr_t(p);\n+  p_fic = false;",
+            "html_url": "https://github.com/neovim/neovim/pull/41035#discussion_r3735625908",
+            "id": 3735625908,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7eqSC0",
+            "original_commit_id": "ff5e13cb617d36045d9751bdc30df71e4698f9f9",
+            "original_line": 72,
+            "original_position": 55,
+            "original_start_line": null,
+            "path": "src/nvim/map.c",
+            "position": 1,
+            "pull_request_review_id": 4882677406,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41035",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3735625908/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-08-07T12:06:31Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3735625908",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41035#discussion_r3735629045"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41035"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3735629045"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "FUNC_ATTR_NONNULL_ALL",
+            "commit_id": "ff5e13cb617d36045d9751bdc30df71e4698f9f9",
+            "created_at": "2026-08-07T12:07:07Z",
+            "diff_hunk": "@@ -2011,81 +1906,90 @@ bool same_directory(char *f1, char *f2)\n   t1 = path_tail_with_sep(ffname);\n   t2 = path_tail_with_sep(f2);\n   return t1 - ffname == t2 - f2\n-         && pathcmp(ffname, f2, (int)(t1 - ffname)) == 0;\n+         && path_cmp(ffname, f2, (size_t)(t1 - ffname)) == 0;\n }\n \n-// Compare path \"p[]\" to \"q[]\".\n-// If `maxlen` >= 0 compare `p[maxlen]` to `q[maxlen]`\n-// Return value like strcmp(p, q), but consider path separators.\n-//\n-// See also `path_full_compare`.\n-int pathcmp(const char *p, const char *q, int maxlen)\n+int path_fold_char(const char *p, int *len)",
+            "html_url": "https://github.com/neovim/neovim/pull/41035#discussion_r3735629045",
+            "id": 3735629045,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7eqSz1",
+            "original_commit_id": "ff5e13cb617d36045d9751bdc30df71e4698f9f9",
+            "original_line": 1912,
+            "original_position": 230,
+            "original_start_line": null,
+            "path": "src/nvim/path.c",
+            "position": 1,
+            "pull_request_review_id": 4882680929,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41035",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 1,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3735629045/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-08-07T12:35:23Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3735629045",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41035#discussion_r3735687586"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41035"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3735687586"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "btw \"literal\" conflicts with the others, should path_equal should assert that they aren't combined.\n\n    typedef enum {\n      kPathCmpLiteral = 0,       ///< Compare paths literally.\n      kPathCmpExpand  = 1 << 0,  ///< Expands env vars in the first path.\n      kPathCmpFull    = 1 << 1,  ///< Compare full names when FileIds are unavailable.\n    } PathCmpFlags;",
+            "commit_id": "ff5e13cb617d36045d9751bdc30df71e4698f9f9",
+            "created_at": "2026-08-07T12:19:03Z",
+            "diff_hunk": "@@ -32,14 +32,12 @@ enum {\n // Note: mostly EW_NOTFOUND and EW_SILENT are mutually exclusive: EW_NOTFOUND\n // is used when executing commands and EW_SILENT for interactive expanding.\n \n-/// Return value for the comparison of two files. Also @see path_full_compare.\n-typedef enum file_comparison {\n-  kEqualFiles = 1,        ///< Both exist and are the same file.\n-  kDifferentFiles = 2,    ///< Both exist and are different files.\n-  kBothFilesMissing = 4,  ///< Both don't exist.\n-  kOneFileMissing = 6,    ///< One of them doesn't exist.\n-  kEqualFileNames = 7,  ///< Both don't exist and file names are same.\n-} FileComparison;\n+/// path_equal() flags\n+typedef enum path_compare_flags {\n+  kLiteral   = 0,       ///< compare paths literally\n+  kExpandEnv = 1 << 0,  ///< expands environment variables in the first path\n+  kFullName  = 1 << 1,  ///< uses full name comparison when FileIds are unavailable\n+} PathCompareFlags;",
+            "html_url": "https://github.com/neovim/neovim/pull/41035#discussion_r3735687586",
+            "id": 3735687586,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7eqhGi",
+            "original_commit_id": "ff5e13cb617d36045d9751bdc30df71e4698f9f9",
+            "original_line": 40,
+            "original_position": 17,
+            "original_start_line": 36,
+            "path": "src/nvim/path.h",
+            "position": 1,
+            "pull_request_review_id": 4882752883,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41035",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3735687586/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-08-07T12:19:03Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3735687586",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41035#discussion_r3735739098"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41035"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3735739098"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "off topic / out of scope for this PR: i wonder if it's worth adding a \"no filesystem\" mode (`kPathCmpFast` or something like that) which avoids the `os_stat` calls and only compares the (normalized) names.\n\nedit: oh wait, i think `path_cmp` does that already?",
+            "commit_id": "8d90f5d156e691a3ced2b5ca96103a46f8a285ab",
+            "created_at": "2026-08-07T12:29:19Z",
+            "diff_hunk": "@@ -47,47 +47,41 @@ enum {\n \n #include \"path.c.generated.h\"\n \n-/// Compare two file names.\n+/// Checks whether two paths refer to the same file.\n ///\n-/// @param s1 First file name. Environment variables in this name will be expanded.\n-/// @param s2 Second file name.\n-/// @param checkname When both files don't exist, only compare their names.\n-/// @param expandenv Whether to expand environment variables in file names.\n-/// @return Enum of type FileComparison. @see FileComparison.\n-FileComparison path_full_compare(char *const s1, char *const s2, const bool checkname,\n-                                 const bool expandenv)\n+/// @param s1 First path. Environment variables in this path may be expanded.\n+/// @param s2 Second path.\n+/// @param flags Path comparison Flags.\n+/// @return true if the paths are equal.\n+bool path_equal(const char *s1, const char *s2, PathCompareFlags flags)\n   FUNC_ATTR_NONNULL_ALL\n {\n-  char expand1[MAXPATHL];\n+  char expanded_s1[MAXPATHL];\n   char full1[MAXPATHL];\n   char full2[MAXPATHL];\n-  FileID file_id_1, file_id_2;\n+  FileID file_id1, file_id2;\n \n-  if (expandenv) {\n-    expand_env(s1, expand1, MAXPATHL);\n-  } else {\n-    xstrlcpy(expand1, s1, MAXPATHL);\n-  }\n-  bool id_ok_1 = os_fileid(expand1, &file_id_1);\n-  bool id_ok_2 = os_fileid(s2, &file_id_2);\n-  if (!id_ok_1 && !id_ok_2) {\n-    // If os_fileid() doesn't work, may compare the names.\n-    if (checkname) {\n-      vim_FullName(expand1, full1, MAXPATHL, false);\n-      vim_FullName(s2, full2, MAXPATHL, false);\n-      if (path_fnamecmp(full1, full2) == 0) {\n-        return kEqualFileNames;\n-      }\n-    }\n-    return kBothFilesMissing;\n+  if (flags == kLiteral) {\n+    return path_cmp(s1, s2, MAXPATHL) == 0;\n   }\n-  if (!id_ok_1 || !id_ok_2) {\n-    return kOneFileMissing;\n+\n+  if (flags & kExpandEnv) {\n+    expand_env_esc(s1, expanded_s1, MAXPATHL, NULL, false, NULL);\n+  } else if (flags) {\n+    xstrlcpy(expanded_s1, s1, MAXPATHL);\n   }\n-  if (os_fileid_equal(&file_id_1, &file_id_2)) {\n-    return kEqualFiles;\n+\n+  bool id_ok1 = os_fileid(expanded_s1, &file_id1);\n+  bool id_ok2 = os_fileid(s2, &file_id2);",
+            "html_url": "https://github.com/neovim/neovim/pull/41035#discussion_r3735739098",
+            "id": 3735739098,
+            "line": 77,
+            "node_id": "PRRC_kwDOAPphoM7eqtra",
+            "original_commit_id": "ff5e13cb617d36045d9751bdc30df71e4698f9f9",
+            "original_line": 75,
+            "original_position": 60,
+            "original_start_line": 74,
+            "path": "src/nvim/path.c",
+            "position": 62,
+            "pull_request_review_id": 4882819151,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41035",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3735739098/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 76,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-08-07T12:30:27Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3735739098",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41035#discussion_r3735790534"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41035"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3735790534"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "assuming this is does not hit the filesystem, let's call that out:\n\n    /// Compares filepaths (like `strncmp()`). Unlike `path_equal` this does not make filesystem\n    /// calls: only the names are compared (in a path-aware manner).",
+            "commit_id": "ff5e13cb617d36045d9751bdc30df71e4698f9f9",
+            "created_at": "2026-08-07T12:39:15Z",
+            "diff_hunk": "@@ -2011,81 +1906,90 @@ bool same_directory(char *f1, char *f2)\n   t1 = path_tail_with_sep(ffname);\n   t2 = path_tail_with_sep(f2);\n   return t1 - ffname == t2 - f2\n-         && pathcmp(ffname, f2, (int)(t1 - ffname)) == 0;\n+         && path_cmp(ffname, f2, (size_t)(t1 - ffname)) == 0;\n }\n \n-// Compare path \"p[]\" to \"q[]\".\n-// If `maxlen` >= 0 compare `p[maxlen]` to `q[maxlen]`\n-// Return value like strcmp(p, q), but consider path separators.\n-//\n-// See also `path_full_compare`.\n-int pathcmp(const char *p, const char *q, int maxlen)\n+int path_fold_char(const char *p, int *len)\n {\n-  int i, j;\n-  const char *s = NULL;\n+  if (vim_ispathsep_nocolon(*p)) {\n+    *len = 1;\n+    return PATHSEP;\n+  }\n+  *len = p_fic ? utfc_ptr2len(p) : 1;\n+  return p_fic ? utf_fold(utf_ptr2char(p)) : (uint8_t)*p;\n+}\n \n-  for (i = 0, j = 0; maxlen < 0 || (i < maxlen && j < maxlen);) {\n-    int c1 = utf_ptr2char(p + i);\n-    int c2 = utf_ptr2char(q + j);\n+/// Compares two path string like `strncmp()`, but path-aware.",
+            "html_url": "https://github.com/neovim/neovim/pull/41035#discussion_r3735790534",
+            "id": 3735790534,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7eq6PG",
+            "original_commit_id": "ff5e13cb617d36045d9751bdc30df71e4698f9f9",
+            "original_line": 1922,
+            "original_position": 245,
+            "original_start_line": null,
+            "path": "src/nvim/path.c",
+            "position": 1,
+            "pull_request_review_id": 4882882820,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41035",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 1,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3735790534/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-08-07T12:39:15Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3735790534",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41035#discussion_r3735805742"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41035"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3735805742"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "this test desc is confusing vs the one just above it...",
+            "commit_id": "ff5e13cb617d36045d9751bdc30df71e4698f9f9",
+            "created_at": "2026-08-07T12:42:09Z",
+            "diff_hunk": "@@ -129,26 +129,69 @@ describe('path.c', function()\n       os.remove(f2)\n     end)\n \n-    itp('returns kEqualFiles when passed the same file', function()\n-      eq(cimp.kEqualFiles, (path_full_compare(f1, f1)))\n+    itp('returns true when passed the same file', function()\n+      eq(true, path_equal(f1, f1))\n+      eq(true, path_equal(f1, ('%s/%s'):format(uv.fs_realpath('.'), f1)))\n     end)\n \n-    itp('returns kEqualFileNames when files that dont exist and have same name', function()\n-      eq(cimp.kEqualFileNames, (path_full_compare('null.txt', 'null.txt', true)))\n+    itp('returns true when files that dont exist and have same name', function()\n+      eq(true, path_equal('null.txt', 'null.txt', cimp.kExpandEnv + cimp.kFullName))\n     end)\n \n-    itp('returns kBothFilesMissing when files that dont exist', function()\n-      eq(cimp.kBothFilesMissing, (path_full_compare('null.txt', 'null.txt')))\n+    itp('returns false when files that dont exist', function()",
+            "html_url": "https://github.com/neovim/neovim/pull/41035#discussion_r3735805742",
+            "id": 3735805742,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7eq98u",
+            "original_commit_id": "ff5e13cb617d36045d9751bdc30df71e4698f9f9",
+            "original_line": 141,
+            "original_position": 34,
+            "original_start_line": null,
+            "path": "test/unit/path_spec.lua",
+            "position": 1,
+            "pull_request_review_id": 4882902363,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41035",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 1,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3735805742/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-08-07T12:43:02Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3735805742",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41035#discussion_r3736114673"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41035"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3736114673"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "Yes, I preserved this behavior because the search results didn't give me the same confidence as the `\\` case. If possible, though, I also think it would be better to use `strncmp` as well.",
+            "commit_id": "8d90f5d156e691a3ced2b5ca96103a46f8a285ab",
+            "created_at": "2026-08-07T13:35:20Z",
+            "diff_hunk": "@@ -2265,12 +2266,13 @@ bool au_exists(const char *const arg)\n   for (size_t i = 0; i < kv_size(*acs); i++) {\n     AutoPat *const ap = kv_A(*acs, i).pat;\n     // Only use a pattern when it has not been removed.\n-    // For buffer-local autocommands, path_fnamecmp() works fine.\n+    // path_equal (formerly path_fnamecmp) is not suitable because it treats a\n+    // single trailing slash as insignificant.\n     if (ap != NULL\n         && (group == AUGROUP_ALL || ap->group == group)\n         && (pattern == NULL\n             || (buflocal_buf == NULL\n-                ? path_fnamecmp(ap->pat, pattern) == 0\n+                ? mb_strcmp_ic(p_fic, ap->pat, pattern) == 0",
+            "html_url": "https://github.com/neovim/neovim/pull/41035#discussion_r3736114673",
+            "id": 3736114673,
+            "in_reply_to_id": 3735582500,
+            "line": 2274,
+            "node_id": "PRRC_kwDOAPphoM7esJXx",
+            "original_commit_id": "ff5e13cb617d36045d9751bdc30df71e4698f9f9",
+            "original_line": 2275,
+            "original_position": 29,
+            "original_start_line": null,
+            "path": "src/nvim/autocmd.c",
+            "position": 28,
+            "pull_request_review_id": 4883287048,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41035",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3736114673/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-08-07T13:35:20Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3736114673",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/8579651?v=4",
+                "events_url": "https://api.github.com/users/ntdiary/events{/privacy}",
+                "followers_url": "https://api.github.com/users/ntdiary/followers",
+                "following_url": "https://api.github.com/users/ntdiary/following{/other_user}",
+                "gists_url": "https://api.github.com/users/ntdiary/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/ntdiary",
+                "id": 8579651,
+                "login": "ntdiary",
+                "node_id": "MDQ6VXNlcjg1Nzk2NTE=",
+                "organizations_url": "https://api.github.com/users/ntdiary/orgs",
+                "received_events_url": "https://api.github.com/users/ntdiary/received_events",
+                "repos_url": "https://api.github.com/users/ntdiary/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/ntdiary/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/ntdiary/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/ntdiary",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41035#discussion_r3736310054"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41035"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3736310054"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "I also considered adding an `ic` param to `path_fold_char()`, but I wasn't  sure about the other two. Adding one to `path_cmp` seems fine as well. ~As for `path_equal`, how about adding a `kPathCmpIgnoreCase` flag? There are 43 call sites, but only `equal_path_t` needs this behavior for now.~",
+            "commit_id": "ff5e13cb617d36045d9751bdc30df71e4698f9f9",
+            "created_at": "2026-08-07T14:05:34Z",
+            "diff_hunk": "@@ -45,35 +46,44 @@ static inline uint32_t hash_cstr_t(const char *s)\n \n #define equal_cstr_t strequal\n \n-/// Hash/equality for path strings. On case-insensitive platforms, case-fold first (via\n-/// str_foldcase, the same fold used by mb_stricmp/path_fnamencmp) so the hash↔equality invariant\n-/// holds.\n+/// Hash/equality for path strings. When 'fileignorecase' is on, case-fold first (via\n+/// path_fold_char, the same fold used by path_equal) so the hash↔equality invariant holds.\n ///\n-/// On Windows we additionally:\n-///   - fold '\\\\' -> '/'   (path_fnamencmp treats them as equal)\n-///   - drop a leading drive letter \"[A-Za-z]:\" so that \"C:\\foo\" and \"\\foo\" land in the same bucket\n-///     (path_fnamencmp considers them equal when the current drive matches the explicit drive\n-///     letter). Two paths with *different* explicit drives (\"C:\\foo\" vs \"D:\\foo\") may now\n-///     share a bucket — that's a permitted collision; equal_path_t still rejects them.\n-///\n-/// path_fnamencmp's non-Windows branch consults &fileignorecase, which is runtime-mutable and would\n-/// break the hash invariant if flipped. So the macOS branch deliberately bypasses path_fnamencmp\n-/// and uses the compile-time CASE_INSENSITIVE_FILENAME switch instead.\n+/// We additionally:\n+///   - drop a leading drive letter \"[A-Za-z]:\" on Windows, so that \"C:\\foo\" and \"\\foo\" land in\n+///     the same bucket (path_equal considers them equal when the current drive matches the\n+///     explicit drive letter). Two paths with *different* explicit drives (\"C:\\foo\" vs \"D:\\foo\")\n+///     may now share a bucket — that's a permitted collision; equal_path_t still rejects them.\n+///   - ignore a single trailing path separator.\n+/// &fileignorecase is runtime-mutable and would break the hash invariant if flipped.\n+/// So we force it to the compile-time CASE_INSENSITIVE_FILENAME value during hash/equality.\n static inline uint32_t hash_path_t(const char *p)\n {\n-#ifdef BACKSLASH_IN_FILENAME\n-  if (p[1] == ':' && ASCII_ISALPHA(p[0])) {\n+  uint32_t h = 0;\n+#ifdef MSWIN\n+  if (ASCII_ISALPHA(*p) && p[1] == ':') {\n     p += 2;\n   }\n #endif\n+  int p_fic_save = p_fic;\n #ifdef CASE_INSENSITIVE_FILENAME\n-  char *folded = str_foldcase((char *)p, (int)strlen(p), NULL, 0);\n-  uint32_t h = hash_cstr_t(folded);\n-  xfree(folded);\n-  return h;\n+  p_fic = true;\n #else\n-  return hash_cstr_t(p);\n+  p_fic = false;",
+            "html_url": "https://github.com/neovim/neovim/pull/41035#discussion_r3736310054",
+            "id": 3736310054,
+            "in_reply_to_id": 3735625908,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7es5Em",
+            "original_commit_id": "ff5e13cb617d36045d9751bdc30df71e4698f9f9",
+            "original_line": 72,
+            "original_position": 55,
+            "original_start_line": null,
+            "path": "src/nvim/map.c",
+            "position": 1,
+            "pull_request_review_id": 4883531851,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41035",
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3736310054/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-08-07T14:33:06Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3736310054",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/8579651?v=4",
+                "events_url": "https://api.github.com/users/ntdiary/events{/privacy}",
+                "followers_url": "https://api.github.com/users/ntdiary/followers",
+                "following_url": "https://api.github.com/users/ntdiary/following{/other_user}",
+                "gists_url": "https://api.github.com/users/ntdiary/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/ntdiary",
+                "id": 8579651,
+                "login": "ntdiary",
+                "node_id": "MDQ6VXNlcjg1Nzk2NTE=",
+                "organizations_url": "https://api.github.com/users/ntdiary/orgs",
+                "received_events_url": "https://api.github.com/users/ntdiary/received_events",
+                "repos_url": "https://api.github.com/users/ntdiary/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/ntdiary/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/ntdiary/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/ntdiary",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41035#discussion_r3737131482"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41035"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3737131482"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "I changed `path_equal_t` to call `path_cmp` directly. The flag approach seemed to make things more complicated instead.",
+            "commit_id": "ff5e13cb617d36045d9751bdc30df71e4698f9f9",
+            "created_at": "2026-08-07T16:09:43Z",
+            "diff_hunk": "@@ -45,35 +46,44 @@ static inline uint32_t hash_cstr_t(const char *s)\n \n #define equal_cstr_t strequal\n \n-/// Hash/equality for path strings. On case-insensitive platforms, case-fold first (via\n-/// str_foldcase, the same fold used by mb_stricmp/path_fnamencmp) so the hash↔equality invariant\n-/// holds.\n+/// Hash/equality for path strings. When 'fileignorecase' is on, case-fold first (via\n+/// path_fold_char, the same fold used by path_equal) so the hash↔equality invariant holds.\n ///\n-/// On Windows we additionally:\n-///   - fold '\\\\' -> '/'   (path_fnamencmp treats them as equal)\n-///   - drop a leading drive letter \"[A-Za-z]:\" so that \"C:\\foo\" and \"\\foo\" land in the same bucket\n-///     (path_fnamencmp considers them equal when the current drive matches the explicit drive\n-///     letter). Two paths with *different* explicit drives (\"C:\\foo\" vs \"D:\\foo\") may now\n-///     share a bucket — that's a permitted collision; equal_path_t still rejects them.\n-///\n-/// path_fnamencmp's non-Windows branch consults &fileignorecase, which is runtime-mutable and would\n-/// break the hash invariant if flipped. So the macOS branch deliberately bypasses path_fnamencmp\n-/// and uses the compile-time CASE_INSENSITIVE_FILENAME switch instead.\n+/// We additionally:\n+///   - drop a leading drive letter \"[A-Za-z]:\" on Windows, so that \"C:\\foo\" and \"\\foo\" land in\n+///     the same bucket (path_equal considers them equal when the current drive matches the\n+///     explicit drive letter). Two paths with *different* explicit drives (\"C:\\foo\" vs \"D:\\foo\")\n+///     may now share a bucket — that's a permitted collision; equal_path_t still rejects them.\n+///   - ignore a single trailing path separator.\n+/// &fileignorecase is runtime-mutable and would break the hash invariant if flipped.\n+/// So we force it to the compile-time CASE_INSENSITIVE_FILENAME value during hash/equality.\n static inline uint32_t hash_path_t(const char *p)\n {\n-#ifdef BACKSLASH_IN_FILENAME\n-  if (p[1] == ':' && ASCII_ISALPHA(p[0])) {\n+  uint32_t h = 0;\n+#ifdef MSWIN\n+  if (ASCII_ISALPHA(*p) && p[1] == ':') {\n     p += 2;\n   }\n #endif\n+  int p_fic_save = p_fic;\n #ifdef CASE_INSENSITIVE_FILENAME\n-  char *folded = str_foldcase((char *)p, (int)strlen(p), NULL, 0);\n-  uint32_t h = hash_cstr_t(folded);\n-  xfree(folded);\n-  return h;\n+  p_fic = true;\n #else\n-  return hash_cstr_t(p);\n+  p_fic = false;",
+            "html_url": "https://github.com/neovim/neovim/pull/41035#discussion_r3737131482",
+            "id": 3737131482,
+            "in_reply_to_id": 3735625908,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7ewBna",
+            "original_commit_id": "ff5e13cb617d36045d9751bdc30df71e4698f9f9",
+            "original_line": 72,
+            "original_position": 55,
+            "original_start_line": null,
+            "path": "src/nvim/map.c",
+            "position": 1,
+            "pull_request_review_id": 4884552225,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41035",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3737131482/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-08-07T16:09:44Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3737131482",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/8579651?v=4",
+                "events_url": "https://api.github.com/users/ntdiary/events{/privacy}",
+                "followers_url": "https://api.github.com/users/ntdiary/followers",
+                "following_url": "https://api.github.com/users/ntdiary/following{/other_user}",
+                "gists_url": "https://api.github.com/users/ntdiary/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/ntdiary",
+                "id": 8579651,
+                "login": "ntdiary",
+                "node_id": "MDQ6VXNlcjg1Nzk2NTE=",
+                "organizations_url": "https://api.github.com/users/ntdiary/orgs",
+                "received_events_url": "https://api.github.com/users/ntdiary/received_events",
+                "repos_url": "https://api.github.com/users/ntdiary/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/ntdiary/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/ntdiary/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/ntdiary",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41035#discussion_r3737148772"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41035"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3737148772"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "descriptions are still contradictory. the first one is actually about flags.",
+            "commit_id": "290346d0a6b81afbf9bb23d0208fd9036f87b09a",
+            "created_at": "2026-08-07T16:12:45Z",
+            "diff_hunk": "@@ -129,26 +129,69 @@ describe('path.c', function()\n       os.remove(f2)\n     end)\n \n-    itp('returns kEqualFiles when passed the same file', function()\n-      eq(cimp.kEqualFiles, (path_full_compare(f1, f1)))\n+    itp('returns true when passed the same file', function()\n+      eq(true, path_equal(f1, f1))\n+      eq(true, path_equal(f1, ('%s/%s'):format(uv.fs_realpath('.'), f1)))\n     end)\n \n-    itp('returns kEqualFileNames when files that dont exist and have same name', function()\n-      eq(cimp.kEqualFileNames, (path_full_compare('null.txt', 'null.txt', true)))\n+    itp('returns true when files that dont exist and have same name', function()\n+      eq(true, path_equal('null.txt', 'null.txt', cimp.kPathCmpExpand + cimp.kPathCmpFull))\n     end)\n \n-    itp('returns kBothFilesMissing when files that dont exist', function()\n-      eq(cimp.kBothFilesMissing, (path_full_compare('null.txt', 'null.txt')))\n+    itp('returns false when both files dont exist', function()\n+      eq(false, path_equal('null.txt', 'null.txt'))",
+            "html_url": "https://github.com/neovim/neovim/pull/41035#discussion_r3737148772",
+            "id": 3737148772,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7ewF1k",
+            "original_commit_id": "e45ae1459ee3c242c233188a575860c766dc33b1",
+            "original_line": 142,
+            "original_position": 35,
+            "original_start_line": 137,
+            "path": "test/unit/path_spec.lua",
+            "position": 1,
+            "pull_request_review_id": 4884572824,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41035",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3737148772/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-08-07T16:12:45Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3737148772",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41035#discussion_r3737159543"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41035"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3737159543"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "Sorry, I couldn't figure out what the correct assertion should look like here.",
+            "commit_id": "ff5e13cb617d36045d9751bdc30df71e4698f9f9",
+            "created_at": "2026-08-07T16:14:33Z",
+            "diff_hunk": "@@ -32,14 +32,12 @@ enum {\n // Note: mostly EW_NOTFOUND and EW_SILENT are mutually exclusive: EW_NOTFOUND\n // is used when executing commands and EW_SILENT for interactive expanding.\n \n-/// Return value for the comparison of two files. Also @see path_full_compare.\n-typedef enum file_comparison {\n-  kEqualFiles = 1,        ///< Both exist and are the same file.\n-  kDifferentFiles = 2,    ///< Both exist and are different files.\n-  kBothFilesMissing = 4,  ///< Both don't exist.\n-  kOneFileMissing = 6,    ///< One of them doesn't exist.\n-  kEqualFileNames = 7,  ///< Both don't exist and file names are same.\n-} FileComparison;\n+/// path_equal() flags\n+typedef enum path_compare_flags {\n+  kLiteral   = 0,       ///< compare paths literally\n+  kExpandEnv = 1 << 0,  ///< expands environment variables in the first path\n+  kFullName  = 1 << 1,  ///< uses full name comparison when FileIds are unavailable\n+} PathCompareFlags;",
+            "html_url": "https://github.com/neovim/neovim/pull/41035#discussion_r3737159543",
+            "id": 3737159543,
+            "in_reply_to_id": 3735687586,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7ewId3",
+            "original_commit_id": "ff5e13cb617d36045d9751bdc30df71e4698f9f9",
+            "original_line": 40,
+            "original_position": 17,
+            "original_start_line": 36,
+            "path": "src/nvim/path.h",
+            "position": 1,
+            "pull_request_review_id": 4884585682,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41035",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3737159543/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-08-07T16:14:33Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3737159543",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/8579651?v=4",
+                "events_url": "https://api.github.com/users/ntdiary/events{/privacy}",
+                "followers_url": "https://api.github.com/users/ntdiary/followers",
+                "following_url": "https://api.github.com/users/ntdiary/following{/other_user}",
+                "gists_url": "https://api.github.com/users/ntdiary/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/ntdiary",
+                "id": 8579651,
+                "login": "ntdiary",
+                "node_id": "MDQ6VXNlcjg1Nzk2NTE=",
+                "organizations_url": "https://api.github.com/users/ntdiary/orgs",
+                "received_events_url": "https://api.github.com/users/ntdiary/received_events",
+                "repos_url": "https://api.github.com/users/ntdiary/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/ntdiary/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/ntdiary/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/ntdiary",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41035#discussion_r3737174365"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41035"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3737174365"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "why don't these \"literal\" cases (esp. the ones that were using `path_fnamecmp`) use `path_cmp`? what is needed from `path_equal` (in this case) that `path_cmp` doesn't have?",
+            "commit_id": "8d90f5d156e691a3ced2b5ca96103a46f8a285ab",
+            "created_at": "2026-08-07T16:16:48Z",
+            "diff_hunk": "@@ -3479,7 +3479,7 @@ static char *findswapname(buf_T *buf, char **dirp, char *old_fname, bool *found_\n     }\n \n     // A file name equal to old_fname is OK to use.\n-    if (old_fname != NULL && path_fnamecmp(fname, old_fname) == 0) {\n+    if (old_fname != NULL && path_equal(fname, old_fname, kPathCmpLiteral)) {",
+            "html_url": "https://github.com/neovim/neovim/pull/41035#discussion_r3737174365",
+            "id": 3737174365,
+            "line": 3482,
+            "node_id": "PRRC_kwDOAPphoM7ewMFd",
+            "original_commit_id": "290346d0a6b81afbf9bb23d0208fd9036f87b09a",
+            "original_line": 3482,
+            "original_position": 23,
+            "original_start_line": null,
+            "path": "src/nvim/memline.c",
+            "position": 23,
+            "pull_request_review_id": 4884604380,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41035",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3737174365/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-08-07T16:16:48Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3737174365",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41035#discussion_r3737194156"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41035"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3737194156"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "to prevent mistakes should we assert something like:\n\n    assert(!(flags & kPathCmpLiteral) || flags == kPathCmpLiteral);\n\n? because the other flags contradict `kPathCmpLiteral` , so if a caller passes both then it's a bug?",
+            "commit_id": "8d90f5d156e691a3ced2b5ca96103a46f8a285ab",
+            "created_at": "2026-08-07T16:20:12Z",
+            "diff_hunk": "@@ -47,47 +47,41 @@ enum {\n \n #include \"path.c.generated.h\"\n \n-/// Compare two file names.\n+/// Checks whether two paths refer to the same file.\n ///\n-/// @param s1 First file name. Environment variables in this name will be expanded.\n-/// @param s2 Second file name.\n-/// @param checkname When both files don't exist, only compare their names.\n-/// @param expandenv Whether to expand environment variables in file names.\n-/// @return Enum of type FileComparison. @see FileComparison.\n-FileComparison path_full_compare(char *const s1, char *const s2, const bool checkname,\n-                                 const bool expandenv)\n+/// @param s1 First path. Environment variables in this path may be expanded.\n+/// @param s2 Second path.\n+/// @param flags Path comparison Flags.\n+/// @return true if the paths are equal.\n+bool path_equal(const char *s1, const char *s2, PathCmpFlags flags)",
+            "html_url": "https://github.com/neovim/neovim/pull/41035#discussion_r3737194156",
+            "id": 3737194156,
+            "line": 56,
+            "node_id": "PRRC_kwDOAPphoM7ewQ6s",
+            "original_commit_id": "290346d0a6b81afbf9bb23d0208fd9036f87b09a",
+            "original_line": 56,
+            "original_position": 18,
+            "original_start_line": null,
+            "path": "src/nvim/path.c",
+            "position": 18,
+            "pull_request_review_id": 4884631278,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41035",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3737194156/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-08-07T16:20:12Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3737194156",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41035#discussion_r3737196773"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41035"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3737196773"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "Yes, I added `kLiteral` mainly to make this behavior explicit at the call site, although having it mixed together with the other flags also feels a bit odd. 😂",
+            "commit_id": "8d90f5d156e691a3ced2b5ca96103a46f8a285ab",
+            "created_at": "2026-08-07T16:20:35Z",
+            "diff_hunk": "@@ -47,47 +47,41 @@ enum {\n \n #include \"path.c.generated.h\"\n \n-/// Compare two file names.\n+/// Checks whether two paths refer to the same file.\n ///\n-/// @param s1 First file name. Environment variables in this name will be expanded.\n-/// @param s2 Second file name.\n-/// @param checkname When both files don't exist, only compare their names.\n-/// @param expandenv Whether to expand environment variables in file names.\n-/// @return Enum of type FileComparison. @see FileComparison.\n-FileComparison path_full_compare(char *const s1, char *const s2, const bool checkname,\n-                                 const bool expandenv)\n+/// @param s1 First path. Environment variables in this path may be expanded.\n+/// @param s2 Second path.\n+/// @param flags Path comparison Flags.\n+/// @return true if the paths are equal.\n+bool path_equal(const char *s1, const char *s2, PathCompareFlags flags)\n   FUNC_ATTR_NONNULL_ALL\n {\n-  char expand1[MAXPATHL];\n+  char expanded_s1[MAXPATHL];\n   char full1[MAXPATHL];\n   char full2[MAXPATHL];\n-  FileID file_id_1, file_id_2;\n+  FileID file_id1, file_id2;\n \n-  if (expandenv) {\n-    expand_env(s1, expand1, MAXPATHL);\n-  } else {\n-    xstrlcpy(expand1, s1, MAXPATHL);\n-  }\n-  bool id_ok_1 = os_fileid(expand1, &file_id_1);\n-  bool id_ok_2 = os_fileid(s2, &file_id_2);\n-  if (!id_ok_1 && !id_ok_2) {\n-    // If os_fileid() doesn't work, may compare the names.\n-    if (checkname) {\n-      vim_FullName(expand1, full1, MAXPATHL, false);\n-      vim_FullName(s2, full2, MAXPATHL, false);\n-      if (path_fnamecmp(full1, full2) == 0) {\n-        return kEqualFileNames;\n-      }\n-    }\n-    return kBothFilesMissing;\n+  if (flags == kLiteral) {\n+    return path_cmp(s1, s2, MAXPATHL) == 0;\n   }\n-  if (!id_ok_1 || !id_ok_2) {\n-    return kOneFileMissing;\n+\n+  if (flags & kExpandEnv) {\n+    expand_env_esc(s1, expanded_s1, MAXPATHL, NULL, false, NULL);\n+  } else if (flags) {\n+    xstrlcpy(expanded_s1, s1, MAXPATHL);\n   }\n-  if (os_fileid_equal(&file_id_1, &file_id_2)) {\n-    return kEqualFiles;\n+\n+  bool id_ok1 = os_fileid(expanded_s1, &file_id1);\n+  bool id_ok2 = os_fileid(s2, &file_id2);",
+            "html_url": "https://github.com/neovim/neovim/pull/41035#discussion_r3737196773",
+            "id": 3737196773,
+            "in_reply_to_id": 3735739098,
+            "line": 77,
+            "node_id": "PRRC_kwDOAPphoM7ewRjl",
+            "original_commit_id": "ff5e13cb617d36045d9751bdc30df71e4698f9f9",
+            "original_line": 75,
+            "original_position": 60,
+            "original_start_line": 74,
+            "path": "src/nvim/path.c",
+            "position": 62,
+            "pull_request_review_id": 4884635256,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41035",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3737196773/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 76,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-08-07T16:20:35Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3737196773",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/8579651?v=4",
+                "events_url": "https://api.github.com/users/ntdiary/events{/privacy}",
+                "followers_url": "https://api.github.com/users/ntdiary/followers",
+                "following_url": "https://api.github.com/users/ntdiary/following{/other_user}",
+                "gists_url": "https://api.github.com/users/ntdiary/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/ntdiary",
+                "id": 8579651,
+                "login": "ntdiary",
+                "node_id": "MDQ6VXNlcjg1Nzk2NTE=",
+                "organizations_url": "https://api.github.com/users/ntdiary/orgs",
+                "received_events_url": "https://api.github.com/users/ntdiary/received_events",
+                "repos_url": "https://api.github.com/users/ntdiary/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/ntdiary/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/ntdiary/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/ntdiary",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41035#discussion_r3737210546"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41035"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3737210546"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "oh, `kPathCmpLiteral` is basically an alias to `path_cmp` already.",
+            "commit_id": "8d90f5d156e691a3ced2b5ca96103a46f8a285ab",
+            "created_at": "2026-08-07T16:22:54Z",
+            "diff_hunk": "@@ -3479,7 +3479,7 @@ static char *findswapname(buf_T *buf, char **dirp, char *old_fname, bool *found_\n     }\n \n     // A file name equal to old_fname is OK to use.\n-    if (old_fname != NULL && path_fnamecmp(fname, old_fname) == 0) {\n+    if (old_fname != NULL && path_equal(fname, old_fname, kPathCmpLiteral)) {",
+            "html_url": "https://github.com/neovim/neovim/pull/41035#discussion_r3737210546",
+            "id": 3737210546,
+            "in_reply_to_id": 3737174365,
+            "line": 3482,
+            "node_id": "PRRC_kwDOAPphoM7ewU6y",
+            "original_commit_id": "290346d0a6b81afbf9bb23d0208fd9036f87b09a",
+            "original_line": 3482,
+            "original_position": 23,
+            "original_start_line": null,
+            "path": "src/nvim/memline.c",
+            "position": 23,
+            "pull_request_review_id": 4884656524,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41035",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3737210546/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-08-07T16:22:54Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3737210546",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41035#discussion_r3737282449"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41035"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3737282449"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "Eh, `kPathCmpLiteral` is `0`, so `flags & kPathCmpLiteral` always is `false`, maybe we could change it to `1 << 0`, then use this assertion?",
+            "commit_id": "8d90f5d156e691a3ced2b5ca96103a46f8a285ab",
+            "created_at": "2026-08-07T16:35:06Z",
+            "diff_hunk": "@@ -47,47 +47,41 @@ enum {\n \n #include \"path.c.generated.h\"\n \n-/// Compare two file names.\n+/// Checks whether two paths refer to the same file.\n ///\n-/// @param s1 First file name. Environment variables in this name will be expanded.\n-/// @param s2 Second file name.\n-/// @param checkname When both files don't exist, only compare their names.\n-/// @param expandenv Whether to expand environment variables in file names.\n-/// @return Enum of type FileComparison. @see FileComparison.\n-FileComparison path_full_compare(char *const s1, char *const s2, const bool checkname,\n-                                 const bool expandenv)\n+/// @param s1 First path. Environment variables in this path may be expanded.\n+/// @param s2 Second path.\n+/// @param flags Path comparison Flags.\n+/// @return true if the paths are equal.\n+bool path_equal(const char *s1, const char *s2, PathCmpFlags flags)",
+            "html_url": "https://github.com/neovim/neovim/pull/41035#discussion_r3737282449",
+            "id": 3737282449,
+            "in_reply_to_id": 3737194156,
+            "line": 56,
+            "node_id": "PRRC_kwDOAPphoM7ewmeR",
+            "original_commit_id": "290346d0a6b81afbf9bb23d0208fd9036f87b09a",
+            "original_line": 56,
+            "original_position": 18,
+            "original_start_line": null,
+            "path": "src/nvim/path.c",
+            "position": 18,
+            "pull_request_review_id": 4884765805,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41035",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3737282449/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-08-07T16:35:06Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3737282449",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/8579651?v=4",
+                "events_url": "https://api.github.com/users/ntdiary/events{/privacy}",
+                "followers_url": "https://api.github.com/users/ntdiary/followers",
+                "following_url": "https://api.github.com/users/ntdiary/following{/other_user}",
+                "gists_url": "https://api.github.com/users/ntdiary/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/ntdiary",
+                "id": 8579651,
+                "login": "ntdiary",
+                "node_id": "MDQ6VXNlcjg1Nzk2NTE=",
+                "organizations_url": "https://api.github.com/users/ntdiary/orgs",
+                "received_events_url": "https://api.github.com/users/ntdiary/received_events",
+                "repos_url": "https://api.github.com/users/ntdiary/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/ntdiary/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/ntdiary/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/ntdiary",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41035#discussion_r3737311575"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41035"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3737311575"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "that was just pseudocode, idk what the actual code will look like.",
+            "commit_id": "8d90f5d156e691a3ced2b5ca96103a46f8a285ab",
+            "created_at": "2026-08-07T16:40:21Z",
+            "diff_hunk": "@@ -47,47 +47,41 @@ enum {\n \n #include \"path.c.generated.h\"\n \n-/// Compare two file names.\n+/// Checks whether two paths refer to the same file.\n ///\n-/// @param s1 First file name. Environment variables in this name will be expanded.\n-/// @param s2 Second file name.\n-/// @param checkname When both files don't exist, only compare their names.\n-/// @param expandenv Whether to expand environment variables in file names.\n-/// @return Enum of type FileComparison. @see FileComparison.\n-FileComparison path_full_compare(char *const s1, char *const s2, const bool checkname,\n-                                 const bool expandenv)\n+/// @param s1 First path. Environment variables in this path may be expanded.\n+/// @param s2 Second path.\n+/// @param flags Path comparison Flags.\n+/// @return true if the paths are equal.\n+bool path_equal(const char *s1, const char *s2, PathCmpFlags flags)",
+            "html_url": "https://github.com/neovim/neovim/pull/41035#discussion_r3737311575",
+            "id": 3737311575,
+            "in_reply_to_id": 3737194156,
+            "line": 56,
+            "node_id": "PRRC_kwDOAPphoM7ewtlX",
+            "original_commit_id": "290346d0a6b81afbf9bb23d0208fd9036f87b09a",
+            "original_line": 56,
+            "original_position": 18,
+            "original_start_line": null,
+            "path": "src/nvim/path.c",
+            "position": 18,
+            "pull_request_review_id": 4884799877,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41035",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3737311575/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-08-07T16:41:29Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3737311575",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41035#discussion_r3737536519"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41035"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3737536519"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "so.... doesn't this seem strange? what's the intention here? why does kPathCmpFull change the decision for nonexistent files?",
+            "commit_id": "69543e4217910a7d8411592852ca06db76d63fc0",
+            "created_at": "2026-08-07T17:19:29Z",
+            "diff_hunk": "@@ -129,26 +129,69 @@ describe('path.c', function()\n       os.remove(f2)\n     end)\n \n-    itp('returns kEqualFiles when passed the same file', function()\n-      eq(cimp.kEqualFiles, (path_full_compare(f1, f1)))\n+    itp('returns true when passed the same file', function()\n+      eq(true, path_equal(f1, f1))\n+      eq(true, path_equal(f1, ('%s/%s'):format(uv.fs_realpath('.'), f1)))\n     end)\n \n-    itp('returns kEqualFileNames when files that dont exist and have same name', function()\n-      eq(cimp.kEqualFileNames, (path_full_compare('null.txt', 'null.txt', true)))\n+    itp('returns true for nonexistent files with same name using kPathCmpFull', function()\n+      eq(true, path_equal('null.txt', 'null.txt', cimp.kPathCmpFull))\n     end)\n \n-    itp('returns kBothFilesMissing when files that dont exist', function()\n-      eq(cimp.kBothFilesMissing, (path_full_compare('null.txt', 'null.txt')))\n+    itp('returns false for nonexistent files with same name without kPathCmpFull', function()",
+            "html_url": "https://github.com/neovim/neovim/pull/41035#discussion_r3737536519",
+            "id": 3737536519,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7exkgH",
+            "original_commit_id": "69543e4217910a7d8411592852ca06db76d63fc0",
+            "original_line": 141,
+            "original_position": 34,
+            "original_start_line": 137,
+            "path": "test/unit/path_spec.lua",
+            "position": 1,
+            "pull_request_review_id": 4885076568,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41035",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3737536519/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-08-07T17:19:48Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3737536519",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41035#discussion_r3739268528"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41035"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3739268528"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "Yes, it does look a bit odd. The current flag design is somewhat biased toward preserving compatibility. The old `path_full_compare` would call `os_stat` first, and only fall back to comparing full names if both files were unavailable (with `checkname` param). I have only verified this change doesn't affect the existing behavior, but I haven't gone through each call site yet to see whether this behavior can be refined further.\r\n\r\nGeneric AI: would you like me to investigate this further. :P",
+            "commit_id": "69543e4217910a7d8411592852ca06db76d63fc0",
+            "created_at": "2026-08-07T23:01:21Z",
+            "diff_hunk": "@@ -129,26 +129,69 @@ describe('path.c', function()\n       os.remove(f2)\n     end)\n \n-    itp('returns kEqualFiles when passed the same file', function()\n-      eq(cimp.kEqualFiles, (path_full_compare(f1, f1)))\n+    itp('returns true when passed the same file', function()\n+      eq(true, path_equal(f1, f1))\n+      eq(true, path_equal(f1, ('%s/%s'):format(uv.fs_realpath('.'), f1)))\n     end)\n \n-    itp('returns kEqualFileNames when files that dont exist and have same name', function()\n-      eq(cimp.kEqualFileNames, (path_full_compare('null.txt', 'null.txt', true)))\n+    itp('returns true for nonexistent files with same name using kPathCmpFull', function()\n+      eq(true, path_equal('null.txt', 'null.txt', cimp.kPathCmpFull))\n     end)\n \n-    itp('returns kBothFilesMissing when files that dont exist', function()\n-      eq(cimp.kBothFilesMissing, (path_full_compare('null.txt', 'null.txt')))\n+    itp('returns false for nonexistent files with same name without kPathCmpFull', function()",
+            "html_url": "https://github.com/neovim/neovim/pull/41035#discussion_r3739268528",
+            "id": 3739268528,
+            "in_reply_to_id": 3737536519,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7e4LWw",
+            "original_commit_id": "69543e4217910a7d8411592852ca06db76d63fc0",
+            "original_line": 141,
+            "original_position": 34,
+            "original_start_line": 137,
+            "path": "test/unit/path_spec.lua",
+            "position": 1,
+            "pull_request_review_id": 4887189871,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41035",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 1,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3739268528/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-08-07T23:01:21Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3739268528",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/8579651?v=4",
+                "events_url": "https://api.github.com/users/ntdiary/events{/privacy}",
+                "followers_url": "https://api.github.com/users/ntdiary/followers",
+                "following_url": "https://api.github.com/users/ntdiary/following{/other_user}",
+                "gists_url": "https://api.github.com/users/ntdiary/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/ntdiary",
+                "id": 8579651,
+                "login": "ntdiary",
+                "node_id": "MDQ6VXNlcjg1Nzk2NTE=",
+                "organizations_url": "https://api.github.com/users/ntdiary/orgs",
+                "received_events_url": "https://api.github.com/users/ntdiary/received_events",
+                "repos_url": "https://api.github.com/users/ntdiary/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/ntdiary/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/ntdiary/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/ntdiary",
+                "user_view_type": "public"
+            }
         }
     ],
-    "comment_regular_data": [],
+    "comment_regular_data": [
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "I'm not sure if the failing test is related to this PR. I couldn't reproduce it with `extmark_spec.lua` in my Ubuntu VM. Maybe I need to run the full test suite once? 🤔\r\n> FAILED   1 test, listed below:\r\nFAILED   ...e/runner/work/neovim/neovim/test/functional/testnvim.lua @ 1176: API/extmarks undo and redo of marks deleted during edits\r\n/home/runner/work/neovim/neovim/test/testutil.lua:410: Found runtime errors in logfile(s):\r\n==================== File /home/runner/work/neovim/neovim/build/log/asan.10755 ====================\r\n= \r\n= =================================================================\r\n= ==10755==ERROR: LeakSanitizer: detected memory leaks\r\n= \r\n= Direct leak of 1023 byte(s) in 1 object(s) allocated from:\r\n\r\nI ran all functional test groups, but couldn't reproduce the issue.",
+            "created_at": "2026-08-04T09:01:29Z",
+            "html_url": "https://github.com/neovim/neovim/pull/41035#issuecomment-5176823761",
+            "id": 5176823761,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/41035",
+            "minimized": null,
+            "node_id": "IC_kwDOAPphoM8AAAABNJAP0Q",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/5176823761/reactions"
+            },
+            "updated_at": "2026-08-04T14:35:04Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/5176823761",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/8579651?v=4",
+                "events_url": "https://api.github.com/users/ntdiary/events{/privacy}",
+                "followers_url": "https://api.github.com/users/ntdiary/followers",
+                "following_url": "https://api.github.com/users/ntdiary/following{/other_user}",
+                "gists_url": "https://api.github.com/users/ntdiary/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/ntdiary",
+                "id": 8579651,
+                "login": "ntdiary",
+                "node_id": "MDQ6VXNlcjg1Nzk2NTE=",
+                "organizations_url": "https://api.github.com/users/ntdiary/orgs",
+                "received_events_url": "https://api.github.com/users/ntdiary/received_events",
+                "repos_url": "https://api.github.com/users/ntdiary/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/ntdiary/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/ntdiary/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/ntdiary",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "that leak is tracked in https://github.com/neovim/neovim/issues/39675",
+            "created_at": "2026-08-05T09:02:39Z",
+            "html_url": "https://github.com/neovim/neovim/pull/41035#issuecomment-5189799599",
+            "id": 5189799599,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/41035",
+            "minimized": null,
+            "node_id": "IC_kwDOAPphoM8AAAABNVYOrw",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/5189799599/reactions"
+            },
+            "updated_at": "2026-08-05T09:02:39Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/5189799599",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        }
+    ],
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/41035/comments",
     "commits_url": "https://api.github.com/repos/neovim/neovim/pulls/41035/commits",
     "created_at": "2026-07-28T15:18:09Z",
     "diff_url": "https://github.com/neovim/neovim/pull/41035.diff",
-    "draft": true,
+    "draft": false,
     "head": {
         "label": "ntdiary:refactor-path-compare",
         "ref": "refactor-path-compare",
@@ -971,9 +2940,9 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/ntdiary/neovim/pulls{/number}",
-            "pushed_at": "2026-08-03T13:27:19Z",
+            "pushed_at": "2026-08-07T23:01:05Z",
             "releases_url": "https://api.github.com/repos/ntdiary/neovim/releases{/id}",
-            "size": 375612,
+            "size": 379164,
             "ssh_url": "git@github.com:ntdiary/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/ntdiary/neovim/stargazers",
@@ -992,7 +2961,7 @@
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "db04a2a2f14d4af195a356a8a708aa56f5c1fa1d",
+        "sha": "8d90f5d156e691a3ced2b5ca96103a46f8a285ab",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/8579651?v=4",
             "events_url": "https://api.github.com/users/ntdiary/events{/privacy}",
@@ -1030,8 +2999,8 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "1a56d2ad19a222ef0a37ae8ed8e07121adfaf6d3",
-    "merged_at": null,
+    "merge_commit_sha": "f0a01822850bf7324326a3424f6b9a6892e5a768",
+    "merged_at": "2026-08-07T23:54:29Z",
     "milestone": null,
     "node_id": "PR_kwDOAPphoM73hYuA",
     "number": 41035,
@@ -1040,10 +3009,10 @@
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/41035/comments",
-    "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/db04a2a2f14d4af195a356a8a708aa56f5c1fa1d",
+    "state": "closed",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/8d90f5d156e691a3ced2b5ca96103a46f8a285ab",
     "title": "refactor(path): pathcmp()",
-    "updated_at": "2026-08-03T14:43:34Z",
+    "updated_at": "2026-08-07T23:54:29Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/41035",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/8579651?v=4",
