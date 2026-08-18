@@ -3,7 +3,7 @@
     "assignee": null,
     "assignees": [],
     "author_association": "CONTRIBUTOR",
-    "body": "_This is a tracking issue for **GSoC 2026 -- `:terminal` buffer persistence**. Comments and ideas are welcome :)_\n\n### Problem\n\n- `:terminal` buffers lose all content when Neovim restarts, the buffer is closed, or a session is reloaded.\n- Session restore only recreates a blank terminal losing all previous contents.\n- Marks in terminal buffers become unusable after the buffer is unloaded.\n\n### Expected behavior\n\n- [ ] **State export**: in a terminal buffer, `:write` derives a fname from the terminal URI and saves to `stdpath('state')/term/{slug(URI)}.mpack`; `:write {name}` saves the rendered state to the user-specified path; support range write #40097 \n- [ ] **State restore**: restore it into a new interactive buffer with a fresh shell.\n- [ ] **`:termsates` command**: a command for `.mpack` files listing, similar to `:log`.\n- [ ] **Session integration**: `:mksession` saves and restores terminal state instead of creating blank shells.\n- [ ] **ShaDa mark integration**: marks in terminal buffers include `terminal_id` so mark jump (like `'A`) can restore a closed terminal.\n- [ ] **Chore**: add test, docs\n\n### Other ideas\n\n- User perspective:\n  - `:[range]` support for `:terminal` (kindly suggested by @justinmk in https://github.com/neovim/neovim/discussions/39640#discussioncomment-16995765)\n      once terminal content is persistent, pipe buffer selection into a terminal job (similar to `:[range]!{cmd}`).\n  - Terminal alias mapping so `:TermRestore` can work without remembering the terminal id.\n- Saving behavior:\n  - File size:\n  \t- warning when saved terminal state exceeds a threshold.\n- GC for old terminal state files (age-based or count-based).\n\n### Blocked by\n\n- replace `libvterm` with `libghostty-vt` (https://github.com/neovim/neovim/pull/39773)\n  the ANSI export/restore needs to work with the back-end apis.\n\n### Non-goals\n\n- Process checkpoint/resume (restoring the original shell process, env vars, virtualenv, subshell state, etc.)\n- `term://` URI redesign\n\n### Refs:\n- Originally mentioned in: https://github.com/neovim/neovim/issues/28297\n- Detailed proposal in Discussion: https://github.com/neovim/neovim/discussions/39640\n",
+    "body": "_This is a tracking issue for **GSoC 2026 -- `:terminal` buffer persistence**. Comments and ideas are welcome :)_\n\n### Problem\n\n- `:terminal` buffers lose all content when Neovim restarts, the buffer is closed, or a session is reloaded.\n- Session restore only recreates a blank terminal losing all previous contents.\n- Marks in terminal buffers become unusable after the buffer is unloaded.\n\n### Expected behavior\n\n- [ ] **State export**: in a terminal buffer, `:write` derives a fname from the terminal URI and saves to `stdpath('state')/term/{slug(URI)}.mpack`; `:write {name}` saves the rendered state to the user-specified path; support range write #40097 \n- [ ] **State restore**: restore it into a new interactive buffer with a fresh shell.\n- [ ] **`:termsates` command**: a command for `.mpack` files listing, similar to `:log`.\n- [ ] **Session integration**: `:mksession` saves and restores terminal state instead of creating blank shells.\n- [ ] **ShaDa mark integration**: marks in terminal buffers include `terminal_id` so mark jump (like `'A`) can restore a closed terminal.\n\n### Other ideas\n\n- User perspective:\n  - `:[range]` support for `:terminal` (kindly suggested by @justinmk in https://github.com/neovim/neovim/discussions/39640#discussioncomment-16995765)\n      once terminal content is persistent, pipe buffer selection into a terminal job (similar to `:[range]!{cmd}`).\n  - Terminal alias mapping so `:TermRestore` can work without remembering the terminal id.\n- Saving behavior:\n  - File size:\n  \t- warning when saved terminal state exceeds a threshold.\n- GC for old terminal state files (age-based or count-based).\n\n### Currently Blocked by\n\n- replace `libvterm` with `libghostty-vt` (https://github.com/neovim/neovim/pull/39773)\n  the ANSI export/restore needs to work with the back-end apis.\n\n### Non-goals\n\n- Process checkpoint/resume (restoring the original shell process, env vars, virtualenv, subshell state, etc.)\n- `term://` URI redesign\n\n### Refs:\n- Originally mentioned in: https://github.com/neovim/neovim/issues/28297\n- Detailed proposal in Discussion: https://github.com/neovim/neovim/discussions/39640\n",
     "closed_at": null,
     "closed_by": null,
     "comment_data": [
@@ -241,9 +241,56 @@
                 "url": "https://api.github.com/users/justinmk",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "The next phase is being able to load the saved terminal state.\n\n1. Start by adding another `nvim__xx` (double underscore) API function.\n2. If a user does `:edit` on a `.mpack` file from the `stdpath()` location, a default autocmd (probably `BufReadCmd`, see `plugin/net.lua`) should load the state as scrollback prefilled in a `:terminal` buffer, followed by a separate line like `END SCROLLBACK 2026-01-01 13:01` (just a placeholder for now), and the `:terminal` buffer following the `END...` line should otherwise act like a normal `:terminal` buffer, accepting user input.\n\nOnce we have those pieces, I don't think there are any major missing pieces.\nWe don't need to worry about session loading for now, that's not really the hard part.",
+            "created_at": "2026-08-17T17:58:39Z",
+            "html_url": "https://github.com/neovim/neovim/issues/40017#issuecomment-5318397625",
+            "id": 5318397625,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/40017",
+            "minimized": null,
+            "node_id": "IC_kwDOAPphoM8AAAABPQBOuQ",
+            "performed_via_github_app": null,
+            "pin": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/5318397625/reactions"
+            },
+            "updated_at": "2026-08-17T17:58:39Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/5318397625",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
         }
     ],
-    "comments": 5,
+    "comments": 6,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/40017/comments",
     "created_at": "2026-05-27T02:28:49Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/40017/events",
@@ -289,7 +336,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 873,
+        "closed_issues": 874,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -319,10 +366,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 669,
+        "open_issues": 666,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2026-08-10T15:13:28Z",
+        "updated_at": "2026-08-16T10:51:32Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM8AAAABDfLLLg",
@@ -333,12 +380,12 @@
         "+1": 1,
         "-1": 0,
         "confused": 0,
-        "eyes": 3,
+        "eyes": 4,
         "heart": 0,
         "hooray": 0,
         "laugh": 0,
         "rocket": 0,
-        "total_count": 4,
+        "total_count": 5,
         "url": "https://api.github.com/repos/neovim/neovim/issues/40017/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
@@ -361,7 +408,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyv",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2026-08-09T07:23:00Z",
+    "updated_at": "2026-08-17T17:58:39Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/40017",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/167082828?v=4",
