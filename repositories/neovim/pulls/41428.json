@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/41428"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/e50e709e0971aa19027136f211ef3842f2546164"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/b27cb237ffd87840243e9c35a97a4f4519f7538f"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 7044,
-            "forks_count": 7044,
+            "forks": 7056,
+            "forks_count": 7056,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -95,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1859,
-            "open_issues_count": 1859,
+            "open_issues": 1863,
+            "open_issues_count": 1863,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -121,11 +121,11 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2026-08-24T19:01:51Z",
+            "pushed_at": "2026-08-28T07:50:25Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 395647,
+            "size": 396319,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 101942,
+            "stargazers_count": 101999,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -143,14 +143,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2026-08-25T02:22:45Z",
+            "updated_at": "2026-08-28T09:32:10Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 101942,
-            "watchers_count": 101942,
+            "watchers": 101999,
+            "watchers_count": 101999,
             "web_commit_signoff_required": false
         },
-        "sha": "1deeff9c3898701255be467614d84180accd78b9",
+        "sha": "b7145490fc0078f0684bc26ccda0851354fc3082",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -173,9 +173,705 @@
             "user_view_type": "public"
         }
     },
-    "body": "## Problem\r\n\r\nWhen nested LSP folding ranges end on the same row, `foldexpr()` emits only the highest ending level. This can merge an adjacent outer range into the preceding one.\r\n\r\n## Reproduction\r\n\r\nThe pre-patch behavior below was reproduced on Neovim `master` at [`f583991553`](https://github.com/neovim/neovim/commit/f5839915537597ae047a0a9fd674bc377071f1b3).\r\n\r\nGiven a nine-line buffer, return these zero-based LSP folding ranges:\r\n\r\n```lua\r\n{ startLine = 0, endLine = 5 } -- outer A\r\n{ startLine = 0, endLine = 1 } -- nested A1\r\n{ startLine = 2, endLine = 5 } -- nested A2\r\n{ startLine = 6, endLine = 8 } -- outer B\r\n{ startLine = 6, endLine = 7 } -- nested B1\r\n```\r\n\r\nWith `foldmethod=expr`, `foldexpr=v:lua.vim.lsp.foldexpr()`, and `foldminlines=0`, run `zM`. Before this patch, the fold starting at line 1 can extend through line 9 and absorb outer range B. After this patch, the closed outer folds remain separate at lines 1-6 and 7-9.\r\n\r\nRun this from the repository root after building Nvim. It injects ranges through the internal folding-range state for reproduction only; the functional test below provides the regression coverage.\r\n\r\n```sh\r\nVIMRUNTIME=\"$PWD/runtime\" ./build/bin/nvim --clean --headless -l - <<'LUA'\r\nlocal api = vim.api\r\napi.nvim_buf_set_lines(0, 0, -1, false, {\r\n  'one', 'two', 'three', 'four', 'five',\r\n  'six', 'seven', 'eight', 'nine',\r\n})\r\n\r\nrequire('vim.lsp._folding_range')\r\nlocal State = require('vim.lsp._capability').all.folding_range\r\nlocal state = State:new(api.nvim_get_current_buf())\r\nstate.client_state[1] = {\r\n  { startLine = 0, endLine = 5 },\r\n  { startLine = 0, endLine = 1 },\r\n  { startLine = 2, endLine = 5 },\r\n  { startLine = 6, endLine = 8 },\r\n  { startLine = 6, endLine = 7 },\r\n}\r\nstate:evaluate()\r\n\r\nvim.wo.foldmethod = 'expr'\r\nvim.wo.foldexpr = 'v:lua.vim.lsp.foldexpr()'\r\nvim.wo.foldminlines = 0\r\nvim._foldupdate(api.nvim_get_current_win(), 0, api.nvim_buf_line_count(0))\r\nvim.cmd('normal! zM')\r\n\r\nprint(vim.inspect({\r\n  vim.fn.foldclosed(1), vim.fn.foldclosedend(1),\r\n  vim.fn.foldclosed(7), vim.fn.foldclosedend(7),\r\n}))\r\nLUA\r\n```\r\n\r\nExpected output on `master`:\r\n\r\n```text\r\n{ 1, 9, 1, 9 }\r\n```\r\n\r\nExpected output with this patch:\r\n\r\n```text\r\n{ 1, 6, 7, 9 }\r\n```\r\n\r\nThe functional reproduction can be run with:\r\n\r\n```sh\r\nmake functionaltest TEST_FILE=test/functional/plugin/lsp/folding_range_spec.lua\r\n```\r\n\r\n## Solution\r\n\r\nCount the ranges ending on each row and emit the lowest ending fold level. Add a functional test covering adjacent outer ranges with nested ranges.\r\n\r\n## AI disclosure\r\n\r\nOpenAI Codex assisted with analyzing the folding behavior, preparing the implementation and tests. The commit includes the `AI-assisted: Codex` trailer.",
+    "body": "## Problem\n\nFolding range markers are currently assigned while ranges are evaluated, so a\nlater range can overwrite an earlier marker on the same row. This loses two\nkinds of boundaries:\n\n- when ranges end and start on the same row, an end marker can overwrite the\n  start marker and the new fold is ignored;\n- when nested ranges end on the same row, the innermost ending level is emitted\n  and the end of the outer fold is ignored.\n\n## Reproduction\n\nThe behavior was reproduced on Neovim `master` at\n[`b7145490fc`](https://github.com/neovim/neovim/commit/b7145490fc0078f0684bc26ccda0851354fc3082).\n\nGiven this Lua source:\n\n```lua\nlocal function first()\n  return {\n    child = {\n      value = true,\n    } } end; local function second() return {\n  child = {\n    value = false,\n  },\n}\nend\n```\n\nlua-language-server 3.19.1 returns these zero-based folding ranges:\n\n```lua\n{ startLine = 0, endLine = 3, kind = 'region' }\n{ startLine = 4, endLine = 8, kind = 'region' }\n{ startLine = 1, endLine = 3, kind = 'region' }\n{ startLine = 4, endLine = 7, kind = 'region' }\n{ startLine = 2, endLine = 3, kind = 'region' }\n{ startLine = 5, endLine = 6, kind = 'region' }\n```\n\nThree nested ranges end on line 4. Before this patch, `foldexpr()` returns\n`<3` for that line, which loses the outer ending boundary. After this patch it\nreturns `<1`, and the top-level folds on lines 1-4 and 5-9 remain separate.\n\nThe functional tests also cover the independent case where one nested range\nends on the same row that another begins. The input order places the end last,\nso the old implementation emits `<` and ignores the new fold start.\n\n## Solution\n\nRecord whether each row contains a range start and count how many ranges end on\neach row before assigning markers. Prefer a start marker when starts and ends\nshare a row. For an end marker, subtract all ranges ending there and retain the\noutermost ending level.\n\nThe functional reproduction can be run with:\n\n```sh\nmake functionaltest TEST_FILE=test/functional/plugin/lsp/folding_range_spec.lua\n```\n\n## AI disclosure\n\nAI tools assisted with analyzing the folding behavior and preparing the\nimplementation and tests. The commit includes the generic `AI-assisted` token.\n",
     "closed_at": null,
-    "comment_data": [],
+    "comment_data": [
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41428#discussion_r3860742561"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41428"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3860742561"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "LLM comments are often based on the previous version of the code they modified, rather than on the whole; this description is redundant.",
+            "commit_id": "e50e709e0971aa19027136f211ef3842f2546164",
+            "created_at": "2026-08-26T07:58:27Z",
+            "diff_hunk": "@@ -86,11 +92,25 @@ function State:evaluate()\n           level[1] = level[1] + 1\n           row_level[row] = level\n         end\n-        row_level[start_row][2] = '>'\n-        row_level[end_row][2] = '<'\n+\n+        -- Do not set the marker until all ranges have been counted.  A range\n+        -- ending on this row contributes its level to the row itself, but the\n+        -- marker must report the level after all ranges ending here are closed.",
+            "html_url": "https://github.com/neovim/neovim/pull/41428#discussion_r3860742561",
+            "id": 3860742561,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7mHkGh",
+            "original_commit_id": "e50e709e0971aa19027136f211ef3842f2546164",
+            "original_line": 98,
+            "original_position": 22,
+            "original_start_line": 96,
+            "path": "runtime/lua/vim/lsp/_folding_range.lua",
+            "position": 1,
+            "pull_request_review_id": 5028032428,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41428",
+            "reactions": {
+                "+1": 2,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 2,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3860742561/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-08-26T08:15:46Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3860742561",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/61115159?v=4",
+                "events_url": "https://api.github.com/users/ofseed/events{/privacy}",
+                "followers_url": "https://api.github.com/users/ofseed/followers",
+                "following_url": "https://api.github.com/users/ofseed/following{/other_user}",
+                "gists_url": "https://api.github.com/users/ofseed/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/ofseed",
+                "id": 61115159,
+                "login": "ofseed",
+                "node_id": "MDQ6VXNlcjYxMTE1MTU5",
+                "organizations_url": "https://api.github.com/users/ofseed/orgs",
+                "received_events_url": "https://api.github.com/users/ofseed/received_events",
+                "repos_url": "https://api.github.com/users/ofseed/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/ofseed/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/ofseed/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/ofseed",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41428#discussion_r3860749486"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41428"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3860749486"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "Instead, these comments should describe the meanings of `row_starts` and `row_ends`.",
+            "commit_id": "e50e709e0971aa19027136f211ef3842f2546164",
+            "created_at": "2026-08-26T07:59:27Z",
+            "diff_hunk": "@@ -61,6 +61,12 @@ function State:evaluate()\n   tableclear(row_text)\n   tableclear(row_virt_text)\n \n+  -- LSP ranges include their end line, while a fold ends before the next\n+  -- line.  Keep the starts and ends separate so multiple nested ranges that\n+  -- end on the same line can be closed together below.\n+  local row_starts = {} ---@type table<integer, true>\n+  local row_ends = {} ---@type table<integer, integer>",
+            "html_url": "https://github.com/neovim/neovim/pull/41428#discussion_r3860749486",
+            "id": 3860749486,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7mHlyu",
+            "original_commit_id": "e50e709e0971aa19027136f211ef3842f2546164",
+            "original_line": 68,
+            "original_position": 8,
+            "original_start_line": 64,
+            "path": "runtime/lua/vim/lsp/_folding_range.lua",
+            "position": 1,
+            "pull_request_review_id": 5028032428,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41428",
+            "reactions": {
+                "+1": 2,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 2,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3860749486/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-08-26T08:15:46Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3860749486",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/61115159?v=4",
+                "events_url": "https://api.github.com/users/ofseed/events{/privacy}",
+                "followers_url": "https://api.github.com/users/ofseed/followers",
+                "following_url": "https://api.github.com/users/ofseed/following{/other_user}",
+                "gists_url": "https://api.github.com/users/ofseed/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/ofseed",
+                "id": 61115159,
+                "login": "ofseed",
+                "node_id": "MDQ6VXNlcjYxMTE1MTU5",
+                "organizations_url": "https://api.github.com/users/ofseed/orgs",
+                "received_events_url": "https://api.github.com/users/ofseed/received_events",
+                "repos_url": "https://api.github.com/users/ofseed/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/ofseed/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/ofseed/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/ofseed",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41428#discussion_r3860796143"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41428"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3860796143"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "The purpose should be noted here, as this actually addresses two issues:\n1. When the same line is both the end of a fold and the start of another fold, it should be marked as a start to prevent the beginning of the fold from being ignored;\n2. If multiple folds end at the same location, the outermost level should be used to mark the end position to prevent the end of the outer fold from being ignored;",
+            "commit_id": "b27cb237ffd87840243e9c35a97a4f4519f7538f",
+            "created_at": "2026-08-26T08:06:25Z",
+            "diff_hunk": "@@ -86,11 +92,25 @@ function State:evaluate()\n           level[1] = level[1] + 1\n           row_level[row] = level\n         end\n-        row_level[start_row][2] = '>'\n-        row_level[end_row][2] = '<'\n+\n+        -- Do not set the marker until all ranges have been counted.  A range\n+        -- ending on this row contributes its level to the row itself, but the\n+        -- marker must report the level after all ranges ending here are closed.\n+        row_starts[start_row] = true\n+        row_ends[end_row] = (row_ends[end_row] or 0) + 1\n       end\n     end\n   end\n+  for row, level in pairs(row_level) do\n+    if row_starts[row] then\n+      level[2] = '>'\n+    elseif row_ends[row] then\n+      level[2] = '<'\n+      -- The end row is included in each LSP range, so retain the outermost\n+      -- level for this row after closing all ranges that end here.\n+      level[1] = level[1] - row_ends[row] + 1\n+    end\n+  end",
+            "html_url": "https://github.com/neovim/neovim/pull/41428#discussion_r3860796143",
+            "id": 3860796143,
+            "line": 110,
+            "node_id": "PRRC_kwDOAPphoM7mHxLv",
+            "original_commit_id": "e50e709e0971aa19027136f211ef3842f2546164",
+            "original_line": 113,
+            "original_position": 37,
+            "original_start_line": 104,
+            "path": "runtime/lua/vim/lsp/_folding_range.lua",
+            "position": 34,
+            "pull_request_review_id": 5028032428,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41428",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3860796143/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 99,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-08-26T08:15:46Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3860796143",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/61115159?v=4",
+                "events_url": "https://api.github.com/users/ofseed/events{/privacy}",
+                "followers_url": "https://api.github.com/users/ofseed/followers",
+                "following_url": "https://api.github.com/users/ofseed/following{/other_user}",
+                "gists_url": "https://api.github.com/users/ofseed/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/ofseed",
+                "id": 61115159,
+                "login": "ofseed",
+                "node_id": "MDQ6VXNlcjYxMTE1MTU5",
+                "organizations_url": "https://api.github.com/users/ofseed/orgs",
+                "received_events_url": "https://api.github.com/users/ofseed/received_events",
+                "repos_url": "https://api.github.com/users/ofseed/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/ofseed/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/ofseed/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/ofseed",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41428#discussion_r3860813026"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41428"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3860813026"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "Better to add a new test to check the case where the end of a fold and the start of another occur at the same position. This PR appears to address that issue as well.",
+            "commit_id": "e50e709e0971aa19027136f211ef3842f2546164",
+            "created_at": "2026-08-26T08:08:59Z",
+            "diff_hunk": "@@ -625,3 +626,87 @@ static int foldLevel(linenr_T lnum)\n     end)\n   end)\n end)\n+\n+describe('vim.lsp nested folding ranges', function()\n+  local bufnr ---@type integer\n+\n+  clear_notrace()\n+  before_each(function()\n+    clear_notrace()\n+\n+    exec_lua(create_server_definition)\n+    bufnr = api.nvim_get_current_buf()\n+    insert('one\\ntwo\\nthree\\nfour\\nfive\\nsix\\nseven\\neight\\nnine')\n+    exec_lua(function()\n+      _G.server = _G._create_server({\n+        capabilities = {\n+          foldingRangeProvider = true,\n+        },\n+        handlers = {\n+          ['textDocument/foldingRange'] = function(_, _, callback)\n+            callback(nil, {\n+              { startLine = 0, endLine = 5, collapsedText = 'outer A' },\n+              { startLine = 0, endLine = 1, collapsedText = 'nested A1' },\n+              { startLine = 2, endLine = 5, collapsedText = 'nested A2' },\n+              { startLine = 6, endLine = 8, collapsedText = 'outer B' },\n+              { startLine = 6, endLine = 7, collapsedText = 'nested B1' },\n+            })\n+          end,\n+        },\n+      })\n+\n+      vim.api.nvim_win_set_buf(0, bufnr)\n+      vim.lsp.start({ name = 'dummy', cmd = _G.server.cmd })\n+    end)\n+    command(\n+      [[set foldmethod=expr foldexpr=v:lua.vim.lsp.foldexpr() foldtext=v:lua.vim.lsp.foldtext() foldminlines=0]]\n+    )\n+  end)\n+  after_each(function()\n+    api.nvim_exec_autocmds('VimLeavePre', { modeline = false })\n+  end)\n+\n+  it('keeps adjacent ranges separate when nested ranges end together', function()",
+            "html_url": "https://github.com/neovim/neovim/pull/41428#discussion_r3860813026",
+            "id": 3860813026,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7mH1Ti",
+            "original_commit_id": "e50e709e0971aa19027136f211ef3842f2546164",
+            "original_line": 669,
+            "original_position": 52,
+            "original_start_line": null,
+            "path": "test/functional/plugin/lsp/folding_range_spec.lua",
+            "position": 1,
+            "pull_request_review_id": 5028032428,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41428",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3860813026/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-08-26T08:15:46Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3860813026",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/61115159?v=4",
+                "events_url": "https://api.github.com/users/ofseed/events{/privacy}",
+                "followers_url": "https://api.github.com/users/ofseed/followers",
+                "following_url": "https://api.github.com/users/ofseed/following{/other_user}",
+                "gists_url": "https://api.github.com/users/ofseed/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/ofseed",
+                "id": 61115159,
+                "login": "ofseed",
+                "node_id": "MDQ6VXNlcjYxMTE1MTU5",
+                "organizations_url": "https://api.github.com/users/ofseed/orgs",
+                "received_events_url": "https://api.github.com/users/ofseed/received_events",
+                "repos_url": "https://api.github.com/users/ofseed/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/ofseed/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/ofseed/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/ofseed",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41428#discussion_r3860836490"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41428"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3860836490"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "It would be better to use the following code snippet along with the corresponding return values from the lua language server to understand this PR better:\n```lua\n local function first()\n  return {\n    child = {\n      value = true,\n    } } end; local function second() return {\n  child = {\n    value = false,\n  },\n}\nend\n```",
+            "commit_id": "e50e709e0971aa19027136f211ef3842f2546164",
+            "created_at": "2026-08-26T08:12:27Z",
+            "diff_hunk": "@@ -625,3 +626,87 @@ static int foldLevel(linenr_T lnum)\n     end)\n   end)\n end)\n+\n+describe('vim.lsp nested folding ranges', function()\n+  local bufnr ---@type integer\n+\n+  clear_notrace()\n+  before_each(function()\n+    clear_notrace()\n+\n+    exec_lua(create_server_definition)\n+    bufnr = api.nvim_get_current_buf()\n+    insert('one\\ntwo\\nthree\\nfour\\nfive\\nsix\\nseven\\neight\\nnine')",
+            "html_url": "https://github.com/neovim/neovim/pull/41428#discussion_r3860836490",
+            "id": 3860836490,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7mH7CK",
+            "original_commit_id": "e50e709e0971aa19027136f211ef3842f2546164",
+            "original_line": 639,
+            "original_position": 22,
+            "original_start_line": null,
+            "path": "test/functional/plugin/lsp/folding_range_spec.lua",
+            "position": 1,
+            "pull_request_review_id": 5028032428,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41428",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3860836490/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-08-26T08:15:46Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3860836490",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/61115159?v=4",
+                "events_url": "https://api.github.com/users/ofseed/events{/privacy}",
+                "followers_url": "https://api.github.com/users/ofseed/followers",
+                "following_url": "https://api.github.com/users/ofseed/following{/other_user}",
+                "gists_url": "https://api.github.com/users/ofseed/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/ofseed",
+                "id": 61115159,
+                "login": "ofseed",
+                "node_id": "MDQ6VXNlcjYxMTE1MTU5",
+                "organizations_url": "https://api.github.com/users/ofseed/orgs",
+                "received_events_url": "https://api.github.com/users/ofseed/received_events",
+                "repos_url": "https://api.github.com/users/ofseed/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/ofseed/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/ofseed/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/ofseed",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41428#discussion_r3870910061"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41428"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3870910061"
+                }
+            },
+            "author_association": "NONE",
+            "body": "Removed the redundant block comment. The remaining comments now describe the data and the two marker-selection rules directly.",
+            "commit_id": "e50e709e0971aa19027136f211ef3842f2546164",
+            "created_at": "2026-08-27T10:33:29Z",
+            "diff_hunk": "@@ -86,11 +92,25 @@ function State:evaluate()\n           level[1] = level[1] + 1\n           row_level[row] = level\n         end\n-        row_level[start_row][2] = '>'\n-        row_level[end_row][2] = '<'\n+\n+        -- Do not set the marker until all ranges have been counted.  A range\n+        -- ending on this row contributes its level to the row itself, but the\n+        -- marker must report the level after all ranges ending here are closed.",
+            "html_url": "https://github.com/neovim/neovim/pull/41428#discussion_r3870910061",
+            "id": 3870910061,
+            "in_reply_to_id": 3860742561,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7muWZt",
+            "original_commit_id": "e50e709e0971aa19027136f211ef3842f2546164",
+            "original_line": 98,
+            "original_position": 22,
+            "original_start_line": 96,
+            "path": "runtime/lua/vim/lsp/_folding_range.lua",
+            "position": 1,
+            "pull_request_review_id": 5039787055,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41428",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3870910061/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-08-27T10:33:29Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3870910061",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/42770726?v=4",
+                "events_url": "https://api.github.com/users/wrvsrx/events{/privacy}",
+                "followers_url": "https://api.github.com/users/wrvsrx/followers",
+                "following_url": "https://api.github.com/users/wrvsrx/following{/other_user}",
+                "gists_url": "https://api.github.com/users/wrvsrx/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/wrvsrx",
+                "id": 42770726,
+                "login": "wrvsrx",
+                "node_id": "MDQ6VXNlcjQyNzcwNzI2",
+                "organizations_url": "https://api.github.com/users/wrvsrx/orgs",
+                "received_events_url": "https://api.github.com/users/wrvsrx/received_events",
+                "repos_url": "https://api.github.com/users/wrvsrx/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/wrvsrx/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/wrvsrx/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/wrvsrx",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41428#discussion_r3870910064"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41428"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3870910064"
+                }
+            },
+            "author_association": "NONE",
+            "body": "Replaced the placeholder lines with this Lua snippet and the six folding ranges returned by lua-language-server 3.19.1. The PR description now includes both as well.",
+            "commit_id": "e50e709e0971aa19027136f211ef3842f2546164",
+            "created_at": "2026-08-27T10:33:29Z",
+            "diff_hunk": "@@ -625,3 +626,87 @@ static int foldLevel(linenr_T lnum)\n     end)\n   end)\n end)\n+\n+describe('vim.lsp nested folding ranges', function()\n+  local bufnr ---@type integer\n+\n+  clear_notrace()\n+  before_each(function()\n+    clear_notrace()\n+\n+    exec_lua(create_server_definition)\n+    bufnr = api.nvim_get_current_buf()\n+    insert('one\\ntwo\\nthree\\nfour\\nfive\\nsix\\nseven\\neight\\nnine')",
+            "html_url": "https://github.com/neovim/neovim/pull/41428#discussion_r3870910064",
+            "id": 3870910064,
+            "in_reply_to_id": 3860836490,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7muWZw",
+            "original_commit_id": "e50e709e0971aa19027136f211ef3842f2546164",
+            "original_line": 639,
+            "original_position": 22,
+            "original_start_line": null,
+            "path": "test/functional/plugin/lsp/folding_range_spec.lua",
+            "position": 1,
+            "pull_request_review_id": 5039787056,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41428",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3870910064/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-08-27T10:33:29Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3870910064",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/42770726?v=4",
+                "events_url": "https://api.github.com/users/wrvsrx/events{/privacy}",
+                "followers_url": "https://api.github.com/users/wrvsrx/followers",
+                "following_url": "https://api.github.com/users/wrvsrx/following{/other_user}",
+                "gists_url": "https://api.github.com/users/wrvsrx/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/wrvsrx",
+                "id": 42770726,
+                "login": "wrvsrx",
+                "node_id": "MDQ6VXNlcjQyNzcwNzI2",
+                "organizations_url": "https://api.github.com/users/wrvsrx/orgs",
+                "received_events_url": "https://api.github.com/users/wrvsrx/received_events",
+                "repos_url": "https://api.github.com/users/wrvsrx/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/wrvsrx/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/wrvsrx/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/wrvsrx",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41428#discussion_r3870910065"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41428"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3870910065"
+                }
+            },
+            "author_association": "NONE",
+            "body": "Added a separate test for this case. Its range order puts the end last, which reproduces the old order-dependent loss of the start marker.",
+            "commit_id": "e50e709e0971aa19027136f211ef3842f2546164",
+            "created_at": "2026-08-27T10:33:29Z",
+            "diff_hunk": "@@ -625,3 +626,87 @@ static int foldLevel(linenr_T lnum)\n     end)\n   end)\n end)\n+\n+describe('vim.lsp nested folding ranges', function()\n+  local bufnr ---@type integer\n+\n+  clear_notrace()\n+  before_each(function()\n+    clear_notrace()\n+\n+    exec_lua(create_server_definition)\n+    bufnr = api.nvim_get_current_buf()\n+    insert('one\\ntwo\\nthree\\nfour\\nfive\\nsix\\nseven\\neight\\nnine')\n+    exec_lua(function()\n+      _G.server = _G._create_server({\n+        capabilities = {\n+          foldingRangeProvider = true,\n+        },\n+        handlers = {\n+          ['textDocument/foldingRange'] = function(_, _, callback)\n+            callback(nil, {\n+              { startLine = 0, endLine = 5, collapsedText = 'outer A' },\n+              { startLine = 0, endLine = 1, collapsedText = 'nested A1' },\n+              { startLine = 2, endLine = 5, collapsedText = 'nested A2' },\n+              { startLine = 6, endLine = 8, collapsedText = 'outer B' },\n+              { startLine = 6, endLine = 7, collapsedText = 'nested B1' },\n+            })\n+          end,\n+        },\n+      })\n+\n+      vim.api.nvim_win_set_buf(0, bufnr)\n+      vim.lsp.start({ name = 'dummy', cmd = _G.server.cmd })\n+    end)\n+    command(\n+      [[set foldmethod=expr foldexpr=v:lua.vim.lsp.foldexpr() foldtext=v:lua.vim.lsp.foldtext() foldminlines=0]]\n+    )\n+  end)\n+  after_each(function()\n+    api.nvim_exec_autocmds('VimLeavePre', { modeline = false })\n+  end)\n+\n+  it('keeps adjacent ranges separate when nested ranges end together', function()",
+            "html_url": "https://github.com/neovim/neovim/pull/41428#discussion_r3870910065",
+            "id": 3870910065,
+            "in_reply_to_id": 3860813026,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7muWZx",
+            "original_commit_id": "e50e709e0971aa19027136f211ef3842f2546164",
+            "original_line": 669,
+            "original_position": 52,
+            "original_start_line": null,
+            "path": "test/functional/plugin/lsp/folding_range_spec.lua",
+            "position": 1,
+            "pull_request_review_id": 5039787057,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41428",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3870910065/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-08-27T10:33:29Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3870910065",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/42770726?v=4",
+                "events_url": "https://api.github.com/users/wrvsrx/events{/privacy}",
+                "followers_url": "https://api.github.com/users/wrvsrx/followers",
+                "following_url": "https://api.github.com/users/wrvsrx/following{/other_user}",
+                "gists_url": "https://api.github.com/users/wrvsrx/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/wrvsrx",
+                "id": 42770726,
+                "login": "wrvsrx",
+                "node_id": "MDQ6VXNlcjQyNzcwNzI2",
+                "organizations_url": "https://api.github.com/users/wrvsrx/orgs",
+                "received_events_url": "https://api.github.com/users/wrvsrx/received_events",
+                "repos_url": "https://api.github.com/users/wrvsrx/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/wrvsrx/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/wrvsrx/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/wrvsrx",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41428#discussion_r3870910068"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41428"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3870910068"
+                }
+            },
+            "author_association": "NONE",
+            "body": "Added comments at the marker-selection branches for both cases: starts take precedence on a shared row, and multiple ends use the outermost ending level.",
+            "commit_id": "b27cb237ffd87840243e9c35a97a4f4519f7538f",
+            "created_at": "2026-08-27T10:33:29Z",
+            "diff_hunk": "@@ -86,11 +92,25 @@ function State:evaluate()\n           level[1] = level[1] + 1\n           row_level[row] = level\n         end\n-        row_level[start_row][2] = '>'\n-        row_level[end_row][2] = '<'\n+\n+        -- Do not set the marker until all ranges have been counted.  A range\n+        -- ending on this row contributes its level to the row itself, but the\n+        -- marker must report the level after all ranges ending here are closed.\n+        row_starts[start_row] = true\n+        row_ends[end_row] = (row_ends[end_row] or 0) + 1\n       end\n     end\n   end\n+  for row, level in pairs(row_level) do\n+    if row_starts[row] then\n+      level[2] = '>'\n+    elseif row_ends[row] then\n+      level[2] = '<'\n+      -- The end row is included in each LSP range, so retain the outermost\n+      -- level for this row after closing all ranges that end here.\n+      level[1] = level[1] - row_ends[row] + 1\n+    end\n+  end",
+            "html_url": "https://github.com/neovim/neovim/pull/41428#discussion_r3870910068",
+            "id": 3870910068,
+            "in_reply_to_id": 3860796143,
+            "line": 110,
+            "node_id": "PRRC_kwDOAPphoM7muWZ0",
+            "original_commit_id": "e50e709e0971aa19027136f211ef3842f2546164",
+            "original_line": 113,
+            "original_position": 37,
+            "original_start_line": 104,
+            "path": "runtime/lua/vim/lsp/_folding_range.lua",
+            "position": 34,
+            "pull_request_review_id": 5039787058,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41428",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3870910068/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": 99,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-08-27T10:33:29Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3870910068",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/42770726?v=4",
+                "events_url": "https://api.github.com/users/wrvsrx/events{/privacy}",
+                "followers_url": "https://api.github.com/users/wrvsrx/followers",
+                "following_url": "https://api.github.com/users/wrvsrx/following{/other_user}",
+                "gists_url": "https://api.github.com/users/wrvsrx/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/wrvsrx",
+                "id": 42770726,
+                "login": "wrvsrx",
+                "node_id": "MDQ6VXNlcjQyNzcwNzI2",
+                "organizations_url": "https://api.github.com/users/wrvsrx/orgs",
+                "received_events_url": "https://api.github.com/users/wrvsrx/received_events",
+                "repos_url": "https://api.github.com/users/wrvsrx/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/wrvsrx/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/wrvsrx/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/wrvsrx",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41428#discussion_r3870910076"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41428"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3870910076"
+                }
+            },
+            "author_association": "NONE",
+            "body": "Updated these comments to describe the data precisely: row_starts records whether a row has any range start, and row_ends records the number of ranges ending on a row.",
+            "commit_id": "e50e709e0971aa19027136f211ef3842f2546164",
+            "created_at": "2026-08-27T10:33:29Z",
+            "diff_hunk": "@@ -61,6 +61,12 @@ function State:evaluate()\n   tableclear(row_text)\n   tableclear(row_virt_text)\n \n+  -- LSP ranges include their end line, while a fold ends before the next\n+  -- line.  Keep the starts and ends separate so multiple nested ranges that\n+  -- end on the same line can be closed together below.\n+  local row_starts = {} ---@type table<integer, true>\n+  local row_ends = {} ---@type table<integer, integer>",
+            "html_url": "https://github.com/neovim/neovim/pull/41428#discussion_r3870910076",
+            "id": 3870910076,
+            "in_reply_to_id": 3860749486,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7muWZ8",
+            "original_commit_id": "e50e709e0971aa19027136f211ef3842f2546164",
+            "original_line": 68,
+            "original_position": 8,
+            "original_start_line": 64,
+            "path": "runtime/lua/vim/lsp/_folding_range.lua",
+            "position": 1,
+            "pull_request_review_id": 5039787064,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41428",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3870910076/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-08-27T10:33:42Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3870910076",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/42770726?v=4",
+                "events_url": "https://api.github.com/users/wrvsrx/events{/privacy}",
+                "followers_url": "https://api.github.com/users/wrvsrx/followers",
+                "following_url": "https://api.github.com/users/wrvsrx/following{/other_user}",
+                "gists_url": "https://api.github.com/users/wrvsrx/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/wrvsrx",
+                "id": 42770726,
+                "login": "wrvsrx",
+                "node_id": "MDQ6VXNlcjQyNzcwNzI2",
+                "organizations_url": "https://api.github.com/users/wrvsrx/orgs",
+                "received_events_url": "https://api.github.com/users/wrvsrx/received_events",
+                "repos_url": "https://api.github.com/users/wrvsrx/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/wrvsrx/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/wrvsrx/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/wrvsrx",
+                "user_view_type": "public"
+            }
+        }
+    ],
     "comment_regular_data": [
         {
             "author_association": "MEMBER",
@@ -320,9 +1016,9 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/wrvsrx/neovim/pulls{/number}",
-            "pushed_at": "2026-08-24T05:54:41Z",
+            "pushed_at": "2026-08-28T10:00:05Z",
             "releases_url": "https://api.github.com/repos/wrvsrx/neovim/releases{/id}",
-            "size": 383275,
+            "size": 383989,
             "ssh_url": "git@github.com:wrvsrx/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/wrvsrx/neovim/stargazers",
@@ -341,7 +1037,7 @@
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "e50e709e0971aa19027136f211ef3842f2546164",
+        "sha": "b27cb237ffd87840243e9c35a97a4f4519f7538f",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/42770726?v=4",
             "events_url": "https://api.github.com/users/wrvsrx/events{/privacy}",
@@ -388,7 +1084,7 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "b553eb200e1ede8d721083e65296833435c99280",
+    "merge_commit_sha": "1675d9fd3197445364eafd4640c88aedb405f8ea",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM8AAAABAp7CyQ",
@@ -442,9 +1138,9 @@
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/41428/comments",
     "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/e50e709e0971aa19027136f211ef3842f2546164",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/b27cb237ffd87840243e9c35a97a4f4519f7538f",
     "title": "fix(lsp): separate adjacent nested folding ranges",
-    "updated_at": "2026-08-23T14:43:26Z",
+    "updated_at": "2026-08-27T10:35:24Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/41428",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/42770726?v=4",

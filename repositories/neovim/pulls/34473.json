@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/34473"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/07e560f49282280ecdb6f75143d9789b3b9d1142"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/9a2a3a61cfe63de90450a5fbc8eac2fcfd14fbf4"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 7044,
-            "forks_count": 7044,
+            "forks": 7056,
+            "forks_count": 7056,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -95,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1859,
-            "open_issues_count": 1859,
+            "open_issues": 1863,
+            "open_issues_count": 1863,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -121,11 +121,11 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2026-08-24T19:01:51Z",
+            "pushed_at": "2026-08-28T07:50:25Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 395647,
+            "size": 396319,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 101942,
+            "stargazers_count": 101999,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -143,14 +143,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2026-08-25T02:22:45Z",
+            "updated_at": "2026-08-28T09:32:10Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 101942,
-            "watchers_count": 101942,
+            "watchers": 101999,
+            "watchers_count": 101999,
             "web_commit_signoff_required": false
         },
-        "sha": "92d5531f96fef519c4427b369aa5cd2bbff44cf6",
+        "sha": "8adf6e769f6573ba98168bb4c81039cc8e0d5831",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -190,7 +190,7 @@
             },
             "author_association": "MEMBER",
             "body": "async.lua is typechecked with emmylua due to is much stronger support for generics",
-            "commit_id": "07e560f49282280ecdb6f75143d9789b3b9d1142",
+            "commit_id": "9a2a3a61cfe63de90450a5fbc8eac2fcfd14fbf4",
             "created_at": "2025-06-13T11:06:51Z",
             "diff_hunk": "@@ -8,6 +8,7 @@\n       \"${3rd}/busted/library\"\n     ],\n     \"ignoreDir\": [\n+      \"/lua/vim/async.lua\",",
             "html_url": "https://github.com/neovim/neovim/pull/34473#discussion_r2144804637",
@@ -2068,7 +2068,7 @@
             },
             "author_association": "MEMBER",
             "body": "is `async.runtime` something that plugins or users are expected to use or is it just a leftover of this coming from a standalone library (which could use non-vim lua runtimes)?",
-            "commit_id": "07e560f49282280ecdb6f75143d9789b3b9d1142",
+            "commit_id": "9a2a3a61cfe63de90450a5fbc8eac2fcfd14fbf4",
             "created_at": "2026-08-11T12:25:59Z",
             "diff_hunk": "@@ -0,0 +1,317 @@\n+local core = require('vim.async._core')\n+local validate = vim.validate\n+local new_queue = require('vim.async._queue')\n+local runtime = require('vim.async._runtime')\n+local util = require('vim.async._util')\n+\n+--- Structured async API for Lua code that waits on event-loop work.\n+---\n+--- `vim.async` lets Lua code wait for timers, callbacks, and other tasks\n+--- without blocking Nvim's event loop. Async work runs inside tasks. A task can\n+--- pause at checkpoints, resume on a later event-loop turn, and manage child\n+--- tasks created while it is running.\n+---\n+--- Start async work with [vim.async.run()]. Inside a task, use\n+--- [vim.async.await()] to wait for callback-style APIs or other tasks without\n+--- blocking the event loop. Use [vim.async.pawait()] when an awaited operation\n+--- can fail and the current task should continue.\n+---\n+--- Examples in this help use `local async = vim.async` for brevity.\n+---\n+--- Example: run async work without blocking Nvim:\n+---\n+--- ```lua\n+--- local async = vim.async\n+---\n+--- async.run(function()\n+---   vim.notify('waiting...')\n+---   async.sleep(1000)\n+---   vim.notify('done')\n+--- end)\n+--- ```\n+---\n+--- Example: await a callback-style API. Callback results are returned\n+--- unchanged, so an error-first callback still returns `err, value`:\n+---\n+--- ```lua\n+--- local async = vim.async\n+---\n+--- async.run(function()\n+---   local path = vim.api.nvim_buf_get_name(0)\n+---   local err, stat = async.await(2, vim.uv.fs_stat, path)\n+---\n+---   if err then\n+---     vim.notify(err, vim.log.levels.ERROR)\n+---     return\n+---   end\n+---\n+---   vim.notify(('current buffer is %d bytes'):format(stat.size))\n+--- end)\n+--- ```\n+---\n+--- A task has two roles:\n+---\n+--- - it is a handle that can be awaited, waited for, or closed\n+--- - it is a scope for child tasks created while the task is running\n+---\n+--- [vim.async.run()] creates a task. A top-level task starts immediately. A\n+--- task created while another task is running becomes a child of that task, and\n+--- its function starts when the parent reaches its next checkpoint. A parent\n+--- task finishes only after its attached children finish. If a child fails\n+--- without being handled, the parent fails and closes the remaining children.\n+---\n+--- Use [Task:detach()] for background work that should keep running after the\n+--- current task finishes. A detached task becomes top-level work; the original\n+--- parent no longer waits for it or closes it.\n+---\n+--- Awaiting a task observes that task's result; it does not attach the task to\n+--- the awaiter or change which task owns it. Ownership is decided when the task\n+--- is created.\n+---\n+--- Scheduling is cooperative. When a task awaits a timer, I/O operation,\n+--- callback, or another task, `vim.async` saves the Lua stack and returns\n+--- control to the event loop. Other callbacks can run while the task is\n+--- paused, and the task resumes on a later event-loop turn. Nothing interrupts\n+--- synchronous Lua code in the middle of a stack frame.\n+---\n+--- Checkpoints are the places where a task can pause, start pending child\n+--- tasks, observe cancellation, and receive unhandled child failures. Inside a\n+--- task, these operations are checkpoints:\n+---\n+--- - `vim.async.await(...)`\n+--- - `vim.async.pawait(...)`\n+--- - `vim.async.checkpoint()`\n+--- - successful return from the task function, which is the final checkpoint\n+---   for child management\n+---\n+--- Convenience APIs such as [vim.async.sleep()] and [vim.async.timeout()] can\n+--- also checkpoint because they call checkpointing APIs internally.\n+---\n+--- Closing a task closes its attached children. Cancellation is cooperative:\n+--- [Task:close()] marks a task as closing, and the task observes that state at\n+--- a checkpoint. If a task is suspended on a closable operation such as a timer\n+--- or child task, `vim.async` closes that operation before reporting the\n+--- cancellation.\n+---\n+--- Use [vim.async.await()] inside a task to suspend until work completes. It\n+--- accepts a task, a callback-taking function, or an argument position plus a\n+--- callback-taking function. `await(task)` returns the task result or raises\n+--- the task failure. [vim.async.pawait()] is the async counterpart to `pcall()`\n+--- for recoverable awaited-operation failures; it returns `ok, ...` instead of\n+--- failing the current task for that awaited operation. It does not suppress\n+--- cancellation or a failure already pending on the current task.\n+---\n+--- From synchronous code, use [Task:wait()] or [Task:pwait()] to pump the event\n+--- loop until the task completes. Use [Task:on_complete()] to observe\n+--- completion without blocking.\n+---\n+--- Coordination helpers work with task handles. [vim.async.iter()] yields\n+--- completed task handles in completion order, [vim.async.timeout()] awaits a\n+--- task with a deadline, and `vim.async.semaphore(permits)` creates a\n+--- [vim.async.Semaphore] that limits how many tasks can hold a permit for a\n+--- section at once.\n+--- @class vim.async: vim.async._core\n+local M = setmetatable({}, { __index = core })\n+\n+M.semaphore = require('vim.async._semaphore')\n+\n+--- @param unsubscribe fun()[]\n+local function unsubscribe_all(unsubscribe)\n+  for _, unsub in ipairs(unsubscribe) do\n+    unsub()\n+  end\n+end\n+\n+--- Create an async function from a callback-style function.\n+---\n+--- The callback is inserted at argument position `argc`. If `func` returns a\n+--- closable handle, it is closed when the awaiting task is cancelled.\n+---\n+--- This is a reusable wrapper around [vim.async.await()]. Use it when the same\n+--- callback API is awaited from more than one place.\n+---\n+--- ```lua\n+--- local async = vim.async\n+--- local fs_stat = async.wrap(2, vim.uv.fs_stat)\n+---\n+--- async.run(function()\n+---   local err, stat = fs_stat(vim.api.nvim_buf_get_name(0))\n+---   if not err and stat then\n+---     print(stat.size)\n+---   end\n+--- end)\n+--- ```\n+---\n+--- @generic T, R\n+--- @param argc integer\n+--- @param func fun(...: T..., callback: fun(...: R...)): vim.async.Closable?\n+--- @return async fun(...: T...): R...\n+function M.wrap(argc, func)\n+  validate('argc', argc, 'number')\n+  validate('func', func, 'callable')\n+  --- @async\n+  return function(...)\n+    return M.await(argc, func, ...)\n+  end\n+end\n+\n+--- Iterate completed tasks in completion order.\n+---\n+--- The iterator yields task handles, not task results. Use\n+--- [vim.async.await()] or [vim.async.pawait()] to retrieve each result. The\n+--- tasks are observed in the order they complete, regardless of the order in\n+--- the input list.\n+---\n+--- ```lua\n+--- local async = vim.async\n+---\n+--- async.run(function()\n+---   local tasks = {\n+---     async.run(function() return 'cache', read_cache() end):detach(),\n+---     async.run(function() return 'disk', read_file() end):detach(),\n+---   }\n+---\n+---   for task in async.iter(tasks) do\n+---     local ok, source, text = async.pawait(task)\n+---     if ok then\n+---       for _, other in ipairs(tasks) do\n+---         if other ~= task then\n+---           other:close()\n+---         end\n+---       end\n+---       print(('loaded from %s'):format(source))\n+---       return text\n+---     end\n+---   end\n+--- end)\n+--- ```\n+---\n+--- If code must support PUC Lua 5.1, use the direct-call form instead of a\n+--- generic `for` loop. The iterator may need to suspend while waiting for the\n+--- next completed task, and PUC Lua 5.1 cannot yield from a generic-for\n+--- iterator call.\n+---\n+--- ```lua\n+--- local next_task = async.iter(tasks)\n+--- while true do\n+---   local task = next_task()\n+---   if task == nil then\n+---     break\n+---   end\n+---   async.await(task)\n+--- end\n+--- ```\n+--- @async\n+--- @generic R\n+--- @param tasks vim.async.Task<R>[] A list of tasks to wait for and iterate over.\n+--- @return async fun(): vim.async.Task<R>? iterator that yields each completed task.\n+function M.iter(tasks)\n+  validate('tasks', tasks, 'table')\n+\n+  local remaining = #tasks\n+  local queue = new_queue()\n+  local unsubscribe = {} --- @type fun()[]\n+\n+  if remaining == 0 then\n+    queue:put_nowait()\n+  else\n+    for _, task in ipairs(tasks) do\n+      unsubscribe[#unsubscribe + 1] = task:on_complete(function()\n+        remaining = remaining - 1\n+        queue:put_nowait(task)\n+        if remaining == 0 then\n+          queue:put_nowait()\n+        end\n+      end)\n+    end\n+  end\n+\n+  --- @async\n+  local function next_task()\n+    return queue:get()\n+  end\n+\n+  return util.gc_fun(next_task, function()\n+    unsubscribe_all(unsubscribe)\n+  end)\n+end\n+\n+--- Asynchronously sleep for a given duration.\n+---\n+--- Suspends the current task for the given duration, but does not block Nvim's\n+--- main loop.\n+---\n+--- ```lua\n+--- vim.async.run(function()\n+---   vim.async.sleep(100)\n+---   vim.notify('resumed later')\n+--- end)\n+--- ```\n+--- @async\n+--- @param duration integer ms\n+function M.sleep(duration)\n+  validate('duration', duration, 'number')\n+  M.await(function(callback)\n+    local timer = runtime.new_timer()\n+    timer:start(duration, 0, callback)\n+    return timer\n+  end)\n+end\n+\n+--- Await a task with a timeout.\n+---\n+--- If the task completes first, returns or raises the task result as\n+--- [vim.async.await()] would. If the deadline wins, closes the task and raises\n+--- `\"timeout\"` after the target task finishes cancellation cleanup.\n+---\n+--- ```lua\n+--- local async = vim.async\n+---\n+--- async.run(function()\n+---   local task = async.run(read_file, 'notes.txt')\n+---   local text = async.timeout(5000, task)\n+---   show_buffer(text)\n+--- end)\n+--- ```\n+--- @async\n+--- @generic R\n+--- @param duration integer Timeout duration in milliseconds\n+--- @param task vim.async.Task<R>\n+--- @return R\n+function M.timeout(duration, task)\n+  validate('duration', duration, 'number')\n+  validate('task', task, 'table')\n+\n+  local timed_out = false\n+  local timer = M.run('__timeout', function()\n+    M.sleep(duration)\n+    timed_out = true\n+    task:close()\n+  end)\n+  --- @diagnostic disable-next-line: invisible\n+  timer._hidden = true\n+\n+  local result = util.pack_len(M.pawait(task))\n+  timer:close()\n+  M.pawait(timer)\n+\n+  if timed_out then\n+    error('timeout', 0)\n+  end\n+\n+  if not result[1] then\n+    error(result[2], 0)\n+  end\n+\n+  return util.unpack_len(result, 2)\n+end\n+\n+if type(vim) == 'table' then",
             "html_url": "https://github.com/neovim/neovim/pull/34473#discussion_r3757902428",
@@ -2137,7 +2137,7 @@
             },
             "author_association": "MEMBER",
             "body": "The latter. The code in this PR is extracted from https://github.com/lewis6991/async.nvim and I've added vibe-coded scripts to do this mechanically to keep this PR updated. Can remove this eventually or before merge.\r\n\r\nI'm not sure what the future of https://github.com/lewis6991/async.nvim should be, but maintaining the async lib as standalone seems like something that might be worth continuing.",
-            "commit_id": "07e560f49282280ecdb6f75143d9789b3b9d1142",
+            "commit_id": "9a2a3a61cfe63de90450a5fbc8eac2fcfd14fbf4",
             "created_at": "2026-08-11T12:54:52Z",
             "diff_hunk": "@@ -0,0 +1,317 @@\n+local core = require('vim.async._core')\n+local validate = vim.validate\n+local new_queue = require('vim.async._queue')\n+local runtime = require('vim.async._runtime')\n+local util = require('vim.async._util')\n+\n+--- Structured async API for Lua code that waits on event-loop work.\n+---\n+--- `vim.async` lets Lua code wait for timers, callbacks, and other tasks\n+--- without blocking Nvim's event loop. Async work runs inside tasks. A task can\n+--- pause at checkpoints, resume on a later event-loop turn, and manage child\n+--- tasks created while it is running.\n+---\n+--- Start async work with [vim.async.run()]. Inside a task, use\n+--- [vim.async.await()] to wait for callback-style APIs or other tasks without\n+--- blocking the event loop. Use [vim.async.pawait()] when an awaited operation\n+--- can fail and the current task should continue.\n+---\n+--- Examples in this help use `local async = vim.async` for brevity.\n+---\n+--- Example: run async work without blocking Nvim:\n+---\n+--- ```lua\n+--- local async = vim.async\n+---\n+--- async.run(function()\n+---   vim.notify('waiting...')\n+---   async.sleep(1000)\n+---   vim.notify('done')\n+--- end)\n+--- ```\n+---\n+--- Example: await a callback-style API. Callback results are returned\n+--- unchanged, so an error-first callback still returns `err, value`:\n+---\n+--- ```lua\n+--- local async = vim.async\n+---\n+--- async.run(function()\n+---   local path = vim.api.nvim_buf_get_name(0)\n+---   local err, stat = async.await(2, vim.uv.fs_stat, path)\n+---\n+---   if err then\n+---     vim.notify(err, vim.log.levels.ERROR)\n+---     return\n+---   end\n+---\n+---   vim.notify(('current buffer is %d bytes'):format(stat.size))\n+--- end)\n+--- ```\n+---\n+--- A task has two roles:\n+---\n+--- - it is a handle that can be awaited, waited for, or closed\n+--- - it is a scope for child tasks created while the task is running\n+---\n+--- [vim.async.run()] creates a task. A top-level task starts immediately. A\n+--- task created while another task is running becomes a child of that task, and\n+--- its function starts when the parent reaches its next checkpoint. A parent\n+--- task finishes only after its attached children finish. If a child fails\n+--- without being handled, the parent fails and closes the remaining children.\n+---\n+--- Use [Task:detach()] for background work that should keep running after the\n+--- current task finishes. A detached task becomes top-level work; the original\n+--- parent no longer waits for it or closes it.\n+---\n+--- Awaiting a task observes that task's result; it does not attach the task to\n+--- the awaiter or change which task owns it. Ownership is decided when the task\n+--- is created.\n+---\n+--- Scheduling is cooperative. When a task awaits a timer, I/O operation,\n+--- callback, or another task, `vim.async` saves the Lua stack and returns\n+--- control to the event loop. Other callbacks can run while the task is\n+--- paused, and the task resumes on a later event-loop turn. Nothing interrupts\n+--- synchronous Lua code in the middle of a stack frame.\n+---\n+--- Checkpoints are the places where a task can pause, start pending child\n+--- tasks, observe cancellation, and receive unhandled child failures. Inside a\n+--- task, these operations are checkpoints:\n+---\n+--- - `vim.async.await(...)`\n+--- - `vim.async.pawait(...)`\n+--- - `vim.async.checkpoint()`\n+--- - successful return from the task function, which is the final checkpoint\n+---   for child management\n+---\n+--- Convenience APIs such as [vim.async.sleep()] and [vim.async.timeout()] can\n+--- also checkpoint because they call checkpointing APIs internally.\n+---\n+--- Closing a task closes its attached children. Cancellation is cooperative:\n+--- [Task:close()] marks a task as closing, and the task observes that state at\n+--- a checkpoint. If a task is suspended on a closable operation such as a timer\n+--- or child task, `vim.async` closes that operation before reporting the\n+--- cancellation.\n+---\n+--- Use [vim.async.await()] inside a task to suspend until work completes. It\n+--- accepts a task, a callback-taking function, or an argument position plus a\n+--- callback-taking function. `await(task)` returns the task result or raises\n+--- the task failure. [vim.async.pawait()] is the async counterpart to `pcall()`\n+--- for recoverable awaited-operation failures; it returns `ok, ...` instead of\n+--- failing the current task for that awaited operation. It does not suppress\n+--- cancellation or a failure already pending on the current task.\n+---\n+--- From synchronous code, use [Task:wait()] or [Task:pwait()] to pump the event\n+--- loop until the task completes. Use [Task:on_complete()] to observe\n+--- completion without blocking.\n+---\n+--- Coordination helpers work with task handles. [vim.async.iter()] yields\n+--- completed task handles in completion order, [vim.async.timeout()] awaits a\n+--- task with a deadline, and `vim.async.semaphore(permits)` creates a\n+--- [vim.async.Semaphore] that limits how many tasks can hold a permit for a\n+--- section at once.\n+--- @class vim.async: vim.async._core\n+local M = setmetatable({}, { __index = core })\n+\n+M.semaphore = require('vim.async._semaphore')\n+\n+--- @param unsubscribe fun()[]\n+local function unsubscribe_all(unsubscribe)\n+  for _, unsub in ipairs(unsubscribe) do\n+    unsub()\n+  end\n+end\n+\n+--- Create an async function from a callback-style function.\n+---\n+--- The callback is inserted at argument position `argc`. If `func` returns a\n+--- closable handle, it is closed when the awaiting task is cancelled.\n+---\n+--- This is a reusable wrapper around [vim.async.await()]. Use it when the same\n+--- callback API is awaited from more than one place.\n+---\n+--- ```lua\n+--- local async = vim.async\n+--- local fs_stat = async.wrap(2, vim.uv.fs_stat)\n+---\n+--- async.run(function()\n+---   local err, stat = fs_stat(vim.api.nvim_buf_get_name(0))\n+---   if not err and stat then\n+---     print(stat.size)\n+---   end\n+--- end)\n+--- ```\n+---\n+--- @generic T, R\n+--- @param argc integer\n+--- @param func fun(...: T..., callback: fun(...: R...)): vim.async.Closable?\n+--- @return async fun(...: T...): R...\n+function M.wrap(argc, func)\n+  validate('argc', argc, 'number')\n+  validate('func', func, 'callable')\n+  --- @async\n+  return function(...)\n+    return M.await(argc, func, ...)\n+  end\n+end\n+\n+--- Iterate completed tasks in completion order.\n+---\n+--- The iterator yields task handles, not task results. Use\n+--- [vim.async.await()] or [vim.async.pawait()] to retrieve each result. The\n+--- tasks are observed in the order they complete, regardless of the order in\n+--- the input list.\n+---\n+--- ```lua\n+--- local async = vim.async\n+---\n+--- async.run(function()\n+---   local tasks = {\n+---     async.run(function() return 'cache', read_cache() end):detach(),\n+---     async.run(function() return 'disk', read_file() end):detach(),\n+---   }\n+---\n+---   for task in async.iter(tasks) do\n+---     local ok, source, text = async.pawait(task)\n+---     if ok then\n+---       for _, other in ipairs(tasks) do\n+---         if other ~= task then\n+---           other:close()\n+---         end\n+---       end\n+---       print(('loaded from %s'):format(source))\n+---       return text\n+---     end\n+---   end\n+--- end)\n+--- ```\n+---\n+--- If code must support PUC Lua 5.1, use the direct-call form instead of a\n+--- generic `for` loop. The iterator may need to suspend while waiting for the\n+--- next completed task, and PUC Lua 5.1 cannot yield from a generic-for\n+--- iterator call.\n+---\n+--- ```lua\n+--- local next_task = async.iter(tasks)\n+--- while true do\n+---   local task = next_task()\n+---   if task == nil then\n+---     break\n+---   end\n+---   async.await(task)\n+--- end\n+--- ```\n+--- @async\n+--- @generic R\n+--- @param tasks vim.async.Task<R>[] A list of tasks to wait for and iterate over.\n+--- @return async fun(): vim.async.Task<R>? iterator that yields each completed task.\n+function M.iter(tasks)\n+  validate('tasks', tasks, 'table')\n+\n+  local remaining = #tasks\n+  local queue = new_queue()\n+  local unsubscribe = {} --- @type fun()[]\n+\n+  if remaining == 0 then\n+    queue:put_nowait()\n+  else\n+    for _, task in ipairs(tasks) do\n+      unsubscribe[#unsubscribe + 1] = task:on_complete(function()\n+        remaining = remaining - 1\n+        queue:put_nowait(task)\n+        if remaining == 0 then\n+          queue:put_nowait()\n+        end\n+      end)\n+    end\n+  end\n+\n+  --- @async\n+  local function next_task()\n+    return queue:get()\n+  end\n+\n+  return util.gc_fun(next_task, function()\n+    unsubscribe_all(unsubscribe)\n+  end)\n+end\n+\n+--- Asynchronously sleep for a given duration.\n+---\n+--- Suspends the current task for the given duration, but does not block Nvim's\n+--- main loop.\n+---\n+--- ```lua\n+--- vim.async.run(function()\n+---   vim.async.sleep(100)\n+---   vim.notify('resumed later')\n+--- end)\n+--- ```\n+--- @async\n+--- @param duration integer ms\n+function M.sleep(duration)\n+  validate('duration', duration, 'number')\n+  M.await(function(callback)\n+    local timer = runtime.new_timer()\n+    timer:start(duration, 0, callback)\n+    return timer\n+  end)\n+end\n+\n+--- Await a task with a timeout.\n+---\n+--- If the task completes first, returns or raises the task result as\n+--- [vim.async.await()] would. If the deadline wins, closes the task and raises\n+--- `\"timeout\"` after the target task finishes cancellation cleanup.\n+---\n+--- ```lua\n+--- local async = vim.async\n+---\n+--- async.run(function()\n+---   local task = async.run(read_file, 'notes.txt')\n+---   local text = async.timeout(5000, task)\n+---   show_buffer(text)\n+--- end)\n+--- ```\n+--- @async\n+--- @generic R\n+--- @param duration integer Timeout duration in milliseconds\n+--- @param task vim.async.Task<R>\n+--- @return R\n+function M.timeout(duration, task)\n+  validate('duration', duration, 'number')\n+  validate('task', task, 'table')\n+\n+  local timed_out = false\n+  local timer = M.run('__timeout', function()\n+    M.sleep(duration)\n+    timed_out = true\n+    task:close()\n+  end)\n+  --- @diagnostic disable-next-line: invisible\n+  timer._hidden = true\n+\n+  local result = util.pack_len(M.pawait(task))\n+  timer:close()\n+  M.pawait(timer)\n+\n+  if timed_out then\n+    error('timeout', 0)\n+  end\n+\n+  if not result[1] then\n+    error(result[2], 0)\n+  end\n+\n+  return util.unpack_len(result, 2)\n+end\n+\n+if type(vim) == 'table' then",
             "html_url": "https://github.com/neovim/neovim/pull/34473#discussion_r3758113791",
@@ -2944,7 +2944,9 @@
             "html_url": "https://github.com/neovim/neovim/pull/34473#issuecomment-5394247545",
             "id": 5394247545,
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/34473",
-            "minimized": null,
+            "minimized": {
+                "reason": "resolved"
+            },
             "node_id": "IC_kwDOAPphoM8AAAABQYWveQ",
             "performed_via_github_app": null,
             "reactions": {
@@ -2959,7 +2961,7 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/5394247545/reactions"
             },
-            "updated_at": "2026-08-24T10:57:07Z",
+            "updated_at": "2026-08-26T14:25:39Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/5394247545",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -3080,9 +3082,9 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/lewis6991/neovim/pulls{/number}",
-            "pushed_at": "2026-08-24T08:50:04Z",
+            "pushed_at": "2026-08-25T16:38:28Z",
             "releases_url": "https://api.github.com/repos/lewis6991/neovim/releases{/id}",
-            "size": 382231,
+            "size": 381147,
             "ssh_url": "git@github.com:lewis6991/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/lewis6991/neovim/stargazers",
@@ -3101,7 +3103,7 @@
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "07e560f49282280ecdb6f75143d9789b3b9d1142",
+        "sha": "9a2a3a61cfe63de90450a5fbc8eac2fcfd14fbf4",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",
             "events_url": "https://api.github.com/users/lewis6991/events{/privacy}",
@@ -3157,11 +3159,11 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "2559fbaffd40a8c5d08355c3ba5de82693cc8124",
+    "merge_commit_sha": "a071354b3667db3e97fd12f5b0056b68fd9611fd",
     "merged_at": null,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 180,
+        "closed_issues": 182,
         "created_at": "2025-02-01T14:58:39Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -3191,10 +3193,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/48/labels",
         "node_id": "MI_kwDOAPphoM4AuvCx",
         "number": 48,
-        "open_issues": 75,
+        "open_issues": 77,
         "state": "open",
         "title": "0.13",
-        "updated_at": "2026-08-24T14:51:47Z",
+        "updated_at": "2026-08-27T20:12:13Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/48"
     },
     "node_id": "PR_kwDOAPphoM6aPwLK",
@@ -3205,9 +3207,9 @@
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/34473/comments",
     "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/07e560f49282280ecdb6f75143d9789b3b9d1142",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/9a2a3a61cfe63de90450a5fbc8eac2fcfd14fbf4",
     "title": "feat(lua): add vim.async",
-    "updated_at": "2026-08-24T10:57:07Z",
+    "updated_at": "2026-08-26T14:25:39Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/34473",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",
