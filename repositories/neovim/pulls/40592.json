@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/40592"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/58641d0bf3695a3f7949d4eba4ad7e714361dcd6"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/d19ab34d0186a9daa81d0cd08e399575c3821924"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 7096,
-            "forks_count": 7096,
+            "forks": 7113,
+            "forks_count": 7113,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -95,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1901,
-            "open_issues_count": 1901,
+            "open_issues": 1908,
+            "open_issues_count": 1908,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -121,11 +121,11 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2026-09-08T05:24:37Z",
+            "pushed_at": "2026-09-15T05:25:13Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 397946,
+            "size": 399036,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 102210,
+            "stargazers_count": 102340,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -143,14 +143,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2026-09-08T05:34:08Z",
+            "updated_at": "2026-09-15T05:24:00Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 102210,
-            "watchers_count": 102210,
+            "watchers": 102340,
+            "watchers_count": 102340,
             "web_commit_signoff_required": false
         },
-        "sha": "c696bab8475a80aa49295b3c9e6d1a18d1332f0e",
+        "sha": "d24cafc06a78f6357674c2429706303538be48da",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -174,8 +174,285 @@
         }
     },
     "body": "Note: Used AI to assist. Reviewed code and tested manually.\r\n\r\nhttps://github.com/neovim/neovim/issues/40238 do not addresses the main issue regarding `vim._watch.watch()` but adds one performance mitigation like use per-directory watchers when threshold is reached. experimental\r\n\r\n## Problem\r\nLarge sessions can create one autoread watcher per loaded buffer, increasing OS filewatcher pressure.\r\n\r\n## Solution\r\nShare one non-recursive directory watcher once the number of eligible\r\nbuffers in that directory reaches a configurable threshold.\r\n\r\n- Enabled by default on Linux, macOS, and Windows. Other platforms retain\r\n  per-file watchers because directory events may not report child-file writes.\r\n- Symbolic links and files with multiple hard links retain per-file watchers.\r\n- Start the shared watcher before cancelling existing file watchers.\r\n  If startup fails, retain existing coverage (keep them as file watchers).\r\n- Filter directory events to tracked buffer paths.\r\n- Release shared watchers when no buffers remain subscribed.\r\n\r\n`vim._watch.watch()` now returns `(cancel, err)` so autoread can detect\r\nfailed watcher creation or startup.\r\n\r\nConfiguration, set before loading buffers:\r\n\r\n    vim.g.autoread_watch_dir = true\r\n    vim.g.autoread_watch_dir_threshold = 3\r\n\r\nThe threshold must be an integer >= 2. Changing these settings does not\r\nimmediately rebuild existing watchers.",
-    "closed_at": null,
-    "comment_data": [],
+    "closed_at": "2026-09-10T04:06:41Z",
+    "comment_data": [
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/40592#discussion_r3970425218"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/40592"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3970425218"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "Can't tell what default would be good",
+            "commit_id": "d19ab34d0186a9daa81d0cd08e399575c3821924",
+            "created_at": "2026-09-09T15:52:29Z",
+            "diff_hunk": "@@ -96,15 +117,160 @@ local function should_watch(bufnr)\n   return true\n end\n \n+--- Directory events do not cover writes through links outside the watched directory.\n+--- Other backends (e.g. BSD kqueue) may not report writes to directory children at all.\n+--- @param path string\n+--- @return boolean\n+local function use_dir_watcher(path)\n+  local value = vim.g.autoread_watch_dir\n+  local sysname = uv.os_uname().sysname\n+  if\n+    value == false\n+    or value == 0\n+    or not vim.list_contains({ 'Linux', 'Darwin', 'Windows_NT' }, sysname)\n+  then\n+    return false\n+  end\n+  local stat = uv.fs_lstat(path)\n+  return stat ~= nil and stat.type == 'file' and stat.nlink == 1\n+end\n+\n+--- Returns the configured minimum number of buffers needed to share a directory watcher.\n+--- @return integer\n+local function dir_watch_threshold()",
+            "html_url": "https://github.com/neovim/neovim/pull/40592#discussion_r3970425218",
+            "id": 3970425218,
+            "line": 140,
+            "node_id": "PRRC_kwDOAPphoM7sp-GC",
+            "original_commit_id": "fd6698877692140f30a5cbadb9dc9abd24068222",
+            "original_line": 140,
+            "original_position": 70,
+            "original_start_line": null,
+            "path": "runtime/lua/nvim/autoread.lua",
+            "position": 70,
+            "pull_request_review_id": 5156702907,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/40592",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3970425218/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-09-09T15:52:29Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3970425218",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/92693103?v=4",
+                "events_url": "https://api.github.com/users/SanzharKuandyk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/SanzharKuandyk/followers",
+                "following_url": "https://api.github.com/users/SanzharKuandyk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/SanzharKuandyk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/SanzharKuandyk",
+                "id": 92693103,
+                "login": "SanzharKuandyk",
+                "node_id": "U_kgDOBYZibw",
+                "organizations_url": "https://api.github.com/users/SanzharKuandyk/orgs",
+                "received_events_url": "https://api.github.com/users/SanzharKuandyk/received_events",
+                "repos_url": "https://api.github.com/users/SanzharKuandyk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/SanzharKuandyk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/SanzharKuandyk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/SanzharKuandyk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/40592#discussion_r3973732521"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/40592"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3973732521"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "we *may* not want to expose this as a default variable, depends on the research",
+            "commit_id": "d19ab34d0186a9daa81d0cd08e399575c3821924",
+            "created_at": "2026-09-09T22:53:00Z",
+            "diff_hunk": "@@ -852,6 +852,18 @@ A jump table for the options with a short description can be found at |Q_op|.\n \t\tset autoread<\n <\n \n+\t                                                *g:autoread_watch_dir*\n+\tOn Linux, macOS and Windows, Nvim may share one non-recursive directory\n+\twatcher between buffers in the same directory. Linked files retain\n+\tindividual file watchers. Set `g:autoread_watch_dir` to\n+\tv:false before loading buffers to always use one watcher per buffer.\n+\n+\t                                *g:autoread_watch_dir_threshold*",
+            "html_url": "https://github.com/neovim/neovim/pull/40592#discussion_r3973732521",
+            "id": 3973732521,
+            "line": 861,
+            "node_id": "PRRC_kwDOAPphoM7s2lip",
+            "original_commit_id": "d19ab34d0186a9daa81d0cd08e399575c3821924",
+            "original_line": 861,
+            "original_position": 10,
+            "original_start_line": null,
+            "path": "runtime/doc/options.txt",
+            "position": 10,
+            "pull_request_review_id": 5160695874,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/40592",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3973732521/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-09-09T22:53:00Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3973732521",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/62671086?v=4",
+                "events_url": "https://api.github.com/users/barrettruth/events{/privacy}",
+                "followers_url": "https://api.github.com/users/barrettruth/followers",
+                "following_url": "https://api.github.com/users/barrettruth/following{/other_user}",
+                "gists_url": "https://api.github.com/users/barrettruth/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/barrettruth",
+                "id": 62671086,
+                "login": "barrettruth",
+                "node_id": "MDQ6VXNlcjYyNjcxMDg2",
+                "organizations_url": "https://api.github.com/users/barrettruth/orgs",
+                "received_events_url": "https://api.github.com/users/barrettruth/received_events",
+                "repos_url": "https://api.github.com/users/barrettruth/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/barrettruth/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/barrettruth/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/barrettruth",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/40592#discussion_r3973736702"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/40592"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3973736702"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "nit: \"or 3\"?",
+            "commit_id": "d19ab34d0186a9daa81d0cd08e399575c3821924",
+            "created_at": "2026-09-09T22:53:33Z",
+            "diff_hunk": "@@ -96,15 +117,160 @@ local function should_watch(bufnr)\n   return true\n end\n \n+--- Directory events do not cover writes through links outside the watched directory.\n+--- Other backends (e.g. BSD kqueue) may not report writes to directory children at all.\n+--- @param path string\n+--- @return boolean\n+local function use_dir_watcher(path)\n+  local value = vim.g.autoread_watch_dir\n+  local sysname = uv.os_uname().sysname\n+  if\n+    value == false\n+    or value == 0\n+    or not vim.list_contains({ 'Linux', 'Darwin', 'Windows_NT' }, sysname)\n+  then\n+    return false\n+  end\n+  local stat = uv.fs_lstat(path)\n+  return stat ~= nil and stat.type == 'file' and stat.nlink == 1\n+end\n+\n+--- Returns the configured minimum number of buffers needed to share a directory watcher.\n+--- @return integer\n+local function dir_watch_threshold()\n+  local value = vim.g.autoread_watch_dir_threshold",
+            "html_url": "https://github.com/neovim/neovim/pull/40592#discussion_r3973736702",
+            "id": 3973736702,
+            "line": 141,
+            "node_id": "PRRC_kwDOAPphoM7s2mj-",
+            "original_commit_id": "d19ab34d0186a9daa81d0cd08e399575c3821924",
+            "original_line": 141,
+            "original_position": 71,
+            "original_start_line": null,
+            "path": "runtime/lua/nvim/autoread.lua",
+            "position": 71,
+            "pull_request_review_id": 5160699781,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/40592",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3973736702/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-09-09T22:53:46Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3973736702",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/62671086?v=4",
+                "events_url": "https://api.github.com/users/barrettruth/events{/privacy}",
+                "followers_url": "https://api.github.com/users/barrettruth/followers",
+                "following_url": "https://api.github.com/users/barrettruth/following{/other_user}",
+                "gists_url": "https://api.github.com/users/barrettruth/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/barrettruth",
+                "id": 62671086,
+                "login": "barrettruth",
+                "node_id": "MDQ6VXNlcjYyNjcxMDg2",
+                "organizations_url": "https://api.github.com/users/barrettruth/orgs",
+                "received_events_url": "https://api.github.com/users/barrettruth/received_events",
+                "repos_url": "https://api.github.com/users/barrettruth/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/barrettruth/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/barrettruth/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/barrettruth",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/40592#discussion_r3973746692"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/40592"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3973746692"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "I don't see an instance of \"maybe\"-prefixed functions in the codebase. I also don't like this pattern.\n",
+            "commit_id": "d19ab34d0186a9daa81d0cd08e399575c3821924",
+            "created_at": "2026-09-09T22:54:54Z",
+            "diff_hunk": "@@ -96,15 +117,160 @@ local function should_watch(bufnr)\n   return true\n end\n \n+--- Directory events do not cover writes through links outside the watched directory.\n+--- Other backends (e.g. BSD kqueue) may not report writes to directory children at all.\n+--- @param path string\n+--- @return boolean\n+local function use_dir_watcher(path)\n+  local value = vim.g.autoread_watch_dir\n+  local sysname = uv.os_uname().sysname\n+  if\n+    value == false\n+    or value == 0\n+    or not vim.list_contains({ 'Linux', 'Darwin', 'Windows_NT' }, sysname)\n+  then\n+    return false\n+  end\n+  local stat = uv.fs_lstat(path)\n+  return stat ~= nil and stat.type == 'file' and stat.nlink == 1\n+end\n+\n+--- Returns the configured minimum number of buffers needed to share a directory watcher.\n+--- @return integer\n+local function dir_watch_threshold()\n+  local value = vim.g.autoread_watch_dir_threshold\n+  if value == nil then\n+    return 3\n+  end\n+  vim.validate('g:autoread_watch_dir_threshold', value, function(v)\n+    return type(v) == 'number' and v >= 2 and v % 1 == 0\n+  end, 'integer >= 2')\n+  return value\n+end\n+\n+--- Handles one file change event for a buffer.\n+---\n+--- @param bufnr integer\n+--- @param change_type vim._watch.FileChangeType\n+local function on_file_change(bufnr, change_type)\n+  local timer = timers[bufnr]\n+  if not timer then\n+    return\n+  end\n+\n+  -- Set the 'busy' buffer option for the duration of the pending cycle. This is a small, \"best\n+  -- effort\" UX hint, not intended to be noticeable except when filewatcher activity is \"noisy\".\n+  set_pending(bufnr, true)\n+  -- Debounce: restart the same timer on each event, so only the last\n+  -- event in a rapid series (e.g. truncate + write) triggers checktime.\n+  timer:start(debounce_ms, 0, function()\n+    vim.schedule(function()\n+      sync_busy(bufnr)\n+      if not vim.api.nvim_buf_is_loaded(bufnr) or not buf_autoread(bufnr) then\n+        set_pending(bufnr, false)\n+        return\n+      end\n+\n+      -- :checktime may throw if file was deleted (E211), or if reload triggers a buggy autocmd.\n+      local ok, err = pcall(vim.cmd.checktime, bufnr) ---@type any, any\n+      local file_missing = tostring(err):find('E211:', 1, true)\n+\n+      set_pending(bufnr, false)\n+      -- Update the watcher if it's now stale: \"rename\" events (watcher pointing to old inode), or\n+      -- file deleted between event-and-:checktime.\n+      if change_type ~= watch.FileChangeType.Changed or file_missing then\n+        ensure_watcher(bufnr)\n+      end\n+      if not ok and not file_missing then\n+        vim.api.nvim_echo({\n+          { ('autoread: :checktime failed for buffer %d: %s'):format(bufnr, err) },\n+        }, true, { err = true })\n+      end\n+    end)\n+  end)\n+end\n+\n+--- Starts one per-file watcher for a buffer.\n+---\n+--- @param bufnr integer\n+--- @param path string\n+local function start_file_watcher(bufnr, path)\n+  local start_err\n+  local cancel = watch.watch(path, {\n+    on_error = function(err)\n+      start_err = err\n+    end,\n+  }, function(_, change_type)\n+    on_file_change(bufnr, change_type)\n+  end)\n+  if not start_err then\n+    file_watchers[bufnr] = cancel\n+  end\n+end\n+\n+--- Starts one directory watcher shared by all buffers in `entry`.\n+---\n+--- @param dir string\n+--- @param entry { cancel: fun()?, bufs: table<integer, true> }\n+--- @return boolean\n+local function start_dir_watcher(dir, entry)\n+  local start_err\n+  local cancel = watch.watch(dir, {\n+    on_error = function(err)\n+      start_err = err\n+    end,\n+  }, function(fullpath, change_type)\n+    fullpath = vim.fs.normalize(fullpath)\n+    for watched_bufnr in pairs(entry.bufs) do\n+      local buf = buffers[watched_bufnr]\n+      if buf and (buf.path == fullpath or fullpath == dir) then\n+        on_file_change(watched_bufnr, change_type)\n+      end\n+    end\n+  end)\n+  if start_err then\n+    return false\n+  end\n+  entry.cancel = cancel\n+  return true\n+end\n+\n+--- Stops a directory watcher when it is no longer needed.\n+---\n+--- @param dir string\n+local function maybe_stop_dir(dir)",
+            "html_url": "https://github.com/neovim/neovim/pull/40592#discussion_r3973746692",
+            "id": 3973746692,
+            "line": 241,
+            "node_id": "PRRC_kwDOAPphoM7s2pAE",
+            "original_commit_id": "d19ab34d0186a9daa81d0cd08e399575c3821924",
+            "original_line": 241,
+            "original_position": 171,
+            "original_start_line": null,
+            "path": "runtime/lua/nvim/autoread.lua",
+            "position": 171,
+            "pull_request_review_id": 5160709119,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/40592",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3973746692/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-09-09T22:55:02Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3973746692",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/62671086?v=4",
+                "events_url": "https://api.github.com/users/barrettruth/events{/privacy}",
+                "followers_url": "https://api.github.com/users/barrettruth/followers",
+                "following_url": "https://api.github.com/users/barrettruth/following{/other_user}",
+                "gists_url": "https://api.github.com/users/barrettruth/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/barrettruth",
+                "id": 62671086,
+                "login": "barrettruth",
+                "node_id": "MDQ6VXNlcjYyNjcxMDg2",
+                "organizations_url": "https://api.github.com/users/barrettruth/orgs",
+                "received_events_url": "https://api.github.com/users/barrettruth/received_events",
+                "repos_url": "https://api.github.com/users/barrettruth/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/barrettruth/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/barrettruth/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/barrettruth",
+                "user_view_type": "public"
+            }
+        }
+    ],
     "comment_regular_data": [
         {
             "author_association": "MEMBER",
@@ -360,13 +637,105 @@
                 "url": "https://api.github.com/users/SanzharKuandyk",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "I want to see actual comparisons to what other technologies do (typescript, emacs, vs code, zed) as more actual evidence to how we should handle this.\r\n\r\nThere are also several bugs here and I'm not sure how much of this is a consequence of this being AI-assisted. For example:\r\n\r\n- After a watcher fails at runtime, the buf is still watched but may receive no further events.\r\n- There is no reversion to going back below a directory watcher after the threshold is reached and promoted\r\n- more\r\n\r\nSeparately, this shows more pressure on #41745, though this is not a blocker. I don't think we should shift more logic into autoread in the long term - we need a centralized broker for watching as brought up in #41745.\r\n",
+            "created_at": "2026-09-10T01:21:21Z",
+            "html_url": "https://github.com/neovim/neovim/pull/40592#issuecomment-5611228198",
+            "id": 5611228198,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/40592",
+            "minimized": null,
+            "node_id": "IC_kwDOAPphoM8AAAABTnSMJg",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 2,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 2,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/5611228198/reactions"
+            },
+            "updated_at": "2026-09-10T01:23:19Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/5611228198",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/62671086?v=4",
+                "events_url": "https://api.github.com/users/barrettruth/events{/privacy}",
+                "followers_url": "https://api.github.com/users/barrettruth/followers",
+                "following_url": "https://api.github.com/users/barrettruth/following{/other_user}",
+                "gists_url": "https://api.github.com/users/barrettruth/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/barrettruth",
+                "id": 62671086,
+                "login": "barrettruth",
+                "node_id": "MDQ6VXNlcjYyNjcxMDg2",
+                "organizations_url": "https://api.github.com/users/barrettruth/orgs",
+                "received_events_url": "https://api.github.com/users/barrettruth/received_events",
+                "repos_url": "https://api.github.com/users/barrettruth/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/barrettruth/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/barrettruth/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/barrettruth",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "I think there is not much point in this pr right now, it is better to https://github.com/neovim/neovim/issues/41745 wait on this one, and write cleanly after this issue will be resolved\r\nIt feels in any way it would be hard to avoid pressure on `vim.fs.watch(patterns, opts, handler)` (if such api would be added)\r\n\r\nRegarding this one:\r\n> There is no reversion to going back below a directory watcher after the threshold is reached and promoted\r\n\r\nBefore updating pr description I had (removed it accidently): `dir watcher cancels only when last tracked buffer in that dir is unloaded/wiped`\r\nI did not add demotion of watcher at the time because I tried to avoid watcher churn\r\n\r\nRegarding other implementations, this is AI collected data with links to implementation/docs:\r\n| Project | Relevant behavior | What it tells us |\r\n| --- | --- | --- |\r\n| **TypeScript** | Its parent-directory strategy shares directory watchers using reference counts and closes them when the last subscriber leaves. It also supports polling fallback when native watchers are unavailable or exhausted. | Directory sharing and last-subscriber cleanup have precedent; our promotion threshold needs its own justification. [Source](https://github.com/microsoft/TypeScript/blob/v5.9.3/src/compiler/sys.ts#L376-L409), [fallback documentation](https://www.typescriptlang.org/tsconfig/fallbackPolling.html). |\r\n| **VS Code** | Its file service deduplicates identical requests; file watchers can reuse existing recursive coverage. Missing or deleted paths can be suspended and monitored for return, including through polling. | Sharing fits reusable infrastructure with explicit lifecycle handling. [Watcher internals](https://github.com/microsoft/vscode/wiki/File-Watcher-Internals). |\r\n| **Emacs** | Auto Revert handles a `stopped` notification by removing the watch descriptor and ensuring polling continues. | A stopped subscription should trigger a state transition instead of remaining recorded as active. [Implementation](https://github.com/emacs-mirror/emacs/blob/master/lisp/autorevert.el#L660-L691). |\r\n| **Zed** | Its watcher layer has global registrations, releases an underlying path watch after the last registration leaves, and provides native/polling machinery with retry handling for skipped registrations. Its generic event-error path still logs and returns. | A broker supports sharing and recovery, but does not automatically solve every failure mode. [Implementation](https://github.com/zed-industries/zed/blob/main/crates/fs/src/fs_watcher.rs). |\r\n\r\n",
+            "created_at": "2026-09-10T04:06:41Z",
+            "html_url": "https://github.com/neovim/neovim/pull/40592#issuecomment-5612833954",
+            "id": 5612833954,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/40592",
+            "minimized": null,
+            "node_id": "IC_kwDOAPphoM8AAAABTo0Mog",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/5612833954/reactions"
+            },
+            "updated_at": "2026-09-10T06:48:03Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/5612833954",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/92693103?v=4",
+                "events_url": "https://api.github.com/users/SanzharKuandyk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/SanzharKuandyk/followers",
+                "following_url": "https://api.github.com/users/SanzharKuandyk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/SanzharKuandyk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/SanzharKuandyk",
+                "id": 92693103,
+                "login": "SanzharKuandyk",
+                "node_id": "U_kgDOBYZibw",
+                "organizations_url": "https://api.github.com/users/SanzharKuandyk/orgs",
+                "received_events_url": "https://api.github.com/users/SanzharKuandyk/received_events",
+                "repos_url": "https://api.github.com/users/SanzharKuandyk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/SanzharKuandyk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/SanzharKuandyk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/SanzharKuandyk",
+                "user_view_type": "public"
+            }
         }
     ],
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/40592/comments",
     "commits_url": "https://api.github.com/repos/neovim/neovim/pulls/40592/commits",
     "created_at": "2026-07-05T12:40:00Z",
     "diff_url": "https://github.com/neovim/neovim/pull/40592.diff",
-    "draft": true,
+    "draft": false,
     "head": {
         "label": "SanzharKuandyk:impl_dir_watchers",
         "ref": "impl_dir_watchers",
@@ -458,9 +827,9 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/SanzharKuandyk/neovim/pulls{/number}",
-            "pushed_at": "2026-09-07T11:33:16Z",
+            "pushed_at": "2026-09-09T17:11:33Z",
             "releases_url": "https://api.github.com/repos/SanzharKuandyk/neovim/releases{/id}",
-            "size": 382076,
+            "size": 382726,
             "ssh_url": "git@github.com:SanzharKuandyk/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/SanzharKuandyk/neovim/stargazers",
@@ -479,7 +848,7 @@
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "58641d0bf3695a3f7949d4eba4ad7e714361dcd6",
+        "sha": "d19ab34d0186a9daa81d0cd08e399575c3821924",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/92693103?v=4",
             "events_url": "https://api.github.com/users/SanzharKuandyk/events{/privacy}",
@@ -505,9 +874,21 @@
     "html_url": "https://github.com/neovim/neovim/pull/40592",
     "id": 3993613886,
     "issue_url": "https://api.github.com/repos/neovim/neovim/issues/40592",
-    "labels": [],
+    "labels": [
+        {
+            "archived_at": null,
+            "archived_by": null,
+            "color": "B60205",
+            "default": false,
+            "description": "Nothing to see here; move along",
+            "id": 4135681637,
+            "name": "DO NOT MERGE",
+            "node_id": "LA_kwDOAPphoM72gX5l",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/DO%20NOT%20MERGE"
+        }
+    ],
     "locked": false,
-    "merge_commit_sha": "396d1204a319c5adb53fd65e6c5fcd41d2f94c93",
+    "merge_commit_sha": "c2f067324fbd66458b2435cbb41a7d35998bcced",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM7uCbY-",
@@ -517,10 +898,10 @@
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/40592/comments",
-    "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/58641d0bf3695a3f7949d4eba4ad7e714361dcd6",
+    "state": "closed",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/d19ab34d0186a9daa81d0cd08e399575c3821924",
     "title": "fix(autoread): share file watchers by directory",
-    "updated_at": "2026-09-07T13:00:58Z",
+    "updated_at": "2026-09-10T06:48:03Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/40592",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/92693103?v=4",

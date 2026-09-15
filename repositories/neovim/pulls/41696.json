@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/41696"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/809b4e5cbb973f193cc2badd980baa85ddef2870"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/7d6f6ebc28f7698ee79e5a4468138d95af3c88d8"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 7096,
-            "forks_count": 7096,
+            "forks": 7113,
+            "forks_count": 7113,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -95,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1901,
-            "open_issues_count": 1901,
+            "open_issues": 1908,
+            "open_issues_count": 1908,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -121,11 +121,11 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2026-09-08T05:24:37Z",
+            "pushed_at": "2026-09-15T05:25:13Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 397946,
+            "size": 399036,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 102210,
+            "stargazers_count": 102340,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -143,11 +143,11 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2026-09-08T05:34:08Z",
+            "updated_at": "2026-09-15T05:24:00Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 102210,
-            "watchers_count": 102210,
+            "watchers": 102340,
+            "watchers_count": 102340,
             "web_commit_signoff_required": false
         },
         "sha": "06bff279296d8692f5ed514f5edb6e879fac6dc8",
@@ -175,7 +175,77 @@
     },
     "body": "Closes https://github.com/neovim/neovim/issues/41697\r\n\r\n## Problem\r\nCurrently, when requesting workspace diagnostics, we have to wait for the whole request to finish. For larger projects this can take a long time.\r\n\r\n## Solution\r\n\r\nImplement partial results for workspace diagnostics.\r\n\r\nThere are other methods that also support partial results, but diagnostics is the only part of Neovim that I'm somewhat familiar/comfortable with, so I thought it would be a good place to start.\r\n\r\nI've added a partialResults field to client.lua that tracks inflight partial results and a function to handle them. In theory it could be used for other partial results, not just workspace diagnostics, well that's the idea at least.\r\n\r\nA few things to note:\r\n\r\nIt seems like some servers send partial result progress as positional params  the LSP I'm testing with does. I've copied the workaround from the vscode implementation, see [here](https://github.com/microsoft/vscode-languageserver-node/blob/5010cdf9822e1038a30ee7eb6ee5d7aaa79acc4a/jsonrpc/src/common/connection.ts#L972).\r\n\r\nI'm not actually sure when we should be sending a partial result token to the server. I know that, for example, the `diagnosticProvider` capability does extend `WorkDoneProgressOptions`, but I don't know if `WorkDoneProgressOptions` is the same as partial results. I think it should be fine sending a token on every request. If the server doesn't support it, I assume it just won't report to `$/progress` and will just respond to the request with full results.\r\n",
     "closed_at": null,
-    "comment_data": [],
+    "comment_data": [
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/41696#discussion_r3966098109"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/41696"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/3966098109"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "It seems that the `handler` should not be responsible for manually managing the lifecycle of these temporary results; overlooking this in such places could easily lead to memory leaks.",
+            "commit_id": "809b4e5cbb973f193cc2badd980baa85ddef2870",
+            "created_at": "2026-09-09T08:11:54Z",
+            "diff_hunk": "@@ -485,48 +517,52 @@ function M._workspace_diagnostics(opts)\n   --- @param result lsp.WorkspaceDiagnosticReport\n   --- @param ctx lsp.HandlerContext\n   local function handler(error, result, ctx)\n+    local partial_result_token = ctx.params.partialResultToken ---@type lsp.ProgressToken\n+    if partial_result_token then\n+      local client = assert(lsp.get_client_by_id(ctx.client_id))\n+      client.progress.partialResults[partial_result_token] = nil",
+            "html_url": "https://github.com/neovim/neovim/pull/41696#discussion_r3966098109",
+            "id": 3966098109,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM7sZdq9",
+            "original_commit_id": "809b4e5cbb973f193cc2badd980baa85ddef2870",
+            "original_line": 523,
+            "original_position": 46,
+            "original_start_line": null,
+            "path": "runtime/lua/vim/lsp/diagnostic.lua",
+            "position": 1,
+            "pull_request_review_id": 5151519497,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41696",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3966098109/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": null,
+            "subject_type": "line",
+            "updated_at": "2026-09-09T08:31:17Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3966098109",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/61115159?v=4",
+                "events_url": "https://api.github.com/users/ofseed/events{/privacy}",
+                "followers_url": "https://api.github.com/users/ofseed/followers",
+                "following_url": "https://api.github.com/users/ofseed/following{/other_user}",
+                "gists_url": "https://api.github.com/users/ofseed/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/ofseed",
+                "id": 61115159,
+                "login": "ofseed",
+                "node_id": "MDQ6VXNlcjYxMTE1MTU5",
+                "organizations_url": "https://api.github.com/users/ofseed/orgs",
+                "received_events_url": "https://api.github.com/users/ofseed/received_events",
+                "repos_url": "https://api.github.com/users/ofseed/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/ofseed/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/ofseed/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/ofseed",
+                "user_view_type": "public"
+            }
+        }
+    ],
     "comment_regular_data": [
         {
             "author_association": "MEMBER",
@@ -220,6 +290,98 @@
                 "subscriptions_url": "https://api.github.com/users/barrettruth/subscriptions",
                 "type": "User",
                 "url": "https://api.github.com/users/barrettruth",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "can you check the ci failures?\r\n\r\ncc @neovim/lsp \r\n",
+            "created_at": "2026-09-08T18:14:31Z",
+            "html_url": "https://github.com/neovim/neovim/pull/41696#issuecomment-5589750640",
+            "id": 5589750640,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/41696",
+            "minimized": null,
+            "node_id": "IC_kwDOAPphoM8AAAABTSzTcA",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/5589750640/reactions"
+            },
+            "updated_at": "2026-09-08T18:15:55Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/5589750640",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "@ofseed I added a new method to client.lua  `Client:partial_result_request` its basically a wrapper around the normal client request method but it handles the partial results tokens. \r\nWhat do you think?",
+            "created_at": "2026-09-14T18:01:44Z",
+            "html_url": "https://github.com/neovim/neovim/pull/41696#issuecomment-5668405222",
+            "id": 5668405222,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/41696",
+            "minimized": null,
+            "node_id": "IC_kwDOAPphoM8AAAABUdz_5g",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/5668405222/reactions"
+            },
+            "updated_at": "2026-09-14T18:01:44Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/5668405222",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/59741700?v=4",
+                "events_url": "https://api.github.com/users/ZieMcd/events{/privacy}",
+                "followers_url": "https://api.github.com/users/ZieMcd/followers",
+                "following_url": "https://api.github.com/users/ZieMcd/following{/other_user}",
+                "gists_url": "https://api.github.com/users/ZieMcd/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/ZieMcd",
+                "id": 59741700,
+                "login": "ZieMcd",
+                "node_id": "MDQ6VXNlcjU5NzQxNzAw",
+                "organizations_url": "https://api.github.com/users/ZieMcd/orgs",
+                "received_events_url": "https://api.github.com/users/ZieMcd/received_events",
+                "repos_url": "https://api.github.com/users/ZieMcd/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/ZieMcd/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/ZieMcd/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/ZieMcd",
                 "user_view_type": "public"
             }
         }
@@ -320,9 +482,9 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/ZieMcd/neovim/pulls{/number}",
-            "pushed_at": "2026-09-07T08:14:15Z",
+            "pushed_at": "2026-09-14T17:36:55Z",
             "releases_url": "https://api.github.com/repos/ZieMcd/neovim/releases{/id}",
-            "size": 381531,
+            "size": 381558,
             "ssh_url": "git@github.com:ZieMcd/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/ZieMcd/neovim/stargazers",
@@ -341,7 +503,7 @@
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "809b4e5cbb973f193cc2badd980baa85ddef2870",
+        "sha": "7d6f6ebc28f7698ee79e5a4468138d95af3c88d8",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/59741700?v=4",
             "events_url": "https://api.github.com/users/ZieMcd/events{/privacy}",
@@ -369,6 +531,8 @@
     "issue_url": "https://api.github.com/repos/neovim/neovim/issues/41696",
     "labels": [
         {
+            "archived_at": null,
+            "archived_by": null,
             "color": "c5def5",
             "default": false,
             "description": null,
@@ -379,7 +543,7 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "1709e138d0c5ed2f63fcc8d15a9e7ce7132bed19",
+    "merge_commit_sha": "7f702cfb037265e362d166e71e2c896d9b0f1e24",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM8AAAABCNo1ww",
@@ -433,9 +597,9 @@
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/41696/comments",
     "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/809b4e5cbb973f193cc2badd980baa85ddef2870",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/7d6f6ebc28f7698ee79e5a4468138d95af3c88d8",
     "title": "feat(lsp): partial results for workspace diagnostic results",
-    "updated_at": "2026-09-07T09:26:01Z",
+    "updated_at": "2026-09-14T18:02:39Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/41696",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/59741700?v=4",
