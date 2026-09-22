@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/41833"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/9830785526ab4a059ec73d4ab96f5dd695a34c3d"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/b62642e4d3d39966396609f945ab3f8b7e1b2921"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 7113,
-            "forks_count": 7113,
+            "forks": 7126,
+            "forks_count": 7126,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -95,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1908,
-            "open_issues_count": 1908,
+            "open_issues": 1921,
+            "open_issues_count": 1921,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -121,11 +121,11 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2026-09-15T05:25:13Z",
+            "pushed_at": "2026-09-22T05:25:10Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 399036,
+            "size": 399952,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 102340,
+            "stargazers_count": 102500,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -143,14 +143,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2026-09-15T05:24:00Z",
+            "updated_at": "2026-09-22T05:36:38Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 102340,
-            "watchers_count": 102340,
+            "watchers": 102500,
+            "watchers_count": 102500,
             "web_commit_signoff_required": false
         },
-        "sha": "8782c70127c13893a1aa16b64404ae31e75dd12c",
+        "sha": "adbe0493b3f5e72f4caf672621e5fdffc9b327a6",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -173,7 +173,7 @@
             "user_view_type": "public"
         }
     },
-    "body": "Problem:\r\n`ev.win` is only correct for some events.  ExitPre, deferred events\r\nsuch as TabMoved, and WinResized/WinScrolled after an autocommand\r\nfreed the window all report curwin instead.\r\n\r\nSolution:\r\nPass the event's window down to apply_autocmds() and remove apply_autocmds_win().\r\n",
+    "body": " Problem:\r\nev.win is the current window instead of the window the event is about\r\nfor deferred events, for WinResized/WinScrolled after the window was\r\nclosed, and for BufHidden.\r\n \r\nSolution:\r\nPass the window to apply_autocmds() and remove apply_autocmds_win().\r\nDeferred events record the window when triggered.\r\n",
     "closed_at": null,
     "comment_data": [
         {
@@ -362,6 +362,52 @@
                 "url": "https://api.github.com/users/zeertzjq",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "AI findings\r\n\r\n\r\n<details>\r\n<summary>AI findings</summary>\r\n\r\n\r\n## Deferred events now capture the context window\r\n\r\nThe old `deferred_event()` had this right, and the PR deletes it:\r\n\r\n```c\r\n-    win_T *win = curwin;  // before ctx_switch() may make the context window current\r\n-\r\n     CtxSwitch aco = { 0 };\r\n     ctx_switch(&aco, NULL, NULL, buf, 0);\r\n-    apply_autocmds_group(event, fname, fname_io, false, group, buf, win, eap, data, false);\r\n```\r\n\r\nThe capture moves to defer time (`evdata->win = aucmd_win_handle(win)` in `aucmd_defer()`, and `aucmd_win_handle(curwin)` in `deferred_optionset_modified`). Capturing at *run* time always yielded a real window. Capturing at defer time\r\ndoes not: if the defer happens inside a `ctx_switch` — `nvim_buf_call(hidden_buf, function() vim.bo.modified = true end)`, or MarkSet from the same — the stored handle is the context window's, and `ctx_restore()` removes it from\r\n`window_handles` before the event runs. `ev.win` is then an id that never named a user window, and `nvim_win_is_valid(ev.win)` is false.\r\n\r\n## ExitPre pairs the wrong buffer with the new window\r\n\r\nQuitPre, five lines above, pairs correctly:\r\n\r\n```c\r\napply_autocmds_win(EVENT_QUITPRE, NULL, NULL, false, wp->w_buffer, wp);\r\n...\r\napply_autocmds(EVENT_EXITPRE, NULL, NULL, false, curbuf, wp);\r\n```\r\n\r\n`:2quit` on a float — the setup in the new test — gives a handler `ev.win` = the float and `ev.buf` = the other window's buffer.\r\n\r\n## Three of five `ctx_switch` sites still pass the post-switch curwin\r\n\r\nThe `win_T *const ev_win = curwin;` idiom is applied at `ex_cmds2.c:717` and `quickfix.c:5815` only. Still unfixed: `terminal.c:593` (TermOpen), `bufwrite.c:376` and `:529` (BufWrite* via `:bufdo w` on a hidden buffer),\r\n`quickfix.c:4222`, `quickfix.c:5978`. Those report the internal context window, whose handle is valid only until `ctx_restore()`.\r\n\r\nAt `quickfix.c:5815` the fix also works against the adjacent comment: passing the invoking window as `ev.win` for a `:vimgrep` dummy buffer hands a FileType autocmd a window that is not showing `ev.buf`, which is what \"But not the \r\nwindow-local options!\" is trying to prevent. At `ex_cmds2.c:717`, `buf->b_nwindows > 0`, so `ev.win` points at a window showing a different buffer than the one whose Syntax event is firing.\r\n\r\n## `ctx_saved_curwin()` already does this\r\n\r\n`src/nvim/context.c:599` returns the outermost pre-switch `curwin` and NULL otherwise, tracked by `_ctx_switch_depth` in `ctx_switch`/`ctx_restore`. `drawscreen.c:469` and `statusline.c:96`/`:268` already use it.\r\n\r\nResolving `winid == 0` in `apply_autocmds_group()` as `ctx_saved_curwin() ?: curwin` closes all three of the above at once, deletes both `ev_win` locals, and covers future call sites — instead of each one having to remember an ordering\r\nrule.\r\n\r\n\r\n## Smaller\r\n\r\n- **No test for ExitPre**, the first bug the commit message names. The new case registers only QuitPre, which already passed the right window before this PR, so reverting `ex_docmd.c:4748` leaves the suite green. `:2quit` in that test\r\ndoes reach the ExitPre branch — adding `'ExitPre'` to the same `nvim_create_autocmd` call and asserting `ev.win == float` is the only coverage that line would have.\r\n- **`close_buffer()` keeps two sources of truth for `win_valid`.** The BufHidden line re-derives `win_valid_any_tab(win)` inline because `win_valid` (line 618) went stale when BufWinLeave ran, then line 671 derives it a third time.\r\nRefreshing `win_valid` right after the BufWinLeave call and writing `win_valid ? win : curwin` keeps one variable authoritative.\r\n- **The `win` event-arg doc wasn't updated at its owning symbol.** `api/autocmd.c:383` still says only \"id of the window for the event\". The \"may already have been closed\" caveat was added under WinScrolled in autocmd.txt only, and not\r\nat all for the deferred events — which is exactly where this PR newly makes it true.\r\n\r\n</details>",
+            "created_at": "2026-09-21T16:10:39Z",
+            "html_url": "https://github.com/neovim/neovim/pull/41833#issuecomment-5763658171",
+            "id": 5763658171,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/41833",
+            "minimized": null,
+            "node_id": "IC_kwDOAPphoM8AAAABV4pxuw",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/5763658171/reactions"
+            },
+            "updated_at": "2026-09-21T16:13:06Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/5763658171",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
         }
     ],
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/41833/comments",
@@ -460,9 +506,9 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/glepnir/neovim/pulls{/number}",
-            "pushed_at": "2026-09-15T04:54:29Z",
+            "pushed_at": "2026-09-22T04:18:29Z",
             "releases_url": "https://api.github.com/repos/glepnir/neovim/releases{/id}",
-            "size": 388121,
+            "size": 388783,
             "ssh_url": "git@github.com:glepnir/neovim.git",
             "stargazers_count": 2,
             "stargazers_url": "https://api.github.com/repos/glepnir/neovim/stargazers",
@@ -474,14 +520,14 @@
             "teams_url": "https://api.github.com/repos/glepnir/neovim/teams",
             "topics": [],
             "trees_url": "https://api.github.com/repos/glepnir/neovim/git/trees{/sha}",
-            "updated_at": "2026-09-13T04:06:31Z",
+            "updated_at": "2026-09-22T03:43:49Z",
             "url": "https://api.github.com/repos/glepnir/neovim",
             "visibility": "public",
             "watchers": 2,
             "watchers_count": 2,
             "web_commit_signoff_required": false
         },
-        "sha": "9830785526ab4a059ec73d4ab96f5dd695a34c3d",
+        "sha": "b62642e4d3d39966396609f945ab3f8b7e1b2921",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",
             "events_url": "https://api.github.com/users/glepnir/events{/privacy}",
@@ -554,7 +600,7 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "965a4e6d810d99264e09de1b55910532f63d0aad",
+    "merge_commit_sha": "488331cd45bc1cdc4dc16026eaab16a4e22b88e6",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM8AAAABC_Ptzw",
@@ -587,9 +633,9 @@
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/41833/comments",
     "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/9830785526ab4a059ec73d4ab96f5dd695a34c3d",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/b62642e4d3d39966396609f945ab3f8b7e1b2921",
     "title": "fix(events): ev.win is set to the wrong window",
-    "updated_at": "2026-09-12T21:54:56Z",
+    "updated_at": "2026-09-21T23:03:44Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/41833",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",

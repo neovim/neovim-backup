@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/41593"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/bbafd6609ef3869687e2502a130961817937782e"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/8d455010b43519de3386f9fb4da99a8f293abf1a"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 7096,
-            "forks_count": 7096,
+            "forks": 7126,
+            "forks_count": 7126,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -95,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1901,
-            "open_issues_count": 1901,
+            "open_issues": 1921,
+            "open_issues_count": 1921,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -121,11 +121,11 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2026-09-08T05:24:37Z",
+            "pushed_at": "2026-09-22T05:25:10Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 397946,
+            "size": 399952,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 102210,
+            "stargazers_count": 102500,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -143,14 +143,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2026-09-08T05:34:08Z",
+            "updated_at": "2026-09-22T05:36:38Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 102210,
-            "watchers_count": 102210,
+            "watchers": 102500,
+            "watchers_count": 102500,
             "web_commit_signoff_required": false
         },
-        "sha": "9ebf9b1017c2b7d63e5bb938dfd46c7be1117f98",
+        "sha": "dcf55c0cecb3049745cbe5c9ec3e5c9146cd8464",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -173,7 +173,7 @@
             "user_view_type": "public"
         }
     },
-    "body": "Problem:\r\n  If you want a custom `reuse_client` in a public lsp config, you first have\r\n  to copy the whole default matching logic, because `reuse_client_default` is\r\n  local. That's ~30 lines just to add one extra check.\r\n\r\n  Solution:\r\n  Expose it as `vim.lsp.reuse_client_default` so configs can build on top of\r\n  the default instead of reimplementing it:\r\n\r\n      reuse_client = function(client, config)\r\n        return vim.lsp.reuse_client_default(client, config) and my_check(config)\r\n      end\r\n\r\n  This covers the \"default plus an extra condition\" case. The gopls example in\r\n  the issue is \"default OR a per-folder override\", which would also want\r\n  `_get_workspace_folders` exposed, but I left that out for now.\r\n\r\n  Closes #41552",
+    "body": "Problem:\n  Users cannot customize the default `reuse_client` behavior used by\n  `vim.lsp.start()`. The default implementation is a local function, so a\n  public config either copies it (and the copy falls behind when the default\n  changes) or has no canonical reference for the default behavior.\n\n  #41552 asked for at least a visible reference to the default in the docs,\n  or exposed detection logic to compose with.\n\nSolution:\n  Make `vim.lsp.reuse_client` a public, settable predicate holding the\n  default implementation, like `vim.log.format_func`. `vim.lsp.start()`\n  uses it unless `opts.reuse_client` is given, and `vim.lsp.Config.reuse_client`\n  keeps overriding it per-server (same layering as `vim.lsp.handlers`).\n\n      vim.lsp.reuse_client = function(client, config, bufnr)\n        -- ...\n      end\n\n  Per-config predicates that add extra conditions can compose with the\n  current default:\n\n      reuse_client = function(client, config, bufnr)\n        return vim.lsp.reuse_client(client, config, bufnr)\n          or custom_condition(client, config)\n      end\n\n  Closes #41552\n",
     "closed_at": null,
     "comment_data": [],
     "comment_regular_data": [
@@ -820,6 +820,52 @@
                 "url": "https://api.github.com/users/alarcritty",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "apologies for the delay, i actually read `:help dev` like you said and took my time with it, so went with what @MariaSolOs  suggested: `vim.lsp.reuse_client` is now a public settable hook holding the default predicate, `vim.lsp.start()` falls back to it.one thing though, i kept `vim.lsp.Config.reuse_client` as the per-server override (layering like `vim.lsp.handlers`) instead of removing it, since removing would break lspconfig. happy to flip if you prefer.\r\n@krukroman  you were right about the `and` example, it's gone. your gopls case can do `vim.lsp.reuse_client(...) or extra_checks(...)`, no 30-line copy.",
+            "created_at": "2026-09-19T22:12:59Z",
+            "html_url": "https://github.com/neovim/neovim/pull/41593#issuecomment-5745674682",
+            "id": 5745674682,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/41593",
+            "minimized": null,
+            "node_id": "IC_kwDOAPphoM8AAAABVngJug",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/5745674682/reactions"
+            },
+            "updated_at": "2026-09-19T22:12:59Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/5745674682",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/102025295?v=4",
+                "events_url": "https://api.github.com/users/alarcritty/events{/privacy}",
+                "followers_url": "https://api.github.com/users/alarcritty/followers",
+                "following_url": "https://api.github.com/users/alarcritty/following{/other_user}",
+                "gists_url": "https://api.github.com/users/alarcritty/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/alarcritty",
+                "id": 102025295,
+                "login": "alarcritty",
+                "node_id": "U_kgDOBhTITw",
+                "organizations_url": "https://api.github.com/users/alarcritty/orgs",
+                "received_events_url": "https://api.github.com/users/alarcritty/received_events",
+                "repos_url": "https://api.github.com/users/alarcritty/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/alarcritty/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/alarcritty/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/alarcritty",
+                "user_view_type": "public"
+            }
         }
     ],
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/41593/comments",
@@ -918,9 +964,9 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/alarcritty/neovim/pulls{/number}",
-            "pushed_at": "2026-09-07T08:04:02Z",
+            "pushed_at": "2026-09-21T10:41:52Z",
             "releases_url": "https://api.github.com/repos/alarcritty/neovim/releases{/id}",
-            "size": 380965,
+            "size": 383893,
             "ssh_url": "git@github.com:alarcritty/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/alarcritty/neovim/stargazers",
@@ -932,14 +978,14 @@
             "teams_url": "https://api.github.com/repos/alarcritty/neovim/teams",
             "topics": [],
             "trees_url": "https://api.github.com/repos/alarcritty/neovim/git/trees{/sha}",
-            "updated_at": "2026-09-01T12:15:25Z",
+            "updated_at": "2026-09-19T21:42:58Z",
             "url": "https://api.github.com/repos/alarcritty/neovim",
             "visibility": "public",
             "watchers": 0,
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "bbafd6609ef3869687e2502a130961817937782e",
+        "sha": "8d455010b43519de3386f9fb4da99a8f293abf1a",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/102025295?v=4",
             "events_url": "https://api.github.com/users/alarcritty/events{/privacy}",
@@ -967,6 +1013,8 @@
     "issue_url": "https://api.github.com/repos/neovim/neovim/issues/41593",
     "labels": [
         {
+            "archived_at": null,
+            "archived_by": null,
             "color": "c5def5",
             "default": false,
             "description": null,
@@ -977,7 +1025,7 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "07bdabf3a1f258695cab860c4616d23e3d78e6c9",
+    "merge_commit_sha": "e7ab12f4e53b36b90314bd031c1da36014f11411",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM8AAAABBw2eAg",
@@ -1031,9 +1079,9 @@
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/41593/comments",
     "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/bbafd6609ef3869687e2502a130961817937782e",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/8d455010b43519de3386f9fb4da99a8f293abf1a",
     "title": "feat(lsp): expose reuse_client_default",
-    "updated_at": "2026-09-03T20:05:53Z",
+    "updated_at": "2026-09-19T22:13:46Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/41593",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/102025295?v=4",

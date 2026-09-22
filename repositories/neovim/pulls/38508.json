@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/38508"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/54386ecf729c1b1d5c49174257107c9a4a469d6f"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/827d88f7f77bc0dda036bbb4e01da6c2f2f1d5df"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 7044,
-            "forks_count": 7044,
+            "forks": 7126,
+            "forks_count": 7126,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -95,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1859,
-            "open_issues_count": 1859,
+            "open_issues": 1921,
+            "open_issues_count": 1921,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -121,11 +121,11 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2026-08-24T19:01:51Z",
+            "pushed_at": "2026-09-22T05:25:10Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 395647,
+            "size": 399952,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 101942,
+            "stargazers_count": 102500,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -143,14 +143,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2026-08-25T02:22:45Z",
+            "updated_at": "2026-09-22T05:36:38Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 101942,
-            "watchers_count": 101942,
+            "watchers": 102500,
+            "watchers_count": 102500,
             "web_commit_signoff_required": false
         },
-        "sha": "a0dc3f00675f738c6e69b71aa7c6e25a99bc4b6f",
+        "sha": "0f7538c4abb2cebdb34ab9736deea63006858542",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -173,7 +173,7 @@
             "user_view_type": "public"
         }
     },
-    "body": "Problem: nvim_cmd() still duplicated part of Ex parsing,\r\nand range support was too limited.\r\n\r\nSolution: Refactor nvim_cmd() to serialize Dict(cmd) into\r\na minimal command line and reuse parse_cmdline() for\r\ncommand lookup, range parsing, address type and\r\ndefault-range handling. As part of this refactor, string Ex address specifiers\r\nsuch as '.', '$', '%', \"'m\" and '/pat/' are now accepted in cmd.range.\r\n\r\n\r\nCloses #34398\r\nRelated #38507\r\n",
+    "body": "Problem:\r\nnvim_cmd() duplicates Ex parsing: it sets the address type and default\r\nrange itself and builds the whole command line in build_cmdline_str().\r\n\r\nSolution:\r\nBuild only the range, command name and arguments, and let\r\nparse_cmdline() fill in exarg_T. A new kCmdlineParseStructured mode\r\nskips modifiers, nextcmd, register and count, which nvim_cmd() still\r\ntakes from the Dict.\r\n\r\n\r\nCloses #34398\r\n\r\n",
     "closed_at": null,
     "comment_data": [
         {
@@ -1053,6 +1053,98 @@
                 "url": "https://api.github.com/users/TomJo2000",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "> string Ex address specifiers such as '.', '$', '%', \"'m\" and '/pat/' are now accepted in `cmd.range`.\r\n\r\n\r\n\r\nwhy...? does `nvim_parse_cmd`  return those?\r\n\r\nthe tests added in this pr also have some redunant coverage between themselves.\r\n\r\nlet's focus only on https://github.com/neovim/neovim/issues/34398 . there is no need to enhance the input accepted by `cmd.range` . callers can translate the string forms already (and we have consistently avoided adding \"aliases\" in the API):\r\n\r\n```\r\nvim.fn.line('.')\r\nvim.fn.line('$')\r\n{1, vim.fn.line('$')}\r\nvim.fn.line(\"'m\")\r\n{vim.fn.line(\"'<\"), vim.fn.line(\"'>\")}\r\nvim.fn.search(pat, 'n')\r\nvim.fn.line('.') + 1\r\n```\r\n\r\n",
+            "created_at": "2026-09-21T13:50:59Z",
+            "html_url": "https://github.com/neovim/neovim/pull/38508#issuecomment-5761585340",
+            "id": 5761585340,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/38508",
+            "minimized": null,
+            "node_id": "IC_kwDOAPphoM8AAAABV2rQvA",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/5761585340/reactions"
+            },
+            "updated_at": "2026-09-21T13:51:16Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/5761585340",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "Alright. My original idea was to reuse `parse_cmdline()` so string ranges would work as a side effect, which would also help with #38507.  Now just handles the `nvim_cmd` side of #34398 it builds the range/name/args and lets `parse_cmdline()` handle the address type and default range. ",
+            "created_at": "2026-09-22T04:21:11Z",
+            "html_url": "https://github.com/neovim/neovim/pull/38508#issuecomment-5771162673",
+            "id": 5771162673,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/38508",
+            "minimized": null,
+            "node_id": "IC_kwDOAPphoM8AAAABV_z0MQ",
+            "performed_via_github_app": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/5771162673/reactions"
+            },
+            "updated_at": "2026-09-22T04:21:11Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/5771162673",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",
+                "events_url": "https://api.github.com/users/glepnir/events{/privacy}",
+                "followers_url": "https://api.github.com/users/glepnir/followers",
+                "following_url": "https://api.github.com/users/glepnir/following{/other_user}",
+                "gists_url": "https://api.github.com/users/glepnir/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/glepnir",
+                "id": 41671631,
+                "login": "glepnir",
+                "node_id": "MDQ6VXNlcjQxNjcxNjMx",
+                "organizations_url": "https://api.github.com/users/glepnir/orgs",
+                "received_events_url": "https://api.github.com/users/glepnir/received_events",
+                "repos_url": "https://api.github.com/users/glepnir/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/glepnir/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/glepnir/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/glepnir",
+                "user_view_type": "public"
+            }
         }
     ],
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/38508/comments",
@@ -1151,9 +1243,9 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/glepnir/neovim/pulls{/number}",
-            "pushed_at": "2026-08-24T11:35:01Z",
+            "pushed_at": "2026-09-22T04:18:29Z",
             "releases_url": "https://api.github.com/repos/glepnir/neovim/releases{/id}",
-            "size": 385306,
+            "size": 388783,
             "ssh_url": "git@github.com:glepnir/neovim.git",
             "stargazers_count": 2,
             "stargazers_url": "https://api.github.com/repos/glepnir/neovim/stargazers",
@@ -1165,14 +1257,14 @@
             "teams_url": "https://api.github.com/repos/glepnir/neovim/teams",
             "topics": [],
             "trees_url": "https://api.github.com/repos/glepnir/neovim/git/trees{/sha}",
-            "updated_at": "2026-08-24T11:36:53Z",
+            "updated_at": "2026-09-22T03:43:49Z",
             "url": "https://api.github.com/repos/glepnir/neovim",
             "visibility": "public",
             "watchers": 2,
             "watchers_count": 2,
             "web_commit_signoff_required": false
         },
-        "sha": "54386ecf729c1b1d5c49174257107c9a4a469d6f",
+        "sha": "827d88f7f77bc0dda036bbb4e01da6c2f2f1d5df",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",
             "events_url": "https://api.github.com/users/glepnir/events{/privacy}",
@@ -1200,6 +1292,8 @@
     "issue_url": "https://api.github.com/repos/neovim/neovim/issues/38508",
     "labels": [
         {
+            "archived_at": null,
+            "archived_by": null,
             "color": "c5def5",
             "default": false,
             "description": "libnvim, Nvim RPC API",
@@ -1209,6 +1303,8 @@
             "url": "https://api.github.com/repos/neovim/neovim/labels/api"
         },
         {
+            "archived_at": null,
+            "archived_by": null,
             "color": "FBCA04",
             "default": false,
             "description": "",
@@ -1219,11 +1315,11 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": null,
+    "merge_commit_sha": "ef70dd0e18f49a59a3bb92039ddaafa1691f00e6",
     "merged_at": null,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 0,
+        "closed_issues": 8,
         "created_at": "2026-08-23T18:01:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -1256,7 +1352,7 @@
         "open_issues": 12,
         "state": "open",
         "title": "0.12.6",
-        "updated_at": "2026-08-23T18:03:04Z",
+        "updated_at": "2026-09-15T00:43:03Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/61"
     },
     "node_id": "PR_kwDOAPphoM7N-T5_",
@@ -1289,9 +1385,9 @@
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/38508/comments",
     "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/54386ecf729c1b1d5c49174257107c9a4a469d6f",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/827d88f7f77bc0dda036bbb4e01da6c2f2f1d5df",
     "title": "refactor(api): reuse parse_cmdline in nvim_cmd",
-    "updated_at": "2026-08-23T18:03:03Z",
+    "updated_at": "2026-09-22T04:21:36Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/38508",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/41671631?v=4",
