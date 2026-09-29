@@ -22,13 +22,13 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/41766"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/dc5ee163809758ddb2091a6b316fcdaa268304fe"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/81ad4a0105076cd258541dcb1c6ece1d44ab9699"
         }
     },
     "active_lock_reason": null,
     "assignee": null,
     "assignees": [],
-    "author_association": "FIRST_TIME_CONTRIBUTOR",
+    "author_association": "CONTRIBUTOR",
     "auto_merge": null,
     "base": {
         "label": "neovim:master",
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 7096,
-            "forks_count": 7096,
+            "forks": 7140,
+            "forks_count": 7140,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -95,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1901,
-            "open_issues_count": 1901,
+            "open_issues": 1928,
+            "open_issues_count": 1928,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -121,11 +121,11 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2026-09-08T05:24:37Z",
+            "pushed_at": "2026-09-29T05:26:58Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 397946,
+            "size": 401581,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 102210,
+            "stargazers_count": 102657,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -143,14 +143,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2026-09-08T05:34:08Z",
+            "updated_at": "2026-09-29T06:35:06Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 102210,
-            "watchers_count": 102210,
+            "watchers": 102657,
+            "watchers_count": 102657,
             "web_commit_signoff_required": false
         },
-        "sha": "8d5ebdf986226e182b26f9590e65f2ad678b1ca3",
+        "sha": "bc0cdbe02d494bc5089d44c81a810bbc9b4d07a4",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -174,7 +174,7 @@
         }
     },
     "body": "**Problem:**\n\n`vim.str_byteindex()` can return a byte index larger than the string it was\ngiven.\n\n`utf_ptr2len_len()` reports the length a multi-byte sequence claims in its lead\nbyte. Its contract says so directly:\n\n```c\n// Returns number > \"size\" for an incomplete byte sequence.\n```\n\nFor an incomplete sequence at the end of the string that is more bytes than are\nactually there, and `mb_utf_index_to_bytes()` returns `i + clen` without\nclamping it.\n\n```lua\nvim.str_byteindex('ab\\xf0\\x9f', 'utf-16', 3, false)  --> 6   -- string is 4 bytes\nvim.str_byteindex('\\xc3',       'utf-32', 1, false)  --> 2   -- string is 1 byte\nvim.str_byteindex('\\xe4\\xb8',   'utf-32', 1, false)  --> 3   -- string is 2 bytes\n```\n\nIt also makes the result non-monotonic: index 1 gives 6 above, while index 2\ncorrectly gives 4.\n\nThis contradicts the documented behaviour, that an out of range index returns\nthe length of the string when `strict_indexing` is false. It matters because\nevery LSP caller converts a character position to a column with\n`strict_indexing = false` and uses the result as a buffer column\n(`lsp/diagnostic.lua`, `lsp/util.lua`, `lsp/inlay_hint.lua`,\n`lsp/semantic_tokens.lua`, `lsp/linked_editing_range.lua`). On a line ending in\na truncated sequence the column lands past the end of the line:\n\n```lua\nlocal line = 'ab\\xf0\\x9f'                                    -- 4 bytes\nlocal col = vim.str_byteindex(line, 'utf-16', 3, false)      -- 6\nvim.api.nvim_buf_set_extmark(buf, ns, 0, col, {})\n-- Invalid 'col': out of range\n```\n\nA line can end in a truncated sequence with a latin-1 or otherwise non-UTF-8\nfile, or when a server sends a position that splits a character.\n\n**Solution:**\n\nClamp the returned byte index to the length of the string. Valid strings are\nunaffected, since `i + clen` never exceeds `len` for them.\n\n**Testing:**\n\nThe new test walks every index from 0 to `#s + 2` over the three encodings for\nfive truncated inputs, and asserts the result never exceeds `#s`. It fails on\nmaster with `expected at most 1, got: 2 (encoding=utf-16, index=1)` and passes\nwith the change.\n\nI also ran a property check over 22 strings (ASCII, 2/3/4-byte sequences,\ncombining marks, embedded NUL, lone surrogates, invalid bytes, truncated\nsequences) across the three encodings, asserting the result is within the\nstring and monotonic in the index. That reports 24 violations on master and\nnone with the change.\n\n`vim_spec.lua` (130), `lsp_spec.lua` (140), `mbyte_spec.lua` (30) and the full\nunit suite (811) pass. `make lintc` is clean and the test file is stylua\nformatted.\n",
-    "closed_at": null,
+    "closed_at": "2026-09-27T15:04:11Z",
     "comment_data": [
         {
             "_links": {
@@ -195,14 +195,14 @@
             "diff_hunk": "@@ -460,6 +460,24 @@ describe('lua stdlib', function()\n     )\n   end)\n \n+  it('vim.str_byteindex stays within the string for truncated sequences', function()\n+    -- A truncated multi-byte sequence at the end of the string reports a length\n+    -- longer than the bytes that are actually there. The returned byte index",
             "html_url": "https://github.com/neovim/neovim/pull/41766#discussion_r3953242370",
             "id": 3953242370,
-            "line": 465,
+            "line": null,
             "node_id": "PRRC_kwDOAPphoM7robEC",
             "original_commit_id": "dc5ee163809758ddb2091a6b316fcdaa268304fe",
             "original_line": 465,
             "original_position": 6,
             "original_start_line": null,
             "path": "test/functional/lua/vim_spec.lua",
-            "position": 6,
+            "position": 1,
             "pull_request_review_id": 5135963802,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41766",
             "reactions": {
@@ -264,14 +264,14 @@
             "diff_hunk": "@@ -1681,7 +1681,10 @@ ssize_t mb_utf_index_to_bytes(const char *s, size_t len, size_t index, bool use_\n       count++;\n     }\n     if (count >= index) {\n-      return (ssize_t)(i + clen);\n+      // \"clen\" can exceed the remaining bytes for an incomplete sequence at the\n+      // end of the string, so clamp to \"len\" to never return a byte index past",
             "html_url": "https://github.com/neovim/neovim/pull/41766#discussion_r3953245314",
             "id": 3953245314,
-            "line": 1685,
+            "line": null,
             "node_id": "PRRC_kwDOAPphoM7robyC",
             "original_commit_id": "dc5ee163809758ddb2091a6b316fcdaa268304fe",
             "original_line": 1685,
             "original_position": 6,
             "original_start_line": null,
             "path": "src/nvim/mbyte.c",
-            "position": 6,
+            "position": 1,
             "pull_request_review_id": 5135969052,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41766",
             "reactions": {
@@ -333,14 +333,14 @@
             "diff_hunk": "@@ -1681,7 +1681,10 @@ ssize_t mb_utf_index_to_bytes(const char *s, size_t len, size_t index, bool use_\n       count++;\n     }\n     if (count >= index) {\n-      return (ssize_t)(i + clen);\n+      // \"clen\" can exceed the remaining bytes for an incomplete sequence at the\n+      // end of the string, so clamp to \"len\" to never return a byte index past\n+      // the end.",
             "html_url": "https://github.com/neovim/neovim/pull/41766#discussion_r3953246459",
             "id": 3953246459,
-            "line": 1686,
+            "line": null,
             "node_id": "PRRC_kwDOAPphoM7rocD7",
             "original_commit_id": "dc5ee163809758ddb2091a6b316fcdaa268304fe",
             "original_line": 1686,
             "original_position": 7,
             "original_start_line": 1684,
             "path": "src/nvim/mbyte.c",
-            "position": 7,
+            "position": 1,
             "pull_request_review_id": 5135971051,
             "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/41766",
             "reactions": {
@@ -356,7 +356,7 @@
                 "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/3953246459/reactions"
             },
             "side": "RIGHT",
-            "start_line": 1684,
+            "start_line": null,
             "start_side": "RIGHT",
             "subject_type": "line",
             "updated_at": "2026-09-07T23:59:32Z",
@@ -528,9 +528,9 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/qatcod/neovim/pulls{/number}",
-            "pushed_at": "2026-09-07T21:23:58Z",
+            "pushed_at": "2026-09-23T16:03:25Z",
             "releases_url": "https://api.github.com/repos/qatcod/neovim/releases{/id}",
-            "size": 397822,
+            "size": 400002,
             "ssh_url": "git@github.com:qatcod/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/qatcod/neovim/stargazers",
@@ -549,7 +549,7 @@
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "dc5ee163809758ddb2091a6b316fcdaa268304fe",
+        "sha": "81ad4a0105076cd258541dcb1c6ece1d44ab9699",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/79017227?v=4",
             "events_url": "https://api.github.com/users/qatcod/events{/privacy}",
@@ -577,6 +577,8 @@
     "issue_url": "https://api.github.com/repos/neovim/neovim/issues/41766",
     "labels": [
         {
+            "archived_at": null,
+            "archived_by": null,
             "color": "FBCA04",
             "default": false,
             "description": "Waiting for reply, will auto-close after 30 days.",
@@ -586,6 +588,8 @@
             "url": "https://api.github.com/repos/neovim/neovim/labels/needs:response"
         },
         {
+            "archived_at": null,
+            "archived_by": null,
             "color": "c5def5",
             "default": false,
             "description": "stdlib",
@@ -595,6 +599,28 @@
             "url": "https://api.github.com/repos/neovim/neovim/labels/lua"
         },
         {
+            "archived_at": "2026-09-11T15:51:06Z",
+            "archived_by": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/10137?v=4",
+                "events_url": "https://api.github.com/users/ghost/events{/privacy}",
+                "followers_url": "https://api.github.com/users/ghost/followers",
+                "following_url": "https://api.github.com/users/ghost/following{/other_user}",
+                "gists_url": "https://api.github.com/users/ghost/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/ghost",
+                "id": 10137,
+                "login": "ghost",
+                "node_id": "MDQ6VXNlcjEwMTM3",
+                "organizations_url": "https://api.github.com/users/ghost/orgs",
+                "received_events_url": "https://api.github.com/users/ghost/received_events",
+                "repos_url": "https://api.github.com/users/ghost/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/ghost/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/ghost/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/ghost",
+                "user_view_type": "public"
+            },
             "color": "8B601E",
             "default": false,
             "description": "May contain trace amounts of GMO",
@@ -605,8 +631,8 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "5d46eb4870fc66c40386fe6feac0c26e3d7b9925",
-    "merged_at": null,
+    "merge_commit_sha": "c216c557fd76c762aa11486ed78e5897a96e6efc",
+    "merged_at": "2026-09-27T15:04:11Z",
     "milestone": null,
     "node_id": "PR_kwDOAPphoM8AAAABCk3xJQ",
     "number": 41766,
@@ -615,10 +641,10 @@
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/41766/comments",
-    "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/dc5ee163809758ddb2091a6b316fcdaa268304fe",
+    "state": "closed",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/81ad4a0105076cd258541dcb1c6ece1d44ab9699",
     "title": "fix(lua): str_byteindex() can return an index past the end",
-    "updated_at": "2026-09-08T00:00:23Z",
+    "updated_at": "2026-09-27T15:04:12Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/41766",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/79017227?v=4",
