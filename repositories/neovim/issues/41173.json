@@ -4,8 +4,28 @@
     "assignees": [],
     "author_association": "CONTRIBUTOR",
     "body": "### Problem\n\nA custom `'tabline'` expression that explicitly selects `TabLine` and `TabLineSel` does not render the same highlights as the built-in tabline.\n\nWith the default highlight definitions, `TabLineSel` only adds `bold`. The built-in renderer applies it without using `TabLineFill` as a base, whereas the custom-expression renderer combines it with `TabLineFill`. As a result, the selected tab receives the fill/inactive background and loses its visual distinction.\n\ncustom tabline\n<img width=\"309\" height=\"35\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/4c999ecc-2674-4a0e-8816-d82da14c296b\" />\n\ndefault tabline\n\n<img width=\"319\" height=\"27\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/0691611f-f68c-4246-9f8e-5482e562988a\" />\n\n### Steps to reproduce\n\nSave the following as `minimal.lua`:\n\n```lua\nlocal fn = vim.fn\n\n_G.MyTabLabel = function(n)\n  local buflist = fn.tabpagebuflist(n)\n  local winnr = fn.tabpagewinnr(n)\n  return fn.bufname(buflist[winnr])\nend\n\n_G.MyTabLine = function()\n  local parts = {}\n  local current = fn.tabpagenr()\n\n  for i = 1, fn.tabpagenr('$') do\n    -- Select the highlighting.\n    parts[#parts + 1] =\n      i == current and '%#TabLineSel#' or '%#TabLine#'\n\n    -- Set the tabpage number for mouse clicks.\n    parts[#parts + 1] = ('%%%dT'):format(i)\n\n    -- Generate the label with MyTabLabel().\n    parts[#parts + 1] =\n      (' %%{v:lua.MyTabLabel(%d)} '):format(i)\n  end\n\n  -- Fill the remaining area with TabLineFill.\n  parts[#parts + 1] = '%#TabLineFill#%T'\n\n  -- Right-align the close label.\n  if fn.tabpagenr('$') > 1 then\n    parts[#parts + 1] = '%=%#TabLine#%999Xclose'\n  end\n\n  return table.concat(parts)\nend\n\nvim.o.tabline = '%!v:lua.MyTabLine()'\n```\n\nRun:\n\n```console\nnvim --clean -u minimal.lua README.md\n```\n\nThen create two more tabs and select the middle tab:\n\n```vim\n:tabnew init.lua\n:tabnew README.md\n:tabprevious\n```\n\nThe selected tab uses the fill/inactive background. Clear `'tabline'` to switch to the built-in renderer:\n\n```vim\n:set tabline=\n```\n\nThe same selected tab now has the expected distinct background.\n\n### Why this happens\n\nFor a custom tabline, `win_redr_stl_expr()` initializes the base highlight to `TabLineFill` before evaluating the expression:\n\n```c\ngroup = HLF_TPF;\nattr = HL_ATTR(group);\n```\n\nAfter an explicit group such as `%#TabLineSel#` is selected, the renderer combines it with that base highlight:\n\n```c\nif (curattr != attr) {\n  curattr = hl_combine_attr(attr, curattr);\n}\n```\n\nThe built-in tabline takes a different path: it applies `TabLine` or `TabLineSel` directly to each label, and uses `TabLineFill` only for the area without labels.\n\nWith the default highlight definitions, `TabLineSel` only specifies `bold`, while `TabLineFill` links to `TabLine`. Therefore, the expression renderer supplies the missing foreground and background from `TabLineFill`, causing the selected label to look like the inactive or fill area.\n\nThe trailing `%#TabLineFill#` in the reproduction only selects the highlight for the remaining fill area. Removing it does not prevent the label highlights from inheriting `TabLineFill`, because the base highlight is selected before the expression is parsed.\n\n### Compatibility considerations\n\nChanging the base highlight or preventing this combination may affect existing custom tablines that rely on `TabLineFill` to supply unspecified attributes. Colorschemes and plugins may also have worked around the current behavior by fully defining `TabLine` and `TabLineSel`, or by using `nocombine`.\n\nThe intended semantics should therefore be decided before choosing an implementation.\n\n### Expected behavior\n\nExplicit `%#TabLine#` and `%#TabLineSel#` groups in a custom tabline should render tab labels consistently with the built-in tabline. `TabLineFill` should affect the unlabelled fill area, but should not supply unspecified attributes to an explicitly highlighted tab label.\n\n### Nvim version (nvim -v)\n\nNVIM v0.13.0-dev-1232+ge58f29ca3e\n\n### Vim (not Nvim) behaves the same?\n\nNot tested; Vim 9.1.1752\n\n### Operating system/version\n\nmacOS 26.5.2 (arm64)\n\n### Terminal name/version\n\nghostty\n\n### $TERM environment variable\n\nxterm-ghostty\n\n### Installation\n\nBuilt from source at e58f29ca3e6935af5b14879db1e8f2b959555c10",
-    "closed_at": null,
-    "closed_by": null,
+    "closed_at": "2026-10-05T16:45:10Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+        "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+        "followers_url": "https://api.github.com/users/justinmk/followers",
+        "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+        "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/justinmk",
+        "id": 1359421,
+        "login": "justinmk",
+        "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+        "organizations_url": "https://api.github.com/users/justinmk/orgs",
+        "received_events_url": "https://api.github.com/users/justinmk/received_events",
+        "repos_url": "https://api.github.com/users/justinmk/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "CONTRIBUTOR",
@@ -258,6 +278,8 @@
     "issue_field_values": [],
     "labels": [
         {
+            "archived_at": null,
+            "archived_by": null,
             "color": "c5def5",
             "default": false,
             "description": "",
@@ -267,6 +289,8 @@
             "url": "https://api.github.com/repos/neovim/neovim/labels/highlight"
         },
         {
+            "archived_at": null,
+            "archived_by": null,
             "color": "C5DEF5",
             "default": false,
             "description": "tabline, winbar, statuscolumn",
@@ -296,8 +320,8 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/41173/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "sub_issues_summary": {
         "completed": 0,
         "percent_completed": 0,
@@ -315,7 +339,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyr",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2026-08-06T06:06:29Z",
+    "updated_at": "2026-10-05T16:45:10Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/41173",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/3114322?v=4",
