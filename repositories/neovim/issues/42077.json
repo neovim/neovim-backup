@@ -147,9 +147,56 @@
                 "url": "https://api.github.com/users/zeertzjq",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "NONE",
+            "body": "Still reproduces on nightly `v0.13.0-dev-1915+gc5641b2bfb` (and v0.12.6), with exactly the same numbers as in the report (`redraw! 12` stuck at `70+1/77`, `redraw! 24` at `62+2/75`, `redraw 10` jumping back at `72+0/79 → 74+2/78`, ...).\n\nI traced it in a real UI (tmux, 14-line terminal, `ls=0 ch=1`, so a 13-row window) with the `minimal.lua` from the report plus `:set nu`, pressing `<C-y>` after `G` and printing `topline+topfill/cursor` and `winline()` after each step:\n\n| `<C-y>` | view | `winline()` | screen |\n|---|---|---|---|\n| 1 | `72+0/79` | 10 | line 72 (concealed) is drawn as an **empty numbered row** at the top |\n| 2 | `72+1/79` | 11 | identical to step 1 |\n| 3 | `72+2/79` | 12 | identical to step 1 |\n| 4 | `72+3/79` | 13 | identical to step 1 |\n| 5 | `72+3/78` | 13 | the 3 virtual lines of line 72 (\"virtual 1-3 for paragraph 36\") appear at once, cursor dragged onto line 78 |\n| 6 | `70+0/76` | 10 | |\n\nSo the problems start once `w_topline` is a concealed line that has filler rows of its own (here the `virt_lines` below line 71). The \"Adjust for concealed lines above w_topline\" loop in `scrolldown()` puts it there (`74+2` → `73` → `72`). From then on, the parts below disagree about the layout:\n\n- `scrolldown()` counts the concealed topline as 0 rows, but it is drawn as an empty row.\n- `w_topfill` goes up one at a time (and `done`/`w_wrow` follow), but the screen doesn't change until all the filler rows show up at once.\n- The cursor correction at the end of `scrolldown()` can leave the cursor on a concealed line (78). With an empty `'concealcursor'` that line is then revealed and takes up an extra row, so `update_topline()` scrolls back down.\n\nThe empty row doesn't need scrolling at all:\n\n```vim\n\" nvim --clean -u minimal.lua\n:set nu\n:call winrestview({'topline': 60, 'topfill': 0, 'lnum': 66}) | redraw!\n```\n\nThe first window row shows ` 60` with no text, although line 60 is concealed and the cursor is on line 66. This may be the display problem mentioned above (Ctrl-L changing the display).\n\nThis is also why the patch I posted in #42317 doesn't help here. It only skips the adjust loop while `w_topfill < win_get_fill(w_topline)`. In this sequence the loop runs with all filler rows already shown and lands on concealed line 72, which has its own filler rows.\n\nShould `w_topline` ever end up on a concealed line that has filler rows? If it shouldn't, the fix probably belongs in the adjust loop and in how those filler rows are scrolled in. If it should, the drawing code and the cursor correction need to handle that case.\n",
+            "created_at": "2026-10-19T18:04:42Z",
+            "html_url": "https://github.com/neovim/neovim/issues/42077#issuecomment-6273862185",
+            "id": 6273862185,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/42077",
+            "minimized": null,
+            "node_id": "IC_kwDOAPphoM8AAAABdfOKKQ",
+            "performed_via_github_app": null,
+            "pin": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/6273862185/reactions"
+            },
+            "updated_at": "2026-10-19T18:04:42Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/6273862185",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/34921854?v=4",
+                "events_url": "https://api.github.com/users/AndreaCovelli/events{/privacy}",
+                "followers_url": "https://api.github.com/users/AndreaCovelli/followers",
+                "following_url": "https://api.github.com/users/AndreaCovelli/following{/other_user}",
+                "gists_url": "https://api.github.com/users/AndreaCovelli/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/AndreaCovelli",
+                "id": 34921854,
+                "login": "AndreaCovelli",
+                "node_id": "MDQ6VXNlcjM0OTIxODU0",
+                "organizations_url": "https://api.github.com/users/AndreaCovelli/orgs",
+                "received_events_url": "https://api.github.com/users/AndreaCovelli/received_events",
+                "repos_url": "https://api.github.com/users/AndreaCovelli/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/AndreaCovelli/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/AndreaCovelli/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/AndreaCovelli",
+                "user_view_type": "public"
+            }
         }
     ],
-    "comments": 3,
+    "comments": 4,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/42077/comments",
     "created_at": "2026-09-24T21:26:15Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/42077/events",
@@ -201,7 +248,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 892,
+        "closed_issues": 898,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -231,10 +278,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 680,
+        "open_issues": 685,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2026-09-27T23:19:13Z",
+        "updated_at": "2026-10-18T16:17:31Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM8AAAABTEgx_w",
@@ -273,7 +320,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyr",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2026-09-25T04:06:51Z",
+    "updated_at": "2026-10-19T18:04:42Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/42077",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/12107659?v=4",

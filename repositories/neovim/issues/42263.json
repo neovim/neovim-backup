@@ -3,13 +3,13 @@
     "assignee": null,
     "assignees": [],
     "author_association": "NONE",
-    "body": "### Problem\n\n`vim.ui.input` can cause self-cascading when called from a keymap resulting in the input being fed into each cursor position. The check with `vim.api.nvim__mcursor_cascading` is bypassed. Interestingly, calling `vim.notify(\"+Self-Cascading\", vim.log.levels.ERROR)` can prevent this.\n\nhttps://github.com/user-attachments/assets/2ee23458-1ee0-4744-8c06-dc490786010d\n\n### Steps to reproduce\n\n```lua\nlocal ns_mc = vim.api.nvim_create_namespace(\"nvim.multicursor\")\nvim.bo.follow = true\nvim.keymap.set(\"n\", \"<F1>\", function()\n  if vim.v.cascading then\n    -- `vim.log.levels.ERROR` prevents feeding keys\n    vim.notify(\"+Self-Cascading\", vim.log.levels.WARN)\n    return\n  end\n  vim.api.nvim_win_set_cursor(0, { 1, 0 })\n  local input_opts = { prompt = \"Match: \" }\n  vim.ui.input(input_opts, function(input)\n    vim.fn.setreg(\"/\", input)\n    local pos = vim.pos.cursor()\n    while vim.fn.search(input, \"W\") > 0 do\n      pos = vim.pos.cursor()\n      vim.api.nvim_buf_set_extmark(pos.buf, ns_mc, pos.row, pos.col, {})\n    end\n  end)\nend)\n```\n\n```\nnvim --clean -u repro.lua repro.lua\n<F1>input<Enter>\n```\n\nPrints \"+Self-Cascading\" and feeds keys at each cursor location.\n\n### Expected behavior\n\n1. No self-cascading.\n2. No feeding keys bypassing `vim.api.nvim__mcursor_cascading`.\n\n### Nvim version (nvim -v)\n\nNVIM v0.13.0-dev-1823+g 898e6f884e\n\n### Vim (not Nvim) behaves the same?\n\nno\n\n### Operating system/version\n\nArch Btw\n\n### Terminal name/version\n\nalacritty 0.17.0 (94e7c887)\n\n### $TERM environment variable\n\nalacritty\n\n### Installation\n\nbuild from repo",
+    "body": "### Problem\n\n`vim.ui.input` can cause self-cascading when called from a keymap resulting in the input being fed into each cursor position. The check with ~~`vim.api.nvim__mcursor_cascading`~~ `vim.v.cascading` is bypassed. Interestingly, calling `vim.notify(\"+Self-Cascading\", vim.log.levels.ERROR)` can prevent this.\n\nhttps://github.com/user-attachments/assets/2ee23458-1ee0-4744-8c06-dc490786010d\n\n### Steps to reproduce\n\n```lua\nlocal ns_mc = vim.api.nvim_create_namespace(\"nvim.multicursor\")\nvim.bo.follow = true\nvim.keymap.set(\"n\", \"<F1>\", function()\n  if vim.v.cascading then\n    -- `vim.log.levels.ERROR` prevents feeding keys\n    vim.notify(\"+Self-Cascading\", vim.log.levels.WARN)\n    return\n  end\n  vim.api.nvim_win_set_cursor(0, { 1, 0 })\n  local input_opts = { prompt = \"Match: \" }\n  vim.ui.input(input_opts, function(input)\n    vim.fn.setreg(\"/\", input)\n    local pos = vim.pos.cursor()\n    while vim.fn.search(input, \"W\") > 0 do\n      pos = vim.pos.cursor()\n      vim.api.nvim_buf_set_extmark(pos.buf, ns_mc, pos.row, pos.col, {})\n    end\n  end)\nend)\n```\n\n```\nnvim --clean -u repro.lua repro.lua\n<F1>input<Enter>\n```\n\nPrints \"+Self-Cascading\" and feeds keys at each cursor location.\n\n### Expected behavior\n\n1. No self-cascading.\n2. No feeding keys bypassing `vim.api.nvim__mcursor_cascading`.\n\n### Nvim version (nvim -v)\n\nNVIM v0.13.0-dev-1823+g 898e6f884e\n\n### Vim (not Nvim) behaves the same?\n\nno\n\n### Operating system/version\n\nArch Btw\n\n### Terminal name/version\n\nalacritty 0.17.0 (94e7c887)\n\n### $TERM environment variable\n\nalacritty\n\n### Installation\n\nbuild from repo",
     "closed_at": null,
     "closed_by": null,
     "comment_data": [
         {
             "author_association": "NONE",
-            "body": "Another example of strange self-cascading: the keymap is triggered when moving in Visual mode (`hjkl` trigger `<F1>`).\n\n```text\n<F1>hjkl\n<Esc>\n:messages\n```\n\n```lua\nvim.keymap.set(\"n\", \"<F1>\", function()\n  vim.notify(tostring(vim.v.cascading), vim.log.levels.ERROR)\n  vim.cmd(\"norm! Q*gn\")\n  vim.v.hlsearch = 0\nend)\n```\n\nOn top of the self-cascading, the first cursor does not follow `gn` in the keymap.",
+            "body": "### Off-topic\n\nAnother example of strange self-cascading: the keymap is triggered when moving in Visual mode (`hjkl` trigger `<F1>`).\n\n```text\n<F1>hjkl\n<Esc>\n:messages\n```\n\n```lua\nvim.keymap.set(\"n\", \"<F1>\", function()\n  vim.notify(tostring(vim.v.cascading), vim.log.levels.ERROR)\n  vim.cmd(\"norm! Q*gn\")\n  vim.v.hlsearch = 0\nend)\n```\n\nOn top of the self-cascading, the first cursor does not follow `gn` in the keymap.",
             "created_at": "2026-10-07T10:54:02Z",
             "html_url": "https://github.com/neovim/neovim/issues/42263#issuecomment-6036407996",
             "id": 6036407996,
@@ -30,7 +30,7 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/6036407996/reactions"
             },
-            "updated_at": "2026-10-12T12:58:23Z",
+            "updated_at": "2026-10-15T17:23:47Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/6036407996",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/119845045?v=4",
@@ -319,7 +319,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyr",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2026-10-12T12:58:23Z",
+    "updated_at": "2026-10-15T17:23:47Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/42263",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/119845045?v=4",

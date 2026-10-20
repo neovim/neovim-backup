@@ -3,7 +3,7 @@
     "assignee": null,
     "assignees": [],
     "author_association": "MEMBER",
-    "body": "## Problem\r\n\r\nvim :help (including `:help api`) has many \"pseudo headers\" that look like:\r\n\r\n```\r\nrange({spec})                                            *vim.version.range()*\r\n    Parses a semver |version-range| \"spec\" and returns a range object:  \r\n    ...\r\n```\r\n\r\n## Expected behavior\r\n\r\nTreat right-aligned tags as `h3`? This is necessary so that \"flow\" layout doesn't join the lines. In the above example,\r\n\r\n- the `range({spec})...` line should be a `h3` heading.\r\n- the `Parses a semver...` line should start a new `block`.",
+    "body": "## Problem\n\nvim :help (including `:help api`) has many \"pseudo headers\" that look like:\n\n```\nrange({spec})                                            *vim.version.range()*\n    Parses a semver |version-range| \"spec\" and returns a range object:  \n    ...\n```\n\n## Expected behavior\n\nTreat right-aligned tags as `h4`? This is necessary so that \"flow\" layout doesn't join the lines. In the above example,\n\n- the `range({spec})...` line should be a `h4` heading.\n- the `Parses a semver...` line should start a new `block`.",
     "closed_at": null,
     "closed_by": null,
     "comment_data": [
@@ -14,8 +14,10 @@
             "html_url": "https://github.com/neovim/tree-sitter-vimdoc/issues/110#issuecomment-1607159427",
             "id": 1607159427,
             "issue_url": "https://api.github.com/repos/neovim/tree-sitter-vimdoc/issues/110",
+            "minimized": null,
             "node_id": "IC_kwDOF5RDbc5fy06D",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -59,8 +61,10 @@
             "html_url": "https://github.com/neovim/tree-sitter-vimdoc/issues/110#issuecomment-1607164734",
             "id": 1607164734,
             "issue_url": "https://api.github.com/repos/neovim/tree-sitter-vimdoc/issues/110",
+            "minimized": null,
             "node_id": "IC_kwDOF5RDbc5fy2M-",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -104,8 +108,10 @@
             "html_url": "https://github.com/neovim/tree-sitter-vimdoc/issues/110#issuecomment-1607166814",
             "id": 1607166814,
             "issue_url": "https://api.github.com/repos/neovim/tree-sitter-vimdoc/issues/110",
+            "minimized": null,
             "node_id": "IC_kwDOF5RDbc5fy2te",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -149,8 +155,10 @@
             "html_url": "https://github.com/neovim/tree-sitter-vimdoc/issues/110#issuecomment-1607168382",
             "id": 1607168382,
             "issue_url": "https://api.github.com/repos/neovim/tree-sitter-vimdoc/issues/110",
+            "minimized": null,
             "node_id": "IC_kwDOF5RDbc5fy3F-",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -186,9 +194,56 @@
                 "url": "https://api.github.com/users/clason",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "## Proposal\n\nDefine h4 \"tag heading\" line to require a TAB char in the whitespace before the trailing tag(s).\n\n    :[count]verb[ose] {command}<Tab><Tab><Tab>*:verb* *:verbose*\n\nWhy a Tab:\n\n- Supporting the \"2+ spaces\" option currently specified at `:help help-tag-heading` , require a custom scanner.\n- A gap token that must start with a Tab (`/\\t[\\t ]*/`) never fails partway, so single spaces are still skipped as `extras`.\n\nPrototype results (on `runtime/doc/`)\n\n- No new ERRORs.\n- Corpus tests pass unchanged.\n- Parse speed is unchanged; `parser.c` is ~11% bigger.\n- A line of only tags is not an h4 (the heading must start with text). `UPPERCASE<Tab>*tag*` at block start is still `h3`.\n\n### Patch\n\n```diff\n--- a/grammar.js\n+++ b/grammar.js\n@@ -41,14 +41,16 @@\n\n   conflicts: $ => [\n     [$._line_noli, $._line_cb, $._column_heading],\n+    [$._line_noli, $._line_cb, $._column_heading, $._h4_heading],\n+    [$.uppercase_name, $._uppercase_words],\n     [$._line_any, $._line_noli],\n     [$._column_heading],\n+    [$._column_heading, $._h4_heading],\n   ],\n\n   extras: () => [/[\\t ]/],\n\n-  // inline: ($) => [\n-  // ],\n+  inline: ($) => [$._atom_noli],\n\n   rules: {\n     help_file: ($) =>\n@@ -71,12 +73,13 @@\n       $._word_common,\n     ),\n\n-    _atom_noli: ($) => choice(\n+    _atom_noli: ($) => choice($.tag, $._atom_noli_notag),\n+    _atom_noli_notag: ($) => choice(\n       alias($.word_noli, $.word),\n       // XXX: treesitter (undocumented) prefers an immediate token (uppercase_name) to tie-break\n       // e.g. \"CTRL-W s\". So use immediate() here too, then rule order decides.\n       alias(token.immediate(_keycode), $.keycode),\n-      $._atom_common,\n+      $._atom_notag,\n     ),\n     // Word NOT matching (numbered) listitem.\n     word_noli: ($) => choice(\n@@ -86,9 +89,9 @@\n       $._word_common,\n     ),\n\n-    _atom_common: ($) =>\n+    _atom_common: ($) => choice($.tag, $._atom_notag),\n+    _atom_notag: ($) =>\n       choice(\n-        $.tag,\n         $.url,\n         $.optionlink,\n         $.taglink,\n@@ -154,7 +157,7 @@\n       repeat(choice(_uppercase_word, $._uppercase_char)),\n     ),\n     // Line (plaintext) can start with uppercase words; don't flag as \"invalid h3\".\n-    _uppercase_words: ($) => prec.left(-1, seq(\n+    _uppercase_words: ($) => prec.dynamic(-1, seq(\n       alias(token.immediate(_uppercase_word), $.word),\n       alias(repeat(choice(_uppercase_word, $._uppercase_char)), $.word),\n     )),\n@@ -203,6 +206,7 @@\n     _blank: () => field('blank', /\\n/),\n     line: ($) => choice(\n       $.column_heading,\n+      $.h4,\n       $._line_noli,\n     ),\n     // Listitem: consumes prefixed line and all adjacent non-prefixed lines.\n@@ -224,12 +228,12 @@\n     // Line content (incl. whitespace) is captured as a single atom.\n     line_code: () => choice(/\\n/, /[\\t ]+[^\\n]+\\n/),\n     _line_noli: ($) => choice(\n-      seq(choice($._atom_noli, $._uppercase_words), repeat($._atom), /\\n/),\n+      seq(choice($._atom_noli, $._uppercase_words), repeat($._atom_gap), /\\n/),\n       $._line_cb,\n     ),\n     // Line ending with a codeblock. Also a codeblock-only line abutting a listitem. #118\n     _line_cb: ($) => seq(\n-      optional(seq(choice($._atom_noli, $._uppercase_words), repeat($._atom))),\n+      optional(seq(choice($._atom_noli, $._uppercase_words), repeat($._atom_gap))),\n       $.codeblock,\n     ),\n\n@@ -241,13 +245,14 @@\n     // TODO: children should be $.word (plaintext), not $.atom.\n     column_heading: ($) => seq(\n       alias($._column_heading, $.heading),\n+      optional($._gap),\n       alias('~', $.delimiter),\n       token.immediate(/\\n/),\n     ),\n     // aliasing a seq exposes every item separately: create hidden rule and alias that\n     _column_heading: $ => prec.dynamic(1, seq(\n       choice($._atom_noli, $._uppercase_words),\n-      repeat($._atom)\n+      repeat($._atom_gap)\n     )),\n\n     h1: ($) =>\n@@ -270,10 +275,25 @@\n     h3: ($) =>\n       seq(\n         alias($.uppercase_name, $.heading),\n-        optional(seq(choice($.tag, alias($._not_tag, $.word)), repeat($._atom))),\n+        optional(seq(optional($._gap), choice($.tag, alias($._not_tag, $.word)), repeat($._atom))),\n         /\\n/,\n       ),\n\n+    // Heading 4 (\"tag heading\"): text, then tags after whitespace containing a Tab, e.g.\n+    // \":verb[ose] {command}<Tab>*:verb* *:verbose*\". |help-tag-heading|\n+    h4: ($) => prec.dynamic(1, seq(\n+      alias($._h4_heading, $.heading),\n+      $._gap,\n+      $.tag,\n+      repeat(seq(optional($._gap), $.tag)),\n+      /\\n/,\n+    )),\n+    // Starts with text: \"<Tab>*a*<Tab>*b*\" is a line of tags.\n+    _h4_heading: ($) => seq(choice($._atom_noli_notag, $._uppercase_words), repeat($._atom_gap)),\n+    // Tab, then any whitespace: a token, so the grammar can see it (spaces alone are `extras`).\n+    _gap: () => token(/\\t[\\t ]*/),\n+    _atom_gap: ($) => choice($._atom, $._gap),\n+\n     // Tag: *foo* (see _not_tag).\n     tag: ($) => _word($, _tag_text, '*', '*'),\n\n```\n\n",
+            "created_at": "2026-10-17T15:42:05Z",
+            "html_url": "https://github.com/neovim/tree-sitter-vimdoc/issues/110#issuecomment-6235947362",
+            "id": 6235947362,
+            "issue_url": "https://api.github.com/repos/neovim/tree-sitter-vimdoc/issues/110",
+            "minimized": null,
+            "node_id": "IC_kwDOF5RDbc8AAAABc7EBYg",
+            "performed_via_github_app": null,
+            "pin": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/tree-sitter-vimdoc/issues/comments/6235947362/reactions"
+            },
+            "updated_at": "2026-10-17T15:42:27Z",
+            "url": "https://api.github.com/repos/neovim/tree-sitter-vimdoc/issues/comments/6235947362",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
         }
     ],
-    "comments": 4,
+    "comments": 5,
     "comments_url": "https://api.github.com/repos/neovim/tree-sitter-vimdoc/issues/110/comments",
     "created_at": "2023-06-26T10:14:05Z",
     "events_url": "https://api.github.com/repos/neovim/tree-sitter-vimdoc/issues/110/events",
@@ -200,8 +255,11 @@
         "total_blocked_by": 0,
         "total_blocking": 0
     },
+    "issue_field_values": [],
     "labels": [
         {
+            "archived_at": null,
+            "archived_by": null,
             "color": "C2E0C6",
             "default": true,
             "description": "New feature or request",
@@ -217,6 +275,7 @@
     "node_id": "I_kwDOF5RDbc5pw5DA",
     "number": 110,
     "performed_via_github_app": null,
+    "pinned_comment": null,
     "reactions": {
         "+1": 0,
         "-1": 0,
@@ -249,7 +308,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyv",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2025-12-06T23:43:16Z",
+    "updated_at": "2026-10-17T15:42:27Z",
     "url": "https://api.github.com/repos/neovim/tree-sitter-vimdoc/issues/110",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
