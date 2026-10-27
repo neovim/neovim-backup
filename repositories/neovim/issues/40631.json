@@ -144,6 +144,53 @@
             }
         },
         {
+            "author_association": "NONE",
+            "body": "Reproduced on current nightly. The issue is that detect_background() calls reset() on the OptionSet before checking if the user already explicitly set 'background'. The fix should check for an explicitly-set value (either from VIMINIT, -c, or a direct :set) before triggering the autodetection. Something like checking the option's scope flags or tracking whether it was set from outside the startup path would do it.",
+            "created_at": "2026-07-08T16:56:23Z",
+            "html_url": "https://github.com/neovim/neovim/issues/40631#issuecomment-4917200056",
+            "id": 4917200056,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/40631",
+            "minimized": null,
+            "node_id": "IC_kwDOAPphoM8AAAABJRaEuA",
+            "performed_via_github_app": null,
+            "pin": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4917200056/reactions"
+            },
+            "updated_at": "2026-07-08T16:56:23Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/4917200056",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/17973311?v=4",
+                "events_url": "https://api.github.com/users/cschanhniem/events{/privacy}",
+                "followers_url": "https://api.github.com/users/cschanhniem/followers",
+                "following_url": "https://api.github.com/users/cschanhniem/following{/other_user}",
+                "gists_url": "https://api.github.com/users/cschanhniem/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/cschanhniem",
+                "id": 17973311,
+                "login": "cschanhniem",
+                "node_id": "MDQ6VXNlcjE3OTczMzEx",
+                "organizations_url": "https://api.github.com/users/cschanhniem/orgs",
+                "received_events_url": "https://api.github.com/users/cschanhniem/received_events",
+                "repos_url": "https://api.github.com/users/cschanhniem/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/cschanhniem/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/cschanhniem/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/cschanhniem",
+                "user_view_type": "public"
+            }
+        },
+        {
             "author_association": "CONTRIBUTOR",
             "body": "> And what if you use `-c`/`--cmd` and set the background there?\n\nI see the same issue. If I run:\n\n```console\n$ build/bin/nvim --cmd \"lua vim.opt.background = 'light'; print('loaded --cmd. just set background to light, background.last_set_sid = ' .. vim.inspect(vim.api.nvim_get_option_info2('background', {}).last_set_sid));\"\n```\n\nI see this message (the `last_set_sid` being -8 is the problem):\n\n> loaded --cmd. just set background to light, background.last_set_sid = -8\n>\n> hmm, it should be `SID_ENV` for `VIMINIT`:\n\n@justinmk, did you see step 8 in my explanation above? I'll admit this is the part I dug into least, but printf debugging showed me that `current_sctx.sc_sid` is getting set to `SID_LUA` here: https://github.com/neovim/neovim/blob/0653e7a338e888d7b98143b8aa85865d843eefb7/src/nvim/api/private/helpers.c#L1061\n\nDoes that sound plausible?\n\n> The issue is that detect_background() calls reset() on the OptionSet before checking if the user already explicitly set 'background'.\n\n@cschanhniem, I don't see a call to `reset()` in [`detect_background`](https://github.com/neovim/neovim/blob/0653e7a338e888d7b98143b8aa85865d843eefb7/runtime/lua/vim/_core/defaults.lua#L932). Furthermore, you can verify with `vim.inspect(vim.api.nvim_get_option_info2('background', {}).last_set_sid)` that  the issue occurs at the point we set the background (in `VIMINIT`, or `--cmd`).",
             "created_at": "2026-07-08T17:25:19Z",
@@ -330,9 +377,103 @@
                 "url": "https://api.github.com/users/justinmk",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "NONE",
+            "body": "Sorry for hijacking the thread. Here's another trigger for the same bug: in a dark terminal, `:colorscheme github_light_default` (github-nvim-theme) followed by Ctrl-Z / `fg` drops me back to the default colorscheme. Here's what Claude Code found when digging into it:\n\ngithub-nvim-theme's `colors/*.vim` files set `'background'` through `:lua` (`lua require('github-theme').load({ theme = 'github_light_default' })`, the same for every variant). So a plain `:colorscheme`, with no special startup setup, records `'background'` with `last_set_sid = -8`, and `bg_user_set()` treats the theme's choice as an auto-detected value.\n\nAfter Ctrl-Z / `fg`, the OSC 11 reply sets `'background'` to `dark`. That reloads the colorscheme, which sets `light` again, and the `'background'` handling then gives up on it: `g:colors_name` is unset and the default highlights come back. So the outcome is worse than in the original report: the whole colorscheme is lost on every resume, not just the option value.\n\nMinimal repro on `v0.13.0-dev-1721+g7dbca1c4e2`, in a dark terminal that answers OSC 11:\n\n```vim\n\" /tmp/repro/colors/lightonly.vim\nhi clear\nlet g:colors_name = 'lightonly'\nlua vim.o.background = 'light'\nhi Normal guifg=#000000 guibg=#ffffff\n```\n\n1. `nvim --clean --cmd 'set rtp^=/tmp/repro'`, then `:colorscheme lightonly`\n2. `:lua =vim.api.nvim_get_option_info2('background').last_set_sid` prints `-8`\n3. Ctrl-Z, then `fg`\n4. `:echo get(g:, 'colors_name', 'unset') &background` prints `unset dark`\n\nThe same scheme written as `colors/lightonly.lua` records the file's script ID and survives. So a fix limited to `VIMINIT`/`--cmd` wouldn't cover this case; a dedicated SID for the detection's own writes, as proposed in #40647, would.\n\nThat half of #40647 could land on its own: if `bg_user_set()` checks for the detection's dedicated SID instead of `SID_LUA`, Lua writes from `VIMINIT`, `--cmd` and colorschemes all count as user-set, without changing what `SID_LUA` means anywhere else. The other half, re-labelling Lua chunks by their source, is what raised the `writefile()` and `luaeval()`/`v:lua` concerns.\n\nWorkaround until then, in `init.lua`:\n\n```lua\nvim.api.nvim_create_autocmd(\"ColorScheme\", {\n  callback = function() vim.o.background = vim.o.background end,\n})\n```",
+            "created_at": "2026-10-20T09:05:48Z",
+            "html_url": "https://github.com/neovim/neovim/issues/40631#issuecomment-6287457938",
+            "id": 6287457938,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/40631",
+            "minimized": null,
+            "node_id": "IC_kwDOAPphoM8AAAABdsL-kg",
+            "performed_via_github_app": null,
+            "pin": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/6287457938/reactions"
+            },
+            "updated_at": "2026-10-20T09:05:48Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/6287457938",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/304616?v=4",
+                "events_url": "https://api.github.com/users/svbatalov/events{/privacy}",
+                "followers_url": "https://api.github.com/users/svbatalov/followers",
+                "following_url": "https://api.github.com/users/svbatalov/following{/other_user}",
+                "gists_url": "https://api.github.com/users/svbatalov/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/svbatalov",
+                "id": 304616,
+                "login": "svbatalov",
+                "node_id": "MDQ6VXNlcjMwNDYxNg==",
+                "organizations_url": "https://api.github.com/users/svbatalov/orgs",
+                "received_events_url": "https://api.github.com/users/svbatalov/received_events",
+                "repos_url": "https://api.github.com/users/svbatalov/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/svbatalov/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/svbatalov/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/svbatalov",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "Thanks (claude, I guess?)\n\nIt's the same issue - I run into it myself a couple times of day.\n\nThe (proper) fix is complex.",
+            "created_at": "2026-10-20T13:25:21Z",
+            "html_url": "https://github.com/neovim/neovim/issues/40631#issuecomment-6291921123",
+            "id": 6291921123,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/40631",
+            "minimized": null,
+            "node_id": "IC_kwDOAPphoM8AAAABdwcY4w",
+            "performed_via_github_app": null,
+            "pin": null,
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/6291921123/reactions"
+            },
+            "updated_at": "2026-10-20T13:25:21Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/6291921123",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/62671086?v=4",
+                "events_url": "https://api.github.com/users/barrettruth/events{/privacy}",
+                "followers_url": "https://api.github.com/users/barrettruth/followers",
+                "following_url": "https://api.github.com/users/barrettruth/following{/other_user}",
+                "gists_url": "https://api.github.com/users/barrettruth/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/barrettruth",
+                "id": 62671086,
+                "login": "barrettruth",
+                "node_id": "MDQ6VXNlcjYyNjcxMDg2",
+                "organizations_url": "https://api.github.com/users/barrettruth/orgs",
+                "received_events_url": "https://api.github.com/users/barrettruth/received_events",
+                "repos_url": "https://api.github.com/users/barrettruth/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/barrettruth/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/barrettruth/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/barrettruth",
+                "user_view_type": "public"
+            }
         }
     ],
-    "comments": 7,
+    "comments": 9,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/40631/comments",
     "created_at": "2026-07-08T08:24:50Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/40631/events",
@@ -344,9 +485,35 @@
         "total_blocked_by": 0,
         "total_blocking": 0
     },
-    "issue_field_values": [],
+    "issue_field_values": [
+        {
+            "data_type": "single_select",
+            "issue_field_id": 856327,
+            "issue_field_name": "Effort",
+            "node_id": "IFSSV_kgDOANO3kw",
+            "single_select_option": {
+                "color": "red",
+                "id": 1493132,
+                "name": "High"
+            },
+            "value": 1493132
+        }
+    ],
     "labels": [
         {
+            "archived_at": null,
+            "archived_by": null,
+            "color": "BFDADC",
+            "default": false,
+            "description": "High-risk, potential for delicate/cascading effects",
+            "id": 407247013,
+            "name": "complexity:high",
+            "node_id": "MDU6TGFiZWw0MDcyNDcwMTM=",
+            "url": "https://api.github.com/repos/neovim/neovim/labels/complexity:high"
+        },
+        {
+            "archived_at": null,
+            "archived_by": null,
             "color": "f9d0c4",
             "default": false,
             "description": "wrong behavior that was introduced in a previous commit (please bisect)",
@@ -356,6 +523,8 @@
             "url": "https://api.github.com/repos/neovim/neovim/labels/bug-regression"
         },
         {
+            "archived_at": null,
+            "archived_by": null,
             "color": "c5def5",
             "default": false,
             "description": "startup, shutdown, exit, attach, detach",
@@ -369,7 +538,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 113,
+        "closed_issues": 254,
         "created_at": "2025-02-01T14:58:39Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -393,16 +562,16 @@
             "user_view_type": "public"
         },
         "description": "",
-        "due_on": null,
+        "due_on": "2026-10-31T00:00:00Z",
         "html_url": "https://github.com/neovim/neovim/milestone/48",
         "id": 12251313,
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/48/labels",
         "node_id": "MI_kwDOAPphoM4AuvCx",
         "number": 48,
-        "open_issues": 71,
+        "open_issues": 79,
         "state": "open",
         "title": "0.13",
-        "updated_at": "2026-07-13T14:28:26Z",
+        "updated_at": "2026-10-22T10:11:47Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/48"
     },
     "node_id": "I_kwDOAPphoM8AAAABIDqsqA",
@@ -441,7 +610,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyr",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2026-07-08T18:16:58Z",
+    "updated_at": "2026-10-21T03:06:29Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/40631",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/277474?v=4",

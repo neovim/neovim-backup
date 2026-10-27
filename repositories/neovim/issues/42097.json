@@ -4,8 +4,28 @@
     "assignees": [],
     "author_association": "NONE",
     "body": "### Problem\n\nAn `nvim --embed` server whose UI goes away (e.g. the builtin TUI process is killed, the terminal window is closed) never exits if an error message is emitted while it is shutting down. It blocks forever in `wait_return()` waiting for `<Enter>` from a UI that no longer exists, and is left behind as an orphan process (reparented to PID 1). Any child processes of that server (`:terminal` jobs etc.) stay alive with it.\n\nSampled stack of such an orphan (macOS `sample`): `main → preserve_exit → getout → wait_return → … kevent`.\n\n`getout()` has:\n\n```c\n  if (did_emsg) {\n    // give the user a chance to read the (error) message\n    no_wait_return = false;\n    wait_return(false);\n  }\n```\n\nand `wait_return()` only skips the prompt for `headless_mode && !ui_active()` (5b34c2a). A server that *had* a UI and lost it is not headless, so it blocks.\n\nIn my setup this happened at scale: a corrupt ShaDa file makes the ShaDa write at exit fail, so every nvim server whose TUI was closed stayed alive — 132 orphaned `nvim --embed` processes accumulated over a few days.\n\n### Steps to reproduce\n\n```sh\n#!/bin/bash\n# needs tmux; uses an isolated XDG state dir\nNVIM=${NVIM:-nvim}\nT=$(mktemp -d); mkdir -p \"$T/state/nvim/shada\"\nprintf 'x' > \"$T/state/nvim/shada/main.shada\"   # unparseable ShaDa -> E576 when nvim writes ShaDa at exit\ntmux new-session -d -s nvimrepro -x 120 -y 30 -e XDG_STATE_HOME=\"$T/state\" -e XDG_DATA_HOME=\"$T/data\" -e XDG_CONFIG_HOME=\"$T/cfg\" \"$NVIM -u NORC\"\nsleep 3\ntui=$(tmux display-message -p -t nvimrepro '#{pane_pid}')\nembed=$(pgrep -P \"$tui\" -f 'nvim.*--embed' | head -1)\ntmux kill-session -t nvimrepro      # TUI dies -> server loses its UI and begins to exit\nsleep 4\nif kill -0 \"$embed\" 2>/dev/null; then echo \"BUG: nvim --embed $embed still alive, ppid $(ps -o ppid= -p $embed)\"; kill -9 \"$embed\"; else echo \"OK: server exited\"; fi\nrm -rf \"$T\"\n```\n\nOutput: `BUG: nvim --embed 87213 still alive, ppid 1`.\n\nThe 1-byte ShaDa file is just a convenient way to get an error message *during* shutdown (`E576: Error while reading ShaDa file: expected positive integer at position 1, but got nothing`, raised when the exit-time ShaDa write reads the old file to merge). Any other error at that point should do the same.\n\n### Expected behavior\n\nWith no UI attached there is nobody who can press `<Enter>`; the server should not block on the hit-enter prompt and should exit.\n\nChanging `wait_return()` to return early whenever `!ui_active()` (not only in headless mode) fixes it — verified on master 4b26a2a: unpatched build hangs, patched build exits, in the script above. I'll open a PR.\n\n### Nvim version (nvim -v)\n\nNVIM v0.12.5 (Homebrew); also reproduced on master NVIM v0.13.0-dev-4b26a2a built from source\n\n### Vim (not Nvim) behaves the same?\n\nN/A (`--embed` / RPC UI is Nvim-specific)\n\n### Operating system/version\n\nmacOS 27.0 (Apple Silicon)\n\n### Terminal name/version\n\ntmux 3.7c (inside iTerm2)\n\n### $TERM environment variable\n\nxterm-256color\n\n### Installation\n\nHomebrew (0.12.5); source build (master)\n",
-    "closed_at": null,
-    "closed_by": null,
+    "closed_at": "2026-10-21T13:14:17Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+        "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+        "followers_url": "https://api.github.com/users/justinmk/followers",
+        "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+        "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/justinmk",
+        "id": 1359421,
+        "login": "justinmk",
+        "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+        "organizations_url": "https://api.github.com/users/justinmk/orgs",
+        "received_events_url": "https://api.github.com/users/justinmk/received_events",
+        "repos_url": "https://api.github.com/users/justinmk/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "NONE",
@@ -112,8 +132,8 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/42097/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
     "sub_issues_summary": {
         "completed": 0,
         "percent_completed": 0,
@@ -131,7 +151,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyr",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2026-09-26T00:26:46Z",
+    "updated_at": "2026-10-21T13:14:17Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/42097",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/91757?v=4",

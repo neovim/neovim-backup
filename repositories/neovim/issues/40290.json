@@ -4,8 +4,28 @@
     "assignees": [],
     "author_association": "NONE",
     "body": "﻿## Problem\n\nWhen a plugin sets `foldminlines` on a window via `nvim_set_option_value(\"foldminlines\", 0, { win = win })`, the `OptionSet` autocmd in `runtime/lua/vim/treesitter/_fold.lua` fires and unconditionally calls `FoldInfo.new(bufnr)` -> `ts.get_parser(bufnr)` -> `vim.bo[bufnr].filetype`, which throws `Invalid buffer id: N` if the current buffer is no longer valid:\n\n```\nError in OptionSet Autocommands for \"foldminlines\":\n...runtime/lua/vim/treesitter.lua:87: Invalid buffer id: 4\nstack traceback:\n        [C]: in function '__index'\n        ...runtime/lua/vim/treesitter.lua:87: in function 'get_parser'\n        ...runtime/lua/vim/treesitter/_fold.lua:34: in function 'new'\n        ...runtime/lua/vim/treesitter/_fold.lua:453: in function\n        [C]: in function 'nvim_set_option_value'\n```\n\n## Root cause\n\nThe `OptionSet` callback at `_fold.lua:447-473` checks `foldinfos[buf]` for truthiness but does **not verify that the buffer is still valid** before calling `FoldInfo.new(bufnr)`. When `foldinfos` contains a stale entry for a buffer that has been closed/recycled, `FoldInfo.new` -> `ts.get_parser(bufnr, nil)` -> `vim.bo[bufnr].filetype` crashes.\n\n## Steps to reproduce\n\n1. Open a file, enable treesitter-based folding (`foldmethod=expr`, `foldexpr=vim.treesitter.foldexpr()`)\n2. Close the file\n3. Open a new file using the same buffer number\n4. From any plugin, run `vim.api.nvim_set_option_value(\"foldminlines\", 0, { win = 0 })` -- the OptionSet callback may fire while `foldinfos[buf]` still holds a stale entry for the now-invalid buffer\n\nThe error is easily triggered with plugins like candela.nvim that set `foldminlines` on window creation.\n\n## Environment\n\n- Neovim: v0.12.2-v0.12.3 (cross-platform, runtime is identical on all OSes)\n\n## Suggested fix\n\nAdd `nvim_buf_is_valid()` checks to the OptionSet callback:\n\n```lua\ncallback = function()\n    local buf = api.nvim_get_current_buf()\n    if not api.nvim_buf_is_valid(buf) then\n      return\n    end\n    local bufs = vim.v.option_type == 'global' and vim.tbl_keys(foldinfos)\n      or foldinfos[buf] and { buf }\n      or {}\n    for _, bufnr in ipairs(bufs) do\n      if not api.nvim_buf_is_valid(bufnr) then\n        foldinfos[bufnr] = nil\n      else\n        local foldinfo = FoldInfo.new(bufnr)\n        foldinfos[bufnr] = foldinfo\n        api.nvim_buf_call(bufnr, function()\n          compute_folds_levels(bufnr, foldinfo, nil, nil, function()\n            if foldinfos[bufnr] ~= foldinfo then\n              return\n            end\n            foldinfo:foldupdate(bufnr, 0, api.nvim_buf_line_count(bufnr))\n          end)\n        end)\n      end\n    end\n  end,\n```\n\n## Related\n\nIssue #33926 reported a different bug (`invalid top`) in the same file's `do_foldupdate`; this is a separate issue in the OptionSet callback.\r\n",
-    "closed_at": null,
-    "closed_by": null,
+    "closed_at": "2026-10-21T07:39:36Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/7904185?v=4",
+        "events_url": "https://api.github.com/users/lewis6991/events{/privacy}",
+        "followers_url": "https://api.github.com/users/lewis6991/followers",
+        "following_url": "https://api.github.com/users/lewis6991/following{/other_user}",
+        "gists_url": "https://api.github.com/users/lewis6991/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/lewis6991",
+        "id": 7904185,
+        "login": "lewis6991",
+        "node_id": "MDQ6VXNlcjc5MDQxODU=",
+        "organizations_url": "https://api.github.com/users/lewis6991/orgs",
+        "received_events_url": "https://api.github.com/users/lewis6991/received_events",
+        "repos_url": "https://api.github.com/users/lewis6991/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/lewis6991/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/lewis6991/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/lewis6991",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -238,7 +258,7 @@
             }
         },
         {
-            "author_association": "NONE",
+            "author_association": "CONTRIBUTOR",
             "body": "I'll take this. I'm on Fedora 44, I'll reproduce it on a master build and send a PR with a regression test.\n",
             "created_at": "2026-10-11T11:47:23Z",
             "html_url": "https://github.com/neovim/neovim/issues/40290#issuecomment-6108692096",
@@ -342,8 +362,8 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/40290/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": "reopened",
+    "state": "closed",
+    "state_reason": "completed",
     "sub_issues_summary": {
         "completed": 0,
         "percent_completed": 0,
@@ -361,7 +381,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyr",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2026-10-11T11:47:23Z",
+    "updated_at": "2026-10-21T07:39:36Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/40290",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/58506575?v=4",

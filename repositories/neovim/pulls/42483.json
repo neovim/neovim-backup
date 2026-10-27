@@ -22,13 +22,13 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/42483"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/e4f5eab93677cda15ba5ac4d66c577d2d8ebe2e2"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/07488de700afc6bae7f35bc4b1fde9f4775658f2"
         }
     },
     "active_lock_reason": null,
     "assignee": null,
     "assignees": [],
-    "author_association": "FIRST_TIME_CONTRIBUTOR",
+    "author_association": "CONTRIBUTOR",
     "auto_merge": null,
     "base": {
         "label": "neovim:master",
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 7218,
-            "forks_count": 7218,
+            "forks": 7262,
+            "forks_count": 7262,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -95,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1983,
-            "open_issues_count": 1983,
+            "open_issues": 1999,
+            "open_issues_count": 1999,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -121,11 +121,11 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2026-10-20T05:24:35Z",
+            "pushed_at": "2026-10-27T05:28:06Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 404161,
+            "size": 404839,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 103076,
+            "stargazers_count": 103201,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -143,14 +143,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2026-10-20T05:46:37Z",
+            "updated_at": "2026-10-27T06:13:00Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 103076,
-            "watchers_count": 103076,
+            "watchers": 103201,
+            "watchers_count": 103201,
             "web_commit_signoff_required": false
         },
-        "sha": "7dc0669a076afeb14769d9302052ff001afd2519",
+        "sha": "e3375c89044262be543eba3dda051665a316dffc",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -173,9 +173,153 @@
             "user_view_type": "public"
         }
     },
-    "body": "## Problem\n\n`vim.lsp.inline_completion` logs `ServerCancelled` as an error. Servers that cancel a request when a newer one arrives, such as copilot-language-server, fill `lsp.log` while typing.\n\nFixes #42482\n\n## Solution\n\nDon't log `ServerCancelled`, which pull diagnostics already treat as expected (#31345).\n",
-    "closed_at": null,
-    "comment_data": [],
+    "body": "## Problem\n\n`vim.lsp.inline_completion` logs `ServerCancelled` as an error. Servers that cancel a request when a newer one arrives, such as copilot-language-server, fill `lsp.log` while typing.\n\nFixes #42482\n\n## Solution\n\nLog `ServerCancelled` at debug instead of error, as `vim.lsp.rpc` does for `RequestCancelled`.\n",
+    "closed_at": "2026-10-20T17:58:01Z",
+    "comment_data": [
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/42483#discussion_r4327698303"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/42483"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/4327698303"
+                }
+            },
+            "author_association": "MEMBER",
+            "body": "this is, again, a flimsy test, and will pass even if the logs are removed entirely in the future. \n\n26 lines of test code to assert that a flag is passed, is not a good tradeoff. and mocking things in tests is strongly discouraged.\n\njust drop the test.\n\nplease consider this for all future PRs",
+            "commit_id": "8cf95b4de7d1713ffcc539865849f8580c9d310b",
+            "copilot_code_review_sources": [],
+            "created_at": "2026-10-20T16:50:15Z",
+            "diff_hunk": "@@ -211,6 +217,26 @@ describe('vim.lsp.inline_completion', function()\n       ]])\n       screen:expect_unchanged(false, 500)\n     end)\n+\n+    it('does not log ServerCancelled #42482', function()\n+      exec_lua(function()\n+        _G.requests = 0\n+        _G.logged = {}\n+        require('vim.lsp.log').error = function(_, err)\n+          table.insert(_G.logged, err.code)",
+            "html_url": "https://github.com/neovim/neovim/pull/42483#discussion_r4327698303",
+            "id": 4327698303,
+            "is_copilot_code_review": false,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM8AAAABAfNvfw",
+            "original_commit_id": "8cf95b4de7d1713ffcc539865849f8580c9d310b",
+            "original_line": 226,
+            "original_position": 23,
+            "original_start_line": 225,
+            "path": "test/functional/plugin/lsp/inline_completion_spec.lua",
+            "position": 1,
+            "pull_request_review_id": 5588503057,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/42483",
+            "reactions": {
+                "+1": 1,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 1,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/4327698303/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-10-20T16:50:15Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/4327698303",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "_links": {
+                "html": {
+                    "href": "https://github.com/neovim/neovim/pull/42483#discussion_r4328009623"
+                },
+                "pull_request": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/42483"
+                },
+                "self": {
+                    "href": "https://api.github.com/repos/neovim/neovim/pulls/comments/4328009623"
+                }
+            },
+            "author_association": "CONTRIBUTOR",
+            "body": "Understood, dropped it and noted for future PRs.",
+            "commit_id": "8cf95b4de7d1713ffcc539865849f8580c9d310b",
+            "copilot_code_review_sources": [],
+            "created_at": "2026-10-20T17:20:24Z",
+            "diff_hunk": "@@ -211,6 +217,26 @@ describe('vim.lsp.inline_completion', function()\n       ]])\n       screen:expect_unchanged(false, 500)\n     end)\n+\n+    it('does not log ServerCancelled #42482', function()\n+      exec_lua(function()\n+        _G.requests = 0\n+        _G.logged = {}\n+        require('vim.lsp.log').error = function(_, err)\n+          table.insert(_G.logged, err.code)",
+            "html_url": "https://github.com/neovim/neovim/pull/42483#discussion_r4328009623",
+            "id": 4328009623,
+            "in_reply_to_id": 4327698303,
+            "is_copilot_code_review": false,
+            "line": null,
+            "node_id": "PRRC_kwDOAPphoM8AAAABAfgvlw",
+            "original_commit_id": "8cf95b4de7d1713ffcc539865849f8580c9d310b",
+            "original_line": 226,
+            "original_position": 23,
+            "original_start_line": 225,
+            "path": "test/functional/plugin/lsp/inline_completion_spec.lua",
+            "position": 1,
+            "pull_request_review_id": 5588885439,
+            "pull_request_url": "https://api.github.com/repos/neovim/neovim/pulls/42483",
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/4328009623/reactions"
+            },
+            "side": "RIGHT",
+            "start_line": null,
+            "start_side": "RIGHT",
+            "subject_type": "line",
+            "updated_at": "2026-10-20T17:20:24Z",
+            "url": "https://api.github.com/repos/neovim/neovim/pulls/comments/4328009623",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/127199900?v=4",
+                "events_url": "https://api.github.com/users/dobsontom/events{/privacy}",
+                "followers_url": "https://api.github.com/users/dobsontom/followers",
+                "following_url": "https://api.github.com/users/dobsontom/following{/other_user}",
+                "gists_url": "https://api.github.com/users/dobsontom/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/dobsontom",
+                "id": 127199900,
+                "login": "dobsontom",
+                "node_id": "U_kgDOB5TqnA",
+                "organizations_url": "https://api.github.com/users/dobsontom/orgs",
+                "received_events_url": "https://api.github.com/users/dobsontom/received_events",
+                "repos_url": "https://api.github.com/users/dobsontom/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/dobsontom/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/dobsontom/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/dobsontom",
+                "user_view_type": "public"
+            }
+        }
+    ],
     "comment_regular_data": [],
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/42483/comments",
     "commits_url": "https://api.github.com/repos/neovim/neovim/pulls/42483/commits",
@@ -273,9 +417,9 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/dobsontom/neovim/pulls{/number}",
-            "pushed_at": "2026-10-19T20:52:44Z",
+            "pushed_at": "2026-10-20T17:20:22Z",
             "releases_url": "https://api.github.com/repos/dobsontom/neovim/releases{/id}",
-            "size": 388114,
+            "size": 388108,
             "ssh_url": "git@github.com:dobsontom/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/dobsontom/neovim/stargazers",
@@ -294,7 +438,7 @@
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "e4f5eab93677cda15ba5ac4d66c577d2d8ebe2e2",
+        "sha": "07488de700afc6bae7f35bc4b1fde9f4775658f2",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/127199900?v=4",
             "events_url": "https://api.github.com/users/dobsontom/events{/privacy}",
@@ -334,8 +478,8 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "accdb64327e6536dc02f057c4588836489258cf9",
-    "merged_at": null,
+    "merge_commit_sha": "630f1d5eeec3bb15553bbe51ce607dc7b7273429",
+    "merged_at": "2026-10-20T17:58:01Z",
     "milestone": null,
     "node_id": "PR_kwDOAPphoM8AAAABJZ9n6g",
     "number": 42483,
@@ -344,10 +488,10 @@
     "requested_teams": [],
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/42483/comments",
-    "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/e4f5eab93677cda15ba5ac4d66c577d2d8ebe2e2",
+    "state": "closed",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/07488de700afc6bae7f35bc4b1fde9f4775658f2",
     "title": "fix(lsp): inline completion logs ServerCancelled as an error",
-    "updated_at": "2026-10-19T20:52:46Z",
+    "updated_at": "2026-10-20T17:58:02Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/42483",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/127199900?v=4",

@@ -14,8 +14,10 @@
             "html_url": "https://github.com/neovim/neovim/issues/19559#issuecomment-2080333110",
             "id": 2080333110,
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/19559",
+            "minimized": null,
             "node_id": "IC_kwDOAPphoM57_102",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -59,8 +61,10 @@
             "html_url": "https://github.com/neovim/neovim/issues/19559#issuecomment-2600819894",
             "id": 2600819894,
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/19559",
+            "minimized": null,
             "node_id": "IC_kwDOAPphoM6bBVy2",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 1,
                 "-1": 0,
@@ -96,16 +100,72 @@
                 "url": "https://api.github.com/users/fredizzimo",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "NONE",
+            "body": "Still reproducible on v0.12.6 and today's nightly (v0.13.0-dev-1946+g659164699f). It isn't specific to reattaching: any multigrid UI that attaches without changing the screen size gets no `win_pos` or `win_float_pos`, including a second UI attaching next to an existing one of the same size (the float side is #30582).\n\nCause: on attach, `ui_refresh()` → `screen_resize()` sets `resizing_screen`, so `win_grid_alloc()` resends `grid_resize` for every window grid. But `w_pos_changed` is only set when a window actually moves or resizes (`frame_comp_pos()`, `win_new_width()`/`win_new_height()`), and `win_new_screensize()` only does that work when `Rows`/`Columns` change. So `win_ui_flush()` has nothing to send. Setting `wp->w_pos_changed = true` alongside the `grid_resize` that `win_grid_alloc()` sends while `resizing_screen` is set would probably fix it.\n\nRepro with plain msgpack (`uv run --with msgpack python repro.py [WIDTH] [--float]`):\n\n```python\n# Two UIs with ext_multigrid; the second one never learns where window grids are.\nimport os, socket, subprocess, sys, tempfile, time\nimport msgpack\n\nsock = os.path.join(tempfile.mkdtemp(), \"nvim.sock\")\nnvim = subprocess.Popen([\"nvim\", \"--clean\", \"--headless\", \"--listen\", sock])\nwhile not os.path.exists(sock):\n    time.sleep(0.05)\n\nclass UI:\n    def __init__(self, name):\n        self.name, self.s, self.msgid = name, socket.socket(socket.AF_UNIX), 0\n        self.s.connect(sock)\n        self.unpacker = msgpack.Unpacker(raw=False, strict_map_key=False, ext_hook=lambda c, d: msgpack.ExtType(c, d))\n\n    def request(self, method, *args):\n        self.msgid += 1\n        self.s.sendall(msgpack.packb([0, self.msgid, method, list(args)]))\n\n    def events(self, timeout=0.5):\n        \"\"\"grid_resize, win_pos and win_float_pos events until 0.5 s of quiet.\"\"\"\n        self.s.settimeout(timeout)\n        out = []\n        try:\n            while True:\n                self.unpacker.feed(self.s.recv(65536))\n                for msg in self.unpacker:\n                    if msg[0] == 2 and msg[1] == \"redraw\":\n                        for name, *calls in msg[2]:\n                            if name == \"win_pos\":\n                                out += [(name, [c[0], *c[2:]]) for c in calls]\n                            elif name == \"win_float_pos\":\n                                out += [(name, [c[0], c[2], c[4], c[5]]) for c in calls]\n                            elif name == \"grid_resize\":\n                                out += [(name, c) for c in calls]\n                    elif msg[0] == 1 and msg[2]:\n                        print(self.name, \"error:\", msg[2])\n        except socket.timeout:\n            return out\n\nopts = {\"ext_linegrid\": True, \"ext_multigrid\": True}\na = UI(\"A\")\na.request(\"nvim_ui_attach\", 80, 24, opts)\nprint(\"A:\", a.events())\nif \"--float\" in sys.argv:\n    a.request(\"nvim_open_win\", 0, False, {\"relative\": \"editor\", \"row\": 2, \"col\": 5, \"width\": 20, \"height\": 3})\n    print(\"A float:\", a.events())\n\nwidth = int(sys.argv[1]) if len(sys.argv) > 1 and sys.argv[1].isdigit() else 80\nb = UI(\"B\")\nb.request(\"nvim_ui_attach\", width, 24, opts)\nprint(f\"B ({width}x24):\", b.events())\nnvim.kill()\n```\n\nSame size, with a float (`repro.py 80 --float`): B gets `grid_resize` for grids 2 and 4 but no `win_pos`/`win_float_pos`:\n\n```\nA: [('grid_resize', [3, 80, 24]), ('grid_resize', [1, 80, 24]), ('grid_resize', [2, 80, 22]), ('win_pos', [2, 0, 0, 80, 22])]\nA float: [('grid_resize', [4, 20, 3]), ('win_float_pos', [4, 'NW', 2.0, 5.0])]\nB (80x24): [('grid_resize', [3, 80, 24]), ('grid_resize', [1, 80, 24]), ('grid_resize', [2, 80, 22]), ('grid_resize', [4, 20, 3])]\n```\n\nOne column narrower (`repro.py 79 --float`), so the screen resizes and B gets both:\n\n```\nB (79x24): [('grid_resize', [3, 80, 24]), ('grid_resize', [1, 79, 24]), ('grid_resize', [3, 79, 24]), ('win_pos', [2, 0, 0, 79, 22]), ('win_float_pos', [4, 'NW', 2.0, 5.0]), ('grid_resize', [2, 79, 22]), ('grid_resize', [4, 20, 3])]\n```\n\nWorkaround for UIs: attach one column narrower than `&columns`, then `nvim_ui_try_resize` back to the real size.\n",
+            "created_at": "2026-10-25T19:07:41Z",
+            "html_url": "https://github.com/neovim/neovim/issues/19559#issuecomment-6401904980",
+            "id": 6401904980,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/19559",
+            "minimized": null,
+            "node_id": "IC_kwDOAPphoM8AAAABfZVRVA",
+            "performed_via_github_app": null,
+            "pin": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/6401904980/reactions"
+            },
+            "updated_at": "2026-10-25T19:07:41Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/6401904980",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/28229664?v=4",
+                "events_url": "https://api.github.com/users/buntec/events{/privacy}",
+                "followers_url": "https://api.github.com/users/buntec/followers",
+                "following_url": "https://api.github.com/users/buntec/following{/other_user}",
+                "gists_url": "https://api.github.com/users/buntec/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/buntec",
+                "id": 28229664,
+                "login": "buntec",
+                "node_id": "MDQ6VXNlcjI4MjI5NjY0",
+                "organizations_url": "https://api.github.com/users/buntec/orgs",
+                "received_events_url": "https://api.github.com/users/buntec/received_events",
+                "repos_url": "https://api.github.com/users/buntec/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/buntec/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/buntec/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/buntec",
+                "user_view_type": "public"
+            }
         }
     ],
-    "comments": 2,
+    "comments": 3,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/19559/comments",
     "created_at": "2022-07-28T09:05:56Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/19559/events",
     "html_url": "https://github.com/neovim/neovim/issues/19559",
     "id": 1320625795,
+    "issue_dependencies_summary": {
+        "blocked_by": 0,
+        "blocking": 0,
+        "total_blocked_by": 0,
+        "total_blocking": 0
+    },
+    "issue_field_values": [],
     "labels": [
         {
+            "archived_at": null,
+            "archived_by": null,
             "color": "c5def5",
             "default": false,
             "description": "libnvim, Nvim RPC API",
@@ -115,6 +175,8 @@
             "url": "https://api.github.com/repos/neovim/neovim/labels/api"
         },
         {
+            "archived_at": null,
+            "archived_by": null,
             "color": "c7def8",
             "default": false,
             "description": "channels, RPC, msgpack",
@@ -124,6 +186,8 @@
             "url": "https://api.github.com/repos/neovim/neovim/labels/channels-rpc"
         },
         {
+            "archived_at": null,
+            "archived_by": null,
             "color": "c5def5",
             "default": false,
             "description": "UI extensibility, events, protocol, externalized UI",
@@ -137,7 +201,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 726,
+        "closed_issues": 898,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -167,15 +231,16 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 630,
+        "open_issues": 686,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2025-07-07T03:51:31Z",
+        "updated_at": "2026-10-23T13:43:26Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM5OtyaD",
     "number": 19559,
     "performed_via_github_app": null,
+    "pinned_comment": null,
     "reactions": {
         "+1": 1,
         "-1": 0,
@@ -208,7 +273,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyr",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2025-07-02T08:36:58Z",
+    "updated_at": "2026-10-25T19:07:41Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/19559",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/270613?v=4",
