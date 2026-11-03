@@ -2,19 +2,42 @@
     "active_lock_reason": null,
     "assignee": null,
     "assignees": [],
-    "author_association": "MEMBER",
+    "author_association": "CONTRIBUTOR",
     "body": "- `nvim --version`: NVIM v0.5.0-164-g3b3a40978\r\n- `vim -u DEFAULTS` (version: ) behaves differently? N/A\r\n- Operating system/version: N/A\r\n- Terminal name/version: N/A\r\n- `$TERM`: N/A\r\n\r\n### Steps to reproduce using `nvim -u NORC`\r\nCreate the following test.vim.\r\n```vim\r\nfunction! Count()\r\n  let g:counter += 1\r\n  return g:counter\r\nendfunction\r\n\r\nlet g:num_trails = 0\r\nlet timer = timer_start(1, { -> execute('sleep 150m') }, {'repeat' : -1 })\r\nwhile(v:true)\r\n  let g:counter = 0\r\n  let g:num_trails += 1\r\n  call wait(100, 'Count() >= 5', 20)\r\n  if g:counter == 1\r\n    echomsg \"g:counter is 1, trails \"..g:num_trails\r\n    break\r\n  endif\r\nendwhile\r\ncall timer_stop(timer)\r\n```\r\n\r\n```\r\nnvim -u NORC\r\n:so test.vim\r\n```\r\n\r\n### Actual behaviour\r\nEventually, the while loop ends.\r\n\r\nOne case:\r\n\r\n```\r\ng:counter is 1, trails 147752\r\n```\r\n\r\n### Expected behaviour\r\nWhile loops should not end forever.\r\n\r\nAs is apparent from the code, after the condition is first evaluated(0 sec), the condition may not be evaluated once during the timeout period. Is this intended?\r\n\r\nI think it should be implemented like follow, but is it wrong?\r\n\r\n```C\r\n#define WAIT_UNTIL(loop, multiqueue, timeout, condtion) \\\r\n  do { \\\r\n    if (!(condtion) && timeout != 0) { \\\r\n      int remaining = timeout; \\\r\n      uint64_t before = os_hrtime(); \\\r\n      do { \\\r\n        if (remaining > 0) { \\\r\n          uint64_t now = os_hrtime(); \\\r\n          remaining  -= (int) ((now - before) / 1000000); \\\r\n          before = now; \\\r\n          if (remaining <= 0) { \\\r\n            break; \\\r\n          } \\\r\n        } \\\r\n        LOOP_PROCESS_EVENTS(loop, multiqueue, remaining); \\\r\n      } while (!(condtion)); \\\r\n    } \\\r\n  } while(0)\r\n```\r\n\r\nIf we keep the current implementation, I think the following help description should be modified.\r\n\r\n> Condition is evaluated on user events, internal events, and every {interval} milliseconds (default: 200).\r\n\r\nIn practice, the condition is evaluated if the timeout has not been reached at the end of processing the user event, internal events. I don't know how to explain the interval, but there is no guarantee that the condition will be evaluated for every interval.\r\n\r\n",
-    "closed_at": null,
+    "closed_at": "2026-10-31T10:52:05Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+        "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+        "followers_url": "https://api.github.com/users/justinmk/followers",
+        "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+        "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/justinmk",
+        "id": 1359421,
+        "login": "justinmk",
+        "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+        "organizations_url": "https://api.github.com/users/justinmk/orgs",
+        "received_events_url": "https://api.github.com/users/justinmk/received_events",
+        "repos_url": "https://api.github.com/users/justinmk/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "/cc @abdelhakeem",
             "created_at": "2019-10-10T20:26:51Z",
             "html_url": "https://github.com/neovim/neovim/issues/11193#issuecomment-540775120",
             "id": 540775120,
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/11193",
+            "minimized": null,
             "node_id": "MDEyOklzc3VlQ29tbWVudDU0MDc3NTEyMA==",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -47,7 +70,8 @@
                 "starred_url": "https://api.github.com/users/blueyed/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/blueyed/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/blueyed"
+                "url": "https://api.github.com/users/blueyed",
+                "user_view_type": "public"
             }
         },
         {
@@ -57,8 +81,10 @@
             "html_url": "https://github.com/neovim/neovim/issues/11193#issuecomment-540806680",
             "id": 540806680,
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/11193",
+            "minimized": null,
             "node_id": "MDEyOklzc3VlQ29tbWVudDU0MDgwNjY4MA==",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -91,18 +117,21 @@
                 "starred_url": "https://api.github.com/users/bfredl/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/bfredl/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/bfredl"
+                "url": "https://api.github.com/users/bfredl",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "> Not sure what the issue is here.\r\n\r\nThe example I gave seems not good. But, if the execution of the first event(can't control what that event is) after the first condition evaluation takes longer than the timeout, the second condition is not evaluated. In that case it does not serve as a `wait()` function.",
             "created_at": "2019-10-11T03:46:39Z",
             "html_url": "https://github.com/neovim/neovim/issues/11193#issuecomment-540888986",
             "id": 540888986,
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/11193",
+            "minimized": null,
             "node_id": "MDEyOklzc3VlQ29tbWVudDU0MDg4ODk4Ng==",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -135,7 +164,8 @@
                 "starred_url": "https://api.github.com/users/erw7/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/erw7/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/erw7"
+                "url": "https://api.github.com/users/erw7",
+                "user_view_type": "public"
             }
         },
         {
@@ -145,8 +175,10 @@
             "html_url": "https://github.com/neovim/neovim/issues/11193#issuecomment-540901120",
             "id": 540901120,
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/11193",
+            "minimized": null,
             "node_id": "MDEyOklzc3VlQ29tbWVudDU0MDkwMTEyMA==",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -179,7 +211,8 @@
                 "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/justinmk"
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
             }
         },
         {
@@ -189,8 +222,10 @@
             "html_url": "https://github.com/neovim/neovim/issues/11193#issuecomment-540982398",
             "id": 540982398,
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/11193",
+            "minimized": null,
             "node_id": "MDEyOklzc3VlQ29tbWVudDU0MDk4MjM5OA==",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -223,7 +258,8 @@
                 "starred_url": "https://api.github.com/users/bfredl/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/bfredl/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/bfredl"
+                "url": "https://api.github.com/users/bfredl",
+                "user_view_type": "public"
             }
         },
         {
@@ -233,8 +269,10 @@
             "html_url": "https://github.com/neovim/neovim/issues/11193#issuecomment-541043391",
             "id": 541043391,
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/11193",
+            "minimized": null,
             "node_id": "MDEyOklzc3VlQ29tbWVudDU0MTA0MzM5MQ==",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 0,
                 "-1": 0,
@@ -267,18 +305,21 @@
                 "starred_url": "https://api.github.com/users/abdelhakeem/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/abdelhakeem/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/abdelhakeem"
+                "url": "https://api.github.com/users/abdelhakeem",
+                "user_view_type": "public"
             }
         },
         {
-            "author_association": "MEMBER",
+            "author_association": "CONTRIBUTOR",
             "body": "I understand that it was the intended behavior. What about the following examples of help changes?\r\n\r\nCondition is evaluated once at the beginning, and then evaluated for each user event and internal event that ended within the `{timeout}` period. Even if no internal or user events occur, condition is evaluated every `{interval}` milliseconds maximum (default 200).\r\n",
             "created_at": "2019-10-12T05:04:55Z",
             "html_url": "https://github.com/neovim/neovim/issues/11193#issuecomment-541285602",
             "id": 541285602,
             "issue_url": "https://api.github.com/repos/neovim/neovim/issues/11193",
+            "minimized": null,
             "node_id": "MDEyOklzc3VlQ29tbWVudDU0MTI4NTYwMg==",
             "performed_via_github_app": null,
+            "pin": null,
             "reactions": {
                 "+1": 1,
                 "-1": 0,
@@ -311,7 +352,8 @@
                 "starred_url": "https://api.github.com/users/erw7/starred{/owner}{/repo}",
                 "subscriptions_url": "https://api.github.com/users/erw7/subscriptions",
                 "type": "User",
-                "url": "https://api.github.com/users/erw7"
+                "url": "https://api.github.com/users/erw7",
+                "user_view_type": "public"
             }
         }
     ],
@@ -321,8 +363,17 @@
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/11193/events",
     "html_url": "https://github.com/neovim/neovim/issues/11193",
     "id": 505034122,
+    "issue_dependencies_summary": {
+        "blocked_by": 0,
+        "blocking": 0,
+        "total_blocked_by": 0,
+        "total_blocking": 0
+    },
+    "issue_field_values": [],
     "labels": [
         {
+            "archived_at": null,
+            "archived_by": null,
             "color": "c5def5",
             "default": true,
             "description": "",
@@ -332,6 +383,8 @@
             "url": "https://api.github.com/repos/neovim/neovim/labels/documentation"
         },
         {
+            "archived_at": null,
+            "archived_by": null,
             "color": "c5def5",
             "default": false,
             "description": null,
@@ -345,8 +398,8 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 601,
-        "created_at": "2014-05-10T20:43:04Z",
+        "closed_issues": 269,
+        "created_at": "2025-02-01T14:58:39Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
             "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
@@ -365,24 +418,26 @@
             "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
             "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
             "type": "User",
-            "url": "https://api.github.com/users/justinmk"
+            "url": "https://api.github.com/users/justinmk",
+            "user_view_type": "public"
         },
-        "description": "Low priority. Not planned for the current target, may be reassigned.",
-        "due_on": null,
-        "html_url": "https://github.com/neovim/neovim/milestone/6",
-        "id": 655037,
-        "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
-        "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
-        "number": 6,
-        "open_issues": 515,
+        "description": "",
+        "due_on": "2026-11-11T00:00:00Z",
+        "html_url": "https://github.com/neovim/neovim/milestone/48",
+        "id": 12251313,
+        "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/48/labels",
+        "node_id": "MI_kwDOAPphoM4AuvCx",
+        "number": 48,
+        "open_issues": 75,
         "state": "open",
-        "title": "backlog",
-        "updated_at": "2024-04-01T02:46:11Z",
-        "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
+        "title": "0.13",
+        "updated_at": "2026-11-02T10:22:19Z",
+        "url": "https://api.github.com/repos/neovim/neovim/milestones/48"
     },
     "node_id": "MDU6SXNzdWU1MDUwMzQxMjI=",
     "number": 11193,
     "performed_via_github_app": null,
+    "pinned_comment": null,
     "reactions": {
         "+1": 1,
         "-1": 0,
@@ -396,11 +451,17 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/11193/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": null,
+    "state": "closed",
+    "state_reason": "completed",
+    "sub_issues_summary": {
+        "completed": 0,
+        "percent_completed": 0,
+        "total": 0
+    },
     "timeline_url": "https://api.github.com/repos/neovim/neovim/issues/11193/timeline",
     "title": "wait(): timeout may occur, before condition is eval'd timeout/interval times",
-    "updated_at": "2024-03-30T13:14:19Z",
+    "type": null,
+    "updated_at": "2026-10-31T10:52:05Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/11193",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/11682285?v=4",
@@ -420,6 +481,7 @@
         "starred_url": "https://api.github.com/users/erw7/starred{/owner}{/repo}",
         "subscriptions_url": "https://api.github.com/users/erw7/subscriptions",
         "type": "User",
-        "url": "https://api.github.com/users/erw7"
+        "url": "https://api.github.com/users/erw7",
+        "user_view_type": "public"
     }
 }

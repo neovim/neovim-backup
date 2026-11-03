@@ -22,7 +22,7 @@
             "href": "https://api.github.com/repos/neovim/neovim/pulls/42111"
         },
         "statuses": {
-            "href": "https://api.github.com/repos/neovim/neovim/statuses/388a348676ad6b2ee8f7f9f60afaecbaa65041b7"
+            "href": "https://api.github.com/repos/neovim/neovim/statuses/6a696ffe2b022055cbb8fb0a931d9244f36469c4"
         }
     },
     "active_lock_reason": null,
@@ -55,8 +55,8 @@
             "downloads_url": "https://api.github.com/repos/neovim/neovim/downloads",
             "events_url": "https://api.github.com/repos/neovim/neovim/events",
             "fork": false,
-            "forks": 7140,
-            "forks_count": 7140,
+            "forks": 7394,
+            "forks_count": 7394,
             "forks_url": "https://api.github.com/repos/neovim/neovim/forks",
             "full_name": "neovim/neovim",
             "git_commits_url": "https://api.github.com/repos/neovim/neovim/git/commits{/sha}",
@@ -95,8 +95,8 @@
             "name": "neovim",
             "node_id": "MDEwOlJlcG9zaXRvcnkxNjQwODk5Mg==",
             "notifications_url": "https://api.github.com/repos/neovim/neovim/notifications{?since,all,participating}",
-            "open_issues": 1928,
-            "open_issues_count": 1928,
+            "open_issues": 1987,
+            "open_issues_count": 1987,
             "owner": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
                 "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -121,11 +121,11 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/neovim/neovim/pulls{/number}",
-            "pushed_at": "2026-09-29T05:26:58Z",
+            "pushed_at": "2026-11-03T05:17:35Z",
             "releases_url": "https://api.github.com/repos/neovim/neovim/releases{/id}",
-            "size": 401581,
+            "size": 405601,
             "ssh_url": "git@github.com:neovim/neovim.git",
-            "stargazers_count": 102657,
+            "stargazers_count": 103327,
             "stargazers_url": "https://api.github.com/repos/neovim/neovim/stargazers",
             "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/{sha}",
             "subscribers_url": "https://api.github.com/repos/neovim/neovim/subscribers",
@@ -143,14 +143,14 @@
                 "vim"
             ],
             "trees_url": "https://api.github.com/repos/neovim/neovim/git/trees{/sha}",
-            "updated_at": "2026-09-29T06:35:06Z",
+            "updated_at": "2026-11-03T07:18:51Z",
             "url": "https://api.github.com/repos/neovim/neovim",
             "visibility": "public",
-            "watchers": 102657,
-            "watchers_count": 102657,
+            "watchers": 103327,
+            "watchers_count": 103327,
             "web_commit_signoff_required": false
         },
-        "sha": "521eddec7c243a8166609bf1734cb940e9510fc5",
+        "sha": "6332ba64fe56f922c5cd2d93e4cfa23673966b6d",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/6471485?v=4",
             "events_url": "https://api.github.com/users/neovim/events{/privacy}",
@@ -173,13 +173,13 @@
             "user_view_type": "public"
         }
     },
-    "body": "## Problem\r\n\r\nRepro:\r\n\r\n```lua\r\nlocal ns = vim.api.nvim_create_namespace(\"repro\")\r\nvim.ui_attach(ns, { ext_messages = true }, function(event, ...)\r\n  if event == \"msg_show\" then\r\n    vim.cmd(\"highlight Normal\")\r\n  end\r\nend)\r\n\r\nprint(\"\")\r\n```\r\n\r\nReduced down from a more complex setup where the trigger was `:=some lua code` as a shorthand.\r\n\r\n## Solution\r\n\r\nAdd a missing guard in `msg_puts_len`, similar to the one in `msg_ext_ui_flush`\r\n\r\n## Trace\r\n\r\n`message.c` prevents other messages being emitted while it's emitting a chunk:\r\n\r\nhttps://github.com/neovim/neovim/blob/521eddec7c243a8166609bf1734cb940e9510fc5/src/nvim/message.c#L389\r\n\r\nThis is asserted during the chunk output:\r\n\r\nhttps://github.com/neovim/neovim/blob/521eddec7c243a8166609bf1734cb940e9510fc5/src/nvim/message.c#L400\r\n\r\nThe assertion fails if:\r\n- A ui callback is attached (`ui_attach()`) with message side-effects\r\n- An [empty string is emitted] (this sets `msg_ext_kind` to `\"lua_print\"` and then triggers a `msg_show` event)\r\n- The `msg_show` event handler emits a message with a different kind\r\n- We return to the original `\"lua_print\"` batch loop, the assertion finds that `msg_ext_kind` has changed (raising an abort)\r\n\r\n[empty string is emitted]: https://github.com/neovim/neovim/blob/521eddec7c243a8166609bf1734cb940e9510fc5/src/nvim/message.c#L2357-L2365",
+    "body": "## Problem\r\n\r\nRepro:\r\n\r\n```lua\r\nlocal ns = vim.api.nvim_create_namespace(\"repro\")\r\nvim.ui_attach(ns, { ext_messages = true }, function(event, ...)\r\n  if event == \"msg_show\" then\r\n    vim.cmd(\"highlight Normal\")\r\n  end\r\nend)\r\n\r\nprint(\"\")\r\n```\r\n\r\nReduced down from a more complex setup where the trigger was `:=some lua code` as a shorthand.\r\n\r\n## Solution\r\n\r\nSave and restore `msg_ext_kind` in `msg_puts_len()` (like [`verbose_enter`](https://github.com/neovim/neovim/blob/521eddec7c243a8166609bf1734cb940e9510fc5/src/nvim/message.c#L3549-L3560))\r\n\r\n## Trace\r\n\r\n`message.c` prevents other messages being emitted while it's emitting a chunk:\r\n\r\nhttps://github.com/neovim/neovim/blob/521eddec7c243a8166609bf1734cb940e9510fc5/src/nvim/message.c#L389\r\n\r\nThis is asserted during the chunk output:\r\n\r\nhttps://github.com/neovim/neovim/blob/521eddec7c243a8166609bf1734cb940e9510fc5/src/nvim/message.c#L400\r\n\r\nThe assertion fails if:\r\n- A ui callback is attached (`ui_attach()`) with message side-effects\r\n- An [empty string is emitted] (this sets `msg_ext_kind` to `\"lua_print\"` and then triggers a `msg_show` event)\r\n- The `msg_show` event handler emits a message with a different kind\r\n- We return to the original `\"lua_print\"` batch loop, the assertion finds that `msg_ext_kind` has changed (raising an abort)\r\n\r\n[empty string is emitted]: https://github.com/neovim/neovim/blob/521eddec7c243a8166609bf1734cb940e9510fc5/src/nvim/message.c#L2357-L2365",
     "closed_at": null,
     "comment_data": [],
     "comment_regular_data": [
         {
             "author_association": "CONTRIBUTOR",
-            "body": "@bfredl you know the messages code very well, can I get your opinion? This approach I've taken doesn't feel quite right (`msg_ext_skip_flush` feels like it belongs just to `msg_ext_ui_flush`)\r\n\r\nShould `msg_puts_len()` be stashing and restoring `msg_ext_kind` instead of dropping the message? (like [`verbose_enter`](https://github.com/neovim/neovim/blob/521eddec7c243a8166609bf1734cb940e9510fc5/src/nvim/message.c#L3549-L3560))",
+            "body": "~~@bfredl you know the messages code very well, can I get your opinion? This approach I've taken doesn't feel quite right (`msg_ext_skip_flush` feels like it belongs just to `msg_ext_ui_flush`)~~\r\n\r\nShould `msg_puts_len()` be stashing and restoring `msg_ext_kind` instead of dropping the message? (like [`verbose_enter`](https://github.com/neovim/neovim/blob/521eddec7c243a8166609bf1734cb940e9510fc5/src/nvim/message.c#L3549-L3560))\r\n\r\nedit: ^ this is now the case",
             "created_at": "2026-09-26T16:37:31Z",
             "html_url": "https://github.com/neovim/neovim/pull/42111#issuecomment-5847962624",
             "id": 5847962624,
@@ -199,7 +199,7 @@
                 "total_count": 0,
                 "url": "https://api.github.com/repos/neovim/neovim/issues/comments/5847962624/reactions"
             },
-            "updated_at": "2026-09-26T16:39:03Z",
+            "updated_at": "2026-11-02T19:51:51Z",
             "url": "https://api.github.com/repos/neovim/neovim/issues/comments/5847962624",
             "user": {
                 "avatar_url": "https://avatars.githubusercontent.com/u/205673?v=4",
@@ -228,7 +228,7 @@
     "commits_url": "https://api.github.com/repos/neovim/neovim/pulls/42111/commits",
     "created_at": "2026-09-26T16:35:18Z",
     "diff_url": "https://github.com/neovim/neovim/pull/42111.diff",
-    "draft": true,
+    "draft": false,
     "head": {
         "label": "bobrippling:fix/ui2-assert-fail",
         "ref": "fix/ui2-assert-fail",
@@ -320,9 +320,9 @@
             "private": false,
             "pull_request_creation_policy": "all",
             "pulls_url": "https://api.github.com/repos/bobrippling/neovim/pulls{/number}",
-            "pushed_at": "2026-09-26T16:28:28Z",
+            "pushed_at": "2026-11-02T20:35:47Z",
             "releases_url": "https://api.github.com/repos/bobrippling/neovim/releases{/id}",
-            "size": 387299,
+            "size": 391691,
             "ssh_url": "git@github.com:bobrippling/neovim.git",
             "stargazers_count": 0,
             "stargazers_url": "https://api.github.com/repos/bobrippling/neovim/stargazers",
@@ -334,14 +334,14 @@
             "teams_url": "https://api.github.com/repos/bobrippling/neovim/teams",
             "topics": [],
             "trees_url": "https://api.github.com/repos/bobrippling/neovim/git/trees{/sha}",
-            "updated_at": "2026-09-26T16:27:26Z",
+            "updated_at": "2026-11-01T15:11:47Z",
             "url": "https://api.github.com/repos/bobrippling/neovim",
             "visibility": "public",
             "watchers": 0,
             "watchers_count": 0,
             "web_commit_signoff_required": false
         },
-        "sha": "388a348676ad6b2ee8f7f9f60afaecbaa65041b7",
+        "sha": "6a696ffe2b022055cbb8fb0a931d9244f36469c4",
         "user": {
             "avatar_url": "https://avatars.githubusercontent.com/u/205673?v=4",
             "events_url": "https://api.github.com/users/bobrippling/events{/privacy}",
@@ -381,7 +381,7 @@
         }
     ],
     "locked": false,
-    "merge_commit_sha": "ba790ce5b20740f106cfd73a4ac4f9f7af231f67",
+    "merge_commit_sha": "8dd97425a6ce022f2b0cc454566b8bd27c5d3198",
     "merged_at": null,
     "milestone": null,
     "node_id": "PR_kwDOAPphoM8AAAABFQ7flw",
@@ -392,9 +392,9 @@
     "review_comment_url": "https://api.github.com/repos/neovim/neovim/pulls/comments{/number}",
     "review_comments_url": "https://api.github.com/repos/neovim/neovim/pulls/42111/comments",
     "state": "open",
-    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/388a348676ad6b2ee8f7f9f60afaecbaa65041b7",
+    "statuses_url": "https://api.github.com/repos/neovim/neovim/statuses/6a696ffe2b022055cbb8fb0a931d9244f36469c4",
     "title": "fix(ui2): failed assertion `... || kind == NULL || msg_ext_kind == kind`",
-    "updated_at": "2026-09-26T16:39:03Z",
+    "updated_at": "2026-11-02T21:31:22Z",
     "url": "https://api.github.com/repos/neovim/neovim/pulls/42111",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/205673?v=4",

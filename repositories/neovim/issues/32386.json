@@ -4,8 +4,28 @@
     "assignees": [],
     "author_association": "CONTRIBUTOR",
     "body": "### Problem\n\nSometimes during a `git rebase`, I get this error:\n\n```\n|| Error executing luv callback:\n|| ...apps\\neovim\\0.10.2\\share\\nvim\\runtime/lua/vim/_watch.lua:90: EPERM: operation not permitted: C:/code/project/.git/packed-refs.lock\n```\n\nSince I'm on windows, lsp is using `watch.watch`:\n\nhttps://github.com/neovim/neovim/blob/eacd662ccb755a8663a2e9e3658f8d600931b26e/runtime/lua/vim/lsp/_watchfiles.lua#L10-L16\n\nI can see that  `watch.inotify` excludes the .git folder:\nhttps://github.com/neovim/neovim/blob/eacd662ccb755a8663a2e9e3658f8d600931b26e/runtime/lua/vim/_watch.lua#L297\n\nBut `watch.watch` doesn't.\n\nRelated to #27646.\n\nMy active lsp are lua-ls and harper-ls.\n\nPossibly there's a way I can configure my lsp to ignore .git (couldn't find it with `:helpgrep exclude_pattern`). But shouldn't the behaviour be the same across all watch backends?\n\n\n### Steps to reproduce\n\nIt usually pops up with doing a `:Git rebase` (via fugitive). I haven't nailed down a repro. This is the minimal I'm working on but it's not consistent:\n\n```lua\n-- Run this file:\n--    pushd %USERPROFILE\n--    nvim --clean -u minimal.lua\n\n-- Below rtp manipulation won't work without this.\nvim.o.shellslash = true\n\nfor name, url in pairs {\n   lspconfig = 'https://github.com/neovim/nvim-lspconfig',\n   mason = 'https://github.com/williamboman/mason.nvim',\n   mason_lspconfig = 'https://github.com/williamboman/mason-lspconfig.nvim',\n   fugitive = 'https://github.com/tpope/vim-fugitive',\n} do\n  local install_path = vim.fn.fnamemodify('nvim_issue/' .. name, ':p')\n  if vim.fn.isdirectory(install_path) == 0 then\n    vim.fn.system { 'git', 'clone', '--depth=1', url, install_path }\n  end\n  vim.opt.runtimepath:append(install_path)\nend\n\n-- Need a repo with a lot of history.\nlocal install_path = vim.fn.fnamemodify('nvim_issue/testrepo', ':p')\nif vim.fn.isdirectory(install_path) == 0 then\n  vim.fn.system { 'git', 'clone', '--depth=1000', 'https://github.com/neovim/nvim-lspconfig', install_path }\nend\n\n-- ADD INIT.LUA SETTINGS _NECESSARY_ FOR REPRODUCING THE ISSUE\n\n-- Make sure filetype is picked up so lua buffers get lsp.\nvim.cmd\"filetype plugin indent on\"\n\n\nvim.o.autochdir = true\n\n\n-- lsp config        {{{1\nrequire(\"mason\").setup()\nrequire(\"mason-lspconfig\").setup()\nrequire'lspconfig'.lua_ls.setup {\n  -- Default server config specified in their help\n  on_init = function(client)\n    local path = client.workspace_folders[1].name\n    if vim.loop.fs_stat(path..'/.luarc.json') or vim.loop.fs_stat(path..'/.luarc.jsonc') then\n      return\n    end\n\n    client.config.settings.Lua = vim.tbl_deep_extend('force', client.config.settings.Lua, {\n        runtime = {\n          -- Tell the language server which version of Lua you're using\n          -- (most likely LuaJIT in the case of Neovim)\n          version = 'LuaJIT'\n        },\n        -- Make the server aware of Neovim runtime files\n        workspace = {\n          checkThirdParty = false,\n          library = {\n            vim.env.VIMRUNTIME\n            -- Depending on the usage, you might want to add additional paths here.\n            -- \"${3rd}/luv/library\"\n            -- \"${3rd}/busted/library\",\n          }\n          -- or pull in all of 'runtimepath'. NOTE: this is a lot slower\n          -- library = vim.api.nvim_get_runtime_file(\"\", true)\n        }\n      })\n  end,\n  settings = {\n    Lua = {}\n  }\n}\n\n-- Edit some files and modify them\nvim.cmd.edit(install_path .. '/lua/lspconfig.lua')\nvim.cmd.split(install_path .. '/lua/dummy.lua')\nvim.api.nvim_put({ \"local test_file = true\" }, \"l\", true, true)\nvim.cmd.write()\n\n-- Then interactively do these vim command steps:\n--[[\n\" First make sure the lsp is setup for this buffer:\nLspInfo\n\" Create some change that will result in a slow rebase:\nGwrite | Git commit --fixup ancient\nGit branch ancient HEAD~200\n\" Trigger rebase:\nGit rebase --autosquash ancient~\nmessages\n]]\n```\n\n### Expected behavior\n\nlsp watcher doesn't watch .git folder.\n\n### Nvim version (nvim -v)\n\nNVIM v0.10.4 Build type: Release LuaJIT 2.1.1713484068\n\n### Vim (not Nvim) behaves the same?\n\nno, vim doens't have built-in lsp\n\n### Operating system/version\n\nWin 10\n\n### Terminal name/version\n\nwindows command prompt\n\n### $TERM environment variable\n\nn/a\n\n### Installation\n\nscoop",
-    "closed_at": null,
-    "closed_by": null,
+    "closed_at": "2026-11-02T14:40:17Z",
+    "closed_by": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+        "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+        "followers_url": "https://api.github.com/users/justinmk/followers",
+        "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+        "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/justinmk",
+        "id": 1359421,
+        "login": "justinmk",
+        "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+        "organizations_url": "https://api.github.com/users/justinmk/orgs",
+        "received_events_url": "https://api.github.com/users/justinmk/received_events",
+        "repos_url": "https://api.github.com/users/justinmk/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/justinmk",
+        "user_view_type": "public"
+    },
     "comment_data": [
         {
             "author_association": "MEMBER",
@@ -194,9 +214,103 @@
                 "url": "https://api.github.com/users/justinmk",
                 "user_view_type": "public"
             }
+        },
+        {
+            "author_association": "CONTRIBUTOR",
+            "body": "> This time, I was editing `.git/info/exclude`, did a `git pull --rebase` outside of nvim, when I focused nvim (running in neovide) it gave this error. The error spam is so nonstop that I can't give ex commands and nvim won't even respond to the window's X close button.\n\n@idbrii, seems a single `.git/info/exclude` doesn't cause EPERM storms. I guess you also edited some files whose parent directories were later deleted by `git pull --rebase` — if so, this will be fixed by #42635.",
+            "created_at": "2026-11-01T14:30:42Z",
+            "html_url": "https://github.com/neovim/neovim/issues/32386#issuecomment-6559312784",
+            "id": 6559312784,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/32386",
+            "minimized": null,
+            "node_id": "IC_kwDOAPphoM8AAAABhvcrkA",
+            "performed_via_github_app": null,
+            "pin": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/6559312784/reactions"
+            },
+            "updated_at": "2026-11-01T14:30:42Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/6559312784",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/8579651?v=4",
+                "events_url": "https://api.github.com/users/ntdiary/events{/privacy}",
+                "followers_url": "https://api.github.com/users/ntdiary/followers",
+                "following_url": "https://api.github.com/users/ntdiary/following{/other_user}",
+                "gists_url": "https://api.github.com/users/ntdiary/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/ntdiary",
+                "id": 8579651,
+                "login": "ntdiary",
+                "node_id": "MDQ6VXNlcjg1Nzk2NTE=",
+                "organizations_url": "https://api.github.com/users/ntdiary/orgs",
+                "received_events_url": "https://api.github.com/users/ntdiary/received_events",
+                "repos_url": "https://api.github.com/users/ntdiary/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/ntdiary/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/ntdiary/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/ntdiary",
+                "user_view_type": "public"
+            }
+        },
+        {
+            "author_association": "MEMBER",
+            "body": "this is not fixed by #42635 ",
+            "created_at": "2026-11-02T14:00:51Z",
+            "html_url": "https://github.com/neovim/neovim/issues/32386#issuecomment-6579057879",
+            "id": 6579057879,
+            "issue_url": "https://api.github.com/repos/neovim/neovim/issues/32386",
+            "minimized": null,
+            "node_id": "IC_kwDOAPphoM8AAAABiCR01w",
+            "performed_via_github_app": null,
+            "pin": null,
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                "confused": 0,
+                "eyes": 0,
+                "heart": 0,
+                "hooray": 0,
+                "laugh": 0,
+                "rocket": 0,
+                "total_count": 0,
+                "url": "https://api.github.com/repos/neovim/neovim/issues/comments/6579057879/reactions"
+            },
+            "updated_at": "2026-11-02T14:00:51Z",
+            "url": "https://api.github.com/repos/neovim/neovim/issues/comments/6579057879",
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
+                "events_url": "https://api.github.com/users/justinmk/events{/privacy}",
+                "followers_url": "https://api.github.com/users/justinmk/followers",
+                "following_url": "https://api.github.com/users/justinmk/following{/other_user}",
+                "gists_url": "https://api.github.com/users/justinmk/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/justinmk",
+                "id": 1359421,
+                "login": "justinmk",
+                "node_id": "MDQ6VXNlcjEzNTk0MjE=",
+                "organizations_url": "https://api.github.com/users/justinmk/orgs",
+                "received_events_url": "https://api.github.com/users/justinmk/received_events",
+                "repos_url": "https://api.github.com/users/justinmk/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/justinmk/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/justinmk/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/justinmk",
+                "user_view_type": "public"
+            }
         }
     ],
-    "comments": 4,
+    "comments": 6,
     "comments_url": "https://api.github.com/repos/neovim/neovim/issues/32386/comments",
     "created_at": "2025-02-09T22:29:45Z",
     "events_url": "https://api.github.com/repos/neovim/neovim/issues/32386/events",
@@ -211,6 +325,8 @@
     "issue_field_values": [],
     "labels": [
         {
+            "archived_at": null,
+            "archived_by": null,
             "color": "BFDADC",
             "default": false,
             "description": "Low-risk, self-contained. Do NOT ask \"can I work on this\", just read CONTRIBUTING.md",
@@ -220,6 +336,8 @@
             "url": "https://api.github.com/repos/neovim/neovim/labels/complexity:low"
         },
         {
+            "archived_at": null,
+            "archived_by": null,
             "color": "c5def5",
             "default": false,
             "description": null,
@@ -229,6 +347,8 @@
             "url": "https://api.github.com/repos/neovim/neovim/labels/lsp"
         },
         {
+            "archived_at": null,
+            "archived_by": null,
             "color": "bfd4f2",
             "default": false,
             "description": "OS-driven file/directory watcher, 'autoread'",
@@ -242,7 +362,7 @@
     "locked": false,
     "milestone": {
         "closed_at": null,
-        "closed_issues": 862,
+        "closed_issues": 905,
         "created_at": "2014-05-10T20:43:04Z",
         "creator": {
             "avatar_url": "https://avatars.githubusercontent.com/u/1359421?v=4",
@@ -272,10 +392,10 @@
         "labels_url": "https://api.github.com/repos/neovim/neovim/milestones/6/labels",
         "node_id": "MDk6TWlsZXN0b25lNjU1MDM3",
         "number": 6,
-        "open_issues": 668,
+        "open_issues": 682,
         "state": "open",
         "title": "backlog",
-        "updated_at": "2026-07-06T15:42:38Z",
+        "updated_at": "2026-11-02T21:23:40Z",
         "url": "https://api.github.com/repos/neovim/neovim/milestones/6"
     },
     "node_id": "I_kwDOAPphoM6pViBO",
@@ -295,8 +415,8 @@
         "url": "https://api.github.com/repos/neovim/neovim/issues/32386/reactions"
     },
     "repository_url": "https://api.github.com/repos/neovim/neovim",
-    "state": "open",
-    "state_reason": "reopened",
+    "state": "closed",
+    "state_reason": "completed",
     "sub_issues_summary": {
         "completed": 0,
         "percent_completed": 0,
@@ -314,7 +434,7 @@
         "node_id": "IT_kwDOAGK_Pc4ACRyr",
         "updated_at": "2024-07-26T10:12:30Z"
     },
-    "updated_at": "2026-06-29T15:52:54Z",
+    "updated_at": "2026-11-02T14:40:18Z",
     "url": "https://api.github.com/repos/neovim/neovim/issues/32386",
     "user": {
         "avatar_url": "https://avatars.githubusercontent.com/u/43559?v=4",
